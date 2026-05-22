@@ -14,6 +14,8 @@ import { SettingsImageUploader } from '../../components/SettingsImageUploader';
 import { TagInput } from '../../components/TagInput';
 import MapLocationPicker from '../MapLocationPicker';
 import { HomeComponentStickyFooter } from '@/app/admin/home-components/_shared/components/HomeComponentStickyFooter';
+import { AiSeoImportDialog } from './AiSeoImportDialog';
+import { SeoBuilderDialog } from './SeoBuilderDialog';
 
 type SettingsSection = 'site' | 'contact' | 'seo' | 'advanced';
 type SettingsFormValue = string | boolean;
@@ -873,14 +875,15 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       case 'image': {
         const isFaviconField = key === 'site_favicon';
         const isProductPlaceholderField = key === 'product_image_placeholder';
+        const isSeoImageField = key === 'seo_og_image';
         const logoValue = typeof form.site_logo === 'string' ? form.site_logo : '';
-        const handleUseLogo = (targetKey: 'site_favicon' | 'product_image_placeholder') => {
+        const handleUseLogo = (targetKey: 'site_favicon' | 'product_image_placeholder' | 'seo_og_image') => {
           if (!logoValue) {
             toast.error('Chưa có logo để dùng.');
             return;
           }
           updateImageField(targetKey, logoValue, mediaStorageIds.site_logo ?? null);
-          toast.success(targetKey === 'site_favicon' ? 'Đã dùng logo làm favicon.' : 'Đã dùng logo làm placeholder sản phẩm.');
+          toast.success(targetKey === 'site_favicon' ? 'Đã dùng logo làm favicon.' : targetKey === 'product_image_placeholder' ? 'Đã dùng logo làm placeholder sản phẩm.' : 'Đã dùng logo làm OG Image.');
         };
 
         return (
@@ -932,6 +935,27 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                   onClick={() =>{  updateImageField('product_image_placeholder', '', null); }}
                 >
                   Xóa placeholder
+                </Button>
+              </div>
+            )}
+            {isSeoImageField && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleUseLogo('seo_og_image')}
+                  disabled={!logoValue}
+                >
+                  Dùng logo hiện tại
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>{  updateImageField('seo_og_image', '', null); }}
+                >
+                  Xóa ảnh
                 </Button>
               </div>
             )}
@@ -1308,7 +1332,27 @@ function SettingsContent({ section }: { section: SettingsSection }) {
         onClickSave={handleSave}
         align="between"
       >
-        <>
+        <div className="flex items-center gap-2">
+          {section === 'seo' && (
+            <>
+              <AiSeoImportDialog
+                form={form}
+                onApply={(payload) => {
+                  if (payload.seo_title) updateField('seo_title', payload.seo_title);
+                  if (payload.seo_description) updateField('seo_description', payload.seo_description);
+                  if (payload.seo_keywords) updateField('seo_keywords', payload.seo_keywords);
+                }}
+              />
+              <SeoBuilderDialog
+                form={form}
+                onApply={(payload) => {
+                  if (payload.seo_title) updateField('seo_title', payload.seo_title);
+                  if (payload.seo_description) updateField('seo_description', payload.seo_description);
+                  if (payload.seo_keywords) updateField('seo_keywords', payload.seo_keywords);
+                }}
+              />
+            </>
+          )}
           <span className={cn("text-sm", hasChanges ? "text-amber-600 dark:text-amber-400" : "text-slate-500")}>
             {hasChanges ? 'Có thay đổi chưa lưu' : 'Đã lưu'}
           </span>
@@ -1328,7 +1372,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
             )}
             {isSaving ? 'Đang lưu...' : hasChanges ? 'Lưu thay đổi' : 'Đã lưu'}
           </Button>
-        </>
+        </div>
       </HomeComponentStickyFooter>
     </div>
   );

@@ -11,6 +11,7 @@ import {
   Check,
   Sparkles,
   X,
+  PaintBucket,
 } from 'lucide-react';
 import { Button, cn } from './ui';
 import { toast } from 'sonner';
@@ -37,7 +38,7 @@ type ImageEditorDialogProps = {
   enableSmartLogoCrop?: boolean;
 };
 
-type EditorTab = 'crop' | 'removebg';
+type EditorTab = 'crop' | 'removebg' | 'addbg';
 
 type CropRatio = {
   label: string;
@@ -155,6 +156,12 @@ export function ImageEditorDialog({
   const [isSmartCropping, setIsSmartCropping] = useState(false);
   const [smartCropProgress, setSmartCropProgress] = useState(0);
   const [smartCropStage, setSmartCropStage] = useState('');
+
+  // Add BG state
+  type BgOption = 'transparent' | 'white' | 'black' | 'light-gray' | 'gradient';
+  type CanvasAspectOption = 'original' | '1:1' | '16:9' | '9:16' | '3:4' | '4:3';
+  const [selectedBg, setSelectedBg] = useState<BgOption>('transparent');
+  const [canvasAspect, setCanvasAspect] = useState<CanvasAspectOption>('original');
 
   // Shared
   const [isApplying, setIsApplying] = useState(false);
@@ -372,11 +379,94 @@ export function ImageEditorDialog({
     }
   }, [imageUrl, isSmartCropping]);
 
+  /* ---- Add BG handlers ---- */
+
+  const handleApplyAddBg = useCallback(async () => {
+    setIsApplying(true);
+    try {
+      const imageBlob = await fetchImageAsBlob(imageUrl);
+      const img = new window.Image();
+      const url = URL.createObjectURL(imageBlob);
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = url;
+      });
+
+      let targetW = img.width;
+      let targetH = img.height;
+
+      if (canvasAspect !== 'original') {
+        const [w, h] = canvasAspect.split(':').map(Number);
+        const targetAspect = w / h;
+        const imgAspect = img.width / img.height;
+
+        if (imgAspect < targetAspect) {
+          targetH = img.height;
+          targetW = img.height * targetAspect;
+        } else {
+          targetW = img.width;
+          targetH = img.width / targetAspect;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Cannot get canvas context');
+
+      if (selectedBg === 'white') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, targetW, targetH);
+      } else if (selectedBg === 'black') {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, targetW, targetH);
+      } else if (selectedBg === 'light-gray') {
+        ctx.fillStyle = '#f3f4f6';
+        ctx.fillRect(0, 0, targetW, targetH);
+      } else if (selectedBg === 'gradient') {
+        const gradient = ctx.createLinearGradient(0, 0, targetW, targetH);
+        gradient.addColorStop(0, '#ffffff');
+        gradient.addColorStop(1, '#e2e8f0');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, targetW, targetH);
+      }
+
+      const x = (targetW - img.width) / 2;
+      const y = (targetH - img.height) / 2;
+      ctx.drawImage(img, x, y);
+
+      URL.revokeObjectURL(url);
+
+      const isTransparent = selectedBg === 'transparent';
+      const mimeType = isTransparent ? 'image/png' : 'image/jpeg';
+      const ext = isTransparent ? 'png' : 'jpg';
+
+      canvas.toBlob((blob) => {
+        setIsApplying(false);
+        if (!blob) {
+          toast.error('Không thể tạo ảnh');
+          return;
+        }
+        const file = new File([blob], `addbg-${Date.now()}.${ext}`, { type: mimeType });
+        onApply(file);
+      }, mimeType, 0.95);
+
+    } catch (error) {
+      console.error(error);
+      toast.error('Lỗi khi thêm nền');
+      setIsApplying(false);
+    }
+  }, [imageUrl, canvasAspect, selectedBg, onApply]);
+
   /* ---- Render ---- */
 
   const tabs: { key: EditorTab; label: string; icon: React.ReactNode }[] = [
     { key: 'crop', label: 'Cắt ảnh', icon: <CropIcon size={15} /> },
     { key: 'removebg', label: 'Xóa nền', icon: <Eraser size={15} /> },
+    { key: 'addbg', label: 'Thêm nền', icon: <PaintBucket size={15} /> },
   ];
 
   return (
@@ -610,6 +700,95 @@ export function ImageEditorDialog({
               )}
             </div>
           )}
+
+          {activeTab === 'addbg' && (
+            <div className="space-y-6">
+              <p className="text-xs text-slate-500">
+                Thêm nền và điều chỉnh kích thước khung hình cho ảnh. Thích hợp cho ảnh đã có nền trong suốt.
+              </p>
+
+              <div className="flex justify-center bg-slate-50 dark:bg-slate-800/30 rounded-lg p-3">
+                <div 
+                  className={cn("relative flex items-center justify-center transition-all overflow-hidden", 
+                    canvasAspect !== 'original' ? 'w-full max-w-[400px]' : '',
+                    selectedBg === 'transparent' ? 'bg-[repeating-conic-gradient(#e2e8f0_0%_25%,transparent_0%_50%)] dark:bg-[repeating-conic-gradient(#334155_0%_25%,transparent_0%_50%)] bg-[length:16px_16px]' : '',
+                    selectedBg === 'white' ? 'bg-white border border-slate-200 dark:border-slate-700' : '',
+                    selectedBg === 'black' ? 'bg-black' : '',
+                    selectedBg === 'light-gray' ? 'bg-slate-100 dark:bg-slate-800' : '',
+                    selectedBg === 'gradient' ? 'bg-gradient-to-br from-white to-slate-200 border border-slate-200 dark:from-slate-800 dark:to-slate-900 dark:border-slate-700' : ''
+                  )}
+                  style={{
+                    aspectRatio: canvasAspect !== 'original' ? canvasAspect.replace(':', '/') : undefined,
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageUrl}
+                    alt="Preview"
+                    className={cn("max-h-[40vh] max-w-full", canvasAspect !== 'original' ? 'w-full h-full object-contain' : '')}
+                    crossOrigin="anonymous"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-2 block">Màu nền</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: 'transparent', label: 'Trong suốt' },
+                      { id: 'white', label: 'Trắng' },
+                      { id: 'black', label: 'Đen' },
+                      { id: 'light-gray', label: 'Xám nhạt' },
+                      { id: 'gradient', label: 'Gradient' }
+                    ].map(bg => (
+                      <button
+                        key={bg.id}
+                        type="button"
+                        onClick={() => setSelectedBg(bg.id as BgOption)}
+                        className={cn(
+                          'px-3 py-1.5 text-xs font-medium rounded-md border transition-colors',
+                          selectedBg === bg.id
+                            ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                        )}
+                      >
+                        {bg.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-2 block">Kích thước khung</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: 'original', label: 'Giữ nguyên' },
+                      { id: '1:1', label: 'Vuông 1:1' },
+                      { id: '16:9', label: '16:9' },
+                      { id: '9:16', label: '9:16' },
+                      { id: '3:4', label: '3:4' },
+                      { id: '4:3', label: '4:3' }
+                    ].map(aspect => (
+                      <button
+                        key={aspect.id}
+                        type="button"
+                        onClick={() => setCanvasAspect(aspect.id as CanvasAspectOption)}
+                        className={cn(
+                          'px-3 py-1.5 text-xs font-medium rounded-md border transition-colors',
+                          canvasAspect === aspect.id
+                            ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                        )}
+                      >
+                        {aspect.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -643,6 +822,22 @@ export function ImageEditorDialog({
             >
               <Check size={15} />
               Áp dụng xóa nền
+            </Button>
+          )}
+
+          {activeTab === 'addbg' && (
+            <Button
+              type="button"
+              onClick={handleApplyAddBg}
+              disabled={isApplying}
+              className="gap-1.5"
+            >
+              {isApplying ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <Check size={15} />
+              )}
+              Áp dụng thêm nền
             </Button>
           )}
 
