@@ -33,9 +33,29 @@ function getUsageContext(table: string, recordId: string) {
     case 'productCategories': return { label: 'Danh mục SP', url: `/admin/product-categories/${recordId}/edit` };
     case 'posts': return { label: 'Bài viết', url: `/admin/posts/${recordId}/edit` };
     case 'postCategories': return { label: 'Danh mục bài viết', url: `/admin/post-categories/${recordId}/edit` };
-    case 'siteSettings': return { label: 'Cài đặt hệ thống', url: `/admin/settings/site` };
     case 'homeComponents': return { label: 'Component trang chủ', url: `/admin/home-components` };
     case 'users': return { label: 'Người dùng', url: `/admin/users/${recordId}/edit` };
+    case 'settings':
+    case 'siteSettings': {
+      let url = '/admin/settings/general';
+      let label = 'Cài đặt hệ thống';
+      if (recordId.startsWith('site_')) {
+        url = '/admin/settings/general';
+        label = 'Cài đặt chung';
+      } else if (recordId.startsWith('seo_')) {
+        url = '/admin/settings/seo';
+        label = 'Cài đặt SEO';
+      } else if (recordId.startsWith('contact_')) {
+        url = '/admin/settings/contact';
+        label = 'Thông tin liên hệ';
+      } else if (recordId.startsWith('product_')) {
+        url = '/admin/settings/product-frames';
+        label = 'Cài đặt Sản phẩm';
+      }
+      return { label: `${label} (${recordId})`, url };
+    }
+    case 'moduleSettings':
+      return { label: `Cài đặt Module (${recordId})`, url: `/admin/modules` };
     default: return { label: table, url: `/admin/${table}/${recordId}/edit` };
   }
 }
