@@ -491,6 +491,7 @@ const productExportDoc = v.object({
   categoryId: v.id("productCategories"),
   description: v.optional(v.string()),
   image: v.optional(v.string()),
+  images: v.optional(v.array(v.string())),
   name: v.string(),
   price: v.number(),
   salePrice: v.optional(v.number()),
@@ -521,6 +522,7 @@ export const listAdminExport = query({
         categoryId: product.categoryId,
         description: product.description,
         image: product.image,
+        images: product.images,
         name: product.name,
         price: product.price,
         salePrice: product.salePrice,
@@ -543,6 +545,7 @@ export const listAdminExport = query({
       categoryId: product.categoryId,
       description: product.description,
       image: product.image,
+      images: product.images,
       name: product.name,
       price: product.price,
       salePrice: product.salePrice,
@@ -1171,6 +1174,15 @@ export const importFromExcelRows = mutation({
       defaultStatus = "Active";
     }
 
+    const productTypeSetting = await ctx.db
+      .query("moduleSettings")
+      .withIndex("by_module_setting", (q) =>
+        q.eq("moduleKey", "products").eq("settingKey", "productTypeMode")
+      )
+      .unique();
+    const productTypeMode = (productTypeSetting?.value as "physical" | "digital" | "both") ?? "both";
+    const productType = productTypeMode === "digital" ? "digital" : "physical";
+
     const saleModeSetting = await ctx.db
       .query("moduleSettings")
       .withIndex("by_module_setting", (q) =>
@@ -1267,6 +1279,9 @@ export const importFromExcelRows = mutation({
         stock: stockValue,
         sales: 0,
         order: orderValue,
+        renderType: "content",
+        productType,
+        hasVariants: false,
       });
 
       await updateStats(ctx, { new: status });
@@ -1275,6 +1290,10 @@ export const importFromExcelRows = mutation({
       seenSkus.add(sku);
       seenSlugs.add(slug);
       created += 1;
+    }
+
+    if (created > 0 || skipped > 0) {
+      await ctx.runMutation(api.landingPages.syncProgrammaticFromSourceChange, { source: "product" });
     }
 
     return { created, skipped, errors };

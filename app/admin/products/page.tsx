@@ -316,7 +316,7 @@ function ProductsContent() {
         const rows: ProductExcelRow[] = exportData.map((product) => ({
           categorySlug: categorySlugMap[product.categoryId] ?? '',
           description: product.description ?? '',
-          image: product.image ?? '',
+          image: [product.image, ...(product.images || [])].filter(Boolean).join(';'),
           name: product.name,
           price: product.price,
           salePrice: product.salePrice ?? null,
