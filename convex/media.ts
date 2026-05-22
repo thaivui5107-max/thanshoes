@@ -188,10 +188,31 @@ async function resolveMediaUsageMap(
   const candidates = mediaItems.map(media => {
     const id = normalizeValue(media._id);
     usageMap.set(id, []);
-    return { id, storageId: normalizeValue(media.storageId), url: urlsById.get(id) ?? null };
+    return { id, storageId: normalizeValue(media.storageId), rawStorageId: media.storageId, url: urlsById.get(id) ?? null };
   });
 
   if (candidates.length === 0) {return { scanComplete: true, usageMap };}
+
+  // 1. Scan fileReferences (Source of Truth for Modern Usages)
+  for (const candidate of candidates) {
+    if (candidate.rawStorageId) {
+      const references = fullScan 
+        ? await ctx.db.query("fileReferences").withIndex("by_storageId", q => q.eq("storageId", candidate.rawStorageId as any)).collect()
+        : await ctx.db.query("fileReferences").withIndex("by_storageId", q => q.eq("storageId", candidate.rawStorageId as any)).take(MAX_USAGE_SCAN_PER_TABLE + 1);
+        
+      const trimmedRefs = trimUsageRecords(references, scanState);
+      const usages = usageMap.get(candidate.id) ?? [];
+      for (const ref of trimmedRefs) {
+        usages.push({
+          field: ref.ownerField,
+          label: ref.purpose ?? ref.ownerId,
+          recordId: ref.ownerId,
+          table: ref.ownerTable,
+        });
+      }
+      usageMap.set(candidate.id, usages);
+    }
+  }
 
   const users = fullScan ? await ctx.db.query("users").collect() : trimUsageRecords(await ctx.db.query("users").take(MAX_USAGE_SCAN_PER_TABLE + 1), scanState);
   users.forEach(record => collectUsageMatches(usageMap, candidates, "users", record, "avatar", record.avatar));
@@ -407,6 +428,39 @@ export const listWithUrlsAndUsage = query({
     });
   },
   returns: v.array(v.any()),
+});
+
+export const listWithUrlsAndUsagePaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const result = await ctx.db.query("images").order("desc").paginate(args.paginationOpts);
+    
+    const urlsById = new Map<string, string | null>();
+    await Promise.all(result.page.map(async (img) => {
+      urlsById.set(normalizeValue(img._id), await ctx.storage.getUrl(img.storageId));
+    }));
+    const uncheckedImages = result.page.filter(img => img.usageCheckedAt === undefined);
+    const { usageMap } = await resolveMediaUsageMap(ctx, uncheckedImages, urlsById);
+
+    const enrichedPage = result.page.map((img) => {
+      const id = normalizeValue(img._id);
+      const scannedUsages = usageMap.get(id) ?? [];
+      const usages = img.usageCheckedAt === undefined ? scannedUsages : (img.usages ?? []);
+      return {
+        ...img,
+        isOrphan: img.usageCheckedAt === undefined ? usages.length === 0 : img.isOrphan,
+        usageCount: img.usageCheckedAt === undefined ? usages.length : img.usageCount,
+        usages,
+        url: urlsById.get(id) ?? null,
+      };
+    });
+
+    return {
+      ...result,
+      page: enrichedPage,
+    };
+  },
+  returns: v.any(),
 });
 
 export const recheckUsageForMedia = mutation({

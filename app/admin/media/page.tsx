@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AdminImage as Image } from '@/app/admin/components/AdminImage';
 import Link from 'next/link';
 import { useMutation, useQuery } from 'convex/react';
@@ -13,10 +13,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge, Button, Card, Input, cn } from '../components/ui';
-import { BulkActionBar, SelectCheckbox } from '../components/TableUtilities';
+import { BulkActionBar, SelectCheckbox, generatePaginationItems } from '../components/TableUtilities';
 import { ModuleGuard } from '../components/ModuleGuard';
 import { prepareImageForUpload, validateImageFile } from '@/lib/image/uploadPipeline';
 import { resolveNamingContext } from '@/lib/image/uploadNaming';
+import { usePersistedPageSize } from '../components/usePersistedPageSize';
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 500, 5000];
 
 const MODULE_KEY = 'media';
 type ViewMode = 'grid' | 'list';
@@ -85,7 +88,7 @@ export default function MediaPage() {
 }
 
 function MediaContent() {
-  const mediaData = useQuery(api.media.listWithUrlsAndUsage, { limit: 100 }) as MediaItem[] | undefined;
+  const mediaData = useQuery(api.media.listWithUrlsAndUsage, { limit: 5000 }) as MediaItem[] | undefined;
   const foldersData = useQuery(api.media.getFolders);
   const statsData = useQuery(api.media.getStats);
   const featuresData = useQuery(api.admin.modules.listModuleFeatures, { moduleKey: MODULE_KEY });
@@ -124,6 +127,13 @@ function MediaContent() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isLoading = mediaData === undefined;
+  const [resolvedItemsPerPage, setPageSizeOverride] = usePersistedPageSize('admin_media_page_size', 100);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination on filter
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterType, filterFolder, usageFilter]);
 
   const mediaItems = useMemo(() => {
     if (!mediaData) {return [];}
@@ -180,6 +190,11 @@ function MediaContent() {
     
     return data;
   }, [mediaItems, searchTerm, filterType, filterFolder, usageFilter, sortMode]);
+
+  const totalPages = Math.ceil(filteredMedia.length / resolvedItemsPerPage) || 1;
+  const paginatedMedia = useMemo(() => {
+    return filteredMedia.slice((currentPage - 1) * resolvedItemsPerPage, currentPage * resolvedItemsPerPage);
+  }, [filteredMedia, currentPage, resolvedItemsPerPage]);
 
   // Selection handlers
   const toggleSelectAll = () => {
@@ -606,7 +621,7 @@ function MediaContent() {
           ) : (viewMode === 'grid' ? (
             // Grid View
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {filteredMedia.map(media => {
+              {paginatedMedia.map(media => {
                 const FileIcon = getFileIcon(media.mimeType);
                 const isImage = media.mimeType.startsWith('image/');
                 const isSelected = selectedIds.includes(media._id);
@@ -709,7 +724,7 @@ function MediaContent() {
                 <span className="text-sm text-slate-500">Chọn tất cả</span>
               </div>
 
-              {filteredMedia.map(media => {
+              {paginatedMedia.map(media => {
                 const FileIcon = getFileIcon(media.mimeType);
                 const isImage = media.mimeType.startsWith('image/');
                 const isSelected = selectedIds.includes(media._id);
@@ -808,8 +823,75 @@ function MediaContent() {
 
         {/* Footer */}
         {filteredMedia.length > 0 && (
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800 text-sm text-slate-500">
-            Hiển thị {filteredMedia.length} / {mediaItems.length} files
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-sm text-slate-500">
+              Hiển thị {paginatedMedia.length} trên trang này (Đã lọc {filteredMedia.length} / Tổng DB: {statsData?.totalCount ?? 0} files)
+            </div>
+            
+            <div className="flex w-full items-center justify-between sm:w-auto sm:justify-end gap-4">
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <span className="hidden sm:inline">Hiển thị</span>
+                <select
+                  value={resolvedItemsPerPage}
+                  onChange={(event) =>{  setPageSizeOverride(Number(event.target.value)); setCurrentPage(1); }}
+                  className="h-8 w-[70px] appearance-none rounded-md border border-slate-200 bg-white px-2 text-sm font-medium text-slate-900 shadow-sm focus:border-slate-300 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-600"
+                  aria-label="Số file mỗi trang"
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>{size === 5000 ? 'Tất cả' : size}</option>
+                  ))}
+                </select>
+              </div>
+
+              <nav className="flex items-center space-x-1 sm:space-x-2" aria-label="Phân trang">
+                <button
+                  onClick={() =>{  setCurrentPage((prev) => Math.max(1, prev - 1)); }}
+                  disabled={currentPage === 1}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Trang trước"
+                >
+                  <ChevronDown className="h-4 w-4 rotate-90" />
+                </button>
+
+                {generatePaginationItems(currentPage, totalPages).map((item, index) => {
+                  if (item === 'ellipsis') {
+                    return (
+                      <div key={`ellipsis-${index}`} className="flex h-8 w-8 items-center justify-center text-slate-400">
+                        …
+                      </div>
+                    );
+                  }
+
+                  const pageNum = item as number;
+                  const isActive = pageNum === currentPage;
+                  const isMobileHidden = !isActive && pageNum !== 1 && pageNum !== totalPages;
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() =>{  setCurrentPage(pageNum); }}
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm transition-all duration-200 ${
+                        isActive
+                          ? 'bg-cyan-600 text-white shadow-sm border font-medium dark:bg-cyan-500'
+                          : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-300'
+                      } ${isMobileHidden ? 'hidden sm:inline-flex' : ''}`}
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() =>{  setCurrentPage((prev) => Math.min(totalPages, prev + 1)); }}
+                  disabled={currentPage >= totalPages}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Trang sau"
+                >
+                  <ChevronDown className="h-4 w-4 -rotate-90" />
+                </button>
+              </nav>
+            </div>
           </div>
         )}
       </Card>
