@@ -1,0 +1,432 @@
+import type { MutationCtx } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { api } from "./_generated/api";
+import { v } from "convex/values";
+import { removeOwnerFileReferences, syncOwnerFileReferences } from "./lib/fileService";
+
+const homeComponentDoc = v.object({
+  _creationTime: v.number(),
+  _id: v.id("homeComponents"),
+  active: v.boolean(),
+  config: v.any(),
+  order: v.number(),
+  title: v.string(),
+  type: v.string(),
+});
+
+// CRIT-002 FIX: Helper function to update homeComponentStats counter
+async function updateHomeComponentStats(
+  ctx: MutationCtx,
+  key: string,
+  delta: number
+) {
+  const stats = await ctx.db
+    .query("homeComponentStats")
+    .withIndex("by_key", (q) => q.eq("key", key))
+    .unique();
+  if (stats) {
+    await ctx.db.patch(stats._id, { count: Math.max(0, stats.count + delta) });
+  } else {
+    await ctx.db.insert("homeComponentStats", { count: Math.max(0, delta), key });
+  }
+}
+
+function collectConfigStorageIds(value: unknown, acc = new Set<Id<"_storage">>()): Id<"_storage">[] {
+  if (!value) {
+    return Array.from(acc);
+  }
+  if (Array.isArray(value)) {
+    value.forEach(item => collectConfigStorageIds(item, acc));
+    return Array.from(acc);
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.storageId === "string" && record.storageId.trim()) {
+      acc.add(record.storageId as Id<"_storage">);
+    }
+    Object.values(record).forEach(item => collectConfigStorageIds(item, acc));
+  }
+  return Array.from(acc);
+}
+
+function collectConfigUrls(value: unknown, acc = new Set<string>()): string[] {
+  if (!value) {
+    return Array.from(acc);
+  }
+  if (typeof value === "string") {
+    if (/^https?:\/\//.test(value)) {
+      acc.add(value);
+    }
+    return Array.from(acc);
+  }
+  if (Array.isArray(value)) {
+    value.forEach(item => collectConfigUrls(item, acc));
+    return Array.from(acc);
+  }
+  if (typeof value === "object") {
+    Object.values(value as Record<string, unknown>).forEach(item => collectConfigUrls(item, acc));
+  }
+  return Array.from(acc);
+}
+
+function resolveConfigStorageIds(config: unknown) {
+  return collectConfigStorageIds(config);
+}
+
+function sameStorageIds(
+  left: Array<Id<"_storage"> | null | undefined>,
+  right: Array<Id<"_storage"> | null | undefined>
+) {
+  const normalize = (values: Array<Id<"_storage"> | null | undefined>) =>
+    Array.from(new Set(values.filter((value): value is Id<"_storage"> => Boolean(value)))).sort();
+  const leftIds = normalize(left);
+  const rightIds = normalize(right);
+  return leftIds.length === rightIds.length && leftIds.every((value, index) => value === rightIds[index]);
+}
+
+async function syncHomeComponentFileReferences(
+  ctx: MutationCtx,
+  ownerId: Id<"homeComponents">,
+  nextConfig: unknown,
+  previousConfig?: unknown
+) {
+  const [nextStorageIds, previousStorageIds] = await Promise.all([
+    resolveConfigStorageIds(nextConfig),
+    resolveConfigStorageIds(previousConfig),
+  ]);
+  if (sameStorageIds(nextStorageIds, previousStorageIds)) {
+    return;
+  }
+
+  const { removedStorageIds } = await syncOwnerFileReferences(ctx, {
+    ownerField: "config",
+    ownerId,
+    ownerTable: "homeComponents",
+    purpose: "home-component-config",
+  }, nextStorageIds, {
+    previousStorageIds,
+  });
+
+  await Promise.all(removedStorageIds.map(storageId =>
+    ctx.runMutation(api.storage.cleanupStorageIfUnreferenced, { storageId })
+  ));
+}
+
+// CRIT-002 FIX: Thêm limit
+export const listAll = query({
+  args: {},
+  handler: async (ctx) => ctx.db.query("homeComponents").take(100),
+  returns: v.array(homeComponentDoc),
+});
+
+export const listActive = query({
+  args: {},
+  handler: async (ctx) => ctx.db
+      .query("homeComponents")
+      .withIndex("by_active_order", (q) => q.eq("active", true))
+      .collect(),
+  returns: v.array(homeComponentDoc),
+});
+
+// CRIT-002 FIX: Thêm limit
+export const listByType = query({
+  args: { type: v.string() },
+  handler: async (ctx, args) => ctx.db
+      .query("homeComponents")
+      .withIndex("by_type", (q) => q.eq("type", args.type))
+      .take(50),
+  returns: v.array(homeComponentDoc),
+});
+
+export const getById = query({
+  args: { id: v.id("homeComponents") },
+  handler: async (ctx, args) => ctx.db.get(args.id),
+  returns: v.union(homeComponentDoc, v.null()),
+});
+
+// CRIT-002 FIX: Dùng counter table và fix count logic
+export const create = mutation({
+  args: {
+    active: v.optional(v.boolean()),
+    config: v.any(),
+    order: v.optional(v.number()),
+    title: v.string(),
+    type: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Get order from last item instead of count
+    const lastItem = await ctx.db.query("homeComponents").order("desc").first();
+    const newOrder = args.order ?? (lastItem ? lastItem.order + 1 : 0);
+    const isActive = args.active ?? true;
+    
+    const id = await ctx.db.insert("homeComponents", {
+      ...args,
+      active: isActive,
+      order: newOrder,
+    });
+    await syncHomeComponentFileReferences(ctx, id, args.config);
+    
+    // Update counters
+    await Promise.all([
+      updateHomeComponentStats(ctx, "total", 1),
+      updateHomeComponentStats(ctx, isActive ? "active" : "inactive", 1),
+      updateHomeComponentStats(ctx, args.type, 1),
+    ]);
+    
+    return id;
+  },
+  returns: v.id("homeComponents"),
+});
+
+// TICKET #6 FIX: Update counters khi active hoặc type thay đổi
+export const update = mutation({
+  args: {
+    active: v.optional(v.boolean()),
+    config: v.optional(v.any()),
+    id: v.id("homeComponents"),
+    order: v.optional(v.number()),
+    title: v.optional(v.string()),
+    type: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...updates } = args;
+    const component = await ctx.db.get(id);
+    if (!component) {throw new Error("Component not found");}
+    
+    // Update counters nếu active thay đổi
+    if (args.active !== undefined && args.active !== component.active) {
+      await Promise.all([
+        updateHomeComponentStats(ctx, args.active ? "active" : "inactive", 1),
+        updateHomeComponentStats(ctx, args.active ? "inactive" : "active", -1),
+      ]);
+    }
+    
+    // Update counters nếu type thay đổi
+    if (args.type !== undefined && args.type !== component.type) {
+      await Promise.all([
+        updateHomeComponentStats(ctx, component.type, -1),
+        updateHomeComponentStats(ctx, args.type, 1),
+      ]);
+    }
+    
+    await ctx.db.patch(id, updates);
+    if (Object.prototype.hasOwnProperty.call(args, "config")) {
+      await syncHomeComponentFileReferences(ctx, id, args.config, component.config);
+    }
+    return null;
+  },
+  returns: v.null(),
+});
+
+export const updateConfig = mutation({
+  args: { config: v.any(), id: v.id("homeComponents") },
+  handler: async (ctx, args) => {
+    const component = await ctx.db.get(args.id);
+    if (!component) {throw new Error("Component not found");}
+    await ctx.db.patch(args.id, { config: args.config });
+    await syncHomeComponentFileReferences(ctx, args.id, args.config, component.config);
+    return null;
+  },
+  returns: v.null(),
+});
+
+// CRIT-002 FIX: Update counters khi toggle
+export const toggle = mutation({
+  args: { id: v.id("homeComponents") },
+  handler: async (ctx, args) => {
+    const component = await ctx.db.get(args.id);
+    if (!component) {throw new Error("Component not found");}
+    
+    const newActive = !component.active;
+    await ctx.db.patch(args.id, { active: newActive });
+    
+    // Update active/inactive counters
+    await Promise.all([
+      updateHomeComponentStats(ctx, newActive ? "active" : "inactive", 1),
+      updateHomeComponentStats(ctx, newActive ? "inactive" : "active", -1),
+    ]);
+    
+    return null;
+  },
+  returns: v.null(),
+});
+
+// CRIT-002 FIX: Update counters khi remove
+export const remove = mutation({
+  args: { id: v.id("homeComponents") },
+  handler: async (ctx, args) => {
+    const component = await ctx.db.get(args.id);
+    if (!component) {throw new Error("Component not found");}
+    
+    const { removedStorageIds } = await removeOwnerFileReferences(ctx, {
+      ownerId: args.id,
+      ownerTable: "homeComponents",
+    }, {
+      previousStorageIds: resolveConfigStorageIds(component.config),
+    });
+    
+    await ctx.db.delete(args.id);
+    await Promise.all(removedStorageIds.map(storageId =>
+      ctx.runMutation(api.storage.cleanupStorageIfUnreferenced, { storageId })
+    ));
+    
+    // Update counters
+    await Promise.all([
+      updateHomeComponentStats(ctx, "total", -1),
+      updateHomeComponentStats(ctx, component.active ? "active" : "inactive", -1),
+      updateHomeComponentStats(ctx, component.type, -1),
+    ]);
+    
+    return null;
+  },
+  returns: v.null(),
+});
+
+export const cleanupUnreferencedConfigMedia = mutation({
+  args: {
+    batchSize: v.optional(v.number()),
+    folder: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const maxBatch = Math.min(args.batchSize ?? 100, 200);
+    const homeComponents = await ctx.db.query("homeComponents").take(1000);
+    const referencedUrls = new Set<string>();
+    const referencedStorageIds = new Set<Id<"_storage">>();
+
+    for (const component of homeComponents) {
+      collectConfigUrls(component.config).forEach(url => referencedUrls.add(url));
+      collectConfigStorageIds(component.config).forEach(storageId => referencedStorageIds.add(storageId));
+    }
+
+    const images = await ctx.db.query("images").withIndex("by_folder", q => q.eq("folder", args.folder)).take(maxBatch);
+    let deleted = 0;
+    let skipped = 0;
+
+    for (const image of images) {
+      if (referencedStorageIds.has(image.storageId)) {
+        skipped += 1;
+        continue;
+      }
+      const url = await ctx.storage.getUrl(image.storageId);
+      if (url && referencedUrls.has(url)) {
+        skipped += 1;
+        continue;
+      }
+      const result = await ctx.runMutation(api.storage.cleanupStorageIfUnreferenced, { storageId: image.storageId });
+      if (result.deleted) {
+        deleted += 1;
+      } else {
+        skipped += 1;
+      }
+    }
+
+    return { deleted, skipped };
+  },
+  returns: v.object({ deleted: v.number(), skipped: v.number() }),
+});
+
+// TICKET #3 FIX: Dùng Promise.all thay vì sequential updates
+export const reorder = mutation({
+  args: { items: v.array(v.object({ id: v.id("homeComponents"), order: v.number() })) },
+  handler: async (ctx, args) => {
+    await Promise.all(args.items.map( async item => ctx.db.patch(item.id, { order: item.order })));
+    return null;
+  },
+  returns: v.null(),
+});
+
+// CRIT-002 FIX: Update counters và fix count logic
+export const duplicate = mutation({
+  args: { id: v.id("homeComponents") },
+  handler: async (ctx, args) => {
+    const component = await ctx.db.get(args.id);
+    if (!component) {throw new Error("Component not found");}
+    
+    // Get order from last item
+    const lastItem = await ctx.db.query("homeComponents").order("desc").first();
+    const newOrder = lastItem ? lastItem.order + 1 : 0;
+    
+    const id = await ctx.db.insert("homeComponents", {
+      active: false,
+      config: component.config,
+      order: newOrder,
+      title: `${component.title} (Copy)`,
+      type: component.type,
+    });
+    await syncHomeComponentFileReferences(ctx, id, component.config);
+    
+    // Update counters (duplicate is always inactive)
+    await Promise.all([
+      updateHomeComponentStats(ctx, "total", 1),
+      updateHomeComponentStats(ctx, "inactive", 1),
+      updateHomeComponentStats(ctx, component.type, 1),
+    ]);
+    
+    return id;
+  },
+  returns: v.id("homeComponents"),
+});
+
+// CRIT-002 FIX: Dùng counter table thay vì fetch ALL
+export const count = query({
+  args: {},
+  handler: async (ctx) => {
+    const stats = await ctx.db
+      .query("homeComponentStats")
+      .withIndex("by_key", (q) => q.eq("key", "total"))
+      .unique();
+    return stats?.count ?? 0;
+  },
+  returns: v.number(),
+});
+
+// CRIT-002 FIX: Dùng counter table thay vì fetch ALL
+export const getStats = query({
+  args: {},
+  handler: async (ctx) => {
+    // Fetch tất cả stats 1 lần
+    const allStats = await ctx.db.query("homeComponentStats").take(100);
+    const statsMap = new Map(allStats.map(s => [s.key, s.count]));
+    
+    const totalCount = statsMap.get("total") ?? 0;
+    const activeCount = statsMap.get("active") ?? 0;
+    const inactiveCount = statsMap.get("inactive") ?? 0;
+    
+    // Build type breakdown từ stats (exclude total, active, inactive)
+    const excludeKeys = new Set(["total", "active", "inactive"]);
+    const typeBreakdown = allStats
+      .filter(s => !excludeKeys.has(s.key) && s.count > 0)
+      .map(s => ({ count: s.count, type: s.key }));
+
+    return {
+      activeCount,
+      inactiveCount,
+      totalCount,
+      typeBreakdown,
+    };
+  },
+  returns: v.object({
+    activeCount: v.number(),
+    inactiveCount: v.number(),
+    totalCount: v.number(),
+    typeBreakdown: v.array(v.object({
+      count: v.number(),
+      type: v.string(),
+    })),
+  }),
+});
+
+// CRIT-002 FIX: Dùng counter table thay vì fetch ALL
+export const getTypes = query({
+  args: {},
+  handler: async (ctx) => {
+    const allStats = await ctx.db.query("homeComponentStats").take(100);
+    const excludeKeys = new Set(["total", "active", "inactive"]);
+    const types = allStats
+      .filter(s => !excludeKeys.has(s.key) && s.count > 0)
+      .map(s => s.key);
+    return types.sort();
+  },
+  returns: v.array(v.string()),
+});
