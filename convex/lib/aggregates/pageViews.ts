@@ -162,3 +162,14 @@ export async function countPageViewDimension(
 export async function aggregateBackfillPageView(ctx: MutationCtx, doc: Doc<"pageViews">) {
   await recordPageViewAggregates(ctx, doc);
 }
+
+export async function deletePageViewAggregates(ctx: MutationCtx, doc: Doc<"pageViews">) {
+  await Promise.all([
+    pageViewsByTime.deleteIfExists(ctx, doc),
+    pageViewsByPath.deleteIfExists(ctx, doc),
+    pageViewsBySource.deleteIfExists(ctx, doc),
+    pageViewsByDevice.deleteIfExists(ctx, doc),
+    pageViewsByBrowser.deleteIfExists(ctx, doc),
+    pageViewsByOs.deleteIfExists(ctx, doc),
+  ]);
+}
