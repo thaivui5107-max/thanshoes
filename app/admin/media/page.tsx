@@ -114,7 +114,14 @@ function MediaContent() {
   const [filterFolder, setFilterFolder] = useState('');
   const [usageFilter, setUsageFilter] = useState<UsageFilter>('all');
   const [sortMode, setSortMode] = useState<SortMode>('newest');
-  const [selectedIds, setSelectedIds] = useState<Id<"images">[]>([]);
+  const [manualSelectedIds, setManualSelectedIds] = useState<Id<"images">[]>([]);
+  const [selectionMode, setSelectionMode] = useState<'manual' | 'all'>('manual');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const applyManualSelection = (nextIds: Id<"images">[]) => {
+    setSelectionMode('manual');
+    setManualSelectedIds(nextIds);
+  };
   const [isUploading, setIsUploading] = useState(false);
   const [isResyncing, setIsResyncing] = useState(false);
   const [isCheckingUsage, setIsCheckingUsage] = useState(false);
@@ -196,13 +203,30 @@ function MediaContent() {
     return filteredMedia.slice((currentPage - 1) * resolvedItemsPerPage, currentPage * resolvedItemsPerPage);
   }, [filteredMedia, currentPage, resolvedItemsPerPage]);
 
+  const isSelectAllActive = selectionMode === 'all';
+  const selectedIds = isSelectAllActive ? filteredMedia.map(m => m._id) : manualSelectedIds;
+
+  const selectedOnPage = paginatedMedia.filter(media => selectedIds.includes(media._id));
+  const isPageSelected = paginatedMedia.length > 0 && selectedOnPage.length === paginatedMedia.length;
+  const isPageIndeterminate = selectedOnPage.length > 0 && selectedOnPage.length < paginatedMedia.length;
+
   // Selection handlers
   const toggleSelectAll = () => {
-    setSelectedIds(selectedIds.length === filteredMedia.length ? [] : filteredMedia.map(m => m._id));
+    if (isPageSelected) {
+      const remaining = selectedIds.filter(id => !paginatedMedia.some(media => media._id === id));
+      applyManualSelection(remaining);
+      return;
+    }
+    const next = new Set(selectedIds);
+    paginatedMedia.forEach(media => next.add(media._id));
+    applyManualSelection(Array.from(next));
   };
 
   const toggleSelectItem = (id: Id<"images">) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    const next = selectedIds.includes(id)
+      ? selectedIds.filter(i => i !== id)
+      : [...selectedIds, id];
+    applyManualSelection(next);
   };
 
   const uploadFiles = useCallback(async (files: File[]) => {
@@ -308,7 +332,7 @@ function MediaContent() {
     
     try {
       const result = await bulkRemoveOrphanMedia({ ids: [id] });
-      setSelectedIds(prev => prev.filter(i => i !== id));
+      applyManualSelection(selectedIds.filter(i => i !== id));
       if (result.deleted.length > 0) {
         toast.success('Đã xóa file cô đơn');
       } else {
@@ -327,13 +351,16 @@ function MediaContent() {
     }
     if (!confirm(`Xóa ${selectedOrphanCount} ảnh cô đơn đã chọn? Server sẽ kiểm tra lại usage ngay trước khi xóa.`)) {return;}
     
+    setIsDeleting(true);
     try {
       const result = await bulkRemoveOrphanMedia({ ids: selectedIds });
-      setSelectedIds([]);
+      applyManualSelection([]);
       const skippedText = result.skipped.length > 0 ? `, bỏ qua ${result.skipped.length} file chưa đủ an toàn để xóa` : '';
       toast.success(`Đã xóa ${result.deleted.length} ảnh cô đơn${skippedText}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Có lỗi khi xóa files');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -506,8 +533,15 @@ function MediaContent() {
       <BulkActionBar 
         selectedCount={selectedIds.length} 
         entityLabel="tệp"
+        selectionScope={isSelectAllActive ? 'all_results' : isPageSelected ? 'page' : 'partial'}
+        pageItemCount={paginatedMedia.length}
+        totalMatchingCount={filteredMedia.length}
+        onSelectPage={() =>{  applyManualSelection(paginatedMedia.map(media => media._id)); }}
+        onSelectAllResults={() =>{  setSelectionMode('all'); }}
+        isSelectingAllResults={isSelectAllActive}
         onDelete={handleBulkDelete} 
-        onClearSelection={() =>{  setSelectedIds([]); }} 
+        onClearSelection={() =>{  applyManualSelection([]); }} 
+        isLoading={isDeleting}
       />
 
       {/* Filters */}
@@ -717,11 +751,12 @@ function MediaContent() {
               {/* Select all */}
               <div className="flex items-center gap-3 px-3 py-2 border-b border-slate-100 dark:border-slate-800">
                 <SelectCheckbox 
-                  checked={selectedIds.length === filteredMedia.length && filteredMedia.length > 0} 
+                  checked={isPageSelected} 
                   onChange={toggleSelectAll}
-                  indeterminate={selectedIds.length > 0 && selectedIds.length < filteredMedia.length}
+                  indeterminate={isPageIndeterminate}
+                  disabled={paginatedMedia.length === 0}
                 />
-                <span className="text-sm text-slate-500">Chọn tất cả</span>
+                <span className="text-sm text-slate-500">Chọn tất cả trang này</span>
               </div>
 
               {paginatedMedia.map(media => {
