@@ -27,6 +27,19 @@ function getFileIcon(mimeType: string) {
   return FileText;
 }
 
+function getUsageContext(table: string, recordId: string) {
+  switch (table) {
+    case 'products': return { label: 'Sản phẩm', url: `/admin/products/${recordId}/edit` };
+    case 'productCategories': return { label: 'Danh mục SP', url: `/admin/product-categories/${recordId}/edit` };
+    case 'posts': return { label: 'Bài viết', url: `/admin/posts/${recordId}/edit` };
+    case 'postCategories': return { label: 'Danh mục bài viết', url: `/admin/post-categories/${recordId}/edit` };
+    case 'siteSettings': return { label: 'Cài đặt hệ thống', url: `/admin/settings/site` };
+    case 'homeComponents': return { label: 'Component trang chủ', url: `/admin/home-components` };
+    case 'users': return { label: 'Người dùng', url: `/admin/users/${recordId}/edit` };
+    default: return { label: table, url: `/admin/${table}/${recordId}/edit` };
+  }
+}
+
 export default function MediaEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -230,6 +243,43 @@ export default function MediaEditPage({ params }: { params: Promise<{ id: string
                 )}
               </CardContent>
             </Card>
+
+            {/* Usages Card */}
+            {mediaData.usages && mediaData.usages.length > 0 && (
+              <Card className="mt-6 border-cyan-100 dark:border-cyan-900 bg-cyan-50/30 dark:bg-cyan-900/10">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2 text-cyan-700 dark:text-cyan-400">
+                    <ExternalLink size={16} /> 
+                    Đang được sử dụng tại ({mediaData.usageCount || mediaData.usages.length} nơi)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {mediaData.usages.map((usage, idx) => {
+                    const context = getUsageContext(usage.table, usage.recordId);
+                    return (
+                      <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 gap-3 hover:border-cyan-200 transition-colors">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate" title={usage.label || usage.recordId}>
+                            {usage.label || `ID: ${usage.recordId}`}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                            <Badge variant="outline" className="text-[10px] py-0">{context.label}</Badge>
+                            <span className="truncate text-slate-400">Trường: {usage.field}</span>
+                          </div>
+                        </div>
+                        {context.url && (
+                          <Link href={context.url} target="_blank">
+                            <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1 h-8">
+                              Sửa <ExternalLink size={12} />
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Form */}
