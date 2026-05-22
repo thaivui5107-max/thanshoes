@@ -203,12 +203,33 @@ async function resolveMediaUsageMap(
       const trimmedRefs = trimUsageRecords(references, scanState);
       const usages = usageMap.get(candidate.id) ?? [];
       for (const ref of trimmedRefs) {
-        usages.push({
-          field: ref.ownerField,
-          label: ref.purpose ?? ref.ownerId,
-          recordId: ref.ownerId,
-          table: ref.ownerTable,
-        });
+        let record = null;
+        let isConvexId = false;
+        try {
+          const normalizedId = ctx.db.normalizeId(ref.ownerTable as any, ref.ownerId);
+          if (normalizedId) {
+            isConvexId = true;
+            record = await ctx.db.get(normalizedId);
+          }
+        } catch (e) {
+          // Ignore invalid table names
+        }
+
+        if (isConvexId && !record) {
+          // Orphaned reference, skip
+          continue;
+        }
+
+        if (record) {
+          addUsageToMap(usageMap, candidate.id, ref.ownerTable, record, ref.ownerField);
+        } else {
+          usages.push({
+            field: ref.ownerField,
+            label: ref.purpose ?? ref.ownerId,
+            recordId: ref.ownerId,
+            table: ref.ownerTable,
+          });
+        }
       }
       usageMap.set(candidate.id, usages);
     }
