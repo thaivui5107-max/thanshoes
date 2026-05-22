@@ -37,19 +37,34 @@ export async function listFileUsagesByStorageId(
     .withIndex("by_storageId", q => q.eq("storageId", storageId))
     .collect();
 
-  return references.map(reference => ({
-    field: reference.ownerField,
-    recordId: reference.ownerId,
-    table: reference.ownerTable,
-  }));
+  const validUsages: FileUsage[] = [];
+  for (const reference of references) {
+    let isConvexId = false;
+    let record = null;
+    try {
+      const normalizedId = ctx.db.normalizeId(reference.ownerTable as any, reference.ownerId);
+      if (normalizedId) {
+        isConvexId = true;
+        record = await ctx.db.get(normalizedId);
+      }
+    } catch (e) {}
+
+    if (isConvexId && !record) {
+      continue; // Orphaned reference
+    }
+
+    validUsages.push({
+      field: reference.ownerField,
+      recordId: reference.ownerId,
+      table: reference.ownerTable,
+    });
+  }
+  return validUsages;
 }
 
 export async function hasFileReferences(ctx: QueryCtx | MutationCtx, storageId: Id<"_storage">) {
-  const reference = await ctx.db
-    .query("fileReferences")
-    .withIndex("by_storageId", q => q.eq("storageId", storageId))
-    .first();
-  return reference !== null;
+  const usages = await listFileUsagesByStorageId(ctx, storageId);
+  return usages.length > 0;
 }
 
 export async function removeFileReferencesForStorage(ctx: MutationCtx, storageId: Id<"_storage">) {
