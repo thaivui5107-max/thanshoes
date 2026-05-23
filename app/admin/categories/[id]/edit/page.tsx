@@ -62,6 +62,7 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
   const [faqStyle, setFaqStyle] = useState<FaqStyle>('accordion');
   const [faqConfig, setFaqConfig] = useState<FaqConfig>({ description: '', buttonText: '', buttonLink: '' });
   const [faqEnabled, setFaqEnabled] = useState(true);
+  const [aiResetKey, setAiResetKey] = useState(0);
 
   const handleAiApply = (data: {
     filterFooterContent: string;
@@ -78,6 +79,7 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
       setFaqItems(data.faqItems);
       setFaqEnabled(true);
     }
+    setAiResetKey(prev => prev + 1);
   };
 
   const enabledFields = useMemo(() => {
@@ -377,8 +379,8 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
                 <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-4">
                   <Label className="text-base font-semibold block">Nội dung cuối trang danh mục</Label>
                   <LexicalEditor
-                    key={`${id}:filterFooterContent`}
-                    resetKey={`${id}:filterFooterContent`}
+                    key={`${id}:filterFooterContent:${aiResetKey}`}
+                    resetKey={`${id}:filterFooterContent:${aiResetKey}`}
                     onChange={setFilterFooterContent}
                     initialContent={filterFooterContent}
                   />
@@ -389,8 +391,8 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
                 <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-4">
                   <Label className="text-base font-semibold block">Nội dung nối đuôi chi tiết sản phẩm</Label>
                   <LexicalEditor
-                    key={`${id}:productDetailSuffixContent`}
-                    resetKey={`${id}:productDetailSuffixContent`}
+                    key={`${id}:productDetailSuffixContent:${aiResetKey}`}
+                    resetKey={`${id}:productDetailSuffixContent:${aiResetKey}`}
                     onChange={setProductDetailSuffixContent}
                     initialContent={productDetailSuffixContent}
                   />

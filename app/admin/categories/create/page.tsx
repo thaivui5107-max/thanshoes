@@ -54,6 +54,7 @@ export default function CategoryCreatePage() {
   const [faqStyle] = useState<FaqStyle>('accordion');
   const [faqConfig, setFaqConfig] = useState<FaqConfig>({ description: '', buttonText: '', buttonLink: '' });
   const [faqEnabled, setFaqEnabled] = useState(true);
+  const [aiResetKey, setAiResetKey] = useState(0);
 
   const handleAiApply = (data: {
     filterFooterContent: string;
@@ -70,6 +71,7 @@ export default function CategoryCreatePage() {
       setFaqItems(data.faqItems);
       setFaqEnabled(true);
     }
+    setAiResetKey(prev => prev + 1);
   };
 
   const enabledFields = useMemo(() => {
@@ -197,14 +199,14 @@ export default function CategoryCreatePage() {
             {enableCategoryFilterFooterContent && (
               <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-4">
                 <Label className="text-base font-semibold block">Nội dung cuối trang danh mục</Label>
-                <LexicalEditor onChange={setFilterFooterContent} initialContent={filterFooterContent} />
+                <LexicalEditor onChange={setFilterFooterContent} initialContent={filterFooterContent} resetKey={`create:filterFooterContent:${aiResetKey}`} />
               </div>
             )}
 
             {enableCategoryProductDetailSuffix && (
               <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-4">
                 <Label className="text-base font-semibold block">Nội dung nối đuôi chi tiết sản phẩm</Label>
-                <LexicalEditor onChange={setProductDetailSuffixContent} initialContent={productDetailSuffixContent} />
+                <LexicalEditor onChange={setProductDetailSuffixContent} initialContent={productDetailSuffixContent} resetKey={`create:productDetailSuffixContent:${aiResetKey}`} />
               </div>
             )}
 
