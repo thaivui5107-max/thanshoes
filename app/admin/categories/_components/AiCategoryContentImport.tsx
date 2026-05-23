@@ -64,6 +64,9 @@ export function AiCategoryContentImport({
 - **Tên danh mục**: "${nameInput.trim() || '(Chưa nhập tên danh mục)'}"
 - **Thông tin bổ sung / Đặc tính sản phẩm**: "${infoInput.trim() || '(Chưa có thông tin bổ sung)'}"
 
+LƯU Ý ĐẶC BIỆT BẢO VỆ SEO & E-E-A-T (CHỐNG PHẠT GOOGLE SPAM):
+* TUYỆT ĐỐI KHÔNG sử dụng các hashtag dạng dấu thăng (#tu-khoa) trong bất kỳ phần văn bản nào. Google và các công cụ tìm kiếm hiện đại coi đây là hành vi nhồi nhét từ khóa (keyword stuffing) spam và có thể phạt giảm thứ hạng trang web, đồng thời làm giảm nghiêm trọng độ chuyên nghiệp, premium của giao diện người dùng.
+
 Yêu cầu cụ thể theo Best Practice của các hệ thống SaaS Thương mại điện tử lớn:
 
 1. **Nội dung cuối trang danh mục (filterFooterContent) - "Cẩm nang chọn mua và Kiến thức chuyên gia"**:
