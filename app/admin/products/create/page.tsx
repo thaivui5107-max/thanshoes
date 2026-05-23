@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink, Loader2, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAdminMutationErrorMessage } from '@/app/admin/lib/mutation-error';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '../../components/ui';
@@ -318,6 +318,10 @@ function ProductCreateContent() {
     }
     if (isAffiliateMode && !affiliateLink.trim()) {
       toast.error('Vui lòng nhập link affiliate cho sản phẩm');
+      return;
+    }
+    if (galleryItems.some(item => Boolean(item.url)) && !image) {
+      toast.error('Vui lòng chọn ảnh chính trước khi thêm ảnh vào thư viện');
       return;
     }
     const resolvedProductSku = sku.trim() || generatedSku || `SKU-${Date.now()}`;
@@ -755,25 +759,33 @@ function ProductCreateContent() {
             <Card>
               <CardHeader><CardTitle className="text-base">Thư viện ảnh</CardTitle></CardHeader>
               <CardContent>
-                <MultiImageUploader<ImageItem>
-                  items={galleryItems}
-                  onChange={setGalleryItems}
-                  folder="products"
-                  naming={{ entityName: slug.trim() || 'product', style: 'slug-index' }}
-                  namingIndexOffset={image ? 1 : 0}
-                  deleteMode="defer"
-                  imageKey="url"
-                  minItems={0}
-                  maxItems={20}
-                  aspectRatio="square"
-                  enableCrop={enableImageCrop}
-                  cropAspectRatio={defaultImageAspectRatio}
-                  imageAspectRatio={defaultImageAspectRatio}
-                  columns={2}
-                  addButtonText="Thêm ảnh"
-                  emptyText="Chưa có ảnh trong thư viện"
-                  layout="vertical"
-                />
+                {!image ? (
+                  <div className="text-center py-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-900/50">
+                    <ImageIcon className="mx-auto mb-2 text-slate-400" size={32} />
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Thư viện ảnh chưa khả dụng</p>
+                    <p className="text-xs text-slate-400 mt-1">Vui lòng tải lên ảnh chính trước để mở khóa thư viện ảnh.</p>
+                  </div>
+                ) : (
+                  <MultiImageUploader<ImageItem>
+                    items={galleryItems}
+                    onChange={setGalleryItems}
+                    folder="products"
+                    naming={{ entityName: slug.trim() || 'product', style: 'slug-index' }}
+                    namingIndexOffset={image ? 1 : 0}
+                    deleteMode="defer"
+                    imageKey="url"
+                    minItems={0}
+                    maxItems={20}
+                    aspectRatio="square"
+                    enableCrop={enableImageCrop}
+                    cropAspectRatio={defaultImageAspectRatio}
+                    imageAspectRatio={defaultImageAspectRatio}
+                    columns={2}
+                    addButtonText="Thêm ảnh"
+                    emptyText="Chưa có ảnh trong thư viện"
+                    layout="vertical"
+                  />
+                )}
               </CardContent>
             </Card>
           )}

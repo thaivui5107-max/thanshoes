@@ -439,6 +439,13 @@ export const checkSkuExists = query({
 export const createProductWithVariants = mutation({
   args: smartProductArgs,
   handler: async (ctx, args) => {
+    const hasGallery = (args.images && args.images.filter(Boolean).length > 0) || 
+                       (args.imageStorageIds && args.imageStorageIds.filter(Boolean).length > 0);
+    const hasMainImage = (args.image && args.image.trim() !== "") || args.imageStorageId;
+    if (hasGallery && !hasMainImage) {
+      throw new ConvexError("Vui lòng chọn ảnh chính trước khi thêm ảnh vào thư viện");
+    }
+
     const resolvedSku = args.sku.trim() || await generateUniqueSmartSku(ctx, args.name, args.categoryId);
     await assertUniqueProductSku(ctx, resolvedSku);
 
@@ -515,6 +522,16 @@ export const updateProductWithVariants = mutation({
     const product = await ctx.db.get(args.id);
     if (!product) {
       throw new Error("Product not found");
+    }
+
+    const hasGallery = (args.images && args.images.filter(Boolean).length > 0) || 
+                       (args.imageStorageIds && args.imageStorageIds.filter(Boolean).length > 0);
+    const hasMainImage = (args.image && args.image.trim() !== "") || 
+                         args.imageStorageId || 
+                         (product.image && product.image.trim() !== "") || 
+                         product.imageStorageId;
+    if (hasGallery && !hasMainImage) {
+      throw new ConvexError("Vui lòng chọn ảnh chính trước khi thêm ảnh vào thư viện");
     }
 
     const resolvedSku = args.sku.trim() || await generateUniqueSmartSku(ctx, args.name, args.categoryId, args.id);
