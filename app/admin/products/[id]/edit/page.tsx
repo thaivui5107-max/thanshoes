@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { getAdminMutationErrorMessage } from '@/app/admin/lib/mutation-error';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '../../../components/ui';
 import { LexicalEditor } from '../../../components/LexicalEditor';
-import { ImageUpload } from '../../../components/ImageUpload';
+import { ImageUploader } from '../../../components/ImageUploader';
 import type { ImageItem } from '../../../components/MultiImageUploader';
 import { MultiImageUploader } from '../../../components/MultiImageUploader';
 import { ModuleGuard } from '../../../components/ModuleGuard';
@@ -1018,14 +1018,17 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
           <Card>
             <CardHeader><CardTitle className="text-base">Ảnh sản phẩm</CardTitle></CardHeader>
             <CardContent>
-              <ImageUpload
+              <ImageUploader
                 value={image}
                 storageId={imageStorageId}
-                onChange={setImage}
-                onStorageIdChange={setImageStorageId}
+                onChange={(url, storageId) => {
+                  setImage(url);
+                  setImageStorageId(storageId);
+                }}
                 folder="products"
                 naming={{ entityName: slug.trim() || 'product', style: 'slug-index', index: 1 }}
-                enableCrop={enableImageCrop}
+                deleteMode="defer"
+                aspectRatio="square"
                 cropAspectRatio={defaultImageAspectRatio}
               />
             </CardContent>

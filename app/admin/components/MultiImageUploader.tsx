@@ -6,7 +6,7 @@ import { AdminImage as Image } from '@/app/admin/components/AdminImage';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { ClipboardPaste, GripVertical, Image as ImageIcon, Loader2, Pencil, Plus, Trash2, Upload } from 'lucide-react';
+import { ClipboardPaste, GripVertical, Image as ImageIcon, Link2, Loader2, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Input, cn } from './ui';
 import { prepareImageForUpload, validateImageFile } from '@/lib/image/uploadPipeline';
@@ -541,6 +541,25 @@ export function MultiImageUploader<T extends ImageItem>({
     onChange([...items, newItem]);
   }, [items, maxItems, imageKey, extraFields, onChange]);
 
+  const handleAddUrl = useCallback(() => {
+    if (items.length >= maxItems) {
+      toast.error(`Tối đa ${maxItems} mục`);
+      return;
+    }
+    const itemId = `new-url-${Date.now()}`;
+    const newItem = {
+      id: itemId,
+      [imageKey]: '',
+      ...extraFields.reduce((acc, field) => ({ ...acc, [field.key]: '' }), {}),
+    } as unknown as T;
+    onChange([...items, newItem]);
+    setUrlModeIds(prev => {
+      const next = new Set(prev);
+      next.add(itemId);
+      return next;
+    });
+  }, [items, maxItems, imageKey, extraFields, onChange]);
+
   const toggleUrlMode = useCallback((itemId: string | number) => {
     setUrlModeIds(prev => {
       const next = new Set(prev);
@@ -1004,9 +1023,14 @@ export function MultiImageUploader<T extends ImageItem>({
 
       {/* Add button */}
       {items.length < maxItems && (
-        <Button type="button" variant="outline" size="sm" onClick={handleAdd} className="w-full gap-2">
-          <Plus size={14} /> {addButtonText}
-        </Button>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Button type="button" variant="outline" size="sm" onClick={handleAdd} className="w-full gap-2">
+            <Plus size={14} /> {addButtonText}
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={handleAddUrl} className="w-full gap-2">
+            <Link2 size={14} /> Thêm URL ảnh
+          </Button>
+        </div>
       )}
     </div>
 

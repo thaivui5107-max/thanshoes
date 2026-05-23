@@ -12,6 +12,7 @@ import { prepareImageForUpload, validateImageFile } from '@/lib/image/uploadPipe
 import { resolveNamingContext, type ImageNamingContext } from '@/lib/image/uploadNaming';
 import { ImageEditorDialog } from './ImageEditorDialog';
 import { useFileDraftUploads } from './useFileDraftUploads';
+import type { ImageAspectRatioInput } from '@/lib/products/image-aspect-ratio';
 
 type InputMode = 'upload' | 'url';
 
@@ -23,6 +24,7 @@ interface ImageUploaderProps {
   naming?: ImageNamingContext;
   className?: string;
   aspectRatio?: 'square' | 'video' | 'auto';
+  cropAspectRatio?: ImageAspectRatioInput;
   quality?: number;
   deleteMode?: 'immediate' | 'defer';
 }
@@ -35,6 +37,7 @@ export function ImageUploader({
   naming,
   className,
   aspectRatio = 'auto',
+  cropAspectRatio,
   quality = 0.85,
   deleteMode = 'immediate',
 }: ImageUploaderProps) {
@@ -331,6 +334,7 @@ export function ImageUploader({
       {isEditorOpen && preview && (
         <ImageEditorDialog
           imageUrl={preview}
+          preferredCropAspectRatio={cropAspectRatio}
           onClose={() => setIsEditorOpen(false)}
           onApply={(editedFile) => {
             setIsEditorOpen(false);
