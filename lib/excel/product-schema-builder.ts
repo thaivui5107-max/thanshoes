@@ -192,11 +192,20 @@ export function buildExcelColumns(
     group: "MEDIA",
     header: "URL Hình Ảnh Chính",
     width: 40,
-    microcopy: config.imageStrategy === "INHERIT" && config.hasVariants 
-      ? "Trống = Dùng ảnh Cha" 
-      : "Link ảnh dạng https://...",
-    appliesTo: "BOTH",
+    microcopy: "Chỉ điền ở dòng SP Cha. Link ảnh đại diện.",
+    appliesTo: "PARENT_ONLY",
   });
+
+  if (config.hasVariants && (config.imageStrategy === "OVERRIDE" || config.imageStrategy === "MIXED")) {
+    columns.push({
+      key: "variantImageUrl",
+      group: "MEDIA",
+      header: "URL Ảnh Phiên Bản",
+      width: 40,
+      microcopy: "Chỉ điền ở dòng Phiên bản. Trống = dùng ảnh Cha.",
+      appliesTo: "VARIANT_ONLY",
+    });
+  }
 
   return columns;
 }

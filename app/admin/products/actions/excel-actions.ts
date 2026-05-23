@@ -376,7 +376,7 @@ export async function parseProductExcelBase64(
           price: config.priceStrategy === "VARIANT_LEVEL" ? Number(rowData["price"]) : undefined,
           salePrice: config.priceStrategy === "VARIANT_LEVEL" ? Number(rowData["salePrice"]) : undefined,
           stock: config.inventoryStrategy === "VARIANT_LEVEL" ? Number(rowData["stock"]) : undefined,
-          imageUrl: (config.imageStrategy === "OVERRIDE" || config.imageStrategy === "MIXED") ? rowData["imageUrl"]?.toString() : undefined,
+          imageUrl: (config.imageStrategy === "OVERRIDE" || config.imageStrategy === "MIXED") ? rowData["variantImageUrl"]?.toString() : undefined,
         });
       }
     }
