@@ -218,6 +218,8 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const settingsData = useQuery(api.settings.listAll);
   const featuresData = useQuery(api.admin.modules.listModuleFeatures, { moduleKey: MODULE_KEY });
   const fieldsData = useQuery(api.admin.modules.listModuleFields, { moduleKey: MODULE_KEY });
+  const defaultImageAspectRatio = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
+  const [selectedFrameAR, setSelectedFrameAR] = useState<string>('');
 
   // Mutations
   const setMultiple = useMutation(api.settings.setMultiple);
@@ -323,6 +325,25 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       }
       if (values.enable_product_frames === undefined) {
         values.enable_product_frames = false;
+      }
+      const frameKeys = [
+        'product_frame_overlay_square_url',
+        'product_frame_overlay_portrait916_url',
+        'product_frame_overlay_portrait34_url',
+        'product_frame_overlay_landscape43_url',
+        'product_frame_overlay_wide169_url',
+      ];
+      frameKeys.forEach((key) => {
+        if (values[key] === undefined) {
+          values[key] = '';
+        }
+      });
+      // Tự động chuyển đổi/tương thích ngược: map khung viền cũ sang ô Vuông (1:1) nếu ô Vuông trống
+      if (!values.product_frame_overlay_square_url && values.product_frame_overlay_url) {
+        values.product_frame_overlay_square_url = values.product_frame_overlay_url;
+        if (storageIds.product_frame_overlay_url) {
+          storageIds.product_frame_overlay_square_url = storageIds.product_frame_overlay_url;
+        }
       }
       setIsSecondaryAuto(values.site_brand_mode === 'single' ? true : !values.site_brand_secondary);
       setForm(values);
@@ -529,6 +550,23 @@ function SettingsContent({ section }: { section: SettingsSection }) {
           value: form.product_frame_overlay_url || '',
         });
       }
+      const frameKeys = [
+        'product_frame_overlay_square_url',
+        'product_frame_overlay_portrait916_url',
+        'product_frame_overlay_portrait34_url',
+        'product_frame_overlay_landscape43_url',
+        'product_frame_overlay_wide169_url',
+      ];
+      frameKeys.forEach((key) => {
+        if (!settingsToSave.some((item) => item.key === key)) {
+          settingsToSave.push({
+            group: 'advanced',
+            key,
+            storageId: mediaStorageIds[key] ?? null,
+            value: form[key] || '',
+          });
+        }
+      });
       if (!settingsToSave.some((item) => item.key === 'enable_product_frames')) {
         settingsToSave.push({
           group: 'advanced',
@@ -1192,59 +1230,138 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                   )}
 
                   {advancedTab === 'product-frame' && (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                        <Checkbox
-                          id="enable_product_frames"
-                          checked={form.enable_product_frames === true}
-                          onCheckedChange={(checked) => updateField('enable_product_frames', checked)}
-                        />
-                        <div className="space-y-0.5">
-                          <Label htmlFor="enable_product_frames" className="cursor-pointer">Bật khung viền sản phẩm</Label>
-                          <p className="text-xs text-slate-500">
-                            Hiển thị khung viền đè lên ảnh sản phẩm ở storefront.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <SettingsImageUploader
-                          label="Ảnh khung viền sản phẩm"
-                          value={typeof form.product_frame_overlay_url === 'string' ? form.product_frame_overlay_url : ''}
-                          storageId={mediaStorageIds.product_frame_overlay_url ?? undefined}
-                          onChange={(url, storageId) => { updateImageField('product_frame_overlay_url', url, storageId); }}
-                          folder="settings"
-                          previewSize="md"
-                        />
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => { updateImageField('product_frame_overlay_url', '', null); }}
-                          >
-                            Xóa khung
-                          </Button>
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          Upload ảnh PNG/WebP nền trong suốt. Nên dùng cùng tỷ lệ với ảnh sản phẩm, ví dụ 1:1.
-                        </p>
-                        {typeof form.product_frame_overlay_url === 'string' && form.product_frame_overlay_url && (
-                          <div className="relative mx-auto w-32 h-32 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800">
-                            <img
-                              src={typeof form.product_image_placeholder === 'string' && form.product_image_placeholder ? form.product_image_placeholder : undefined}
-                              alt=""
-                              className="absolute inset-0 w-full h-full object-cover"
-                            />
-                            <img
-                              src={form.product_frame_overlay_url}
-                              alt="Preview khung viền"
-                              className="absolute inset-0 w-full h-full object-contain pointer-events-none"
-                            />
-                            <span className="absolute bottom-1 left-0 right-0 text-center text-[10px] text-slate-500">Preview</span>
+                    <div className="space-y-6">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="enable_product_frames"
+                            checked={form.enable_product_frames === true}
+                            onCheckedChange={(checked) => updateField('enable_product_frames', checked)}
+                          />
+                          <div className="space-y-0.5">
+                            <Label htmlFor="enable_product_frames" className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100">Bật khung viền sản phẩm</Label>
+                            <p className="text-xs text-slate-500">
+                              Hiển thị khung viền đè lên ảnh sản phẩm ở storefront.
+                            </p>
                           </div>
-                        )}
+                        </div>
 
                       </div>
+
+                      {form.enable_product_frames !== true && (
+                        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-xs text-amber-800 dark:text-amber-300">
+                          Tính năng đang tắt. Hãy bật lên để hiển thị khung trên ảnh sản phẩm ngoài trang chủ và chi tiết sản phẩm.
+                        </div>
+                      )}
+
+                      {(() => {
+                        const frameItems = [
+                          { key: 'product_frame_overlay_square_url', label: 'Vuông (1:1)', value: 'square', aspectClass: 'aspect-square' },
+                          { key: 'product_frame_overlay_portrait916_url', label: 'Dọc (9:16)', value: 'portrait916', aspectClass: 'aspect-[9/16]' },
+                          { key: 'product_frame_overlay_portrait34_url', label: 'Dọc (3:4)', value: 'portrait34', aspectClass: 'aspect-[3/4]' },
+                          { key: 'product_frame_overlay_landscape43_url', label: 'Ngang (4:3)', value: 'landscape43', aspectClass: 'aspect-[4/3]' },
+                          { key: 'product_frame_overlay_wide169_url', label: 'Rộng (16:9)', value: 'wide169', aspectClass: 'aspect-[16/9]' },
+                        ];
+                        const systemAR = (defaultImageAspectRatio?.value as string) || 'square';
+                        const activeAR = selectedFrameAR || systemAR;
+                        const activeItem = frameItems.find(i => i.value === activeAR) || frameItems[0];
+                        const hasValue = typeof form[activeItem.key] === 'string' && form[activeItem.key];
+                        const uploadedCount = frameItems.filter(i => typeof form[i.key] === 'string' && form[i.key]).length;
+
+                        return (
+                          <div className="space-y-4">
+                            {/* Dropdown chọn AR */}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                              <div className="flex-1">
+                                <Label className="text-xs text-slate-500 dark:text-slate-400 mb-1.5 block">Chọn tỷ lệ khung hình</Label>
+                                <select
+                                  value={activeAR}
+                                  onChange={(e) => setSelectedFrameAR(e.target.value)}
+                                  className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                                >
+                                  {frameItems.map((item) => {
+                                    const isSystemDefault = item.value === systemAR;
+                                    const hasFrame = typeof form[item.key] === 'string' && form[item.key];
+                                    return (
+                                      <option key={item.value} value={item.value}>
+                                        {item.label}{isSystemDefault ? ' ★ Mặc định' : ''}{hasFrame ? ' ✓' : ''}
+                                      </option>
+                                    );
+                                  })}
+                                </select>
+                              </div>
+                              {uploadedCount > 0 && (
+                                <span className="text-xs text-slate-500 dark:text-slate-400 self-end pb-2">
+                                  {uploadedCount}/5 khung đã upload
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Uploader cho AR đang chọn */}
+                            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+                              <div className="flex items-center justify-between mb-3">
+                                <span className="font-semibold text-sm text-slate-900 dark:text-slate-100">{activeItem.label}</span>
+                                {activeAR === systemAR && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-900/50">
+                                    Đang dùng mặc định
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="space-y-4">
+                                <SettingsImageUploader
+                                  key={activeItem.key}
+                                  label=""
+                                  value={typeof form[activeItem.key] === 'string' ? (form[activeItem.key] as string) : ''}
+                                  storageId={mediaStorageIds[activeItem.key] ?? undefined}
+                                  onChange={(url, storageId) => { updateImageField(activeItem.key, url, storageId); }}
+                                  folder="settings"
+                                  previewSize="md"
+                                />
+
+                                {hasValue ? (
+                                  <div className="space-y-2">
+                                    <div className="flex justify-end">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => { updateImageField(activeItem.key, '', null); }}
+                                        className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 text-xs px-2 py-1 h-auto"
+                                      >
+                                        Xóa khung
+                                      </Button>
+                                    </div>
+                                    <div className="flex flex-col items-center">
+                                      <div className={cn("relative w-32 max-w-full border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 shadow-inner flex items-center justify-center", activeItem.aspectClass)}>
+                                        <img
+                                          src={typeof form.product_image_placeholder === 'string' && form.product_image_placeholder ? form.product_image_placeholder : undefined}
+                                          alt=""
+                                          className="absolute inset-0 w-full h-full object-cover opacity-45"
+                                        />
+                                        <img
+                                          src={form[activeItem.key] as string}
+                                          alt="Preview khung viền"
+                                          className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                                        />
+                                        <span className="absolute bottom-1 left-0 right-0 text-center text-[9px] font-bold text-slate-500 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs py-0.5">Preview</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="py-6 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/50 dark:bg-slate-950/20">
+                                    <span className="text-xs text-slate-400 dark:text-slate-500">Chưa upload khung</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        * Upload ảnh PNG/WebP nền trong suốt. Nên chuẩn bị ảnh khung viền đúng tỷ lệ khung hình hiển thị để đảm bảo tính mỹ thuật cao nhất.
+                      </p>
                     </div>
                   )}
 
