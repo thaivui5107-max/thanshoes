@@ -1,6 +1,6 @@
 'use client';
 
-import React, { use, useEffect, useMemo, useState } from 'react';
+import React, { use, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AdminImage as Image } from '@/app/admin/components/AdminImage';
 import { useRouter } from 'next/navigation';
@@ -68,6 +68,61 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
   }, [fieldsData]);
   const isHierarchyEnabled = hierarchyFeature?.enabled === true;
 
+  // Ref & State for Dirty State (Phát hiện thay đổi)
+  const initialSnapshotRef = useRef<{
+    name: string;
+    slug: string;
+    description: string;
+    parentId: string;
+    active: boolean;
+    filterFooterContent: string;
+    productDetailSuffixContent: string;
+    faqItems: { id: string; question: string; answer: string; order: number }[];
+    faqStyle: string;
+  } | null>(null);
+
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('saved');
+  const [snapshotVersion, setSnapshotVersion] = useState(0);
+
+  const currentSnapshot = useMemo(() => {
+    const resolvedFaqItems = faqItems
+      .filter(f => f.question.trim() || f.answer.trim())
+      .map((f, idx) => ({
+        id: String(f.id),
+        question: f.question.trim(),
+        answer: f.answer.trim(),
+        order: idx,
+      }));
+
+    return {
+      name: name.trim(),
+      slug: slug.trim(),
+      description: description.trim(),
+      parentId: parentId || '',
+      active,
+      filterFooterContent: filterFooterContent.trim(),
+      productDetailSuffixContent: productDetailSuffixContent.trim(),
+      faqItems: resolvedFaqItems,
+      faqStyle,
+    };
+  }, [name, slug, description, parentId, active, filterFooterContent, productDetailSuffixContent, faqItems, faqStyle]);
+
+  const hasChanges = useMemo(() => {
+    if (!initialSnapshotRef.current) {return false;}
+    return JSON.stringify(initialSnapshotRef.current) !== JSON.stringify(currentSnapshot);
+  }, [currentSnapshot, snapshotVersion]);
+
+  useEffect(() => {
+    if (saveStatus === 'saving') {return;}
+    if (hasChanges && saveStatus === 'saved') {
+      setSaveStatus('idle');
+      return;
+    }
+    if (!hasChanges && saveStatus === 'idle') {
+      setSaveStatus('saved');
+    }
+  }, [hasChanges, saveStatus]);
+
   const generateSlugFromName = (value: string) => value.toLowerCase()
     .normalize("NFD").replaceAll(/[\u0300-\u036F]/g, "")
     .replaceAll(/[đĐ]/g, "d")
@@ -83,18 +138,47 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
       setActive(categoryData.active);
 
       // Load new fields
-      setFilterFooterContent(categoryData.filterFooterContent ?? '');
-      setProductDetailSuffixContent(categoryData.productDetailSuffixContent ?? '');
+      const loadedFilterFooterContent = categoryData.filterFooterContent ?? '';
+      const loadedProductDetailSuffixContent = categoryData.productDetailSuffixContent ?? '';
+      setFilterFooterContent(loadedFilterFooterContent);
+      setProductDetailSuffixContent(loadedProductDetailSuffixContent);
+      
+      let loadedFaqItems: FaqItem[] = [];
       if (categoryData.productDetailFaqItems && categoryData.productDetailFaqItems.length > 0) {
-        setFaqItems(categoryData.productDetailFaqItems.map(item => ({
+        loadedFaqItems = categoryData.productDetailFaqItems.map(item => ({
           id: item.id,
           question: item.question,
           answer: item.answer,
-        })) as FaqItem[]);
+        })) as FaqItem[];
       } else {
-        setFaqItems([{ id: Date.now(), question: '', answer: '' }]);
+        loadedFaqItems = [{ id: Date.now(), question: '', answer: '' }];
       }
-      setFaqStyle((categoryData.productDetailFaqStyle as FaqStyle) ?? 'accordion');
+      setFaqItems(loadedFaqItems);
+      
+      const loadedFaqStyle = (categoryData.productDetailFaqStyle as FaqStyle) ?? 'accordion';
+      setFaqStyle(loadedFaqStyle);
+
+      const resolvedFaqItems = loadedFaqItems
+        .filter(f => f.question.trim() || f.answer.trim())
+        .map((f, idx) => ({
+          id: String(f.id),
+          question: f.question.trim(),
+          answer: f.answer.trim(),
+          order: idx,
+        }));
+
+      initialSnapshotRef.current = {
+        name: categoryData.name.trim(),
+        slug: categoryData.slug.trim(),
+        description: (categoryData.description ?? '').trim(),
+        parentId: categoryData.parentId ?? '',
+        active: categoryData.active,
+        filterFooterContent: loadedFilterFooterContent.trim(),
+        productDetailSuffixContent: loadedProductDetailSuffixContent.trim(),
+        faqItems: resolvedFaqItems,
+        faqStyle: loadedFaqStyle,
+      };
+      setSnapshotVersion(prev => prev + 1);
     }
   }, [categoryData]);
 
@@ -111,6 +195,7 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
     if (!name.trim()) {return;}
 
     setIsSubmitting(true);
+    setSaveStatus('saving');
     try {
       const resolvedFaqItems = faqItems
         .filter(f => f.question.trim() || f.answer.trim())
@@ -133,8 +218,24 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
         productDetailFaqItems: enableCategoryProductDetailFaq && resolvedFaqItems.length > 0 ? resolvedFaqItems : undefined,
         productDetailFaqStyle: enableCategoryProductDetailFaq ? faqStyle : undefined,
       });
+
+      // Reset snapshot to current values upon successful save
+      initialSnapshotRef.current = {
+        name: name.trim(),
+        slug: slug.trim(),
+        description: description.trim(),
+        parentId: parentId || '',
+        active,
+        filterFooterContent: filterFooterContent.trim(),
+        productDetailSuffixContent: productDetailSuffixContent.trim(),
+        faqItems: resolvedFaqItems,
+        faqStyle,
+      };
+      setSnapshotVersion(prev => prev + 1);
+      setSaveStatus('saved');
       toast.success('Cập nhật danh mục thành công');
     } catch (error) {
+      setSaveStatus('idle');
       toast.error(getAdminMutationErrorMessage(error, 'Không thể cập nhật danh mục'));
     } finally {
       setIsSubmitting(false);
@@ -287,6 +388,7 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
 
           <HomeComponentStickyFooter
             isSubmitting={isSubmitting}
+            hasChanges={hasChanges}
             submitLabel="Lưu thay đổi"
           >
             <>
@@ -305,14 +407,19 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
                 <Button
                   type="submit"
                   variant="accent"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !hasChanges}
+                  className={cn(
+                    !hasChanges && !isSubmitting
+                      ? 'bg-slate-300 hover:bg-slate-300 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-800 dark:text-slate-400 cursor-not-allowed'
+                      : undefined
+                  )}
                 >
                   {isSubmitting ? (
                     <>
                       <Loader2 size={16} className="animate-spin mr-2" />
                       Đang lưu...
                     </>
-                  ) : 'Lưu thay đổi'}
+                  ) : (!hasChanges ? 'Đã lưu' : 'Lưu thay đổi')}
                 </Button>
               </div>
             </>
