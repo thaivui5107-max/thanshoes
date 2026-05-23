@@ -37,7 +37,7 @@ export function ImportExportModal() {
   };
 
   const categories = useQuery(api.productCategories.listAll) || [];
-  // const upsertBulk = useMutation(api.products.upsertBulk); // To be implemented
+  const upsertBulk = useMutation(api.productsImport.upsertBulk);
 
   const handleDownloadTemplate = async () => {
     try {
@@ -80,9 +80,9 @@ export function ImportExportModal() {
       }
 
       console.log("Parsed Data:", result.data);
-      // await upsertBulk({ products: result.data }); // Call Convex Mutation here
+      await upsertBulk({ products: result.data });
       
-      toast.success(`Phân tích thành công ${result.data?.length} sản phẩm (Cha).`);
+      toast.success(`Upsert thành công ${result.data?.length} sản phẩm (Cha).`);
       setIsOpen(false);
       setFile(null);
     } catch (error: any) {

@@ -61,6 +61,7 @@ import type * as productOptions from "../productOptions.js";
 import type * as productSupplementalContents from "../productSupplementalContents.js";
 import type * as productVariants from "../productVariants.js";
 import type * as products from "../products.js";
+import type * as productsImport from "../productsImport.js";
 import type * as promotions from "../promotions.js";
 import type * as roles from "../roles.js";
 import type * as search from "../search.js";
@@ -142,6 +143,7 @@ declare const fullApi: ApiFromModules<{
   productSupplementalContents: typeof productSupplementalContents;
   productVariants: typeof productVariants;
   products: typeof products;
+  productsImport: typeof productsImport;
   promotions: typeof promotions;
   roles: typeof roles;
   search: typeof search;
