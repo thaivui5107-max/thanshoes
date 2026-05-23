@@ -713,11 +713,12 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
                 </div>
                 {enabledFields.has('sku') && (
                   <div className="space-y-2">
-                    <Label>Mã SKU</Label>
-                    <Input value={sku} onChange={(e) =>{  setSku(e.target.value); }} placeholder="Tự sinh theo tên nếu để trống" className="font-mono" />
+                    <Label>Mã gốc SKU / Prefix</Label>
+                    <Input value={sku} onChange={(e) =>{  setSku(e.target.value); }} placeholder="VD: NK-AM90, để trống sẽ tự sinh" className="font-mono" />
                     {skuExists === true && (
                       <p className="text-xs text-red-500">SKU này đã tồn tại.</p>
                     )}
+                    <p className="text-xs text-slate-500">Phiên bản sẽ nối đuôi theo mã này, ví dụ NK-AM90-BLK-42.</p>
                   </div>
                 )}
               </div>

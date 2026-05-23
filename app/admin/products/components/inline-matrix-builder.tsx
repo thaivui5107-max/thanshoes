@@ -68,12 +68,49 @@ const buildVariantKey = (optionValues: VariantRow["optionValues"]) =>
     .map((item) => `${item.optionId}:${item.valueId}`)
     .join("|");
 
-const normalizeSkuPart = (value: string) => value
+const SKU_PART_OVERRIDES: Record<string, string> = {
+  den: "BLK",
+  black: "BLK",
+  trang: "WHT",
+  white: "WHT",
+  do: "RED",
+  red: "RED",
+  xanh: "BLU",
+  xanhduong: "BLU",
+  blue: "BLU",
+  green: "GRN",
+  xanhla: "GRN",
+  vang: "YLW",
+  yellow: "YLW",
+  xam: "GRY",
+  gray: "GRY",
+  grey: "GRY",
+  nau: "BRN",
+  brown: "BRN",
+  be: "BEI",
+  beige: "BEI",
+  hong: "PNK",
+  pink: "PNK",
+  tim: "PUR",
+  purple: "PUR",
+  cam: "ORG",
+  orange: "ORG",
+};
+
+const normalizeSkuKey = (value: string) => value
   .normalize("NFD").replaceAll(/[\u0300-\u036F]/g, "")
-  .replaceAll(/[đĐ]/g, "D")
+  .replaceAll(/[đĐ]/g, "d")
   .replaceAll(/[^A-Za-z0-9]/g, "")
-  .toUpperCase()
-  .slice(0, 3);
+  .toLowerCase();
+
+const normalizeSkuPart = (value: string) => value
+  ? SKU_PART_OVERRIDES[normalizeSkuKey(value)] ?? value
+    .normalize("NFD").replaceAll(/[\u0300-\u036F]/g, "")
+    .replaceAll(/[đĐ]/g, "D")
+    .replaceAll(/[^A-Za-z0-9]/g, "")
+    .toUpperCase()
+    .slice(0, 3)
+  : "";
 
 export function InlineMatrixBuilder({
   baseSku,
@@ -103,6 +140,15 @@ export function InlineMatrixBuilder({
     });
     return map;
   }, [optionCatalog]);
+
+  const buildSkuForOptionValues = (optionValues: VariantRow["optionValues"]) => {
+    const safeBaseSku = baseSku.trim() || "SP";
+    const suffix = optionValues
+      .map((item) => normalizeSkuPart(valueLabelById.get(item.valueId) ?? ""))
+      .filter(Boolean)
+      .join("-");
+    return suffix ? `${safeBaseSku}-${suffix}` : safeBaseSku;
+  };
 
   useEffect(() => {
     setSelections(initialSelections);
@@ -166,10 +212,10 @@ export function InlineMatrixBuilder({
       const key = buildVariantKey(combo);
       const existing = variants.find((variant) => buildVariantKey(variant.optionValues) === key);
       if (existing) {
-        return existing;
+        return existing.sku ? existing : { ...existing, sku: buildSkuForOptionValues(combo) };
       }
       return {
-        sku: "",
+        sku: buildSkuForOptionValues(combo),
         price: basePrice,
         stock: 0,
         optionValues: combo,
@@ -180,7 +226,7 @@ export function InlineMatrixBuilder({
       setVariants(nextVariants);
       onChange(selections, nextVariants);
     }
-  }, [selections, basePrice, optionCatalog]);
+  }, [selections, basePrice, optionCatalog, baseSku, valueLabelById]);
 
   const availableOptions = (currentOptionId?: Id<"productOptions">) => {
     const used = new Set(selections.map((selection) => selection.optionId));
@@ -232,14 +278,7 @@ export function InlineMatrixBuilder({
   };
 
   const handleMagicWand = () => {
-    const safeBaseSku = baseSku.trim() || "SP";
-    const nextVariants = variants.map((variant) => {
-      const suffix = variant.optionValues
-        .map((item) => normalizeSkuPart(valueLabelById.get(item.valueId) ?? ""))
-        .filter(Boolean)
-        .join("-");
-      return { ...variant, sku: suffix ? `${safeBaseSku}-${suffix}` : safeBaseSku };
-    });
+    const nextVariants = variants.map((variant) => ({ ...variant, sku: buildSkuForOptionValues(variant.optionValues) }));
     setVariants(nextVariants);
     onChange(selections, nextVariants);
     toast.success("Đã tự động sinh SKU cho toàn bộ biến thể");
