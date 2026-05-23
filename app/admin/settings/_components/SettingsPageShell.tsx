@@ -214,6 +214,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const [headerConfigDraft, setHeaderConfigDraft] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [initialHeaderConfig, setInitialHeaderConfig] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [activeDrag, setActiveDrag] = useState<'image-move' | 'image-resize' | 'text-move' | null>(null);
+  const previewCanvasRef = React.useRef<HTMLDivElement>(null);
 
   // Queries
   const settingsData = useQuery(api.settings.listAll);
@@ -227,12 +228,20 @@ function SettingsContent({ section }: { section: SettingsSection }) {
 
   const handlePreviewPointerDown = (e: React.PointerEvent<HTMLDivElement>, type: 'image-move' | 'image-resize' | 'text-move') => {
     e.preventDefault();
+    e.stopPropagation();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {
+      console.warn('setPointerCapture failed', err);
+    }
     setActiveDrag(type);
   };
 
   const handlePreviewPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!activeDrag) return;
-    const rect = e.currentTarget.getBoundingClientRect();
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
     const xPx = e.clientX - rect.left;
     const yPx = e.clientY - rect.top;
     
@@ -254,8 +263,15 @@ function SettingsContent({ section }: { section: SettingsSection }) {
     }
   };
 
-  const handlePreviewPointerUp = () => {
-    setActiveDrag(null);
+  const handlePreviewPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (activeDrag) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        // ignore
+      }
+      setActiveDrag(null);
+    }
   };
 
   // Mutations
@@ -1633,6 +1649,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                           <Label className="font-semibold text-slate-900 dark:text-slate-100 self-start mb-3">Preview trực quan</Label>
 
                           <div 
+                            ref={previewCanvasRef}
                             className="relative w-64 aspect-square max-w-full border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 shadow-inner flex items-center justify-center select-none touch-none"
                             onPointerMove={handlePreviewPointerMove}
                             onPointerUp={handlePreviewPointerUp}
@@ -1649,25 +1666,29 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                             {/* Watermark hình */}
                             {(form.product_watermark_image_enabled === true || form.product_watermark_image_enabled === 'true') && typeof form.product_watermark_image_url === 'string' && form.product_watermark_image_url && (
                               <div
-                                className="absolute pointer-events-auto transform -translate-x-1/2 -translate-y-1/2 group"
+                                className="absolute pointer-events-auto transform -translate-x-1/2 -translate-y-1/2 group cursor-move select-none touch-none"
                                 style={{
                                   left: `${form.product_watermark_image_x ?? 80}%`,
                                   top: `${form.product_watermark_image_y ?? 80}%`,
                                   width: `${form.product_watermark_image_width ?? 28}%`,
                                   opacity: (parseFloat(String(form.product_watermark_image_opacity ?? 40))) / 100,
                                 }}
+                                onPointerDown={(e) => handlePreviewPointerDown(e, 'image-move')}
+                                onPointerMove={handlePreviewPointerMove}
+                                onPointerUp={handlePreviewPointerUp}
                               >
                                 <img
                                   src={form.product_watermark_image_url}
                                   alt="Image Watermark"
                                   className="w-full h-auto object-contain pointer-events-none select-none border border-dashed border-transparent hover:border-orange-500 rounded-xs"
-                                  onPointerDown={(e) => handlePreviewPointerDown(e, 'image-move')}
-                                  style={{ cursor: 'move' }}
+                                  draggable="false"
                                 />
                                 {/* Resize handle */}
                                 <div
-                                  className="absolute bottom-[-6px] right-[-6px] w-3 h-3 bg-orange-500 rounded-full border border-white cursor-se-resize shadow-sm hover:scale-125 transition-transform"
-                                  onPointerDown={(e) => handlePreviewPointerDown(e, 'image-resize')}
+                                  className="absolute bottom-[-6px] right-[-6px] w-3.5 h-3.5 bg-orange-500 rounded-full border border-white cursor-se-resize shadow-sm hover:scale-125 transition-transform z-20"
+                                  onPointerDown={(e) => { e.stopPropagation(); handlePreviewPointerDown(e, 'image-resize'); }}
+                                  onPointerMove={handlePreviewPointerMove}
+                                  onPointerUp={handlePreviewPointerUp}
                                 />
                               </div>
                             )}
@@ -1675,7 +1696,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                             {/* Watermark chữ */}
                             {(form.product_watermark_text_enabled === true || form.product_watermark_text_enabled === 'true') && typeof form.product_watermark_text_content === 'string' && form.product_watermark_text_content && (
                               <div
-                                className="absolute left-0 right-0 transform -translate-y-1/2 whitespace-nowrap text-center select-none pointer-events-auto hover:bg-orange-500/10 border-y border-dashed border-transparent hover:border-orange-500 py-1"
+                                className="absolute left-0 right-0 transform -translate-y-1/2 whitespace-nowrap text-center select-none pointer-events-auto hover:bg-orange-500/10 border-y border-dashed border-transparent hover:border-orange-500 py-1 touch-none"
                                 style={{
                                   top: `${form.product_watermark_text_y ?? 80}%`,
                                   opacity: (parseFloat(String(form.product_watermark_text_opacity ?? 35))) / 100,
@@ -1685,6 +1706,8 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                                   cursor: 'ns-resize',
                                 }}
                                 onPointerDown={(e) => handlePreviewPointerDown(e, 'text-move')}
+                                onPointerMove={handlePreviewPointerMove}
+                                onPointerUp={handlePreviewPointerUp}
                               >
                                 {form.product_watermark_text_repeat === true || form.product_watermark_text_repeat === 'true' ? (
                                   <div className="w-full overflow-hidden inline-flex justify-center gap-4">
