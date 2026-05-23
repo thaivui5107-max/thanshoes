@@ -97,9 +97,30 @@ function getCroppedCanvas(
  * Fetch ảnh từ URL → Blob
  */
 async function fetchImageAsBlob(url: string): Promise<Blob> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Fetch ảnh thất bại: ${res.status}`);
-  return res.blob();
+  const normalizedUrl = url.trim();
+  if (!normalizedUrl) {
+    throw new Error('URL ảnh trống');
+  }
+
+  const res = await fetch(normalizedUrl);
+  if (!res.ok) {
+    throw new Error(
+      res.status === 404
+        ? 'Không tìm thấy ảnh. Ảnh có thể đã bị xóa hoặc URL không còn hợp lệ.'
+        : `Fetch ảnh thất bại: ${res.status}`,
+    );
+  }
+
+  const blob = await res.blob();
+  if (!blob.type.startsWith('image/')) {
+    throw new Error('URL không trả về file ảnh hợp lệ');
+  }
+
+  return blob;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
 
 function makeCenteredAspectCrop(image: HTMLImageElement, aspect: number): Crop {
@@ -270,7 +291,7 @@ export function ImageEditorDialog({
       removeBgHandleRef.current = handle;
     } catch (err) {
       console.error('[RemoveBG] Fetch error:', err);
-      toast.error('Không thể tải ảnh để xử lý.');
+      toast.error(getErrorMessage(err, 'Không thể tải ảnh để xử lý.'));
       setIsRemovingBg(false);
       setRemoveBgProgress(0);
     }
@@ -371,7 +392,7 @@ export function ImageEditorDialog({
       toast.success(successMessage);
     } catch (error) {
       console.error('[SmartCrop] Error:', error);
-      toast.error('Không thể auto crop logo. Vui lòng thử lại.');
+      toast.error(getErrorMessage(error, 'Không thể auto crop logo. Vui lòng thử lại.'));
       setSmartCropProgress(0);
       setSmartCropStage('');
     } finally {
@@ -456,7 +477,7 @@ export function ImageEditorDialog({
 
     } catch (error) {
       console.error(error);
-      toast.error('Lỗi khi thêm nền');
+      toast.error(getErrorMessage(error, 'Lỗi khi thêm nền'));
       setIsApplying(false);
     }
   }, [imageUrl, canvasAspect, selectedBg, onApply]);
