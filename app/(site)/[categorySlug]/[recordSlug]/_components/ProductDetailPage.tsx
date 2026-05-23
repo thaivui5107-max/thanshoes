@@ -22,6 +22,7 @@ import {
 import { resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
 import { buildCategoryPath, buildDetailPath, normalizeRouteMode } from '@/lib/ia/route-mode';
 import { ProductImageFrameOverlay, useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
+import { ProductImageWatermarkBox } from '@/components/shared/ProductImageWatermarkOverlay';
 import { RichContent, withFormatMarker } from '@/components/common/RichContent';
 import { useCustomerAuth } from '@/app/(site)/auth/context';
 import { notifyAddToCart, useCart } from '@/lib/cart';
@@ -1311,6 +1312,7 @@ function BlurredProductImage({ src, alt, sizes, fallbackSrc }: { src?: string | 
       )}
       <div className="absolute inset-0 pointer-events-none z-20">
         <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+        <ProductImageWatermarkBox />
       </div>
     </>
   );
@@ -1419,6 +1421,7 @@ function ProductDescriptionImages({
           >
             <ProductImageWithFallback mode="primary" src={image} fallbackSrc={fallbackSrc} alt={`Ảnh sản phẩm ${index + 1}`} fill sizes="100vw" className="object-contain" />
             <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+            <ProductImageWatermarkBox />
           </div>
         ))}
       </div>
@@ -1490,6 +1493,7 @@ function MobileImageCarousel({ images, selectedIndex, onSelect, alt, fallbackSrc
         <div key={`${image}-${index}`} className="relative h-full w-full shrink-0 snap-center">
           <ProductImageWithFallback mode="primary" src={image} fallbackSrc={fallbackSrc} alt={`${alt} ${index + 1}`} fill sizes="100vw" className="object-contain" />
           <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+          <ProductImageWatermarkBox />
         </div>
       ))}
     </div>
@@ -1598,6 +1602,7 @@ function ThumbnailRail({
             >
               <ProductImageWithFallback mode="thumb" src={img} fallbackSrc={fallbackSrc} alt="" width={80} height={80} className="object-contain w-full h-full" />
               <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+              <ProductImageWatermarkBox />
             </button>
           );
         })}
@@ -3622,6 +3627,7 @@ function RelatedProductsSection({
             <div className="overflow-hidden relative" style={{ ...relatedImageStyle, backgroundColor: tokens.surfaceMuted }}>
               <ProductImageWithFallback mode="thumb" src={p.image} fallbackSrc={productImagePlaceholder} alt={p.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
               <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+              <ProductImageWatermarkBox />
               {showSalePrice && priceDisplay.comparePrice && !priceDisplay.isContactPrice && (
                 <span className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded" style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>-{Math.round((1 - p.price / priceDisplay.comparePrice) * 100)}%</span>
               )}

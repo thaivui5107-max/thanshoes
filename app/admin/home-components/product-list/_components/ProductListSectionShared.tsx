@@ -8,6 +8,7 @@ import { cn } from '../../../components/ui';
 import { PreviewImage } from '../../_shared/components/PreviewImage';
 import { getPreviewAwareClass } from '../../_shared/lib/previewResponsive';
 import { ProductImageFrameOverlay, useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
+import { ProductImageWatermarkBox } from '@/components/shared/ProductImageWatermarkOverlay';
 import { withAlpha, type ProductListColorTokens } from '../_lib/colors';
 import type { ProductListPreviewItem, ProductListStyle } from '../_types';
 
@@ -108,6 +109,7 @@ const ProductImage = ({
           className={className}
         />
         <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+        <ProductImageWatermarkBox />
       </>
     );
   }
@@ -120,6 +122,7 @@ const ProductImage = ({
         className={className}
       />
       <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+      <ProductImageWatermarkBox />
     </>
   );
 };

@@ -78,6 +78,12 @@ export const productsModule = defineModuleWithRuntime({
       default: false,
     },
     {
+      key: 'enableProductWatermark',
+      label: 'Bật watermark sản phẩm',
+      type: 'toggle',
+      default: false,
+    },
+    {
       key: 'enableProductSupplementalContent',
       label: 'Bật nội dung bổ sung chi tiết sản phẩm',
       type: 'toggle',

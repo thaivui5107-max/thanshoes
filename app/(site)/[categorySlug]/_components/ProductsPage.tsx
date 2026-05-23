@@ -15,6 +15,7 @@ import { notifyAddToCart, useCart } from '@/lib/cart';
 import { buildCategoryPath, buildDetailPath, buildModuleListPath, normalizeRouteMode } from '@/lib/ia/route-mode';
 import { QuickAddVariantModal } from '@/components/products/QuickAddVariantModal';
 import { ProductImageFrameOverlay, useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
+import { ProductImageWatermarkOverlay, useProductWatermarkConfig } from '@/components/shared/ProductImageWatermarkOverlay';
 import { ChevronDown, Heart, Package, Search, ShoppingCart, SlidersHorizontal, X } from 'lucide-react';
 import type { Id } from '@/convex/_generated/dataModel';
 import { getPublicPriceLabel } from '@/lib/products/public-price';
@@ -979,6 +980,7 @@ function ProductCardActions({ product, tokens, showStock, showAddToCartButton, s
 }
 
 function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, overlayUrl, getDetailHref }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; overlayUrl?: string | null; getDetailHref: (product: ProductCardProps['product']) => string }) {
+  const watermarkConfig = useProductWatermarkConfig();
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
       {products.map((product) => (
@@ -998,6 +1000,7 @@ function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, 
               <div className="w-full h-full flex items-center justify-center"><Package size={48} style={{ color: tokens.neutralTextLight }} /></div>
             )}
             <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+            <ProductImageWatermarkOverlay config={watermarkConfig} />
             {showPromotionBadge && showSalePrice && priceDisplay.comparePrice && !priceDisplay.isContactPrice && (
               <span
                 className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded"
@@ -1056,6 +1059,7 @@ function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, 
 }
 
 function ProductList({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, overlayUrl, getDetailHref }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; overlayUrl?: string | null; getDetailHref: (product: ProductCardProps['product']) => string }) {
+  const watermarkConfig = useProductWatermarkConfig();
   return (
     <div className="space-y-4">
       {products.map((product) => (
@@ -1075,6 +1079,7 @@ function ProductList({ products, categoryMap, tokens, showPrice, showSalePrice, 
               <div className="w-full h-full flex items-center justify-center"><Package size={32} style={{ color: tokens.neutralTextLight }} /></div>
             )}
             <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+            <ProductImageWatermarkOverlay config={watermarkConfig} />
             {showPromotionBadge && showSalePrice && priceDisplay.comparePrice && !priceDisplay.isContactPrice && (
               <span
                 className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded"

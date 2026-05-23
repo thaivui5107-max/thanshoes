@@ -19,7 +19,7 @@ import { SeoBuilderDialog } from './SeoBuilderDialog';
 
 type SettingsSection = 'site' | 'contact' | 'seo' | 'advanced';
 type SettingsFormValue = string | boolean;
-type AdvancedTab = 'product-placeholder' | 'product-frame' | 'header';
+type AdvancedTab = 'product-placeholder' | 'product-frame' | 'watermark' | 'header';
 type HeaderConfig = {
   showBrandName?: boolean;
   logoSizeLevel?: number;
@@ -213,13 +213,50 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const [advancedTab, setAdvancedTab] = useState<AdvancedTab>('product-placeholder');
   const [headerConfigDraft, setHeaderConfigDraft] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [initialHeaderConfig, setInitialHeaderConfig] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
+  const [activeDrag, setActiveDrag] = useState<'image-move' | 'image-resize' | 'text-move' | null>(null);
 
   // Queries
   const settingsData = useQuery(api.settings.listAll);
   const featuresData = useQuery(api.admin.modules.listModuleFeatures, { moduleKey: MODULE_KEY });
   const fieldsData = useQuery(api.admin.modules.listModuleFields, { moduleKey: MODULE_KEY });
   const defaultImageAspectRatio = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
+  const enableProductWatermarkSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableProductWatermark' });
   const [selectedFrameAR, setSelectedFrameAR] = useState<string>('');
+
+  const enableProductWatermark = enableProductWatermarkSetting?.value === true || enableProductWatermarkSetting?.value === 'true';
+
+  const handlePreviewPointerDown = (e: React.PointerEvent<HTMLDivElement>, type: 'image-move' | 'image-resize' | 'text-move') => {
+    e.preventDefault();
+    setActiveDrag(type);
+  };
+
+  const handlePreviewPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!activeDrag) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xPx = e.clientX - rect.left;
+    const yPx = e.clientY - rect.top;
+    
+    // Convert to percentage
+    const xPct = Math.min(100, Math.max(0, Math.round((xPx / rect.width) * 100)));
+    const yPct = Math.min(100, Math.max(0, Math.round((yPx / rect.height) * 100)));
+
+    if (activeDrag === 'image-move') {
+      updateField('product_watermark_image_x', String(xPct));
+      updateField('product_watermark_image_y', String(yPct));
+    } else if (activeDrag === 'text-move') {
+      updateField('product_watermark_text_y', String(yPct));
+    } else if (activeDrag === 'image-resize') {
+      const imageX = parseFloat(String(form.product_watermark_image_x || 80));
+      const imageXPx = (imageX / 100) * rect.width;
+      const halfWidthPx = Math.abs(e.clientX - rect.left - imageXPx);
+      const widthPct = Math.min(80, Math.max(5, Math.round((halfWidthPx * 2 / rect.width) * 100)));
+      updateField('product_watermark_image_width', String(widthPct));
+    }
+  };
+
+  const handlePreviewPointerUp = () => {
+    setActiveDrag(null);
+  };
 
   // Mutations
   const setMultiple = useMutation(api.settings.setMultiple);
@@ -344,6 +381,48 @@ function SettingsContent({ section }: { section: SettingsSection }) {
         if (storageIds.product_frame_overlay_url) {
           storageIds.product_frame_overlay_square_url = storageIds.product_frame_overlay_url;
         }
+      }
+      // Defaults cho watermark hình
+      if (values.product_watermark_image_enabled === undefined) {
+        values.product_watermark_image_enabled = false;
+      }
+      if (values.product_watermark_image_url === undefined) {
+        values.product_watermark_image_url = '';
+      }
+      if (values.product_watermark_image_x === undefined) {
+        values.product_watermark_image_x = '80';
+      }
+      if (values.product_watermark_image_y === undefined) {
+        values.product_watermark_image_y = '80';
+      }
+      if (values.product_watermark_image_width === undefined) {
+        values.product_watermark_image_width = '28';
+      }
+      if (values.product_watermark_image_opacity === undefined) {
+        values.product_watermark_image_opacity = '40';
+      }
+
+      // Defaults cho watermark chữ
+      if (values.product_watermark_text_enabled === undefined) {
+        values.product_watermark_text_enabled = false;
+      }
+      if (values.product_watermark_text_content === undefined) {
+        values.product_watermark_text_content = '';
+      }
+      if (values.product_watermark_text_y === undefined) {
+        values.product_watermark_text_y = '80';
+      }
+      if (values.product_watermark_text_font_size === undefined) {
+        values.product_watermark_text_font_size = '8';
+      }
+      if (values.product_watermark_text_color === undefined) {
+        values.product_watermark_text_color = '#64748B';
+      }
+      if (values.product_watermark_text_opacity === undefined) {
+        values.product_watermark_text_opacity = '35';
+      }
+      if (values.product_watermark_text_repeat === undefined) {
+        values.product_watermark_text_repeat = false;
       }
       setIsSecondaryAuto(values.site_brand_mode === 'single' ? true : !values.site_brand_secondary);
       setForm(values);
@@ -567,13 +646,36 @@ function SettingsContent({ section }: { section: SettingsSection }) {
           });
         }
       });
-      if (!settingsToSave.some((item) => item.key === 'enable_product_frames')) {
-        settingsToSave.push({
-          group: 'advanced',
-          key: 'enable_product_frames',
-          value: form.enable_product_frames === true || form.enable_product_frames === 'true',
-        });
-      }
+      // Save watermark settings
+      const watermarkKeys = [
+        'product_watermark_image_enabled',
+        'product_watermark_image_url',
+        'product_watermark_image_x',
+        'product_watermark_image_y',
+        'product_watermark_image_width',
+        'product_watermark_image_opacity',
+        'product_watermark_text_enabled',
+        'product_watermark_text_content',
+        'product_watermark_text_y',
+        'product_watermark_text_font_size',
+        'product_watermark_text_color',
+        'product_watermark_text_opacity',
+        'product_watermark_text_repeat',
+      ];
+      watermarkKeys.forEach((key) => {
+        if (!settingsToSave.some((item) => item.key === key)) {
+          let value = form[key] ?? '';
+          if (key === 'product_watermark_image_enabled' || key === 'product_watermark_text_enabled' || key === 'product_watermark_text_repeat') {
+            value = form[key] === true || form[key] === 'true';
+          }
+          settingsToSave.push({
+            group: 'advanced',
+            key,
+            ...(key === 'product_watermark_image_url' ? { storageId: mediaStorageIds.product_watermark_image_url ?? null } : {}),
+            value: String(value),
+          });
+        }
+      });
       if (canEditHeaderMenu && !settingsToSave.some((item) => item.key === 'header_config')) {
         settingsToSave.push({
           group: 'site',
@@ -1165,6 +1267,20 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     >
                       Khung viền sản phẩm
                     </button>
+                    {enableProductWatermark && (
+                      <button
+                        type="button"
+                        onClick={() => setAdvancedTab('watermark')}
+                        className={cn(
+                          'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                          advancedTab === 'watermark'
+                            ? 'border-orange-500 text-slate-900 dark:text-slate-100'
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                        )}
+                      >
+                        Watermark
+                      </button>
+                    )}
                     {canEditHeaderMenu && (
                       <button
                         type="button"
@@ -1362,6 +1478,235 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                       <p className="text-xs text-slate-500 dark:text-slate-400">
                         * Upload ảnh PNG/WebP nền trong suốt. Nên chuẩn bị ảnh khung viền đúng tỷ lệ khung hình hiển thị để đảm bảo tính mỹ thuật cao nhất.
                       </p>
+                    </div>
+                  )}
+
+                  {advancedTab === 'watermark' && enableProductWatermark && (
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                      {/* Cấu hình cột trái (7 cols) */}
+                      <div className="lg:col-span-7 space-y-6">
+                        {/* 1. Watermark Hình */}
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                id="product_watermark_image_enabled"
+                                checked={form.product_watermark_image_enabled === true || form.product_watermark_image_enabled === 'true'}
+                                onCheckedChange={(checked) => updateField('product_watermark_image_enabled', checked)}
+                              />
+                              <Label htmlFor="product_watermark_image_enabled" className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100">Bật watermark hình (logo)</Label>
+                            </div>
+                          </div>
+
+                          {(form.product_watermark_image_enabled === true || form.product_watermark_image_enabled === 'true') && (
+                            <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                              <SettingsImageUploader
+                                label="Ảnh logo watermark"
+                                value={typeof form.product_watermark_image_url === 'string' ? form.product_watermark_image_url : ''}
+                                storageId={mediaStorageIds.product_watermark_image_url ?? undefined}
+                                onChange={(url, storageId) => { updateImageField('product_watermark_image_url', url, storageId); }}
+                                folder="settings"
+                                previewSize="md"
+                              />
+
+                              {typeof form.product_watermark_image_url === 'string' && form.product_watermark_image_url && (
+                                <div className="space-y-3">
+                                  <div className="space-y-1">
+                                    <div className="flex justify-between text-xs text-slate-500">
+                                      <Label>Độ trong suốt logo</Label>
+                                      <span>{form.product_watermark_image_opacity ?? 40}%</span>
+                                    </div>
+                                    <input
+                                      type="range"
+                                      min="0"
+                                      max="100"
+                                      value={parseFloat(String(form.product_watermark_image_opacity ?? 40))}
+                                      onChange={(e) => updateField('product_watermark_image_opacity', e.target.value)}
+                                      className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-orange-500"
+                                    />
+                                  </div>
+                                  <div className="flex justify-end">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => { updateImageField('product_watermark_image_url', '', null); }}
+                                      className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 text-xs px-2 py-1 h-auto"
+                                    >
+                                      Xóa ảnh logo
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 2. Watermark Chữ */}
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                id="product_watermark_text_enabled"
+                                checked={form.product_watermark_text_enabled === true || form.product_watermark_text_enabled === 'true'}
+                                onCheckedChange={(checked) => updateField('product_watermark_text_enabled', checked)}
+                              />
+                              <Label htmlFor="product_watermark_text_enabled" className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100">Bật watermark chữ</Label>
+                            </div>
+                          </div>
+
+                          {(form.product_watermark_text_enabled === true || form.product_watermark_text_enabled === 'true') && (
+                            <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                              <div className="space-y-1.5">
+                                <Label>Nội dung chữ</Label>
+                                <Input
+                                  value={typeof form.product_watermark_text_content === 'string' ? form.product_watermark_text_content : ''}
+                                  onChange={(e) => updateField('product_watermark_text_content', e.target.value)}
+                                  placeholder="Nhập chữ watermark..."
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                  <Label>Cỡ chữ (px)</Label>
+                                  <select
+                                    value={String(form.product_watermark_text_font_size ?? '8')}
+                                    onChange={(e) => updateField('product_watermark_text_font_size', e.target.value)}
+                                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                                  >
+                                    {Array.from({ length: 30 }, (_, i) => i + 1).map((size) => (
+                                      <option key={size} value={size}>{size}px</option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <Label>Màu chữ</Label>
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="color"
+                                      value={typeof form.product_watermark_text_color === 'string' && form.product_watermark_text_color.startsWith('#') ? form.product_watermark_text_color : '#64748B'}
+                                      onChange={(e) => updateField('product_watermark_text_color', e.target.value)}
+                                      className="w-10 h-10 rounded-md cursor-pointer border border-slate-200 dark:border-slate-700"
+                                    />
+                                    <Input
+                                      value={String(form.product_watermark_text_color ?? '#64748B').toUpperCase()}
+                                      onChange={(e) => updateField('product_watermark_text_color', e.target.value)}
+                                      className="font-mono text-sm uppercase flex-1"
+                                      maxLength={7}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-xs text-slate-500">
+                                  <Label>Độ trong suốt chữ</Label>
+                                  <span>{form.product_watermark_text_opacity ?? 35}%</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="100"
+                                  value={parseFloat(String(form.product_watermark_text_opacity ?? 35))}
+                                  onChange={(e) => updateField('product_watermark_text_opacity', e.target.value)}
+                                  className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-orange-500"
+                                />
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                <Checkbox
+                                  id="product_watermark_text_repeat"
+                                  checked={form.product_watermark_text_repeat === true || form.product_watermark_text_repeat === 'true'}
+                                  onCheckedChange={(checked) => updateField('product_watermark_text_repeat', checked)}
+                                />
+                                <Label htmlFor="product_watermark_text_repeat" className="cursor-pointer text-xs text-slate-600 dark:text-slate-400">Lặp watermark chữ theo hàng ngang</Label>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Preview cột phải (5 cols) */}
+                      <div className="lg:col-span-5 flex flex-col items-center justify-start space-y-4">
+                        <div className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col items-center">
+                          <Label className="font-semibold text-slate-900 dark:text-slate-100 self-start mb-3">Preview trực quan</Label>
+
+                          <div 
+                            className="relative w-64 aspect-square max-w-full border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 shadow-inner flex items-center justify-center select-none touch-none"
+                            onPointerMove={handlePreviewPointerMove}
+                            onPointerUp={handlePreviewPointerUp}
+                            onPointerLeave={handlePreviewPointerUp}
+                            style={{ cursor: activeDrag ? (activeDrag === 'image-resize' ? 'nwse-resize' : 'move') : 'default' }}
+                          >
+                            {/* Ảnh placeholder sản phẩm */}
+                            <img
+                              src={typeof form.product_image_placeholder === 'string' && form.product_image_placeholder ? form.product_image_placeholder : undefined}
+                              alt=""
+                              className="absolute inset-0 w-full h-full object-cover opacity-50 pointer-events-none select-none"
+                            />
+
+                            {/* Watermark hình */}
+                            {(form.product_watermark_image_enabled === true || form.product_watermark_image_enabled === 'true') && typeof form.product_watermark_image_url === 'string' && form.product_watermark_image_url && (
+                              <div
+                                className="absolute pointer-events-auto transform -translate-x-1/2 -translate-y-1/2 group"
+                                style={{
+                                  left: `${form.product_watermark_image_x ?? 80}%`,
+                                  top: `${form.product_watermark_image_y ?? 80}%`,
+                                  width: `${form.product_watermark_image_width ?? 28}%`,
+                                  opacity: (parseFloat(String(form.product_watermark_image_opacity ?? 40))) / 100,
+                                }}
+                              >
+                                <img
+                                  src={form.product_watermark_image_url}
+                                  alt="Image Watermark"
+                                  className="w-full h-auto object-contain pointer-events-none select-none border border-dashed border-transparent hover:border-orange-500 rounded-xs"
+                                  onPointerDown={(e) => handlePreviewPointerDown(e, 'image-move')}
+                                  style={{ cursor: 'move' }}
+                                />
+                                {/* Resize handle */}
+                                <div
+                                  className="absolute bottom-[-6px] right-[-6px] w-3 h-3 bg-orange-500 rounded-full border border-white cursor-se-resize shadow-sm hover:scale-125 transition-transform"
+                                  onPointerDown={(e) => handlePreviewPointerDown(e, 'image-resize')}
+                                />
+                              </div>
+                            )}
+
+                            {/* Watermark chữ */}
+                            {(form.product_watermark_text_enabled === true || form.product_watermark_text_enabled === 'true') && typeof form.product_watermark_text_content === 'string' && form.product_watermark_text_content && (
+                              <div
+                                className="absolute left-0 right-0 transform -translate-y-1/2 whitespace-nowrap text-center select-none pointer-events-auto hover:bg-orange-500/10 border-y border-dashed border-transparent hover:border-orange-500 py-1"
+                                style={{
+                                  top: `${form.product_watermark_text_y ?? 80}%`,
+                                  opacity: (parseFloat(String(form.product_watermark_text_opacity ?? 35))) / 100,
+                                  color: String(form.product_watermark_text_color ?? '#64748B'),
+                                  fontSize: `${form.product_watermark_text_font_size ?? 8}px`,
+                                  fontFamily: '"Be Vietnam Pro", sans-serif',
+                                  cursor: 'ns-resize',
+                                }}
+                                onPointerDown={(e) => handlePreviewPointerDown(e, 'text-move')}
+                              >
+                                {form.product_watermark_text_repeat === true || form.product_watermark_text_repeat === 'true' ? (
+                                  <div className="w-full overflow-hidden inline-flex justify-center gap-4">
+                                    {Array(8).fill(null).map((_, i) => (
+                                      <span key={i}>{form.product_watermark_text_content as string}</span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span>{form.product_watermark_text_content}</span>
+                                )}
+                              </div>
+                            )}
+
+                            <span className="absolute bottom-1 right-2 text-[9px] font-bold text-slate-500 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs px-1.5 py-0.5 rounded-sm">Preview</span>
+                          </div>
+
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-3 text-center space-y-1">
+                            <p>💡 <b>Kéo logo hoặc dòng chữ</b> trực tiếp trong ảnh để đổi vị trí.</p>
+                            <p>💡 <b>Kéo chấm tròn màu cam</b> ở góc logo để điều chỉnh kích thước.</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
 

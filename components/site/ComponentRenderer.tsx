@@ -130,6 +130,7 @@ import { SpeedDialSection } from './SpeedDialSection';
 import { CountdownSectionWrapper } from './CountdownSectionWrapper';
 import type { HomepageCategoryHeroConfig } from '@/app/admin/home-components/homepage-category-hero/_types';
 import { ProductImageFrameOverlay, useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
+import { ProductImageWatermarkOverlay, useProductWatermarkConfig } from '@/components/shared/ProductImageWatermarkOverlay';
 import {
   ArrowUpRight,
   ArrowRight,
@@ -3765,6 +3766,7 @@ function CategoryProductsSection({
     [imageAspectRatio]
   );
   const { overlayUrl } = useProductFrameConfig(imageAspectRatio);
+  const watermarkConfig = useProductWatermarkConfig();
 
   const resolvedSections = React.useMemo(() => {
     if (selectionMode === 'demo') {
@@ -3866,6 +3868,7 @@ function CategoryProductsSection({
           </div>
         )}
         <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+        <ProductImageWatermarkOverlay config={watermarkConfig} />
       </div>
       <h4 className="font-medium text-sm line-clamp-2 min-h-[2.5rem]" style={{ color: colors.bodyText }}>{product.name || 'Tên sản phẩm'}</h4>
       <div className="flex flex-col mt-auto">
@@ -4049,6 +4052,7 @@ function CategoryProductsSection({
                           </div>
                         )}
                         <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+                        <ProductImageWatermarkOverlay config={watermarkConfig} />
                       </div>
                       <h4 className="font-medium text-sm line-clamp-2 mb-1" style={{ color: colors.bodyText }}>{product.name}</h4>
                       <span className="font-bold text-base" style={{ color: colors.buttonText }}>
@@ -4205,6 +4209,7 @@ function CategoryProductsSection({
                             </div>
                           )}
                           <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+                          <ProductImageWatermarkOverlay config={watermarkConfig} />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                           <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
                             <span
@@ -4252,6 +4257,7 @@ function CategoryProductsSection({
                             </div>
                           )}
                           <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+                          <ProductImageWatermarkOverlay config={watermarkConfig} />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                           <div className="absolute bottom-0 left-0 right-0 p-3 text-white transform translate-y-full group-hover:translate-y-0 transition-transform">
                             <h4 className="font-medium text-sm line-clamp-1">{product.name}</h4>
@@ -4338,6 +4344,7 @@ function CategoryProductsSection({
                             </div>
                           )}
                           <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+                          <ProductImageWatermarkOverlay config={watermarkConfig} />
                           {/* Gradient overlay */}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                           {/* Content */}
@@ -4391,6 +4398,7 @@ function CategoryProductsSection({
                                 </div>
                               )}
                               <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+                              <ProductImageWatermarkOverlay config={watermarkConfig} />
                               {/* Quick view overlay */}
                               <div 
                                 className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -4525,6 +4533,7 @@ function CategoryProductsSection({
                                     <Package size={28} style={{ color: colors.emptyStateIcon }} />
                                   </div>
                                 )}
+                                <ProductImageWatermarkOverlay config={watermarkConfig} />
                               </div>
                             </div>
                           </a>
@@ -4640,6 +4649,7 @@ function CategoryProductsSection({
                         </div>
                       )}
                       <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+                      <ProductImageWatermarkOverlay config={watermarkConfig} />
                       
                       {/* Gradient overlay bottom */}
                       <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20" />

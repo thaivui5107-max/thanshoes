@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { PublicImage as Image } from '@/components/shared/PublicImage';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { ProductImageFrameOverlay } from '@/components/shared/ProductImageFrameBox';
+import { ProductImageWatermarkBox } from '@/components/shared/ProductImageWatermarkOverlay';
 
 type ProductImageLightboxProps = {
   images: string[];
@@ -143,6 +144,7 @@ export function ProductImageLightbox({
             <div className="flex h-full w-full items-center justify-center text-white/60">Không có ảnh sản phẩm</div>
           )}
           <ProductImageFrameOverlay overlayUrl={overlayUrl} />
+          <ProductImageWatermarkBox />
         </div>
       </div>
     </div>
