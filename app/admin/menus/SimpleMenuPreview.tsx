@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import Link from 'next/link';
 import type { Id } from '@/convex/_generated/dataModel';
 import { Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, cn } from '../components/ui';
