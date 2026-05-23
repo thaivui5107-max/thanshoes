@@ -1,318 +1,406 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Button, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui";
-import { Trash2, Wand2, Plus, AlertTriangle, X } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, Plus, Trash2, Wand2 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+import type { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../components/ui";
 
-// Define Types
-export type VariantOption = { name: string; values: string[] };
+export type OptionCatalogItem = {
+  id: Id<"productOptions">;
+  name: string;
+  order: number;
+  values: Array<{
+    id: Id<"productOptionValues">;
+    label: string;
+    order: number;
+  }>;
+};
+
+export type VariantOptionSelection = {
+  optionId: Id<"productOptions">;
+  valueIds: Id<"productOptionValues">[];
+};
+
 export type VariantRow = {
-  id?: string;
+  id?: Id<"productVariants">;
   sku: string;
   price: number;
   salePrice?: number;
   stock: number;
-  optionValues: string[];
+  optionValues: Array<{
+    optionId: Id<"productOptions">;
+    valueId: Id<"productOptionValues">;
+  }>;
 };
 
 interface InlineMatrixBuilderProps {
   baseSku: string;
   basePrice: number;
-  initialOptions?: VariantOption[];
+  optionCatalog: OptionCatalogItem[];
+  initialSelections?: VariantOptionSelection[];
   initialVariants?: VariantRow[];
-  onChange: (options: VariantOption[], variants: VariantRow[]) => void;
+  onChange: (selections: VariantOptionSelection[], variants: VariantRow[]) => void;
 }
+
+const buildVariantKey = (optionValues: VariantRow["optionValues"]) =>
+  optionValues
+    .slice()
+    .sort((a, b) => a.optionId.localeCompare(b.optionId))
+    .map((item) => `${item.optionId}:${item.valueId}`)
+    .join("|");
+
+const normalizeSkuPart = (value: string) => value
+  .normalize("NFD").replaceAll(/[\u0300-\u036F]/g, "")
+  .replaceAll(/[đĐ]/g, "D")
+  .replaceAll(/[^A-Za-z0-9]/g, "")
+  .toUpperCase()
+  .slice(0, 3);
 
 export function InlineMatrixBuilder({
   baseSku,
   basePrice,
-  initialOptions = [],
+  optionCatalog,
+  initialSelections = [],
   initialVariants = [],
-  onChange
+  onChange,
 }: InlineMatrixBuilderProps) {
-  const [options, setOptions] = useState<VariantOption[]>(initialOptions);
+  const [selections, setSelections] = useState<VariantOptionSelection[]>(initialSelections);
   const [variants, setVariants] = useState<VariantRow[]>(initialVariants);
-  
-  // 2-step delete confirmation state
   const [variantToDelete, setVariantToDelete] = useState<VariantRow | null>(null);
-  
-  // Check if variant has orders using Convex
-  // We can't safely call useQuery conditionally per row, so we just use the API dynamically
-  // Or fetch orders logic on demand. For simplicity, we just assume it's risky.
-  // We'll call `removeVariantWithCascade` which handles cascade.
+  const previousBaseSkuRef = useRef(baseSku.trim());
+
   const removeVariantAPI = useMutation(api.productsSmart.removeVariantWithCascade);
 
-  // Auto-generate variants whenever Options change
+  const catalogById = useMemo(() => {
+    const map = new Map<Id<"productOptions">, OptionCatalogItem>();
+    optionCatalog.forEach((option) => map.set(option.id, option));
+    return map;
+  }, [optionCatalog]);
+
+  const valueLabelById = useMemo(() => {
+    const map = new Map<Id<"productOptionValues">, string>();
+    optionCatalog.forEach((option) => {
+      option.values.forEach((value) => map.set(value.id, value.label));
+    });
+    return map;
+  }, [optionCatalog]);
+
   useEffect(() => {
-    if (options.length === 0) {
-      // If no options, variants should be empty
+    setSelections(initialSelections);
+  }, [initialSelections]);
+
+  useEffect(() => {
+    setVariants(initialVariants);
+  }, [initialVariants]);
+
+  useEffect(() => {
+    const previousBaseSku = previousBaseSkuRef.current;
+    const nextBaseSku = baseSku.trim();
+    if (!nextBaseSku || previousBaseSku === nextBaseSku) {
+      return;
+    }
+    if (!previousBaseSku) {
+      previousBaseSkuRef.current = nextBaseSku;
+      return;
+    }
+    setVariants((currentVariants) => {
+      const nextVariants = currentVariants.map((variant) => {
+        if (!variant.sku.startsWith(`${previousBaseSku}-`)) {
+          return variant;
+        }
+        return { ...variant, sku: `${nextBaseSku}-${variant.sku.slice(previousBaseSku.length + 1)}` };
+      });
+      if (JSON.stringify(nextVariants) !== JSON.stringify(currentVariants)) {
+        onChange(selections, nextVariants);
+      }
+      return nextVariants;
+    });
+    previousBaseSkuRef.current = nextBaseSku;
+  }, [baseSku]);
+
+  const emitSelections = (nextSelections: VariantOptionSelection[], nextVariants = variants) => {
+    setSelections(nextSelections);
+    onChange(nextSelections, nextVariants);
+  };
+
+  useEffect(() => {
+    if (selections.length === 0 || selections.some((selection) => selection.valueIds.length === 0)) {
       if (variants.length > 0) {
-         setVariants([]);
-         onChange(options, []);
+        setVariants([]);
+        onChange(selections, []);
       }
       return;
     }
 
-    // Cartesian product
-    const generateCombinations = (opts: VariantOption[]): string[][] => {
-      const result: string[][] = [];
-      const helper = (arr: string[], i: number) => {
-        if (i === opts.length) {
-          result.push([...arr]);
-          return;
-        }
-        if (opts[i].values.length === 0) {
-          // If this option has no values yet, just skip it or pass null
-          helper(arr, i + 1);
-        } else {
-          for (let j = 0; j < opts[i].values.length; j++) {
-            arr.push(opts[i].values[j]);
-            helper(arr, i + 1);
-            arr.pop();
-          }
-        }
-      };
-      helper([], 0);
-      return result;
-    };
-
-    const combinations = generateCombinations(options);
-    
-    if (combinations.length === 0 || combinations[0].length === 0) {
-       // All options are empty
-       setVariants([]);
-       onChange(options, []);
-       return;
+    const combos: VariantRow["optionValues"][] = [[]];
+    for (const selection of selections) {
+      const next: VariantRow["optionValues"][] = [];
+      combos.forEach((combo) => {
+        selection.valueIds.forEach((valueId) => {
+          next.push([...combo, { optionId: selection.optionId, valueId }]);
+        });
+      });
+      combos.splice(0, combos.length, ...next);
     }
 
-    // Map new combinations to existing variants to preserve inputted price/stock
-    const newVariants: VariantRow[] = combinations.map((combo) => {
-      const comboKey = combo.join("-");
-      // Find if we already have this combo
-      const existing = variants.find(v => v.optionValues.join("-") === comboKey);
-      if (existing) return existing;
-      
+    const nextVariants = combos.map((combo) => {
+      const key = buildVariantKey(combo);
+      const existing = variants.find((variant) => buildVariantKey(variant.optionValues) === key);
+      if (existing) {
+        return existing;
+      }
       return {
-        sku: "", // Will be filled by magic wand
+        sku: "",
         price: basePrice,
         stock: 0,
         optionValues: combo,
-      };
+      } satisfies VariantRow;
     });
 
-    // Only update if it changed
-    if (JSON.stringify(newVariants) !== JSON.stringify(variants)) {
-      setVariants(newVariants);
-      onChange(options, newVariants);
+    if (JSON.stringify(nextVariants) !== JSON.stringify(variants)) {
+      setVariants(nextVariants);
+      onChange(selections, nextVariants);
     }
-  }, [options, basePrice]);
+  }, [selections, basePrice, optionCatalog]);
 
-  // Handle Option Changes
+  const availableOptions = (currentOptionId?: Id<"productOptions">) => {
+    const used = new Set(selections.map((selection) => selection.optionId));
+    return optionCatalog.filter((option) => option.id === currentOptionId || !used.has(option.id));
+  };
+
   const addOption = () => {
-    setOptions([...options, { name: "", values: [] }]);
-  };
-
-  const updateOptionName = (idx: number, name: string) => {
-    const newOpts = [...options];
-    newOpts[idx].name = name;
-    setOptions(newOpts);
-  };
-
-  const addOptionValue = (idx: number, val: string) => {
-    if (!val.trim()) return;
-    const newOpts = [...options];
-    if (!newOpts[idx].values.includes(val.trim())) {
-      newOpts[idx].values.push(val.trim());
-      setOptions(newOpts);
+    const option = availableOptions()[0];
+    if (!option) {
+      toast.error("Không còn thuộc tính nào để chọn");
+      return;
     }
+    emitSelections([...selections, { optionId: option.id, valueIds: [] }]);
   };
 
-  const removeOptionValue = (optIdx: number, valIdx: number) => {
-    const newOpts = [...options];
-    newOpts[optIdx].values.splice(valIdx, 1);
-    // If no values left, maybe remove option? Or keep it empty.
-    setOptions(newOpts);
+  const updateOption = (index: number, optionId: Id<"productOptions">) => {
+    const nextSelections = [...selections];
+    nextSelections[index] = { optionId, valueIds: [] };
+    emitSelections(nextSelections);
   };
 
-  const removeOption = (idx: number) => {
-    const newOpts = [...options];
-    newOpts.splice(idx, 1);
-    setOptions(newOpts);
+  const removeOption = (index: number) => {
+    emitSelections(selections.filter((_, itemIndex) => itemIndex !== index));
   };
 
-  // Magic Wand
+  const toggleValue = (optionIndex: number, valueId: Id<"productOptionValues">) => {
+    const nextSelections = [...selections];
+    const selection = nextSelections[optionIndex];
+    const nextValueIds = selection.valueIds.includes(valueId)
+      ? selection.valueIds.filter((id) => id !== valueId)
+      : [...selection.valueIds, valueId];
+    nextSelections[optionIndex] = { ...selection, valueIds: nextValueIds };
+    emitSelections(nextSelections);
+  };
+
+  const selectAllValues = (optionIndex: number) => {
+    const selection = selections[optionIndex];
+    const option = catalogById.get(selection.optionId);
+    if (!option) {return;}
+    const nextSelections = [...selections];
+    nextSelections[optionIndex] = { ...selection, valueIds: option.values.map((value) => value.id) };
+    emitSelections(nextSelections);
+  };
+
+  const clearValues = (optionIndex: number) => {
+    const nextSelections = [...selections];
+    nextSelections[optionIndex] = { ...nextSelections[optionIndex], valueIds: [] };
+    emitSelections(nextSelections);
+  };
+
   const handleMagicWand = () => {
     const safeBaseSku = baseSku.trim() || "SP";
-    const newVariants = variants.map(v => {
-      const suffix = v.optionValues.map(val => {
-        // e.g. "Đen" -> "DEN", "XL" -> "XL"
-        return val.toUpperCase().replace(/\s+/g, "").substring(0, 3);
-      }).join("-");
-      return { ...v, sku: `${safeBaseSku}-${suffix}` };
+    const nextVariants = variants.map((variant) => {
+      const suffix = variant.optionValues
+        .map((item) => normalizeSkuPart(valueLabelById.get(item.valueId) ?? ""))
+        .filter(Boolean)
+        .join("-");
+      return { ...variant, sku: suffix ? `${safeBaseSku}-${suffix}` : safeBaseSku };
     });
-    setVariants(newVariants);
-    onChange(options, newVariants);
-    toast.success("Đã tự động sinh SKU cho toàn bộ biến thể!");
+    setVariants(nextVariants);
+    onChange(selections, nextVariants);
+    toast.success("Đã tự động sinh SKU cho toàn bộ biến thể");
   };
 
-  // Inline Variant Field Edit
-  const updateVariantField = (idx: number, field: keyof VariantRow, value: any) => {
-    const newVars = [...variants];
-    newVars[idx] = { ...newVars[idx], [field]: value };
-    setVariants(newVars);
-    onChange(options, newVars);
+  const updateVariantField = (index: number, field: keyof Pick<VariantRow, "sku" | "price" | "salePrice" | "stock">, value: string | number | undefined) => {
+    const nextVariants = [...variants];
+    nextVariants[index] = { ...nextVariants[index], [field]: value };
+    setVariants(nextVariants);
+    onChange(selections, nextVariants);
   };
 
-  // Delete Variant
   const handleDeleteVariantClick = (variant: VariantRow) => {
     if (!variant.id) {
-      // It's a new variant, just remove it locally
-      const newVars = variants.filter(v => v !== variant);
-      setVariants(newVars);
-      onChange(options, newVars);
-    } else {
-      // Existing variant: ask for 2-step confirmation
-      setVariantToDelete(variant);
+      const nextVariants = variants.filter((item) => item !== variant);
+      setVariants(nextVariants);
+      onChange(selections, nextVariants);
+      return;
     }
+    setVariantToDelete(variant);
   };
 
   const confirmDeleteVariant = async () => {
-    if (!variantToDelete?.id) return;
-    
+    if (!variantToDelete?.id) {return;}
     try {
-      await removeVariantAPI({ variantId: variantToDelete.id as Id<"productVariants"> });
-      
-      const newVars = variants.filter(v => v.id !== variantToDelete.id);
-      setVariants(newVars);
-      onChange(options, newVars);
-      toast.success("Đã xóa biến thể và dọn dẹp các dữ liệu liên quan.");
+      await removeVariantAPI({ variantId: variantToDelete.id });
+      const nextVariants = variants.filter((variant) => variant.id !== variantToDelete.id);
+      setVariants(nextVariants);
+      onChange(selections, nextVariants);
+      toast.success("Đã xóa biến thể và dọn dẹp dữ liệu liên quan");
     } catch {
-      toast.error("Lỗi khi xóa biến thể.");
+      toast.error("Lỗi khi xóa biến thể");
     } finally {
       setVariantToDelete(null);
     }
   };
 
+  const variantLabel = (variant: VariantRow) => variant.optionValues
+    .map((item) => {
+      const optionName = catalogById.get(item.optionId)?.name;
+      const valueLabel = valueLabelById.get(item.valueId) ?? "N/A";
+      return optionName ? `${optionName}: ${valueLabel}` : valueLabel;
+    })
+    .join(" / ");
+
   return (
-    <div className="space-y-6 border rounded-lg p-6 bg-slate-50">
+    <div className="space-y-6 rounded-lg border bg-slate-50 p-6 dark:border-slate-700 dark:bg-slate-900/40">
       <div>
-        <h3 className="text-lg font-medium">Thuộc tính Sản phẩm (Tùy chọn)</h3>
-        <p className="text-sm text-muted-foreground">Thêm màu sắc, kích thước, chất liệu...</p>
+        <h3 className="text-lg font-medium">Tạo nhanh phiên bản từ thuộc tính có sẵn</h3>
+        <p className="text-sm text-slate-500">Chọn thuộc tính và giá trị đã cấu hình ở trang Loại tùy chọn, hệ thống sẽ tự tạo bảng phiên bản tổ hợp.</p>
       </div>
 
-      {/* Options Builder */}
       <div className="space-y-4">
-        {options.map((opt, oIdx) => (
-          <div key={oIdx} className="flex flex-col md:flex-row gap-4 items-start p-4 bg-white border rounded-md shadow-sm">
-            <div className="w-full md:w-1/3">
-              <Input 
-                placeholder="Tên thuộc tính (VD: Màu sắc)" 
-                value={opt.name} 
-                onChange={(e) => updateOptionName(oIdx, e.target.value)}
-              />
-            </div>
-            <div className="flex-1 w-full flex flex-col gap-2">
-              <div className="flex flex-wrap gap-2">
-                {opt.values.map((v, vIdx) => (
-                  <span key={vIdx} className="px-3 py-1 bg-slate-100 border rounded-full text-sm flex items-center gap-1">
-                    {v}
-                    <X className="w-3 h-3 cursor-pointer text-slate-400 hover:text-red-500" onClick={() => removeOptionValue(oIdx, vIdx)} />
-                  </span>
-                ))}
+        {selections.map((selection, optionIndex) => {
+          const option = catalogById.get(selection.optionId);
+          const optionValues = option?.values ?? [];
+          return (
+            <div key={`${selection.optionId}-${optionIndex}`} className="rounded-md border bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start">
+                <div className="w-full md:w-64">
+                  <Label>Thuộc tính</Label>
+                  <select
+                    value={selection.optionId}
+                    onChange={(event) => updateOption(optionIndex, event.target.value as Id<"productOptions">)}
+                    className="mt-2 h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    {availableOptions(selection.optionId).map((catalogOption) => (
+                      <option key={catalogOption.id} value={catalogOption.id}>{catalogOption.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Giá trị có sẵn</Label>
+                    {optionValues.length > 0 && (
+                      <div className="flex gap-2">
+                        <Button type="button" variant="ghost" size="sm" onClick={() => selectAllValues(optionIndex)}>Chọn tất cả</Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => clearValues(optionIndex)}>Bỏ chọn</Button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {optionValues.map((value) => {
+                      const checked = selection.valueIds.includes(value.id);
+                      return (
+                        <button
+                          key={value.id}
+                          type="button"
+                          onClick={() => toggleValue(optionIndex, value.id)}
+                          className={`rounded-full border px-3 py-1 text-sm transition-colors ${checked
+                            ? 'border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-950 dark:text-blue-200'
+                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}
+                        >
+                          {value.label}
+                        </button>
+                      );
+                    })}
+                    {optionValues.length === 0 && (
+                      <p className="text-sm text-slate-500">Thuộc tính này chưa có giá trị. Hãy thêm giá trị ở trang Loại tùy chọn.</p>
+                    )}
+                  </div>
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={() => removeOption(optionIndex)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
-              <Input 
-                placeholder="Thêm giá trị và nhấn Enter (VD: Đen)" 
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addOptionValue(oIdx, e.currentTarget.value);
-                    e.currentTarget.value = "";
-                  }
-                }}
-              />
             </div>
-            <Button variant="ghost" size="icon" className="text-red-500 mt-1 md:mt-0" onClick={() => removeOption(oIdx)}>
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
-        ))}
+          );
+        })}
 
-        <Button type="button" variant="outline" onClick={addOption} className="gap-2">
-          <Plus className="w-4 h-4" /> Thêm Thuộc Tính
+        <Button type="button" variant="outline" onClick={addOption} className="gap-2" disabled={availableOptions().length === 0}>
+          <Plus className="h-4 w-4" /> Thêm thuộc tính có sẵn
         </Button>
+        {optionCatalog.length === 0 && (
+          <p className="text-sm text-slate-500">Chưa có thuộc tính nào. Hãy tạo ở trang Loại tùy chọn trước.</p>
+        )}
       </div>
 
-      {/* Matrix Table */}
       {variants.length > 0 && (
         <div className="mt-8">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="font-medium text-slate-700">Bảng Biến Thể ({variants.length})</h4>
+          <div className="mb-2 flex items-center justify-between">
+            <h4 className="font-medium text-slate-700 dark:text-slate-200">Bảng phiên bản ({variants.length})</h4>
           </div>
-          
-          <div className="border rounded-md bg-white overflow-hidden">
+          <div className="overflow-hidden rounded-md border bg-white dark:border-slate-700 dark:bg-slate-900">
             <Table>
-              <TableHeader className="bg-slate-50">
+              <TableHeader className="bg-slate-50 dark:bg-slate-800">
                 <TableRow>
-                  <TableHead className="w-[150px]">Phân loại</TableHead>
+                  <TableHead className="w-[220px]">Phân loại</TableHead>
                   <TableHead>
                     <div className="flex items-center gap-2">
                       SKU
-                      <Button type="button" size="sm" variant="secondary" onClick={handleMagicWand} className="h-7 px-2 text-xs font-semibold text-purple-600 bg-purple-100 hover:bg-purple-200">
-                        <Wand2 className="w-3 h-3 mr-1" /> Tự sinh SKU
+                      <Button type="button" size="sm" variant="secondary" onClick={handleMagicWand} className="h-7 px-2 text-xs font-semibold text-purple-600">
+                        <Wand2 className="mr-1 h-3 w-3" /> Tự sinh SKU
                       </Button>
                     </div>
                   </TableHead>
                   <TableHead className="w-[150px]">Giá bán</TableHead>
-                  <TableHead className="w-[150px]">Giá kho</TableHead>
+                  <TableHead className="w-[150px]">Giá trước giảm</TableHead>
                   <TableHead className="w-[120px]">Tồn kho</TableHead>
-                  <TableHead className="w-[60px]"></TableHead>
+                  <TableHead className="w-[60px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {variants.map((v, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell className="font-medium">
-                      {v.optionValues.join(" • ")}
+                {variants.map((variant, index) => (
+                  <TableRow key={variant.id ?? buildVariantKey(variant.optionValues)}>
+                    <TableCell className="font-medium">{variantLabel(variant)}</TableCell>
+                    <TableCell>
+                      <Input value={variant.sku} onChange={(event) => updateVariantField(index, "sku", event.target.value)} placeholder="VD: SP-DEN-39" className="h-8" />
                     </TableCell>
                     <TableCell>
-                      <Input 
-                        value={v.sku} 
-                        onChange={(e) => updateVariantField(idx, "sku", e.target.value)}
-                        placeholder="VD: SP-DEN-39"
-                        className="h-8"
-                      />
+                      <Input type="number" value={variant.price || ""} onChange={(event) => updateVariantField(index, "price", Number.parseFloat(event.target.value) || 0)} className="h-8" />
                     </TableCell>
                     <TableCell>
-                      <Input 
-                        type="number"
-                        value={v.price || ""} 
-                        onChange={(e) => updateVariantField(idx, "price", parseFloat(e.target.value))}
-                        className="h-8"
-                      />
+                      <Input type="number" value={variant.salePrice || ""} onChange={(event) => updateVariantField(index, "salePrice", event.target.value.trim() ? Number.parseFloat(event.target.value) || undefined : undefined)} className="h-8" />
                     </TableCell>
                     <TableCell>
-                      <Input 
-                        type="number"
-                        value={v.salePrice || ""} 
-                        onChange={(e) => updateVariantField(idx, "salePrice", parseFloat(e.target.value))}
-                        className="h-8"
-                      />
+                      <Input type="number" value={variant.stock || ""} onChange={(event) => updateVariantField(index, "stock", Number.parseInt(event.target.value) || 0)} className="h-8" />
                     </TableCell>
                     <TableCell>
-                      <Input 
-                        type="number"
-                        value={v.stock || ""} 
-                        onChange={(e) => updateVariantField(idx, "stock", parseInt(e.target.value))}
-                        className="h-8"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => handleDeleteVariantClick(v)}>
-                        <Trash2 className="w-4 h-4 text-red-400 hover:text-red-600" />
+                      <Button type="button" variant="ghost" size="icon" onClick={() => handleDeleteVariantClick(variant)}>
+                        <Trash2 className="h-4 w-4 text-red-400 hover:text-red-600" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -323,31 +411,24 @@ export function InlineMatrixBuilder({
         </div>
       )}
 
-      {/* 2-Step Confirmation Dialog */}
-      <Dialog open={!!variantToDelete} onOpenChange={() => setVariantToDelete(null)}>
+      <Dialog open={Boolean(variantToDelete)} onOpenChange={() => setVariantToDelete(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="w-5 h-5" /> Cảnh báo quan trọng!
+              <AlertTriangle className="h-5 w-5" /> Cảnh báo quan trọng
             </DialogTitle>
             <DialogDescription className="text-slate-700">
-              Bạn đang yêu cầu <b>xóa vĩnh viễn (Hard Delete)</b> biến thể <b>{variantToDelete?.optionValues.join(" - ")}</b>.
-              <br/><br/>
-              Hệ thống sẽ <b>tự động dọn dẹp</b> các Giỏ hàng (Carts) và Danh sách yêu thích (Wishlist) đang chứa biến thể này.
-              Lịch sử Đơn hàng (Orders) vẫn sẽ được giữ lại an toàn.
-              <br/><br/>
-              Bạn có chắc chắn muốn xóa không? Hành động này không thể hoàn tác.
+              Bạn đang yêu cầu <b>xóa vĩnh viễn</b> biến thể <b>{variantToDelete ? variantLabel(variantToDelete) : ''}</b>.
+              <br /><br />
+              Hệ thống sẽ tự động dọn dẹp giỏ hàng và wishlist liên quan. Lịch sử đơn hàng vẫn được giữ lại.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setVariantToDelete(null)}>Hủy</Button>
-            <Button onClick={confirmDeleteVariant} className="bg-red-600 hover:bg-red-700 text-white">
-              Vẫn xóa vĩnh viễn
-            </Button>
+            <Button type="button" variant="outline" onClick={() => setVariantToDelete(null)}>Hủy</Button>
+            <Button type="button" onClick={confirmDeleteVariant} className="bg-red-600 text-white hover:bg-red-700">Vẫn xóa vĩnh viễn</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }

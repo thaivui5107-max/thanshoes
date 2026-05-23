@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
@@ -22,6 +22,8 @@ import { QuickCreateCategoryModal } from '@/app/admin/products/components/QuickC
 import { resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
 import { HomeComponentStickyFooter } from '@/app/admin/home-components/_shared/components/HomeComponentStickyFooter';
 import { AiEntityImportDialog, type AiEntityImportPayload } from '@/app/admin/components/AiEntityImportDialog';
+import { InlineMatrixBuilder, type OptionCatalogItem, type VariantOptionSelection, type VariantRow } from '@/app/admin/products/components/inline-matrix-builder';
+import { normalizeVariantRows, normalizeVariantSelections, validateVariantPayload } from '@/app/admin/products/components/inline-variant-utils';
 
 const MODULE_KEY = 'products';
 
@@ -36,10 +38,10 @@ export default function ProductCreatePage() {
 function ProductCreateContent() {
   const router = useRouter();
   const categoriesData = useQuery(api.productCategories.listActive);
-  const createProduct = useMutation(api.products.create);
+  const createProduct = useMutation(api.productsSmart.createProductWithVariants);
   const fieldsData = useQuery(api.admin.modules.listEnabledModuleFields, { moduleKey: MODULE_KEY });
   const settingsData = useQuery(api.admin.modules.listModuleSettings, { moduleKey: MODULE_KEY });
-  const optionsData = useQuery(api.productOptions.listActive);
+  const optionsData = useQuery(api.productOptions.listActiveWithValues);
 
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -63,7 +65,8 @@ function ProductCreateContent() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editorResetKey, setEditorResetKey] = useState(0);
   const [hasVariants, setHasVariants] = useState(false);
-  const [selectedOptionIds, setSelectedOptionIds] = useState<Id<'productOptions'>[]>([]);
+  const [variantSelections, setVariantSelections] = useState<VariantOptionSelection[]>([]);
+  const [variantRows, setVariantRows] = useState<VariantRow[]>([]);
   const [productType, setProductType] = useState<'physical' | 'digital'>('physical');
   const [digitalDeliveryType, setDigitalDeliveryType] = useState<'account' | 'license' | 'download' | 'custom'>('account');
   const [digitalCredentialsTemplate, setDigitalCredentialsTemplate] = useState<{
@@ -74,6 +77,16 @@ function ProductCreateContent() {
     customContent?: string;
     expiresAt?: number;
   }>({});
+  const lastGeneratedSkuRef = useRef('');
+  const generatedSku = useQuery(
+    api.productsSmart.generateSmartSku,
+    name.trim() ? { name: name.trim() } : 'skip'
+  );
+  const resolvedSkuPreview = sku.trim() || generatedSku || '';
+  const skuExists = useQuery(
+    api.productsSmart.checkSkuExists,
+    resolvedSkuPreview ? { sku: resolvedSkuPreview } : 'skip'
+  );
 
   const enabledFields = useMemo(() => {
     const fields = new Set<string>();
@@ -98,6 +111,11 @@ function ProductCreateContent() {
 
   const variantPricing = useMemo(() => {
     const setting = settingsData?.find(s => s.settingKey === 'variantPricing');
+    return (setting?.value as string) || 'variant';
+  }, [settingsData]);
+
+  const variantStock = useMemo(() => {
+    const setting = settingsData?.find(s => s.settingKey === 'variantStock');
     return (setting?.value as string) || 'variant';
   }, [settingsData]);
 
@@ -135,7 +153,27 @@ function ProductCreateContent() {
   const isAffiliateMode = saleMode === 'affiliate';
   const isPriceRequired = saleMode === 'cart';
   const showProductTypeSelector = productTypeMode === 'both';
-  const hideBasePricing = variantEnabled && variantPricing === 'variant';
+  const hideBasePricing = variantEnabled && hasVariants && variantPricing === 'variant';
+  const hideBaseStock = variantEnabled && hasVariants && variantStock === 'variant';
+  const optionCatalog = useMemo<OptionCatalogItem[]>(() =>
+    (optionsData ?? [])
+      .map((option) => ({
+        id: option._id,
+        name: option.name,
+        order: option.order,
+        values: option.values
+          .filter((value) => value.active)
+          .sort((a, b) => a.order - b.order)
+          .map((value) => ({
+            id: value._id,
+            label: value.label ?? value.value,
+            order: value.order,
+          })),
+      }))
+      .sort((a, b) => a.order - b.order),
+  [optionsData]);
+  const normalizedVariantSelections = useMemo(() => normalizeVariantSelections(variantSelections), [variantSelections]);
+  const normalizedVariantRows = useMemo(() => normalizeVariantRows(variantRows), [variantRows]);
 
   useEffect(() => {
     if (defaultStatus) {
@@ -160,10 +198,15 @@ function ProductCreateContent() {
   }, [productTypeMode]);
 
   useEffect(() => {
-    if (!hasVariants) {
-      setSelectedOptionIds([]);
+    if (!generatedSku) {
+      return;
     }
-  }, [hasVariants]);
+    setSku((currentSku) => {
+      const shouldUseGenerated = !currentSku.trim() || currentSku === lastGeneratedSkuRef.current;
+      lastGeneratedSkuRef.current = generatedSku;
+      return shouldUseGenerated ? generatedSku : currentSku;
+    });
+  }, [generatedSku]);
 
   useEffect(() => {
     if (!isAffiliateMode) {
@@ -252,17 +295,28 @@ function ProductCreateContent() {
       toast.error('Vui lòng điền đầy đủ thông tin bắt buộc');
       return;
     }
-    if (variantEnabled && hasVariants && selectedOptionIds.length === 0) {
-      toast.error('Vui lòng chọn ít nhất một tùy chọn cho phiên bản');
-      return;
+    const variantPayload = {
+      options: variantEnabled && hasVariants ? normalizedVariantSelections : [],
+      variants: variantEnabled && hasVariants ? normalizedVariantRows : [],
+    };
+    if (variantEnabled && hasVariants) {
+      const variantError = validateVariantPayload(
+        variantPayload.options,
+        variantPayload.variants,
+        variantPricing === 'variant'
+      );
+      if (variantError) {
+        toast.error(variantError);
+        return;
+      }
     }
     if (isAffiliateMode && !affiliateLink.trim()) {
       toast.error('Vui lòng nhập link affiliate cho sản phẩm');
       return;
     }
-    // SKU required only if field is enabled
-    if (enabledFields.has('sku') && !sku.trim()) {
-      toast.error('Vui lòng nhập mã SKU');
+    const resolvedProductSku = sku.trim() || generatedSku || `SKU-${Date.now()}`;
+    if (resolvedProductSku && skuExists === true) {
+      toast.error('Mã SKU đã tồn tại, vui lòng chọn mã khác');
       return;
     }
     if (!hideBasePricing && salePrice.trim() !== '') {
@@ -278,7 +332,7 @@ function ProductCreateContent() {
 
     setIsSubmitting(true);
     try {
-      const resolvedStock = productType === 'digital' ? 0 : (Number.parseInt(stock) || 0);
+      const resolvedStock = productType === 'digital' || hideBaseStock ? 0 : (Number.parseInt(stock) || 0);
       const resolvedMetaTitle = truncateText(name.trim(), 60);
       const resolvedMetaDescription = truncateText(stripHtml(description || ''), 160);
       const resolvedGalleryItems = galleryItems
@@ -306,10 +360,11 @@ function ProductCreateContent() {
           ? (metaTitle.trim() || resolvedMetaTitle || undefined)
           : undefined,
         name: name.trim(),
-        optionIds: variantEnabled && hasVariants ? selectedOptionIds : undefined,
+        options: variantPayload.options,
+        variants: variantPayload.variants,
         price: hideBasePricing ? 0 : (Number.parseInt(price) || 0),
         salePrice: resolvedSalePrice,
-        sku: sku.trim() || `SKU-${Date.now()}`,
+        sku: resolvedProductSku,
         slug: slug.trim() || name.toLowerCase().replaceAll(/\s+/g, '-'),
         status,
         stock: resolvedStock,
@@ -359,8 +414,11 @@ function ProductCreateContent() {
                 </div>
                 {enabledFields.has('sku') && (
                   <div className="space-y-2">
-                    <Label>Mã SKU <span className="text-red-500">*</span></Label>
-                    <Input value={sku} onChange={(e) =>{  setSku(e.target.value); }} required placeholder="VD: PROD-001" className="font-mono" />
+                    <Label>Mã SKU</Label>
+                    <Input value={sku} onChange={(e) =>{  setSku(e.target.value); }} placeholder="Tự sinh theo tên nếu để trống" className="font-mono" />
+                    {skuExists === true && (
+                      <p className="text-xs text-red-500">SKU này đã tồn tại.</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -448,7 +506,7 @@ function ProductCreateContent() {
                   )}
                 </div>
               )}
-              {enabledFields.has('stock') && productType !== 'digital' && (
+              {enabledFields.has('stock') && productType !== 'digital' && !hideBaseStock && (
                 <div className="space-y-2">
                   <Label>Số lượng tồn kho</Label>
                   <Input type="number" value={stock} onChange={(e) =>{  setStock(e.target.value); }} placeholder="0" min="0" />
@@ -554,29 +612,17 @@ function ProductCreateContent() {
                   <Label htmlFor="has-variants" className="cursor-pointer">Sản phẩm có nhiều phiên bản</Label>
                 </div>
                 {hasVariants && (
-                  <div className="space-y-2">
-                    <Label>Chọn tùy chọn cho phiên bản</Label>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {optionsData?.map(option => (
-                        <label key={option._id} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                          <input
-                            type="checkbox"
-                            checked={selectedOptionIds.includes(option._id)}
-                            onChange={() =>{
-                              setSelectedOptionIds(prev => prev.includes(option._id)
-                                ? prev.filter(id => id !== option._id)
-                                : [...prev, option._id]);
-                            }}
-                            className="w-4 h-4 rounded border-slate-300"
-                          />
-                          <span>{option.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                    {optionsData?.length === 0 && (
-                      <p className="text-xs text-slate-500">Chưa có tùy chọn nào. Hãy tạo option trước.</p>
-                    )}
-                  </div>
+                  <InlineMatrixBuilder
+                    baseSku={resolvedSkuPreview || 'SP'}
+                    basePrice={Number.parseInt(price) || 0}
+                    optionCatalog={optionCatalog}
+                    initialSelections={variantSelections}
+                    initialVariants={variantRows}
+                    onChange={(selections, variants) => {
+                      setVariantSelections(selections);
+                      setVariantRows(variants);
+                    }}
+                  />
                 )}
               </CardContent>
             </Card>

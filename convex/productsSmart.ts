@@ -1,376 +1,641 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { api } from "./_generated/api";
+import { ConvexError, v } from "convex/values";
+import { productStatus } from "./lib/validators";
+import { resolveUniqueSlug } from "./lib/iaSlugs";
+import { dedupeStorageIds, syncOwnerFilesAndCleanup } from "./lib/fileService";
 import type { Id } from "./_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 
-/**
- * 1. Generate Smart SKU
- * Gợi ý một mã SKU dựa trên ký tự đầu của Tên Sản phẩm.
- * Ví dụ: "Áo Thun Nam" -> ATN-001
- */
-export const generateSmartSku = query({
-  args: { name: v.string() },
-  handler: async (ctx, args) => {
-    if (!args.name.trim()) return "SP-001";
-    
-    // Lấy ký tự đầu của mỗi từ, viết hoa
-    const words = args.name.trim().split(/\s+/);
-    let prefix = words.map(w => w.charAt(0).toUpperCase()).join("").replace(/[^A-Z0-9]/g, '');
-    if (prefix.length === 0) prefix = "SP";
-    if (prefix.length > 4) prefix = prefix.substring(0, 4);
-
-    // Lấy tổng số lượng SP để nối số
-    const stats = await ctx.db.query("productStats").withIndex("by_key", q => q.eq("key", "total")).unique();
-    const count = (stats?.count ?? 0) + 1;
-    const suffix = count.toString().padStart(3, "0");
-
-    return `${prefix}-${suffix}`;
-  }
+const renderTypeDoc = v.union(v.literal("content"), v.literal("markdown"), v.literal("html"));
+const productTypeDoc = v.union(v.literal("physical"), v.literal("digital"));
+const digitalDeliveryTypeDoc = v.union(
+  v.literal("account"),
+  v.literal("license"),
+  v.literal("download"),
+  v.literal("custom")
+);
+const digitalCredentialsDoc = v.object({
+  username: v.optional(v.string()),
+  password: v.optional(v.string()),
+  licenseKey: v.optional(v.string()),
+  downloadUrl: v.optional(v.string()),
+  customContent: v.optional(v.string()),
+  expiresAt: v.optional(v.number()),
 });
 
-/**
- * 2. Cảnh báo trùng lặp SKU
- */
-export const checkSkuExists = query({
-  args: { sku: v.string(), ignoreProductId: v.optional(v.id("products")) },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db.query("products").withIndex("by_sku", q => q.eq("sku", args.sku)).unique();
-    if (!existing) return false;
-    if (args.ignoreProductId && existing._id === args.ignoreProductId) return false;
-    return true;
-  }
+const inlineOptionValueDoc = v.object({
+  optionId: v.id("productOptions"),
+  valueId: v.id("productOptionValues"),
 });
 
 const inlineVariantDoc = v.object({
   id: v.optional(v.id("productVariants")),
   sku: v.string(),
   price: v.number(),
-  salePrice: v.optional(v.number()),
+  salePrice: v.optional(v.union(v.number(), v.null())),
   stock: v.number(),
-  optionValues: v.array(v.string()), // Ví dụ: ["Đỏ", "39"]
+  optionValues: v.array(inlineOptionValueDoc),
 });
 
 const inlineOptionDoc = v.object({
-  name: v.string(),
-  values: v.array(v.string()), // Ví dụ: ["Đỏ", "Xanh"]
+  optionId: v.id("productOptions"),
+  valueIds: v.array(v.id("productOptionValues")),
 });
 
-/**
- * Helper: Đồng bộ Options và OptionValues
- * Trả về map OptionName -> OptionId và map OptionValue -> OptionValueId
- */
-async function syncOptions(ctx: any, options: { name: string; values: string[] }[]) {
-  const optionIds: Id<"productOptions">[] = [];
-  const valMap = new Map<string, Id<"productOptionValues">>(); // Key: "OptionName:Value" -> Value: Id
+const smartProductArgs = {
+  affiliateLink: v.optional(v.string()),
+  categoryId: v.id("productCategories"),
+  description: v.optional(v.string()),
+  renderType: v.optional(renderTypeDoc),
+  markdownRender: v.optional(v.string()),
+  htmlRender: v.optional(v.string()),
+  hasVariants: v.optional(v.boolean()),
+  image: v.optional(v.string()),
+  images: v.optional(v.array(v.string())),
+  imageStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+  imageStorageIds: v.optional(v.array(v.union(v.id("_storage"), v.null()))),
+  productType: v.optional(productTypeDoc),
+  digitalDeliveryType: v.optional(digitalDeliveryTypeDoc),
+  digitalCredentialsTemplate: v.optional(digitalCredentialsDoc),
+  metaDescription: v.optional(v.string()),
+  metaTitle: v.optional(v.string()),
+  name: v.string(),
+  order: v.optional(v.number()),
+  price: v.number(),
+  salePrice: v.optional(v.union(v.number(), v.null())),
+  sku: v.string(),
+  slug: v.string(),
+  status: v.optional(productStatus),
+  stock: v.optional(v.number()),
+  options: v.array(inlineOptionDoc),
+  variants: v.array(inlineVariantDoc),
+};
 
-  for (let i = 0; i < options.length; i++) {
-    const opt = options[i];
-    if (!opt.name.trim()) continue;
-    
-    // Tìm hoặc tạo Option
-    let optionRecord = await ctx.db.query("productOptions").filter((q: any) => q.eq(q.field("name"), opt.name)).first();
-    if (!optionRecord) {
-      const oid = await ctx.db.insert("productOptions", {
-        name: opt.name,
-        slug: opt.name.toLowerCase().replace(/\s+/g, '-'),
-        active: true,
-        displayType: "dropdown",
-        isPreset: false,
-        order: i,
-      });
-      optionRecord = await ctx.db.get(oid);
-    }
-    optionIds.push(optionRecord!._id);
+type InlineOptionInput = {
+  optionId: Id<"productOptions">;
+  valueIds: Id<"productOptionValues">[];
+};
 
-    // Tìm hoặc tạo OptionValues
-    for (let j = 0; j < opt.values.length; j++) {
-      const val = opt.values[j];
-      if (!val.trim()) continue;
-      
-      let valRecord = await ctx.db.query("productOptionValues")
-        .withIndex("by_option", (q: any) => q.eq("optionId", optionRecord!._id))
-        .filter((q: any) => q.eq(q.field("value"), val))
-        .first();
-        
-      if (!valRecord) {
-        const vid = await ctx.db.insert("productOptionValues", {
-          optionId: optionRecord!._id,
-          value: val,
-          active: true,
-          order: j,
-        });
-        valRecord = await ctx.db.get(vid);
-      }
-      valMap.set(`${opt.name}:${val}`, valRecord!._id);
-    }
-  }
+type InlineVariantInput = {
+  id?: Id<"productVariants">;
+  sku: string;
+  price: number;
+  salePrice?: number | null;
+  stock: number;
+  optionValues: Array<{
+    optionId: Id<"productOptions">;
+    valueId: Id<"productOptionValues">;
+  }>;
+};
 
-  return { optionIds, valMap };
+const normalizeSkuText = (value: string) => value
+  .normalize("NFD").replaceAll(/[\u0300-\u036F]/g, "")
+  .replaceAll(/[đĐ]/g, "D")
+  .replaceAll(/[^A-Za-z0-9]/g, "")
+  .toUpperCase();
+
+const resolveSalePrice = (value?: number | null) =>
+  typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+
+async function getModuleSetting(ctx: MutationCtx, key: string) {
+  return await ctx.db
+    .query("moduleSettings")
+    .withIndex("by_module_setting", (q) => q.eq("moduleKey", "products").eq("settingKey", key))
+    .unique();
 }
 
-/**
- * 3. Create Product with Inline Variants (Transaction-like)
- */
-export const createProductWithVariants = mutation({
-  args: {
-    sku: v.string(),
-    name: v.string(),
-    categoryId: v.id("productCategories"),
-    price: v.number(),
-    salePrice: v.optional(v.number()),
-    stock: v.number(),
-    status: v.union(v.literal("Active"), v.literal("Draft"), v.literal("Archived")),
-    description: v.optional(v.string()),
-    image: v.optional(v.string()),
-    productType: v.optional(v.string()),
-    digitalDeliveryType: v.optional(v.string()),
-    options: v.array(inlineOptionDoc),
-    variants: v.array(inlineVariantDoc),
-  },
-  handler: async (ctx, args) => {
-    // Sync Options
-    const hasVariants = args.variants.length > 0;
-    const { optionIds, valMap } = hasVariants ? await syncOptions(ctx, args.options) : { optionIds: [], valMap: new Map() };
+async function getVariantSettings(ctx: MutationCtx) {
+  const [variantEnabled, variantPricing] = await Promise.all([
+    getModuleSetting(ctx, "variantEnabled"),
+    getModuleSetting(ctx, "variantPricing"),
+  ]);
+  return {
+    variantEnabled: Boolean(variantEnabled?.value),
+    variantPricing: (variantPricing?.value as "product" | "variant" | undefined) ?? "variant",
+  };
+}
 
-    // Get order
-    const totalStats = await ctx.db.query("productStats").withIndex("by_key", (q: any) => q.eq("key", "total")).unique();
-    const nextOrder = (totalStats?.lastOrder ?? 0) + 1;
+async function getNextOrder(ctx: MutationCtx) {
+  const totalStats = await ctx.db
+    .query("productStats")
+    .withIndex("by_key", (q) => q.eq("key", "total"))
+    .unique();
+  return totalStats?.lastOrder ?? 0;
+}
 
-    // 1. Tạo Product
-    const productId = await ctx.db.insert("products", {
-      sku: args.sku,
-      name: args.name,
-      slug: args.name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(),
-      categoryId: args.categoryId,
-      price: args.price,
-      salePrice: args.salePrice,
-      stock: args.stock,
-      status: args.status,
-      sales: 0,
-      order: nextOrder,
-      image: args.image,
-      description: args.description,
-      productType: args.productType as any,
-      digitalDeliveryType: args.digitalDeliveryType as any,
-      hasVariants: hasVariants,
-      optionIds: hasVariants ? optionIds : undefined,
-    });
+async function updateStats(ctx: MutationCtx, statusChange: { old?: string; new?: string }) {
+  const totalStats = await ctx.db
+    .query("productStats")
+    .withIndex("by_key", (q) => q.eq("key", "total"))
+    .unique();
 
-    // 2. Tạo Variants
-    if (hasVariants) {
-      for (let i = 0; i < args.variants.length; i++) {
-        const variant = args.variants[i];
-        
-        // Map string values to ObjectIDs
-        const optionValuesData = [];
-        for (let j = 0; j < variant.optionValues.length; j++) {
-          const optName = args.options[j]?.name;
-          const valName = variant.optionValues[j];
-          if (optName && valName) {
-            const valId = valMap.get(`${optName}:${valName}`);
-            if (valId) {
-              optionValuesData.push({ optionId: optionIds[j], valueId: valId });
-            }
-          }
-        }
-
-        await ctx.db.insert("productVariants", {
-          productId: productId,
-          sku: variant.sku || `${args.sku}-${i + 1}`,
-          price: variant.price,
-          salePrice: variant.salePrice,
-          stock: variant.stock,
-          status: "Active",
-          order: i,
-          optionValues: optionValuesData,
-        });
-      }
-    }
-
-    // 3. Update stats
+  if (statusChange.new && !statusChange.old) {
     if (totalStats) {
-      await ctx.db.patch(totalStats._id, { count: totalStats.count + 1, lastOrder: nextOrder });
+      await ctx.db.patch(totalStats._id, {
+        count: totalStats.count + 1,
+        lastOrder: totalStats.lastOrder + 1,
+      });
+    } else {
+      await ctx.db.insert("productStats", { count: 1, key: "total", lastOrder: 0 });
     }
-    const statusStats = await ctx.db.query("productStats").withIndex("by_key", (q: any) => q.eq("key", args.status)).unique();
-    if (statusStats) {
-      await ctx.db.patch(statusStats._id, { count: statusStats.count + 1 });
+  }
+
+  if (statusChange.old) {
+    const oldStats = await ctx.db
+      .query("productStats")
+      .withIndex("by_key", (q) => q.eq("key", statusChange.old!))
+      .unique();
+    if (oldStats && oldStats.count > 0) {
+      await ctx.db.patch(oldStats._id, { count: oldStats.count - 1 });
+    }
+  }
+
+  if (statusChange.new) {
+    const newStats = await ctx.db
+      .query("productStats")
+      .withIndex("by_key", (q) => q.eq("key", statusChange.new!))
+      .unique();
+    if (newStats) {
+      await ctx.db.patch(newStats._id, { count: newStats.count + 1 });
+    } else {
+      await ctx.db.insert("productStats", { count: 1, key: statusChange.new, lastOrder: 0 });
+    }
+  }
+}
+
+async function resolveProductType(ctx: MutationCtx, requested?: "physical" | "digital", fallback?: "physical" | "digital") {
+  const productTypeSetting = await getModuleSetting(ctx, "productTypeMode");
+  const productTypeMode = (productTypeSetting?.value as "physical" | "digital" | "both" | undefined) ?? "both";
+  if (productTypeMode === "physical" || productTypeMode === "digital") {
+    return productTypeMode;
+  }
+  return requested ?? fallback ?? "physical";
+}
+
+async function assertProductPrice(ctx: MutationCtx, price: number, salePrice: number | undefined, hasVariants: boolean) {
+  const saleModeSetting = await getModuleSetting(ctx, "saleMode");
+  const saleMode = saleModeSetting?.value === "contact" || saleModeSetting?.value === "affiliate"
+    ? saleModeSetting.value
+    : "cart";
+  const variantSettings = await getVariantSettings(ctx);
+  const hideBasePricing = variantSettings.variantEnabled && hasVariants && variantSettings.variantPricing === "variant";
+
+  if (saleMode === "cart" && !hideBasePricing && (!Number.isFinite(price) || price <= 0)) {
+    throw new Error("Giá bán phải lớn hơn 0");
+  }
+  if (salePrice !== undefined) {
+    if (!Number.isFinite(price) || price <= 0) {
+      throw new Error("Giá bán phải lớn hơn 0");
+    }
+    if (salePrice <= price) {
+      throw new Error("Giá so sánh phải lớn hơn giá bán");
+    }
+  }
+}
+
+async function assertUniqueProductSku(ctx: MutationCtx, sku: string, ignoreProductId?: Id<"products">) {
+  if (!sku.trim()) {
+    return;
+  }
+  const existing = await ctx.db
+    .query("products")
+    .withIndex("by_sku", (q) => q.eq("sku", sku))
+    .unique();
+  if (existing && existing._id !== ignoreProductId) {
+    throw new ConvexError({ code: "DUPLICATE_SKU", message: "Mã SKU đã tồn tại, vui lòng chọn mã khác" });
+  }
+}
+
+async function generateUniqueSmartSku(ctx: MutationCtx | QueryCtx, name: string, ignoreProductId?: Id<"products">) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const prefix = words.map((word) => normalizeSkuText(word).charAt(0)).join("").slice(0, 4) || "SP";
+  const stats = await ctx.db
+    .query("productStats")
+    .withIndex("by_key", (q) => q.eq("key", "total"))
+    .unique();
+  const baseCount = (stats?.count ?? 0) + 1;
+
+  for (let attempt = 0; attempt < 500; attempt += 1) {
+    const suffix = (baseCount + attempt).toString().padStart(3, "0");
+    const candidate = `${prefix}-${suffix}`;
+    const existing = await ctx.db
+      .query("products")
+      .withIndex("by_sku", (q) => q.eq("sku", candidate))
+      .unique();
+    if (!existing || existing._id === ignoreProductId) {
+      return candidate;
+    }
+  }
+
+  return `${prefix}-${Date.now()}`;
+}
+
+function normalizeInlineOptions(options: InlineOptionInput[]) {
+  const seen = new Set<string>();
+  return options
+    .map((option) => ({
+      optionId: option.optionId,
+      valueIds: Array.from(new Set(option.valueIds)).filter(Boolean),
+    }))
+    .filter((option) => {
+      if (option.valueIds.length === 0 || seen.has(option.optionId)) {
+        return false;
+      }
+      seen.add(option.optionId);
+      return true;
+    });
+}
+
+function normalizeInlineVariants(variants: InlineVariantInput[], baseSku: string) {
+  return variants
+    .map((variant, index) => ({
+      id: variant.id,
+      sku: variant.sku.trim() || `${baseSku}-${index + 1}`,
+      price: Number.isFinite(variant.price) ? variant.price : 0,
+      salePrice: resolveSalePrice(variant.salePrice),
+      stock: Number.isFinite(variant.stock) ? Math.max(0, Math.trunc(variant.stock)) : 0,
+      optionValues: variant.optionValues.filter((item) => Boolean(item.optionId && item.valueId)),
+    }))
+    .filter((variant) => variant.optionValues.length > 0);
+}
+
+function assertVariantMatrix(options: ReturnType<typeof normalizeInlineOptions>, variants: ReturnType<typeof normalizeInlineVariants>) {
+  if (options.length === 0) {
+    throw new Error("Vui lòng chọn ít nhất một thuộc tính có sẵn");
+  }
+  if (variants.length === 0) {
+    throw new Error("Vui lòng tạo ít nhất một phiên bản sản phẩm");
+  }
+  const optionIds = options.map((option) => option.optionId);
+  const optionIdSet = new Set(optionIds);
+  for (const variant of variants) {
+    if (variant.optionValues.length !== optionIds.length) {
+      throw new Error("Dữ liệu phiên bản không khớp với thuộc tính đã chọn");
+    }
+    for (const item of variant.optionValues) {
+      if (!optionIdSet.has(item.optionId)) {
+        throw new Error("Phiên bản chứa thuộc tính không nằm trong danh sách đã chọn");
+      }
+    }
+  }
+}
+
+async function validateOptionSelections(ctx: MutationCtx, options: ReturnType<typeof normalizeInlineOptions>) {
+  const optionIds: Id<"productOptions">[] = [];
+
+  for (const option of options) {
+    const optionRecord = await ctx.db.get(option.optionId);
+    if (!optionRecord) {
+      throw new Error("Thuộc tính phiên bản không tồn tại");
+    }
+    optionIds.push(option.optionId);
+
+    const valueDocs = await Promise.all(option.valueIds.map((valueId) => ctx.db.get(valueId)));
+    valueDocs.forEach((valueDoc) => {
+      if (!valueDoc) {
+        throw new Error("Giá trị thuộc tính không tồn tại");
+      }
+      if (valueDoc.optionId !== option.optionId) {
+        throw new Error("Giá trị thuộc tính không khớp với thuộc tính đã chọn");
+      }
+    });
+  }
+
+  return optionIds;
+}
+
+async function assertVariantOptionValues(ctx: MutationCtx, variant: ReturnType<typeof normalizeInlineVariants>[number], optionIds: Id<"productOptions">[]) {
+  const optionIdSet = new Set(optionIds);
+  const valueDocs = await Promise.all(variant.optionValues.map((item) => ctx.db.get(item.valueId)));
+
+  variant.optionValues.forEach((item, index) => {
+    const valueDoc = valueDocs[index];
+    if (!optionIdSet.has(item.optionId)) {
+      throw new Error("Phiên bản chứa thuộc tính không nằm trong danh sách đã chọn");
+    }
+    if (!valueDoc) {
+      throw new Error("Giá trị thuộc tính không tồn tại");
+    }
+    if (valueDoc.optionId !== item.optionId) {
+      throw new Error("Giá trị thuộc tính không khớp với thuộc tính đã chọn");
+    }
+  });
+}
+
+async function assertUniqueVariantSkus(
+  ctx: MutationCtx,
+  productSku: string,
+  variants: ReturnType<typeof normalizeInlineVariants>,
+  ignoreProductId?: Id<"products">
+) {
+  const seen = new Set<string>();
+  for (const variant of variants) {
+    const normalizedSku = variant.sku.toLowerCase();
+    if (normalizedSku === productSku.toLowerCase()) {
+      throw new Error(`SKU phiên bản không được trùng SKU sản phẩm: ${variant.sku}`);
+    }
+    if (seen.has(normalizedSku)) {
+      throw new Error(`SKU phiên bản bị trùng: ${variant.sku}`);
+    }
+    seen.add(normalizedSku);
+
+    const productWithSku = await ctx.db
+      .query("products")
+      .withIndex("by_sku", (q) => q.eq("sku", variant.sku))
+      .unique();
+    if (productWithSku && productWithSku._id !== ignoreProductId) {
+      throw new Error(`SKU phiên bản đã trùng với sản phẩm khác: ${variant.sku}`);
     }
 
-    return productId;
+    const existingVariant = await ctx.db
+      .query("productVariants")
+      .withIndex("by_sku", (q) => q.eq("sku", variant.sku))
+      .unique();
+    if (existingVariant && existingVariant._id !== variant.id) {
+      throw new Error(`SKU phiên bản đã tồn tại: ${variant.sku}`);
+    }
   }
+}
+
+async function upsertVariants(
+  ctx: MutationCtx,
+  productId: Id<"products">,
+  optionIds: Id<"productOptions">[],
+  variants: ReturnType<typeof normalizeInlineVariants>
+) {
+  const activeVariantIds = new Set<Id<"productVariants">>();
+
+  for (const [index, variant] of variants.entries()) {
+    await assertVariantOptionValues(ctx, variant, optionIds);
+    const payload = {
+      sku: variant.sku,
+      price: variant.price,
+      salePrice: variant.salePrice,
+      stock: variant.stock,
+      order: index,
+      optionValues: variant.optionValues,
+    };
+
+    if (variant.id) {
+      const existing = await ctx.db.get(variant.id);
+      if (!existing || existing.productId !== productId) {
+        throw new Error("Phiên bản không thuộc sản phẩm đang chỉnh sửa");
+      }
+      await ctx.db.patch(variant.id, payload);
+      activeVariantIds.add(variant.id);
+    } else {
+      const variantId = await ctx.db.insert("productVariants", {
+        productId,
+        status: "Active",
+        ...payload,
+      });
+      activeVariantIds.add(variantId);
+    }
+  }
+
+  const existingVariants = await ctx.db
+    .query("productVariants")
+    .withIndex("by_product", (q) => q.eq("productId", productId))
+    .collect();
+  for (const existing of existingVariants) {
+    if (!activeVariantIds.has(existing._id)) {
+      await cascadeDeleteVariant(ctx, existing._id);
+    }
+  }
+}
+
+export const generateSmartSku = query({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    return await generateUniqueSmartSku(ctx, args.name);
+  },
 });
 
-/**
- * 4. Update Product with Inline Variants
- */
-export const updateProductWithVariants = mutation({
-  args: {
-    id: v.id("products"),
-    sku: v.string(),
-    name: v.string(),
-    categoryId: v.id("productCategories"),
-    price: v.number(),
-    salePrice: v.optional(v.number()),
-    stock: v.number(),
-    status: v.union(v.literal("Active"), v.literal("Draft"), v.literal("Archived")),
-    description: v.optional(v.string()),
-    image: v.optional(v.string()),
-    productType: v.optional(v.string()),
-    digitalDeliveryType: v.optional(v.string()),
-    options: v.array(inlineOptionDoc),
-    variants: v.array(inlineVariantDoc),
-  },
+export const checkSkuExists = query({
+  args: { sku: v.string(), ignoreProductId: v.optional(v.id("products")) },
   handler: async (ctx, args) => {
-    const existing = await ctx.db.get(args.id);
-    if (!existing) throw new Error("Product not found");
+    const sku = args.sku.trim();
+    if (!sku) {
+      return false;
+    }
+    const existing = await ctx.db
+      .query("products")
+      .withIndex("by_sku", (q) => q.eq("sku", sku))
+      .unique();
+    return Boolean(existing && existing._id !== args.ignoreProductId);
+  },
+});
 
-    const hasVariants = args.variants.length > 0;
-    const { optionIds, valMap } = hasVariants ? await syncOptions(ctx, args.options) : { optionIds: [], valMap: new Map() };
+export const createProductWithVariants = mutation({
+  args: smartProductArgs,
+  handler: async (ctx, args) => {
+    const resolvedSku = args.sku.trim() || await generateUniqueSmartSku(ctx, args.name);
+    await assertUniqueProductSku(ctx, resolvedSku);
 
-    // Update Product
-    await ctx.db.patch(args.id, {
-      sku: args.sku,
-      name: args.name,
+    const normalizedOptions = normalizeInlineOptions(args.options);
+    const normalizedVariants = normalizeInlineVariants(args.variants, resolvedSku);
+    const hasVariants = Boolean(args.hasVariants) && normalizedVariants.length > 0;
+    if (args.hasVariants) {
+      assertVariantMatrix(normalizedOptions, normalizedVariants);
+      await assertUniqueVariantSkus(ctx, resolvedSku, normalizedVariants);
+    }
+
+    const resolvedSlug = await resolveUniqueSlug(ctx, { scope: "record", slug: args.slug });
+    const nextOrder = await getNextOrder(ctx);
+    const status = args.status ?? "Draft";
+    const productType = await resolveProductType(ctx, args.productType);
+    const salePrice = resolveSalePrice(args.salePrice);
+    await assertProductPrice(ctx, args.price, salePrice, hasVariants);
+    const optionIds = hasVariants ? await validateOptionSelections(ctx, normalizedOptions) : [];
+
+    const productId = await ctx.db.insert("products", {
+      affiliateLink: args.affiliateLink,
       categoryId: args.categoryId,
-      price: args.price,
-      salePrice: args.salePrice,
-      stock: args.stock,
-      status: args.status,
-      image: args.image,
       description: args.description,
-      productType: args.productType as any,
-      digitalDeliveryType: args.digitalDeliveryType as any,
-      hasVariants: hasVariants,
+      renderType: args.renderType ?? "content",
+      markdownRender: args.markdownRender,
+      htmlRender: args.htmlRender,
+      image: args.image,
+      images: args.images,
+      imageStorageId: args.imageStorageId,
+      imageStorageIds: args.imageStorageIds,
+      productType,
+      digitalDeliveryType: productType === "digital" ? args.digitalDeliveryType : undefined,
+      digitalCredentialsTemplate: productType === "digital" ? args.digitalCredentialsTemplate : undefined,
+      metaDescription: args.metaDescription,
+      metaTitle: args.metaTitle,
+      name: args.name,
+      order: args.order ?? nextOrder,
+      price: args.price,
+      salePrice,
+      sku: resolvedSku,
+      slug: resolvedSlug.slug,
+      status,
+      stock: args.stock ?? 0,
+      sales: 0,
+      hasVariants,
       optionIds: hasVariants ? optionIds : undefined,
     });
 
-    // Cập nhật Variants (Xử lý thông minh để giữ ID nếu edit, tạo mới nếu thêm)
+    await syncOwnerFilesAndCleanup(ctx, {
+      ownerField: "images",
+      ownerId: productId,
+      ownerTable: "products",
+      purpose: "product-gallery",
+    }, dedupeStorageIds([args.imageStorageId, ...(args.imageStorageIds ?? [])]));
+
     if (hasVariants) {
-      const activeVariantIds = new Set<string>();
-
-      for (let i = 0; i < args.variants.length; i++) {
-        const variant = args.variants[i];
-        
-        const optionValuesData = [];
-        for (let j = 0; j < variant.optionValues.length; j++) {
-          const optName = args.options[j]?.name;
-          const valName = variant.optionValues[j];
-          if (optName && valName) {
-            const valId = valMap.get(`${optName}:${valName}`);
-            if (valId) {
-              optionValuesData.push({ optionId: optionIds[j], valueId: valId });
-            }
-          }
-        }
-
-        if (variant.id) {
-          // Update
-          await ctx.db.patch(variant.id, {
-            sku: variant.sku,
-            price: variant.price,
-            salePrice: variant.salePrice,
-            stock: variant.stock,
-            order: i,
-            optionValues: optionValuesData,
-          });
-          activeVariantIds.add(variant.id);
-        } else {
-          // Insert
-          const newVid = await ctx.db.insert("productVariants", {
-            productId: args.id,
-            sku: variant.sku,
-            price: variant.price,
-            salePrice: variant.salePrice,
-            stock: variant.stock,
-            status: "Active",
-            order: i,
-            optionValues: optionValuesData,
-          });
-          activeVariantIds.add(newVid);
-        }
-      }
-
-      // Xóa các variants cũ bị loại bỏ (nhưng không áp dụng HARD DELETE CASCADE ở đây,
-      // vì UI edit thường gọi api removeVariantWithCascade riêng khi admin bấm nút Thùng rác)
-      // Nếu không, chỉ cần dọn dẹp các variants mồ côi:
-      const existingVariants = await ctx.db.query("productVariants").withIndex("by_product", (q: any) => q.eq("productId", args.id)).collect();
-      for (const ev of existingVariants) {
-        if (!activeVariantIds.has(ev._id)) {
-           // Admin đã xóa khỏi bảng Matrix, trigger xóa cứng & cascade
-           await cascadeDeleteVariant(ctx, ev._id);
-        }
-      }
+      await upsertVariants(ctx, productId, optionIds, normalizedVariants);
     }
 
-    return args.id;
-  }
+    await updateStats(ctx, { new: status });
+    await ctx.runMutation(api.landingPages.syncProgrammaticFromSourceChange, { source: "product" });
+    return productId;
+  },
+  returns: v.id("products"),
 });
 
-/**
- * Helper: Logic Hard Delete & Cascade
- */
-async function cascadeDeleteVariant(ctx: any, variantId: Id<"productVariants">) {
-  // 1. Quét và Xóa Cart Items
-  const cartItems = await ctx.db.query("cartItems")
-    .filter((q: any) => q.eq(q.field("variantId"), variantId))
+export const updateProductWithVariants = mutation({
+  args: { id: v.id("products"), ...smartProductArgs },
+  handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.id);
+    if (!product) {
+      throw new Error("Product not found");
+    }
+
+    const resolvedSku = args.sku.trim() || await generateUniqueSmartSku(ctx, args.name, args.id);
+    if (resolvedSku !== product.sku) {
+      await assertUniqueProductSku(ctx, resolvedSku, args.id);
+    }
+
+    const normalizedOptions = normalizeInlineOptions(args.options);
+    const normalizedVariants = normalizeInlineVariants(args.variants, resolvedSku);
+    const hasVariants = Boolean(args.hasVariants) && normalizedVariants.length > 0;
+    if (args.hasVariants) {
+      assertVariantMatrix(normalizedOptions, normalizedVariants);
+      await assertUniqueVariantSkus(ctx, resolvedSku, normalizedVariants, args.id);
+    }
+
+    const resolvedSlug = args.slug && args.slug !== product.slug
+      ? await resolveUniqueSlug(ctx, { scope: "record", slug: args.slug, exclude: { id: args.id, table: "products" } })
+      : { slug: args.slug || product.slug };
+    const productType = await resolveProductType(ctx, args.productType, product.productType);
+    const salePrice = resolveSalePrice(args.salePrice);
+    await assertProductPrice(ctx, args.price, salePrice, hasVariants);
+    const optionIds = hasVariants ? await validateOptionSelections(ctx, normalizedOptions) : [];
+
+    if (args.status && args.status !== product.status) {
+      await updateStats(ctx, { old: product.status, new: args.status });
+    }
+
+    await ctx.db.patch(args.id, {
+      affiliateLink: args.affiliateLink,
+      categoryId: args.categoryId,
+      description: args.description,
+      renderType: args.renderType ?? "content",
+      markdownRender: args.markdownRender,
+      htmlRender: args.htmlRender,
+      image: args.image,
+      images: args.images,
+      imageStorageId: args.imageStorageId,
+      imageStorageIds: args.imageStorageIds,
+      productType,
+      digitalDeliveryType: productType === "digital" ? args.digitalDeliveryType : undefined,
+      digitalCredentialsTemplate: productType === "digital" ? args.digitalCredentialsTemplate : undefined,
+      metaDescription: args.metaDescription,
+      metaTitle: args.metaTitle,
+      name: args.name,
+      order: args.order,
+      price: args.price,
+      salePrice,
+      sku: resolvedSku,
+      slug: resolvedSlug.slug,
+      status: args.status ?? product.status,
+      stock: args.stock ?? product.stock,
+      hasVariants,
+      optionIds: hasVariants ? optionIds : [],
+    });
+
+    await syncOwnerFilesAndCleanup(ctx, {
+      ownerField: "images",
+      ownerId: args.id,
+      ownerTable: "products",
+      purpose: "product-gallery",
+    }, dedupeStorageIds([args.imageStorageId, ...(args.imageStorageIds ?? [])]), {
+      previousStorageIds: [product.imageStorageId, ...(product.imageStorageIds ?? [])],
+    });
+
+    if (hasVariants) {
+      await upsertVariants(ctx, args.id, optionIds, normalizedVariants);
+    }
+
+    await ctx.runMutation(api.landingPages.syncProgrammaticFromSourceChange, { source: "product" });
+    return args.id;
+  },
+  returns: v.id("products"),
+});
+
+async function cascadeDeleteVariant(ctx: MutationCtx, variantId: Id<"productVariants">) {
+  const variant = await ctx.db.get(variantId);
+  if (!variant) {
+    return;
+  }
+
+  const cartItems = await ctx.db
+    .query("cartItems")
+    .withIndex("by_product", (q) => q.eq("productId", variant.productId))
+    .filter((q) => q.eq(q.field("variantId"), variantId))
     .collect();
-  
+
   const affectedCartIds = new Set<Id<"carts">>();
   for (const item of cartItems) {
     affectedCartIds.add(item.cartId);
     await ctx.db.delete(item._id);
   }
 
-  // Cập nhật lại tổng tiền cho Carts bị ảnh hưởng
   for (const cartId of affectedCartIds) {
-    const remainingItems = await ctx.db.query("cartItems").withIndex("by_cart", (q: any) => q.eq("cartId", cartId)).collect();
-    const newTotal = remainingItems.reduce((acc: number, cur: any) => acc + cur.subtotal, 0);
-    await ctx.db.patch(cartId, { totalAmount: newTotal, itemsCount: remainingItems.length });
+    const remainingItems = await ctx.db
+      .query("cartItems")
+      .withIndex("by_cart", (q) => q.eq("cartId", cartId))
+      .collect();
+    const totalAmount = remainingItems.reduce((total, item) => total + item.subtotal, 0);
+    await ctx.db.patch(cartId, { totalAmount, itemsCount: remainingItems.length });
   }
 
-  // 2. Quét và Xóa Wishlist
-  const wishlists = await ctx.db.query("wishlist")
-    .filter((q: any) => q.eq(q.field("variantId"), variantId))
+  const wishlists = await ctx.db
+    .query("wishlist")
+    .withIndex("by_product", (q) => q.eq("productId", variant.productId))
+    .filter((q) => q.eq(q.field("variantId"), variantId))
     .collect();
-  for (const w of wishlists) {
-    await ctx.db.delete(w._id);
+  for (const wishlist of wishlists) {
+    await ctx.db.delete(wishlist._id);
   }
 
-  // 3. Xóa chính Variant
   await ctx.db.delete(variantId);
-
-  // Lưu ý: Đơn hàng (Orders) lưu dạng snapshot trong order.items nên không bị hỏng cấu trúc.
 }
 
-/**
- * 5. Remove Variant (Dùng khi admin bấm xóa chủ động 1 dòng)
- */
 export const removeVariantWithCascade = mutation({
   args: { variantId: v.id("productVariants") },
   handler: async (ctx, args) => {
     await cascadeDeleteVariant(ctx, args.variantId);
     return true;
-  }
+  },
 });
 
-/**
- * Kiểm tra xem variant có nằm trong đơn hàng nào không (Để bật cảnh báo 2 bước)
- */
 export const checkVariantInOrders = query({
   args: { variantId: v.id("productVariants") },
   handler: async (ctx, args) => {
-    // Vì bảng orders ko index variantId trực tiếp ở cấp top-level (nằm trong mảng items),
-    // Ta phải fetch tất cả orders hoặc dùng filter array. Trong data thực tế,
-    // order items thường chứa variantId snapshot. Để tối ưu, nếu DB lớn, filter này sẽ chậm.
-    // Tạm thời ta dùng filter.
-    const ordersWithVariant = await ctx.db.query("orders")
-      .filter((q: any) => q.eq(q.field("status"), "Pending")) // Chỉ check đơn Pending/Processing cho nhanh
+    const ordersWithVariant = await ctx.db
+      .query("orders")
+      .withIndex("by_status", (q) => q.eq("status", "Pending"))
       .collect();
-      
+
     for (const order of ordersWithVariant) {
-      if (order.items.some((i: any) => i.variantId === args.variantId)) {
+      if (order.items.some((item) => item.variantId === args.variantId)) {
         return true;
       }
     }
     return false;
-  }
+  },
 });

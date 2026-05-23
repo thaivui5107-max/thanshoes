@@ -23,6 +23,8 @@ import { normalizeRichText } from '@/app/admin/lib/normalize-rich-text';
 import { resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
 import { HomeComponentStickyFooter } from '@/app/admin/home-components/_shared/components/HomeComponentStickyFooter';
 import { AiEntityImportDialog, type AiEntityImportPayload } from '@/app/admin/components/AiEntityImportDialog';
+import { InlineMatrixBuilder, type OptionCatalogItem, type VariantOptionSelection, type VariantRow } from '@/app/admin/products/components/inline-matrix-builder';
+import { normalizeVariantRows, normalizeVariantSelections, validateVariantPayload } from '@/app/admin/products/components/inline-variant-utils';
 
 const MODULE_KEY = 'products';
 
@@ -40,10 +42,12 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
 
   const productData = useQuery(api.products.getById, { id: id as Id<"products"> });
   const categoriesData = useQuery(api.productCategories.listActive);
-  const updateProduct = useMutation(api.products.update);
+  const updateProduct = useMutation(api.productsSmart.updateProductWithVariants);
   const fieldsData = useQuery(api.admin.modules.listEnabledModuleFields, { moduleKey: MODULE_KEY });
   const settingsData = useQuery(api.admin.modules.listModuleSettings, { moduleKey: MODULE_KEY });
-  const optionsData = useQuery(api.productOptions.listActive);
+  const optionsData = useQuery(api.productOptions.listAll, { limit: 500 });
+  const valuesData = useQuery(api.productOptionValues.listAll, { limit: 500 });
+  const variantsData = useQuery(api.productVariants.listByProduct, { productId: id as Id<"products"> });
 
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -70,7 +74,8 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [hasVariants, setHasVariants] = useState(false);
-  const [selectedOptionIds, setSelectedOptionIds] = useState<Id<'productOptions'>[]>([]);
+  const [variantSelections, setVariantSelections] = useState<VariantOptionSelection[]>([]);
+  const [variantRows, setVariantRows] = useState<VariantRow[]>([]);
   const [productType, setProductType] = useState<'physical' | 'digital'>('physical');
 
   const selectedCategorySlug = useMemo(
@@ -87,6 +92,15 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     customContent?: string;
     expiresAt?: number;
   }>({});
+  const generatedSku = useQuery(
+    api.productsSmart.generateSmartSku,
+    name.trim() ? { name: name.trim() } : 'skip'
+  );
+  const resolvedSkuPreview = sku.trim() || generatedSku || productData?.sku || '';
+  const skuExists = useQuery(
+    api.productsSmart.checkSkuExists,
+    resolvedSkuPreview ? { sku: resolvedSkuPreview, ignoreProductId: id as Id<"products"> } : 'skip'
+  );
   const initialSnapshotRef = useRef<{
     affiliateLink: string;
     categoryId: string;
@@ -113,11 +127,12 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     price: string;
     productType: 'physical' | 'digital';
     salePrice: string;
-    selectedOptionIds: Id<'productOptions'>[];
     sku: string;
     slug: string;
     status: 'Draft' | 'Active' | 'Archived';
     stock: string;
+    variantSelections: ReturnType<typeof normalizeVariantSelections>;
+    variantRows: ReturnType<typeof normalizeVariantRows>;
   } | null>(null);
 
   const enabledFields = useMemo(() => {
@@ -137,6 +152,11 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
 
   const variantPricing = useMemo(() => {
     const setting = settingsData?.find(s => s.settingKey === 'variantPricing');
+    return (setting?.value as string) || 'variant';
+  }, [settingsData]);
+
+  const variantStock = useMemo(() => {
+    const setting = settingsData?.find(s => s.settingKey === 'variantStock');
     return (setting?.value as string) || 'variant';
   }, [settingsData]);
 
@@ -169,7 +189,32 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   const isAffiliateMode = saleMode === 'affiliate';
   const isPriceRequired = saleMode === 'cart';
   const showProductTypeSelector = productTypeMode === 'both';
-  const hideBasePricing = variantEnabled && variantPricing === 'variant';
+  const hideBasePricing = variantEnabled && hasVariants && variantPricing === 'variant';
+  const hideBaseStock = variantEnabled && hasVariants && variantStock === 'variant';
+  const optionCatalog = useMemo<OptionCatalogItem[]>(() => {
+    const valuesByOption = new Map<string, NonNullable<typeof valuesData>>();
+    valuesData?.forEach((value) => {
+      const list = valuesByOption.get(value.optionId) ?? [];
+      list.push(value);
+      valuesByOption.set(value.optionId, list);
+    });
+    return (optionsData ?? [])
+      .map((option) => ({
+        id: option._id,
+        name: option.name,
+        order: option.order,
+        values: (valuesByOption.get(option._id) ?? [])
+          .sort((a, b) => a.order - b.order)
+          .map((value) => ({
+            id: value._id,
+            label: value.label ?? value.value,
+            order: value.order,
+          })),
+      }))
+      .sort((a, b) => a.order - b.order);
+  }, [optionsData, valuesData]);
+  const normalizedVariantSelections = useMemo(() => normalizeVariantSelections(variantSelections), [variantSelections]);
+  const normalizedVariantRows = useMemo(() => normalizeVariantRows(variantRows), [variantRows]);
 
   const normalizedDescription = useMemo(() => normalizeRichText(description), [description]);
 
@@ -198,11 +243,12 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     price: price.trim(),
     productType,
     salePrice: salePrice.trim(),
-    selectedOptionIds: [...selectedOptionIds].sort(),
     sku: sku.trim(),
     slug: slug.trim(),
     status,
     stock: stock.trim(),
+    variantSelections: normalizedVariantSelections,
+    variantRows: normalizedVariantRows,
   }), [
     affiliateLink,
     categoryId,
@@ -222,11 +268,12 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     price,
     productType,
     salePrice,
-    selectedOptionIds,
     sku,
     slug,
     status,
     stock,
+    normalizedVariantSelections,
+    normalizedVariantRows,
   ]);
 
   const hasChanges = useMemo(() => {
@@ -280,7 +327,59 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   };
 
   useEffect(() => {
-    if (productData && !isDataLoaded) {
+    if (productData && !isDataLoaded && optionsData !== undefined && valuesData !== undefined && variantsData !== undefined) {
+      const variantOptionIds = (productData.optionIds?.length ?? 0) > 0
+        ? productData.optionIds ?? []
+        : Array.from(new Set(variantsData.flatMap((variant) => variant.optionValues.map((item) => item.optionId))));
+      const selectedOptions = variantOptionIds
+        .map((optionId) => optionsData.find((option) => option._id === optionId))
+        .filter((option): option is NonNullable<typeof optionsData>[number] => Boolean(option))
+        .sort((a, b) => a.order - b.order);
+      const usedValuesByOption = new Map<string, Id<'productOptionValues'>[]>();
+
+      variantsData
+        .slice()
+        .sort((a, b) => a.order - b.order)
+        .forEach((variant) => {
+          variant.optionValues.forEach((item) => {
+            const list = usedValuesByOption.get(item.optionId) ?? [];
+            if (!list.includes(item.valueId)) {
+              list.push(item.valueId);
+            }
+            usedValuesByOption.set(item.optionId, list);
+          });
+        });
+
+      const nextVariantSelections: VariantOptionSelection[] = selectedOptions.map((option) => {
+        const usedValueIds = usedValuesByOption.get(option._id) ?? [];
+        const fallbackValueIds = valuesData
+          .filter((value) => value.optionId === option._id && value.active)
+          .sort((a, b) => a.order - b.order)
+          .map((value) => value._id);
+        return {
+          optionId: option._id,
+          valueIds: usedValueIds.length > 0 ? usedValueIds : fallbackValueIds,
+        };
+      });
+      const nextVariantRows: VariantRow[] = variantsData
+        .slice()
+        .sort((a, b) => a.order - b.order)
+        .map((variant) => ({
+          id: variant._id,
+          sku: variant.sku,
+          price: variant.price ?? productData.price,
+          salePrice: variant.salePrice,
+          stock: variant.stock ?? 0,
+          optionValues: selectedOptions.map((option) => {
+            const item = variant.optionValues.find((entry) => entry.optionId === option._id);
+            return item
+              ? { optionId: option._id, valueId: item.valueId }
+              : null;
+          }).filter((item): item is { optionId: Id<'productOptions'>; valueId: Id<'productOptionValues'> } => Boolean(item)),
+        }));
+      const nextNormalizedVariantSelections = normalizeVariantSelections(nextVariantSelections);
+      const nextNormalizedVariantRows = normalizeVariantRows(nextVariantRows);
+
       setName(productData.name);
       setSlug(productData.slug);
       setSku(productData.sku);
@@ -309,7 +408,8 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
       })));
       setStatus(productData.status);
       setHasVariants(productData.hasVariants ?? false);
-      setSelectedOptionIds(productData.optionIds ?? []);
+      setVariantSelections(nextVariantSelections);
+      setVariantRows(nextVariantRows);
       setProductType(productData.productType ?? 'physical');
       setDigitalDeliveryType(productData.digitalDeliveryType ?? 'account');
       setDigitalCredentialsTemplate(productData.digitalCredentialsTemplate ?? {});
@@ -334,16 +434,17 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
         price: productData.price.toString(),
         productType: productData.productType ?? 'physical',
         salePrice: productData.salePrice?.toString() ?? '',
-        selectedOptionIds: [...(productData.optionIds ?? [])].sort(),
         sku: productData.sku.trim(),
         slug: productData.slug.trim(),
         status: productData.status,
         stock: productData.stock.toString(),
+        variantSelections: nextNormalizedVariantSelections,
+        variantRows: nextNormalizedVariantRows,
       };
       setSnapshotVersion((prev) => prev + 1);
       setIsDataLoaded(true);
     }
-  }, [productData, isDataLoaded, hasMarkdownRender, hasHtmlRender]);
+  }, [productData, isDataLoaded, hasMarkdownRender, hasHtmlRender, optionsData, valuesData, variantsData]);
 
   useEffect(() => {
     const allowedRenderTypes = new Set<'content' | 'markdown' | 'html'>(['content']);
@@ -355,10 +456,10 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   }, [renderType, hasMarkdownRender, hasHtmlRender]);
 
   useEffect(() => {
-    if (!hasVariants) {
-      setSelectedOptionIds([]);
+    if (!sku.trim() && generatedSku) {
+      setSku(generatedSku);
     }
-  }, [hasVariants]);
+  }, [generatedSku, sku]);
 
   useEffect(() => {
     if (productTypeMode === 'physical' || productTypeMode === 'digital') {
@@ -419,17 +520,29 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
       toast.error('Vui lòng điền đầy đủ thông tin bắt buộc');
       return;
     }
-    if (enabledFields.has('sku') && !sku.trim()) {
-      toast.error('Vui lòng nhập mã SKU');
+    const resolvedProductSku = sku.trim() || generatedSku || productData?.sku || `SKU-${Date.now()}`;
+    if (resolvedProductSku && skuExists === true) {
+      toast.error('Mã SKU đã tồn tại, vui lòng chọn mã khác');
       return;
     }
     if (isAffiliateMode && !affiliateLink.trim()) {
       toast.error('Vui lòng nhập link affiliate cho sản phẩm');
       return;
     }
-    if (variantEnabled && hasVariants && selectedOptionIds.length === 0) {
-      toast.error('Vui lòng chọn ít nhất một tùy chọn cho phiên bản');
-      return;
+    const variantPayload = {
+      options: variantEnabled && hasVariants ? normalizedVariantSelections : [],
+      variants: variantEnabled && hasVariants ? normalizedVariantRows : [],
+    };
+    if (variantEnabled && hasVariants) {
+      const variantError = validateVariantPayload(
+        variantPayload.options,
+        variantPayload.variants,
+        variantPricing === 'variant'
+      );
+      if (variantError) {
+        toast.error(variantError);
+        return;
+      }
     }
     if (!hideBasePricing && salePrice.trim() !== '') {
       const parsedSalePrice = resolveSalePrice(salePrice);
@@ -445,7 +558,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     setIsSubmitting(true);
     setSaveStatus('saving');
     try {
-      const resolvedStock = productType === 'digital' ? 0 : (parseInt(stock) || 0);
+      const resolvedStock = productType === 'digital' || hideBaseStock ? 0 : (parseInt(stock) || 0);
       const resolvedMetaTitle = truncateText(name.trim(), 60);
       const resolvedMetaDescription = truncateText(stripHtml(description || ''), 160);
       const resolvedGalleryItems = galleryItems
@@ -480,10 +593,11 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
           ? (resolvedMetaTitleValue || undefined)
           : undefined,
         name: name.trim(),
-        optionIds: variantEnabled ? (hasVariants ? selectedOptionIds : []) : undefined,
+        options: variantPayload.options,
+        variants: variantPayload.variants,
         price: hideBasePricing ? 0 : (parseInt(price) || 0),
         salePrice: resolvedSalePrice,
-        sku: (sku.trim() || productData?.sku) ?? `SKU-${Date.now()}`,
+        sku: resolvedProductSku,
         slug: slug.trim(),
         status,
         stock: resolvedStock,
@@ -520,7 +634,14 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     }
   };
 
-  if (productData === undefined || fieldsData === undefined || settingsData === undefined) {
+  if (
+    productData === undefined
+    || fieldsData === undefined
+    || settingsData === undefined
+    || optionsData === undefined
+    || valuesData === undefined
+    || variantsData === undefined
+  ) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 size={32} className="animate-spin text-orange-500" />
@@ -592,8 +713,11 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
                 </div>
                 {enabledFields.has('sku') && (
                   <div className="space-y-2">
-                    <Label>Mã SKU <span className="text-red-500">*</span></Label>
-                    <Input value={sku} onChange={(e) =>{  setSku(e.target.value); }} required placeholder="VD: PROD-001" className="font-mono" />
+                    <Label>Mã SKU</Label>
+                    <Input value={sku} onChange={(e) =>{  setSku(e.target.value); }} placeholder="Tự sinh theo tên nếu để trống" className="font-mono" />
+                    {skuExists === true && (
+                      <p className="text-xs text-red-500">SKU này đã tồn tại.</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -688,7 +812,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
                   )}
                 </div>
               )}
-              {enabledFields.has('stock') && productType !== 'digital' && (
+              {enabledFields.has('stock') && productType !== 'digital' && !hideBaseStock && (
                 <div className="space-y-2">
                   <Label>Số lượng tồn kho</Label>
                   <Input type="number" value={stock} onChange={(e) =>{  setStock(e.target.value); }} placeholder="0" min="0" />
@@ -794,29 +918,17 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
                   <Label htmlFor="has-variants" className="cursor-pointer">Sản phẩm có nhiều phiên bản</Label>
                 </div>
                 {hasVariants && (
-                  <div className="space-y-2">
-                    <Label>Chọn tùy chọn cho phiên bản</Label>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {optionsData?.map(option => (
-                        <label key={option._id} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                          <input
-                            type="checkbox"
-                            checked={selectedOptionIds.includes(option._id)}
-                            onChange={() =>{
-                              setSelectedOptionIds(prev => prev.includes(option._id)
-                                ? prev.filter(item => item !== option._id)
-                                : [...prev, option._id]);
-                            }}
-                            className="w-4 h-4 rounded border-slate-300"
-                          />
-                          <span>{option.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                    {optionsData?.length === 0 && (
-                      <p className="text-xs text-slate-500">Chưa có tùy chọn nào. Hãy tạo option trước.</p>
-                    )}
-                  </div>
+                  <InlineMatrixBuilder
+                    baseSku={resolvedSkuPreview || productData.sku}
+                    basePrice={Number.parseInt(price) || 0}
+                    optionCatalog={optionCatalog}
+                    initialSelections={variantSelections}
+                    initialVariants={variantRows}
+                    onChange={(selections, variants) => {
+                      setVariantSelections(selections);
+                      setVariantRows(variants);
+                    }}
+                  />
                 )}
               </CardContent>
             </Card>
