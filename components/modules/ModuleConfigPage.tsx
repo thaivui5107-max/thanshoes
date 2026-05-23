@@ -272,6 +272,16 @@ export function ModuleConfigPage({
    );
  }
  
+const PRODUCTS_MODULE_HELP_MAP: Record<string, string> = {
+  general: 'Cài đặt cơ bản của sản phẩm như số lượng sản phẩm hiển thị trên trang danh sách, trạng thái mặc định của sản phẩm mới tạo (Đang bán hoặc Bản nháp), chế độ bán hàng (Giỏ hàng, Liên hệ, Affiliate) và bật/tắt chức năng Excel.',
+  categoryContent: 'Quản lý hiển thị các trường nội dung đặc thù của danh mục: subtitle (mô tả ngắn dưới tiêu đề), filter footer (rich text bài viết dài tư vấn cuối trang danh mục), product suffix (rich text nối tiếp sau mô tả sản phẩm), và FAQ kéo-thả riêng cho từng danh mục.',
+  supplementalContent: 'Tính năng chèn nội dung bổ sung (preContent, postContent) hoặc FAQ hàng loạt cho nhiều sản phẩm cùng lúc bằng cách thiết lập các khung nội dung (Templates) chung theo sản phẩm hoặc theo danh mục. Chế độ chống chồng chéo đảm bảo mỗi sản phẩm chỉ chịu hiệu lực từ tối đa 1 Template.',
+  variants: 'Bật/tắt tính năng phân loại sản phẩm theo phiên bản (ví dụ: Size, Màu sắc...) và thiết lập cấu trúc quản lý giá bán, tồn kho, hình ảnh riêng biệt hoặc chung cho từng phiên bản.',
+  digital: 'Cấu hình dành riêng cho các sản phẩm số (Digital), thiết lập loại giao hàng mặc định tự động như giao Tài khoản, License Key kích hoạt, hoặc liên kết File Download.',
+  fields_products: 'Bật/tắt các trường dữ liệu tùy chọn của thực thể Sản phẩm hiển thị trong Admin Form và ngoài trang Public (ví dụ: Giá khuyến mãi, Mã SKU, Tồn kho, Thư viện ảnh, SEO...).',
+  fields_categories: 'Bật/tắt các trường dữ liệu tùy chọn của thực thể Danh mục sản phẩm (ví dụ: Mô tả ngắn, Nội dung cuối trang danh mục, Nội dung nối đuôi sản phẩm, FAQ...).'
+};
+
 function ConfigTab({ config, moduleData, isReadOnly, localFeatures, localFields, localCategoryFields, localSettings, colorClasses, onToggleFeature, onToggleField, onToggleCategoryField, onSettingChange }: {
    config: ModuleDefinition;
    moduleData: { isCore?: boolean; enabled?: boolean } | null | undefined;
@@ -338,7 +348,10 @@ function ConfigTab({ config, moduleData, isReadOnly, localFeatures, localFields,
          <div className="space-y-4">
           {settingsByGroup.map(({ group, settings: groupSettings }) => (
             <div key={group.key} className="space-y-3">
-              <SettingsCard title={group.label}>
+              <SettingsCard 
+                title={group.label}
+                tooltip={config.key === 'products' ? PRODUCTS_MODULE_HELP_MAP[group.key] : undefined}
+              >
                 {groupSettings.map(setting => {
                   if (setting.dependsOn && !localSettings[setting.dependsOn]) {
                     return null;
@@ -436,6 +449,7 @@ function ConfigTab({ config, moduleData, isReadOnly, localFeatures, localFields,
            onToggle={handleFieldToggle}
            fieldColorClass={colorClasses.fieldColor}
            toggleColor={colorClasses.toggle}
+           tooltip={config.key === 'products' ? PRODUCTS_MODULE_HELP_MAP['fields_products'] : undefined}
          />
          
          {config.categoryModuleKey && localCategoryFields.length > 0 && (
@@ -447,6 +461,7 @@ function ConfigTab({ config, moduleData, isReadOnly, localFeatures, localFields,
              onToggle={onToggleCategoryField}
              fieldColorClass={colorClasses.fieldColor}
              toggleColor={colorClasses.toggle}
+             tooltip={config.key === 'products' ? PRODUCTS_MODULE_HELP_MAP['fields_categories'] : undefined}
            />
          )}
        </div>
