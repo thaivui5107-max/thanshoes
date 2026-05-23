@@ -48,7 +48,6 @@ function ProductsContent() {
   const categoriesData = useQuery(api.productCategories.listActive);
   const fieldsData = useQuery(api.admin.modules.listEnabledModuleFields, { moduleKey: MODULE_KEY });
   const settingsData = useQuery(api.admin.modules.listModuleSettings, { moduleKey: MODULE_KEY });
-  const productStats = useQuery(api.products.getStats);
   
   const deleteProduct = useMutation(api.products.remove);
   const duplicateProduct = useMutation(api.products.duplicate);
@@ -753,14 +752,6 @@ function ProductsContent() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Sản phẩm</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Quản lý kho hàng và thông tin sản phẩm
-            {productStats && productStats.total > 0 && (
-              <span className="ml-2 text-xs">
-                (Tổng: {productStats.total} | Active: {productStats.active} | Draft: {productStats.draft})
-              </span>
-            )}
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ImportExportModal />
