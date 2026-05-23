@@ -57,11 +57,10 @@ const ENTITY_COPY: Record<AiEntityImportKind, {
   "product": {
     "name": "Giá kệ góc liên hoàn inox 304",
     "slug": "gia-ke-goc-lien-hoan-inox-304",
-    "sku": "GK-INX-304",
-    "description": "Giá kệ góc inox 304 tối ưu không gian bếp, chịu lực tốt, dễ vệ sinh.",
-    "content": "<h2>Giá kệ góc liên hoàn inox 304 phù hợp với ai?</h2><p>Sản phẩm phù hợp với gia đình muốn tận dụng góc tủ bếp để lưu trữ xoong nồi, chén đĩa hoặc vật dụng thường dùng.</p><h3>Điểm nên kiểm tra trước khi chọn</h3><ul><li>Kích thước khoang tủ và hướng mở cánh.</li><li>Tải trọng thực tế theo nhu cầu lưu trữ.</li><li>Vật liệu, ray trượt và khả năng vệ sinh.</li></ul>",
-    "markdownRender": "## Giá kệ góc liên hoàn inox 304 phù hợp với ai?\\n\\nSản phẩm phù hợp với gia đình muốn tận dụng góc tủ bếp để lưu trữ xoong nồi, chén đĩa hoặc vật dụng thường dùng.\\n\\n### Điểm nên kiểm tra trước khi chọn\\n\\n- Kích thước khoang tủ và hướng mở cánh.\\n- Tải trọng thực tế theo nhu cầu lưu trữ.\\n- Vật liệu, ray trượt và khả năng vệ sinh.",
-    "htmlRender": "<h2>Giá kệ góc liên hoàn inox 304 phù hợp với ai?</h2><p>Sản phẩm phù hợp với gia đình muốn tận dụng góc tủ bếp để lưu trữ xoong nồi, chén đĩa hoặc vật dụng thường dùng.</p><h3>Điểm nên kiểm tra trước khi chọn</h3><ul><li>Kích thước khoang tủ và hướng mở cánh.</li><li>Tải trọng thực tế theo nhu cầu lưu trữ.</li><li>Vật liệu, ray trượt và khả năng vệ sinh.</li></ul>",
+    "description": "Giá kệ góc liên hoàn inox 304 giúp tận dụng góc tủ bếp khó dùng, phù hợp gia đình muốn tăng không gian lưu trữ xoong nồi, chén đĩa và vật dụng bếp hằng ngày.",
+    "content": "<h2>Tổng quan giá kệ góc liên hoàn inox 304</h2><p>Giá kệ góc liên hoàn inox 304 là giải pháp lưu trữ cho khoang góc tủ bếp, nơi thường khó thao tác và dễ bị bỏ trống. Sản phẩm phù hợp với gia đình muốn sắp xếp xoong nồi, chén đĩa hoặc đồ dùng bếp theo cách gọn hơn mà vẫn dễ lấy khi nấu nướng.</p><h3>Điểm nổi bật khi sử dụng</h3><ul><li>Tận dụng tốt khu vực góc tủ, giảm lãng phí không gian lưu trữ.</li><li>Thiết kế kéo mở giúp quan sát và lấy vật dụng thuận tiện hơn so với để đồ sâu trong góc tủ.</li><li>Chất liệu inox 304 phù hợp môi trường bếp ẩm, dễ lau chùi và hạn chế bám mùi.</li></ul><h3>Ứng dụng và thông số cần kiểm tra</h3><p>Trước khi chọn mua, nên kiểm tra kích thước khoang tủ, hướng mở cánh, tải trọng sử dụng và kiểu ray trượt đi kèm. Nếu dùng cho nồi lớn hoặc vật nặng, hãy đối chiếu tải trọng theo thông tin nhà cung cấp.</p><h3>Phù hợp với ai?</h3><p>Sản phẩm phù hợp với căn bếp có tủ chữ L, tủ góc hoặc gia đình cần tăng không gian lưu trữ nhưng không muốn thay đổi toàn bộ hệ tủ.</p><h3>Lưu ý khi chọn mua</h3><ul><li>Đo đúng chiều rộng, chiều sâu và chiều cao khoang tủ trước khi đặt hàng.</li><li>Kiểm tra hướng mở trái/phải để tránh lắp sai cấu hình.</li><li>Hỏi rõ phụ kiện đi kèm, chính sách lắp đặt và điều kiện bảo hành nếu có.</li></ul><p>Nếu bạn đang cải thiện khu vực góc tủ bếp, hãy ưu tiên mẫu có kích thước khớp khoang tủ và tải trọng phù hợp nhu cầu dùng hằng ngày.</p>",
+    "markdownRender": "## Tổng quan giá kệ góc liên hoàn inox 304\\n\\nGiá kệ góc liên hoàn inox 304 là giải pháp lưu trữ cho khoang góc tủ bếp, nơi thường khó thao tác và dễ bị bỏ trống. Sản phẩm phù hợp với gia đình muốn sắp xếp xoong nồi, chén đĩa hoặc đồ dùng bếp theo cách gọn hơn mà vẫn dễ lấy khi nấu nướng.\\n\\n### Điểm nổi bật khi sử dụng\\n\\n- Tận dụng tốt khu vực góc tủ, giảm lãng phí không gian lưu trữ.\\n- Thiết kế kéo mở giúp quan sát và lấy vật dụng thuận tiện hơn so với để đồ sâu trong góc tủ.\\n- Chất liệu inox 304 phù hợp môi trường bếp ẩm, dễ lau chùi và hạn chế bám mùi.\\n\\n### Ứng dụng và thông số cần kiểm tra\\n\\nTrước khi chọn mua, nên kiểm tra kích thước khoang tủ, hướng mở cánh, tải trọng sử dụng và kiểu ray trượt đi kèm. Nếu dùng cho nồi lớn hoặc vật nặng, hãy đối chiếu tải trọng theo thông tin nhà cung cấp.\\n\\n### Phù hợp với ai?\\n\\nSản phẩm phù hợp với căn bếp có tủ chữ L, tủ góc hoặc gia đình cần tăng không gian lưu trữ nhưng không muốn thay đổi toàn bộ hệ tủ.\\n\\n### Lưu ý khi chọn mua\\n\\n- Đo đúng chiều rộng, chiều sâu và chiều cao khoang tủ trước khi đặt hàng.\\n- Kiểm tra hướng mở trái/phải để tránh lắp sai cấu hình.\\n- Hỏi rõ phụ kiện đi kèm, chính sách lắp đặt và điều kiện bảo hành nếu có.",
+    "htmlRender": "<h2>Tổng quan giá kệ góc liên hoàn inox 304</h2><p>Giá kệ góc liên hoàn inox 304 là giải pháp lưu trữ cho khoang góc tủ bếp, nơi thường khó thao tác và dễ bị bỏ trống. Sản phẩm phù hợp với gia đình muốn sắp xếp xoong nồi, chén đĩa hoặc đồ dùng bếp theo cách gọn hơn mà vẫn dễ lấy khi nấu nướng.</p><h3>Điểm nổi bật khi sử dụng</h3><ul><li>Tận dụng tốt khu vực góc tủ, giảm lãng phí không gian lưu trữ.</li><li>Thiết kế kéo mở giúp quan sát và lấy vật dụng thuận tiện hơn so với để đồ sâu trong góc tủ.</li><li>Chất liệu inox 304 phù hợp môi trường bếp ẩm, dễ lau chùi và hạn chế bám mùi.</li></ul><h3>Ứng dụng và thông số cần kiểm tra</h3><p>Trước khi chọn mua, nên kiểm tra kích thước khoang tủ, hướng mở cánh, tải trọng sử dụng và kiểu ray trượt đi kèm. Nếu dùng cho nồi lớn hoặc vật nặng, hãy đối chiếu tải trọng theo thông tin nhà cung cấp.</p><h3>Phù hợp với ai?</h3><p>Sản phẩm phù hợp với căn bếp có tủ chữ L, tủ góc hoặc gia đình cần tăng không gian lưu trữ nhưng không muốn thay đổi toàn bộ hệ tủ.</p><h3>Lưu ý khi chọn mua</h3><ul><li>Đo đúng chiều rộng, chiều sâu và chiều cao khoang tủ trước khi đặt hàng.</li><li>Kiểm tra hướng mở trái/phải để tránh lắp sai cấu hình.</li><li>Hỏi rõ phụ kiện đi kèm, chính sách lắp đặt và điều kiện bảo hành nếu có.</li></ul>",
     "metaTitle": "Giá kệ góc liên hoàn inox 304",
     "metaDescription": "Giá kệ góc inox 304 bền đẹp, tối ưu góc tủ và phù hợp nội thất bếp cao cấp.",
     "image": "https://example.com/product.jpg",
@@ -114,7 +113,7 @@ const FIELD_SPECS: Record<AiEntityImportKind, Record<string, string>> = {
   product: {
     name: '"name": "string bắt buộc, tên sản phẩm tự nhiên, có keyword chính và thuộc tính quan trọng"',
     slug: '"slug": "string optional, lowercase-kebab-case không dấu"',
-    sku: '"sku": "string optional, mã ngắn dễ quản trị"',
+    sku: '"sku": "không sinh field này cho sản phẩm; hệ thống admin tự sinh SKU theo danh mục"',
     description: '"description": "string, 120-240 ký tự, chốt rõ sản phẩm là gì + lợi ích chính + đối tượng phù hợp"',
     content: '"content": "string bắt buộc nếu field này có trong schema; nội dung bán hàng đầy đủ, có tổng quan, lợi ích, thông số/ứng dụng, lưu ý chọn"',
     markdownRender: '"markdownRender": "string bắt buộc nếu field này có trong schema; markdown đầy đủ tương đương content"',
@@ -168,7 +167,6 @@ const OPTIONAL_FIELD_MAP: Record<AiEntityImportKind, Record<string, string[]>> =
     metaDescription: ['metaDescription'],
     image: ['image'],
     images: ['image'],
-    sku: ['sku'],
     salePrice: ['salePrice'],
     stock: ['stock'],
   },
@@ -210,6 +208,7 @@ const STYLE_GUIDE = `Nguyên tắc chất lượng bắt buộc:
 
 const KIND_GUIDE: Record<AiEntityImportKind, string> = {
   product: `Riêng sản phẩm:
+- Tuyệt đối không sinh "sku", kể cả khi field sku đang bật; để admin/system tự sinh SKU theo danh mục và cấu hình biến thể.
 - Viết theo intent mua hàng: sản phẩm là gì, dành cho ai, giải quyết nhu cầu gì, điểm khác biệt, chất liệu/thông số/cách dùng.
 - Trước khi viết, tự xác định focus keyword, search intent mua hàng, chân dung khách và tiêu chí ra quyết định; thể hiện tự nhiên trong name, mô tả, heading và meta.
 - Nội dung phải cụ thể như ecommerce/affiliate tốt: lợi ích, ứng dụng, thông số nếu có, điểm cần kiểm tra, lưu ý chọn mua, phản biện mối lo của khách.
@@ -247,7 +246,7 @@ const buildFormatRules = (kind: AiEntityImportKind, enabledFields?: string[]) =>
   ];
 
   if (hasContent) {
-    lines.push('- Vì schema có "content", bắt buộc sinh "content" là bản nội dung chính đầy đủ để admin editor hiển thị/chỉnh sửa.');
+    lines.push('- Vì schema có "content", bắt buộc sinh "content" là bản nội dung chính đầy đủ để admin editor hiển thị/chỉnh sửa; với sản phẩm nên đủ sâu, không viết ngắn như mô tả.');
   }
 
   if (hasMarkdown) {
@@ -391,7 +390,7 @@ const parseAiEntity = (raw: string, kind: AiEntityImportKind): ParseResult => {
     name: kind === 'product' ? title : undefined,
     price: parseNumber(record.price),
     salePrice: parseNumber(record.salePrice),
-    sku: trimText(record.sku, 80),
+    sku: kind === 'product' ? undefined : trimText(record.sku, 80),
     slug: trimText(record.slug, 160),
     stock: parseNumber(record.stock),
     thumbnail: image,
@@ -546,3 +545,4 @@ export function AiEntityImportDialog({
     </>
   );
 }
+

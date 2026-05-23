@@ -261,11 +261,10 @@ function ProductCreateContent() {
 
     setName(nextName);
     setSlug(item.slug?.trim() || generateSlugFromTitle(nextName));
-    if (item.sku) {setSku(item.sku);}
     if (typeof item.price === 'number') {setPrice(String(item.price));}
     if (typeof item.salePrice === 'number') {setSalePrice(String(item.salePrice));}
     if (typeof item.stock === 'number') {setStock(String(item.stock));}
-    const nextDescription = item.description || item.content || item.excerpt || item.htmlRender || item.markdownRender || '';
+    const nextDescription = item.content || item.description || item.excerpt || item.htmlRender || item.markdownRender || '';
     setDescription(nextDescription);
     if (item.content) {
       setRenderType('content');
