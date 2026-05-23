@@ -276,11 +276,8 @@ export default function TrustPagesAdminPage() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-amber-700">
             <p>
-              Tính năng Trang tin cậy đang bị tắt trong module Settings.
+              Tính năng Trang tin cậy đang bị tắt trong cấu hình. Vui lòng liên hệ quản trị viên hệ thống để kích hoạt.
             </p>
-            <Button variant="outline" onClick={() => router.push('/system/modules/settings')}>
-              Đi đến /system/modules/settings
-            </Button>
           </CardContent>
         </Card>
       </div>

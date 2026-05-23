@@ -621,7 +621,7 @@ function SnapshotHomeComponentsPage({ snapshotId }: { snapshotId: string }) {
               <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
                 <div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Header menu</div>
-                  <p className="text-xs text-slate-500">Trích từ /system/experiences/menu cho riêng demo snapshot.</p>
+                  <p className="text-xs text-slate-500">Được trích xuất từ cấu hình menu chính cho riêng demo snapshot.</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Kích thước logo</Label>

@@ -51,7 +51,7 @@ function WineCarouselSiteSection({
   itemCount,
   brandColor,
   header,
-  frame,
+  overlayUrl,
   getProductDetailHref,
   getPriceDisplay,
   getDiscount,
@@ -63,7 +63,7 @@ function WineCarouselSiteSection({
   itemCount: number;
   brandColor: string;
   header: React.ReactNode;
-  frame: ReturnType<typeof useProductFrameConfig>['frame'];
+  overlayUrl: string | null | undefined;
   getProductDetailHref: (product?: { slug?: string | null; categoryId?: string }) => string;
   getPriceDisplay: (price?: number, salePrice?: number, isRangeFromVariant?: boolean) => ReturnType<typeof getPublicPriceLabel>;
   getDiscount: (currentPrice?: number, comparePrice?: number, isContactPrice?: boolean) => string | null;
@@ -157,7 +157,7 @@ function WineCarouselSiteSection({
                               <Package size={34} className="text-stone-300" />
                             </div>
                           )}
-                          <ProductImageFrameOverlay frame={frame} />
+                          <ProductImageFrameOverlay overlayUrl={overlayUrl} />
                         </div>
                       </div>
                     </Link>
@@ -270,7 +270,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
       recordSlug: product.slug,
     });
   }, [categorySlugMap, routeMode]);
-  const { frame } = useProductFrameConfig();
+  const { overlayUrl } = useProductFrameConfig();
   
   // Query products based on selection mode (skip for demo mode)
   const productsData = useQuery(
@@ -414,7 +414,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                         <Package size={32} className="text-slate-300" />
                       </div>
                     )}
-                    <ProductImageFrameOverlay frame={frame} />
+                    <ProductImageFrameOverlay overlayUrl={overlayUrl} />
                     {discount && (
                       <div className="absolute top-2 right-2">
                         <SaleBadge text={discount} className="text-[10px] px-2 py-0.5" />
@@ -497,7 +497,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                         <Package size={40} className="text-slate-300" />
                       </div>
                     )}
-                    <ProductImageFrameOverlay frame={frame} />
+                    <ProductImageFrameOverlay overlayUrl={overlayUrl} />
                     {discount && (
                       <div className="absolute top-2 right-2">
                         <SaleBadge text={discount} className="text-[10px] px-2 py-1" />
@@ -653,7 +653,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                       ) : (
                         <div className="h-full w-full flex items-center justify-center"><Package size={40} className="text-slate-300" /></div>
                       )}
-                      <ProductImageFrameOverlay frame={frame} />
+                      <ProductImageFrameOverlay overlayUrl={overlayUrl} />
                       {discount && (
                         <div className="absolute top-2 left-2">
                           <SaleBadge text={discount} className="text-[10px] px-2 py-1" />
@@ -694,7 +694,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
         itemCount={itemCount}
         brandColor={brandColor}
         header={renderSiteHeader({ className: 'mb-1 md:mb-2' })}
-        frame={frame}
+        overlayUrl={overlayUrl}
         getProductDetailHref={getProductDetailHref}
         getPriceDisplay={getPriceDisplay}
         getDiscount={getDiscount}
@@ -732,7 +732,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                     ) : (
                       <div className="h-full w-full flex items-center justify-center"><Package size={24} className="text-slate-300" /></div>
                     )}
-                    <ProductImageFrameOverlay frame={frame} />
+                    <ProductImageFrameOverlay overlayUrl={overlayUrl} />
                     {discount && (
                       <div className="absolute top-1 left-1">
                         <SaleBadge text={discount} className="text-[9px] px-1.5 py-0.5" />
@@ -777,7 +777,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                     ) : (
                       <div className="h-full w-full flex items-center justify-center"><Package size={24} className="text-slate-300" /></div>
                     )}
-                    <ProductImageFrameOverlay frame={frame} />
+                    <ProductImageFrameOverlay overlayUrl={overlayUrl} />
                     {discount && (
                       <div className="absolute top-2 left-2">
                         <SaleBadge text={discount} className="text-[10px] px-1.5 py-0.5" />
@@ -811,7 +811,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
               ) : (
                 <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-100"><Package size={64} className="text-slate-300" /></div>
               )}
-              <ProductImageFrameOverlay frame={frame} />
+              <ProductImageFrameOverlay overlayUrl={overlayUrl} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               {showcaseDiscount && (
                 <div className="absolute top-4 left-4">
@@ -841,7 +841,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                       ) : (
                         <div className="h-full w-full flex items-center justify-center"><Package size={32} className="text-slate-300" /></div>
                       )}
-                      <ProductImageFrameOverlay frame={frame} />
+                      <ProductImageFrameOverlay overlayUrl={overlayUrl} />
                       {discount && (
                         <div className="absolute top-2 left-2">
                           <SaleBadge text={discount} className="text-[10px] px-1.5 py-0.5" />
@@ -943,7 +943,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                         <Package size={28} className="text-slate-300" />
                       </div>
                     )}
-                    <ProductImageFrameOverlay frame={frame} />
+                    <ProductImageFrameOverlay overlayUrl={overlayUrl} />
                     {discount && (
                       <div className="absolute top-2 right-2">
                         <SaleBadge text={discount} className="inline-flex items-center justify-center w-10 h-10 rounded-full text-[11px] font-bold" />
@@ -1062,7 +1062,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                             <Package size={48} className="text-slate-300" />
                           </div>
                         )}
-                        <ProductImageFrameOverlay frame={frame} />
+                        <ProductImageFrameOverlay overlayUrl={overlayUrl} />
                         <div className={cn("absolute inset-0 z-10 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent opacity-70 transition duration-500 group-hover:opacity-0", isActive && "opacity-0")} />
                         <div className={cn("absolute inset-0 z-10 bg-white opacity-0 transition duration-500 group-hover:opacity-100", isActive && "opacity-100")} />
                         {discount && (
@@ -1154,7 +1154,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                 <Package size={64} className="text-slate-300" />
               </div>
             )}
-            <ProductImageFrameOverlay frame={frame} />
+            <ProductImageFrameOverlay overlayUrl={overlayUrl} />
             {/* Overlay gradient */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
             
@@ -1204,7 +1204,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                       <Package size={32} className="text-slate-300" />
                     </div>
                   )}
-                  <ProductImageFrameOverlay frame={frame} />
+                  <ProductImageFrameOverlay overlayUrl={overlayUrl} />
                   
                   {/* Discount Badge */}
                   {discount && (
@@ -1251,7 +1251,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                   ) : (
                     <div className="h-full w-full flex items-center justify-center"><Package size={24} className="text-slate-300" /></div>
                   )}
-                  <ProductImageFrameOverlay frame={frame} />
+                  <ProductImageFrameOverlay overlayUrl={overlayUrl} />
                   {discount && (
                     <div className="absolute top-2 left-2">
                       <SaleBadge text={discount} className="text-[10px] px-1.5 py-0.5" />

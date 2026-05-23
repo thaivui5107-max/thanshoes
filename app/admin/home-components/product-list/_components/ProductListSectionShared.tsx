@@ -95,7 +95,7 @@ const ProductImage = ({
   className: string;
   sizes: string;
 }) => {
-  const { frame } = useProductFrameConfig();
+  const { overlayUrl } = useProductFrameConfig();
 
   if (context === 'site') {
     return (
@@ -107,7 +107,7 @@ const ProductImage = ({
           sizes={sizes}
           className={className}
         />
-        <ProductImageFrameOverlay frame={frame} />
+        <ProductImageFrameOverlay overlayUrl={overlayUrl} />
       </>
     );
   }
@@ -119,7 +119,7 @@ const ProductImage = ({
         alt={alt}
         className={className}
       />
-      <ProductImageFrameOverlay frame={frame} />
+      <ProductImageFrameOverlay overlayUrl={overlayUrl} />
     </>
   );
 };

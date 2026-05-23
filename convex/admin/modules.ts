@@ -5,7 +5,6 @@ import { api } from "../_generated/api";
 import { v } from "convex/values";
 import { dependencyType, fieldType, moduleCategory } from "../lib/validators";
 import { syncModuleRuntimeConfig } from "../lib/moduleConfigSync";
-import { cleanupProductFramesByAspectRatio } from "../productImageFrames";
 import { resolveMenuMaxDepthLevel } from "../../lib/utils/menu-tree";
 import { TRUST_PAGE_SLOTS } from "../../lib/ia/trust-pages";
 
@@ -991,47 +990,6 @@ export const setModuleSetting = mutation({
 
     if (args.moduleKey === "menus" && args.settingKey === "maxDepth") {
       await normalizeMenuItemsToMaxLevel(ctx, args.value);
-    }
-
-    if (args.moduleKey === "products" && args.settingKey === "defaultImageAspectRatio") {
-      const cleanupSetting = await ctx.db
-        .query("moduleSettings")
-        .withIndex("by_module_setting", (q) =>
-          q.eq("moduleKey", "products").eq("settingKey", "productFrameCleanupOnArChange")
-        )
-        .unique();
-      const shouldCleanup = cleanupSetting?.value !== false;
-      if (shouldCleanup && typeof args.value === "string") {
-        await cleanupProductFramesByAspectRatio(ctx, args.value);
-      }
-
-      const activeFrameSetting = await ctx.db
-        .query("moduleSettings")
-        .withIndex("by_module_setting", (q) =>
-          q.eq("moduleKey", "products").eq("settingKey", "activeProductFrameId")
-        )
-        .unique();
-      const activeFrameId = typeof activeFrameSetting?.value === "string"
-        ? (activeFrameSetting.value as Id<"productImageFrames">)
-        : null;
-      if (activeFrameSetting && activeFrameId) {
-        const activeFrame = await ctx.db.get(activeFrameId);
-        if (!activeFrame || activeFrame.aspectRatio !== args.value) {
-          await ctx.db.patch(activeFrameSetting._id, { value: null });
-        }
-      }
-    }
-
-    if (args.moduleKey === "products" && args.settingKey === "enableProductFrames" && args.value === false) {
-      const activeFrameSetting = await ctx.db
-        .query("moduleSettings")
-        .withIndex("by_module_setting", (q) =>
-          q.eq("moduleKey", "products").eq("settingKey", "activeProductFrameId")
-        )
-        .unique();
-      if (activeFrameSetting) {
-        await ctx.db.patch(activeFrameSetting._id, { value: null });
-      }
     }
 
     if (args.moduleKey === "settings" && args.settingKey === "site_brand_mode") {

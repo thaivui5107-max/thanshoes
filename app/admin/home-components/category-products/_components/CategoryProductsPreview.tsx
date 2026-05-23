@@ -192,11 +192,11 @@ export const CategoryProductsPreview = ({
   );
 
   const FramePreviewImage = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
-    const { frame } = useProductFrameConfig();
+    const { overlayUrl } = useProductFrameConfig();
     return (
       <>
         <PreviewImage src={src} alt={alt} className={className} />
-        <ProductImageFrameOverlay frame={frame} />
+        <ProductImageFrameOverlay overlayUrl={overlayUrl} />
       </>
     );
   };

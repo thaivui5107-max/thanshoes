@@ -393,58 +393,6 @@ export default defineSchema({
     .index("by_product_status", ["productId", "status"])
     .index("by_product_order", ["productId", "order"]),
 
-  // 10c. productImageFrames - Khung viền ảnh sản phẩm
-  productImageFrames: defineTable({
-    name: v.string(),
-    status: v.union(v.literal("active"), v.literal("inactive")),
-    aspectRatio: v.string(),
-    sourceType: v.union(
-      v.literal("system_preset"),
-      v.literal("uploaded_overlay"),
-      v.literal("line_generator"),
-      v.literal("logo_generator")
-    ),
-    overlayImageUrl: v.optional(v.string()),
-    overlayStorageId: v.optional(v.union(v.id("_storage"), v.null())),
-    lineConfig: v.optional(v.object({
-      strokeWidth: v.number(),
-      inset: v.number(),
-      radius: v.number(),
-      color: v.string(),
-      shadow: v.optional(v.string()),
-      cornerStyle: v.union(
-        v.literal("sharp"),
-        v.literal("rounded"),
-        v.literal("ornamental-light")
-      ),
-    })),
-    logoConfig: v.optional(v.union(
-      v.object({
-        logoUrl: v.string(),
-        scale: v.number(),
-        opacity: v.number(),
-        x: v.number(),
-        y: v.number(),
-      }),
-      v.object({
-        logoUrl: v.string(),
-        placement: v.union(v.literal("center"), v.literal("corners")),
-        scale: v.number(),
-        opacity: v.number(),
-        inset: v.number(),
-      })
-    )),
-    seasonKey: v.optional(v.string()),
-    isSystemPreset: v.boolean(),
-    createdBy: v.optional(v.union(v.id("users"), v.null())),
-    updatedBy: v.optional(v.union(v.id("users"), v.null())),
-    metadata: v.optional(v.union(v.record(v.string(), v.any()), v.null())),
-  })
-    .index("by_aspect_ratio", ["aspectRatio"])
-    .index("by_aspect_ratio_status", ["aspectRatio", "status"])
-    .index("by_source_type", ["sourceType"])
-    .index("by_season_key", ["seasonKey"]),
-
   // 10d. productSupplementalContents - Khung nội dung bổ sung cho chi tiết sản phẩm
   productSupplementalContents: defineTable({
     name: v.string(),

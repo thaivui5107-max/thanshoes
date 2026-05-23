@@ -577,7 +577,6 @@ export const exportBundle = query({
         options,
         optionValues,
         variants,
-        frames,
         supplementalContents,
       ] = await Promise.all([
         ctx.db.query("productCategories").take(5000),
@@ -585,7 +584,6 @@ export const exportBundle = query({
         ctx.db.query("productOptions").take(5000),
         ctx.db.query("productOptionValues").take(10000),
         ctx.db.query("productVariants").take(10000),
-        ctx.db.query("productImageFrames").take(2000),
         ctx.db.query("productSupplementalContents").take(2000),
       ]);
 
@@ -720,7 +718,6 @@ export const exportBundle = query({
         stock: item.stock,
       }));
 
-      const framesOut = frames.map((item) => ({ ...item, _id: undefined, _creationTime: undefined }));
       const supplementalOut = supplementalContents.map((item) => ({
         assignmentMode: item.assignmentMode,
         categorySlugs: (item.categoryIds ?? []).map((id) => categoryById.get(id)?.slug).filter(Boolean),
@@ -738,11 +735,10 @@ export const exportBundle = query({
         options: optionsOut,
         optionValues: optionValuesOut,
         variants: variantsOut,
-        frames: framesOut,
         supplementalContents: supplementalOut,
       };
 
-      counts.products = categoryOut.length + productsOut.length + optionsOut.length + optionValuesOut.length + variantsOut.length + framesOut.length + supplementalOut.length;
+      counts.products = categoryOut.length + productsOut.length + optionsOut.length + optionValuesOut.length + variantsOut.length + supplementalOut.length;
     }
 
     if (modules.includes("services")) {
@@ -1178,23 +1174,7 @@ export const importBundle = mutation({
           }
         }
 
-        for (const frame of ensureArray<any>(modulePayload.frames)) {
-          const existingCandidates = await ctx.db.query("productImageFrames").take(5000);
-          const existing = existingCandidates.find((item) => item.name === frame.name);
-          const payloadRow = {
-            ...frame,
-            overlayImageUrl: rewriteByUrlMap(frame.overlayImageUrl, mediaMap),
-            overlayStorageId: null,
-            logoConfig: rewriteByUrlMap(frame.logoConfig, mediaMap),
-          };
-          if (existing) {
-            await ctx.db.patch(existing._id, payloadRow);
-            updated += 1;
-          } else {
-            await ctx.db.insert("productImageFrames", payloadRow);
-            created += 1;
-          }
-        }
+
 
         for (const content of ensureArray<any>(modulePayload.supplementalContents)) {
           const existingCandidates = await ctx.db.query("productSupplementalContents").take(5000);

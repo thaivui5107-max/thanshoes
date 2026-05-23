@@ -110,7 +110,7 @@ export function ProductGridSection({ config, brandColor, secondary, title, snaps
       recordSlug: product.slug,
     });
   }, [categorySlugMap, routeMode]);
-  const { frame } = useProductFrameConfig();
+  const { overlayUrl } = useProductFrameConfig();
 
   // Query products
   const productsData = useQuery(
@@ -353,7 +353,7 @@ export function ProductGridSection({ config, brandColor, secondary, title, snaps
               <Package size={size === 'sm' ? 24 : 40} className="text-slate-300" />
             </div>
           )}
-          <ProductImageFrameOverlay frame={frame} />
+          <ProductImageFrameOverlay overlayUrl={overlayUrl} />
           {discount && (
             <div className={size === 'sm' ? 'absolute top-1 left-1' : 'absolute top-2 left-2'}>
               <SaleBadge text={discount} className={size === 'sm' ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-1'} />
@@ -456,7 +456,7 @@ export function ProductGridSection({ config, brandColor, secondary, title, snaps
               ) : (
                 <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-100"><Package size={40} className="text-slate-300" /></div>
               )}
-              <ProductImageFrameOverlay frame={frame} />
+              <ProductImageFrameOverlay overlayUrl={overlayUrl} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
               {d && (
                 <div className="absolute top-2 left-2"><SaleBadge text={d} className="text-[10px] px-2 py-0.5" /></div>
@@ -500,7 +500,7 @@ export function ProductGridSection({ config, brandColor, secondary, title, snaps
                 ) : (
                   <div className="h-full w-full flex items-center justify-center"><Package size={32} className="text-slate-300" /></div>
                 )}
-                <ProductImageFrameOverlay frame={frame} />
+                <ProductImageFrameOverlay overlayUrl={overlayUrl} />
                 {d && <div className="absolute top-2 left-2"><SaleBadge text={d} className="text-[10px] px-1.5 py-0.5" /></div>}
                 <div className="absolute bottom-2 right-2 translate-y-10 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
                   <div className="text-white p-2 rounded-full shadow-lg" style={{ backgroundColor: brandColor }}><ArrowRight size={16} /></div>

@@ -1369,7 +1369,7 @@ export function ProductDetailPreview({
         onClose={() => setLightboxIndex(null)}
         onIndexChange={(nextIndex) => setLightboxIndex(nextIndex)}
         useNativeImage
-        frame={null}
+        overlayUrl={null}
       />
     </div>
   );

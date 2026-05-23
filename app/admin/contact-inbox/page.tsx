@@ -168,7 +168,7 @@ function ContactInboxContent() {
   if (!inboxAdminFeature?.enabled) {
     return (
       <Card className="p-6 text-center text-slate-500">
-        Tính năng quản trị tin nhắn liên hệ đang tắt. Hãy bật tại /system/modules/contactInbox.
+        Tính năng quản trị tin nhắn liên hệ đang tắt. Vui lòng liên hệ quản trị viên hệ thống để bật tính năng này.
       </Card>
     );
   }

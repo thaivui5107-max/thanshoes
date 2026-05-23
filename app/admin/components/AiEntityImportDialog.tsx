@@ -287,9 +287,9 @@ ${lines.join(',\n')}
 const buildPrompt = (kind: AiEntityImportKind, enabledFields?: string[]) => {
   const enabledLine = enabledFields
     ? enabledFields.length > 0
-      ? `Field module đang bật trong /system/modules: ${enabledFields.join(', ')}. Chỉ sinh các field tương ứng trong schema bên dưới.`
-      : 'Hiện không có field optional nào đang bật trong /system/modules. Chỉ sinh các field bắt buộc/core trong schema bên dưới.'
-    : 'Nếu không rõ field module đang bật, vẫn bám đúng schema bên dưới và không tự thêm field ngoài schema.';
+      ? `Các trường đang được kích hoạt: ${enabledFields.join(', ')}. Chỉ sinh các field tương ứng trong schema bên dưới.`
+      : 'Hiện không có trường mở rộng nào được kích hoạt. Chỉ sinh các field bắt buộc/core trong schema bên dưới.'
+    : 'Bám đúng schema bên dưới và không tự thêm field ngoài schema.';
 
   return `Bạn là senior Vietnamese SEO & conversion copywriter cho website thương mại/dịch vụ/blog.
 

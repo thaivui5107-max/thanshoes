@@ -192,8 +192,7 @@ function DashboardContent() {
         <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
           <CardContent className="p-12 text-center">
             <p className="text-slate-500 dark:text-slate-400">
-              Chưa có báo cáo nào được bật. Vui lòng cấu hình tại{' '}
-              <Link href="/system/modules/analytics" className="text-cyan-600 hover:underline">/system/modules/analytics</Link>
+              Chưa có báo cáo nào được bật. Vui lòng liên hệ quản trị viên hệ thống để kích hoạt.
             </p>
           </CardContent>
         </Card>

@@ -19,7 +19,6 @@ import { ChevronDown, Heart, Package, Search, ShoppingCart, SlidersHorizontal, X
 import type { Id } from '@/convex/_generated/dataModel';
 import { getPublicPriceLabel } from '@/lib/products/public-price';
 import { getProductImageAspectRatioCssValue, resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
-import type { ProductImageFrame } from '@/lib/products/product-frame';
 
 type ProductSortOption = 'newest' | 'oldest' | 'popular' | 'price_asc' | 'price_desc' | 'name';
 type ProductsListLayout = 'grid' | 'list' | 'catalog';
@@ -185,7 +184,7 @@ function ProductsContent() {
     () => ({ aspectRatio: getProductImageAspectRatioCssValue(imageAspectRatio) }),
     [imageAspectRatio]
   );
-  const { frame: productFrame } = useProductFrameConfig();
+  const { overlayUrl: productFrameOverlayUrl } = useProductFrameConfig();
   const listConfig = useProductsListConfig();
   const layout: ProductsListLayout = listConfig.layoutStyle === 'sidebar' ? 'catalog' : listConfig.layoutStyle;
   const enableQuickAddVariant = listConfig.enableQuickAddVariant ?? true;
@@ -730,7 +729,7 @@ function ProductsContent() {
           onBuyNow={handlePrimaryAction}
           canUseWishlist={canUseWishlist}
           imageAspectRatioStyle={imageAspectRatioStyle}
-          frame={productFrame}
+          overlayUrl={productFrameOverlayUrl}
           getDetailHref={getProductDetailHref}
         />
         {quickAddModal}
@@ -771,7 +770,7 @@ function ProductsContent() {
           onBuyNow={handlePrimaryAction}
           canUseWishlist={canUseWishlist}
           imageAspectRatioStyle={imageAspectRatioStyle}
-          frame={productFrame}
+          overlayUrl={productFrameOverlayUrl}
           getDetailHref={getProductDetailHref}
         />
         {quickAddModal}
@@ -908,7 +907,7 @@ function ProductsContent() {
             onBuyNow={handlePrimaryAction}
             canUseWishlist={canUseWishlist}
             imageAspectRatioStyle={imageAspectRatioStyle}
-            frame={productFrame}
+            overlayUrl={productFrameOverlayUrl}
             getDetailHref={getProductDetailHref}
           />
         )}
@@ -979,7 +978,7 @@ function ProductCardActions({ product, tokens, showStock, showAddToCartButton, s
   );
 }
 
-function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frame, getDetailHref }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; frame: ProductImageFrame | null; getDetailHref: (product: ProductCardProps['product']) => string }) {
+function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, overlayUrl, getDetailHref }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; overlayUrl?: string | null; getDetailHref: (product: ProductCardProps['product']) => string }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
       {products.map((product) => (
@@ -998,7 +997,7 @@ function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, 
             ) : (
               <div className="w-full h-full flex items-center justify-center"><Package size={48} style={{ color: tokens.neutralTextLight }} /></div>
             )}
-            <ProductImageFrameOverlay frame={frame} />
+            <ProductImageFrameOverlay overlayUrl={overlayUrl} />
             {showPromotionBadge && showSalePrice && priceDisplay.comparePrice && !priceDisplay.isContactPrice && (
               <span
                 className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded"
@@ -1056,7 +1055,7 @@ function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, 
   );
 }
 
-function ProductList({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frame, getDetailHref }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; frame: ProductImageFrame | null; getDetailHref: (product: ProductCardProps['product']) => string }) {
+function ProductList({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, overlayUrl, getDetailHref }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; overlayUrl?: string | null; getDetailHref: (product: ProductCardProps['product']) => string }) {
   return (
     <div className="space-y-4">
       {products.map((product) => (
@@ -1075,7 +1074,7 @@ function ProductList({ products, categoryMap, tokens, showPrice, showSalePrice, 
             ) : (
               <div className="w-full h-full flex items-center justify-center"><Package size={32} style={{ color: tokens.neutralTextLight }} /></div>
             )}
-            <ProductImageFrameOverlay frame={frame} />
+            <ProductImageFrameOverlay overlayUrl={overlayUrl} />
             {showPromotionBadge && showSalePrice && priceDisplay.comparePrice && !priceDisplay.isContactPrice && (
               <span
                 className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded"
@@ -1200,7 +1199,7 @@ interface LayoutProps {
   onBuyNow: (product: ProductCardProps['product']) => void;
   canUseWishlist: boolean;
   imageAspectRatioStyle: React.CSSProperties;
-  frame: ProductImageFrame | null;
+  overlayUrl?: string | null;
   getDetailHref: (product: ProductCardProps['product']) => string;
 }
 
@@ -1517,7 +1516,7 @@ function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, 
 
 // ========== LIST LAYOUT (Full width list view) ==========
 
-function ListLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frame, getDetailHref }: LayoutProps) {
+function ListLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, overlayUrl, getDetailHref }: LayoutProps) {
   return (
     <div className="py-8 md:py-12 px-4">
       <div className="max-w-5xl mx-auto">
@@ -1621,7 +1620,7 @@ function ListLayout({ isLoadingProducts, postsPerPage, products, categories, cat
             onBuyNow={onBuyNow}
             canUseWishlist={canUseWishlist}
             imageAspectRatioStyle={imageAspectRatioStyle}
-            frame={frame}
+            overlayUrl={overlayUrl}
             getDetailHref={getDetailHref}
           />
         )}

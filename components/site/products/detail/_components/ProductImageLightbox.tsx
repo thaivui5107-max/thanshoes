@@ -3,7 +3,6 @@
 import React, { useEffect } from 'react';
 import { PublicImage as Image } from '@/components/shared/PublicImage';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import type { ProductImageFrame } from '@/lib/products/product-frame';
 import { ProductImageFrameOverlay } from '@/components/shared/ProductImageFrameBox';
 
 type ProductImageLightboxProps = {
@@ -13,7 +12,7 @@ type ProductImageLightboxProps = {
   onClose: () => void;
   onIndexChange: (nextIndex: number) => void;
   useNativeImage?: boolean;
-  frame?: ProductImageFrame | null;
+  overlayUrl?: string | null;
   fallbackSrc?: string | null;
 };
 
@@ -24,7 +23,7 @@ export function ProductImageLightbox({
   onClose,
   onIndexChange,
   useNativeImage = false,
-  frame,
+  overlayUrl,
   fallbackSrc,
 }: ProductImageLightboxProps) {
   const hasImages = images.length > 0;
@@ -143,7 +142,7 @@ export function ProductImageLightbox({
           ) : (
             <div className="flex h-full w-full items-center justify-center text-white/60">Không có ảnh sản phẩm</div>
           )}
-          <ProductImageFrameOverlay frame={frame} />
+          <ProductImageFrameOverlay overlayUrl={overlayUrl} />
         </div>
       </div>
     </div>

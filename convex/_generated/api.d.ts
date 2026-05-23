@@ -56,7 +56,6 @@ import type * as pageViews from "../pageViews.js";
 import type * as postCategories from "../postCategories.js";
 import type * as posts from "../posts.js";
 import type * as productCategories from "../productCategories.js";
-import type * as productImageFrames from "../productImageFrames.js";
 import type * as productOptionValues from "../productOptionValues.js";
 import type * as productOptions from "../productOptions.js";
 import type * as productSupplementalContents from "../productSupplementalContents.js";
@@ -140,7 +139,6 @@ declare const fullApi: ApiFromModules<{
   postCategories: typeof postCategories;
   posts: typeof posts;
   productCategories: typeof productCategories;
-  productImageFrames: typeof productImageFrames;
   productOptionValues: typeof productOptionValues;
   productOptions: typeof productOptions;
   productSupplementalContents: typeof productSupplementalContents;

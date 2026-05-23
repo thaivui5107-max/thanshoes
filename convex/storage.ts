@@ -226,13 +226,11 @@ export const cleanupStorageIfUnreferenced = mutation({
     const posts = await ctx.db.query("posts").take(maxScan);
     const services = await ctx.db.query("services").take(maxScan);
     const settings = await ctx.db.query("settings").take(maxScan);
-    const productImageFrames = await ctx.db.query("productImageFrames").take(maxScan);
 
     const hitScanLimit = products.length === maxScan
       || posts.length === maxScan
       || services.length === maxScan
-      || settings.length === maxScan
-      || productImageFrames.length === maxScan;
+      || settings.length === maxScan;
     if (hitScanLimit) {
       return { deleted: false, reason: "scan_limit" as const };
     }
@@ -244,9 +242,8 @@ export const cleanupStorageIfUnreferenced = mutation({
     const isUsedInPosts = posts.some((post) => post.thumbnailStorageId === args.storageId);
     const isUsedInServices = services.some((service) => service.thumbnailStorageId === args.storageId);
     const isUsedInSettings = settings.some((setting) => setting.value === args.storageId);
-    const isUsedInProductFrames = productImageFrames.some((frame) => frame.overlayStorageId === args.storageId);
 
-    if (isUsedInProducts || isUsedInPosts || isUsedInServices || isUsedInSettings || isUsedInProductFrames) {
+    if (isUsedInProducts || isUsedInPosts || isUsedInServices || isUsedInSettings) {
       return { deleted: false, reason: "referenced" as const };
     }
 

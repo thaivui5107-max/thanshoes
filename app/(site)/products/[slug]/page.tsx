@@ -543,7 +543,7 @@ export default function ProductDetailPage({ params }: PageProps) {
   const [replySubmittingId, setReplySubmittingId] = useState<string | null>(null);
   const [likingIds, setLikingIds] = useState<Set<string>>(new Set());
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const { frame } = useProductFrameConfig();
+  const { overlayUrl } = useProductFrameConfig();
 
   useEffect(() => {
     setRelatedPage(1);
@@ -1001,7 +1001,7 @@ export default function ProductDetailPage({ params }: PageProps) {
         open={canOpenLightbox && lightboxIndex !== null}
         onClose={handleCloseLightbox}
         onIndexChange={setLightboxIndex}
-        frame={frame}
+        overlayUrl={overlayUrl}
         fallbackSrc={productImagePlaceholder}
       />
     </>
@@ -1231,7 +1231,7 @@ function BlurredProductImage({ src, alt, sizes, fallbackSrc }: { src?: string | 
   const normalizedSrc = isValidImageSrc(src) ? src.trim() : null;
   const normalizedFallback = isValidImageSrc(fallbackSrc) ? fallbackSrc.trim() : null;
   const prefersReducedMotion = usePrefersReducedMotion();
-  const { frame } = useProductFrameConfig();
+  const { overlayUrl } = useProductFrameConfig();
   const [currentSrc, setCurrentSrc] = useState<string | null>(normalizedSrc ?? normalizedFallback);
   const [incomingSrc, setIncomingSrc] = useState<string | null>(null);
   const [incomingVisible, setIncomingVisible] = useState(false);
@@ -1310,7 +1310,7 @@ function BlurredProductImage({ src, alt, sizes, fallbackSrc }: { src?: string | 
         </div>
       )}
       <div className="absolute inset-0 pointer-events-none z-20">
-        <ProductImageFrameOverlay frame={frame} />
+        <ProductImageFrameOverlay overlayUrl={overlayUrl} />
       </div>
     </>
   );
@@ -1403,7 +1403,7 @@ function ProductDescriptionImages({
   frameAspectRatio: string;
   fallbackSrc?: string | null;
 }) {
-  const { frame } = useProductFrameConfig();
+  const { overlayUrl } = useProductFrameConfig();
   if (images.length === 0) {
     return null;
   }
@@ -1418,7 +1418,7 @@ function ProductDescriptionImages({
             style={{ aspectRatio: frameAspectRatio, backgroundColor: tokens.surfaceMuted }}
           >
             <ProductImageWithFallback mode="primary" src={image} fallbackSrc={fallbackSrc} alt={`Ảnh sản phẩm ${index + 1}`} fill sizes="100vw" className="object-contain" />
-            <ProductImageFrameOverlay frame={frame} />
+            <ProductImageFrameOverlay overlayUrl={overlayUrl} />
           </div>
         ))}
       </div>
@@ -1437,7 +1437,7 @@ type MobileImageCarouselProps = {
 function MobileImageCarousel({ images, selectedIndex, onSelect, alt, fallbackSrc }: MobileImageCarouselProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { frame } = useProductFrameConfig();
+  const { overlayUrl } = useProductFrameConfig();
 
   useEffect(() => {
     const container = containerRef.current;
@@ -1489,7 +1489,7 @@ function MobileImageCarousel({ images, selectedIndex, onSelect, alt, fallbackSrc
       {images.map((image, index) => (
         <div key={`${image}-${index}`} className="relative h-full w-full shrink-0 snap-center">
           <ProductImageWithFallback mode="primary" src={image} fallbackSrc={fallbackSrc} alt={`${alt} ${index + 1}`} fill sizes="100vw" className="object-contain" />
-          <ProductImageFrameOverlay frame={frame} />
+          <ProductImageFrameOverlay overlayUrl={overlayUrl} />
         </div>
       ))}
     </div>
@@ -1525,7 +1525,7 @@ function ThumbnailRail({
   inactiveClassName,
   fallbackSrc,
 }: ThumbnailRailProps) {
-  const { frame } = useProductFrameConfig();
+  const { overlayUrl } = useProductFrameConfig();
   const [startIndex, setStartIndex] = useState(0);
   const hasOverflow = images.length > visibleSlots;
   const maxStartIndex = Math.max(0, images.length - visibleSlots);
@@ -1597,7 +1597,7 @@ function ThumbnailRail({
               style={{ aspectRatio: thumbnailAspectRatio, borderColor: isActive ? tokens.thumbnailBorderActive : tokens.thumbnailBorder }}
             >
               <ProductImageWithFallback mode="thumb" src={img} fallbackSrc={fallbackSrc} alt="" width={80} height={80} className="object-contain w-full h-full" />
-              <ProductImageFrameOverlay frame={frame} />
+              <ProductImageFrameOverlay overlayUrl={overlayUrl} />
             </button>
           );
         })}
@@ -3573,7 +3573,7 @@ function RelatedProductsSection({
   categorySlugMap: Map<string, string>;
   productImagePlaceholder: string;
 }) {
-  const { frame } = useProductFrameConfig();
+  const { overlayUrl } = useProductFrameConfig();
   const getDetailHref = useMemo(() => (
     (relatedProduct: RelatedProduct) => buildDetailPath({
       categorySlug: categorySlugMap.get(relatedProduct.categoryId),
@@ -3621,7 +3621,7 @@ function RelatedProductsSection({
           >
             <div className="overflow-hidden relative" style={{ ...relatedImageStyle, backgroundColor: tokens.surfaceMuted }}>
               <ProductImageWithFallback mode="thumb" src={p.image} fallbackSrc={productImagePlaceholder} alt={p.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
-              <ProductImageFrameOverlay frame={frame} />
+              <ProductImageFrameOverlay overlayUrl={overlayUrl} />
               {showSalePrice && priceDisplay.comparePrice && !priceDisplay.isContactPrice && (
                 <span className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded" style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>-{Math.round((1 - p.price / priceDisplay.comparePrice) * 100)}%</span>
               )}

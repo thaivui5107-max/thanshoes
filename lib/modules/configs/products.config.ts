@@ -70,30 +70,7 @@ export const productsModule = defineModuleWithRuntime({
       default: 'square',
       options: PRODUCT_IMAGE_ASPECT_RATIO_OPTIONS,
     },
-    {
-      key: 'enableProductFrames',
-      label: 'Bật khung viền sản phẩm',
-      type: 'toggle',
-      default: false,
-    },
-    {
-      key: 'productFrameOverlayFit',
-      label: 'Cách khung ôm ảnh',
-      type: 'select',
-      default: 'contain',
-      dependsOn: 'enableProductFrames',
-      options: [
-        { value: 'contain', label: 'Giữ khung trong ảnh (contain)' },
-        { value: 'cover', label: 'Tràn khung theo ảnh (cover)' },
-      ],
-    },
-    {
-      key: 'productFrameCleanupOnArChange',
-      label: 'Xóa khung lệch AR khi đổi tỉ lệ',
-      type: 'toggle',
-      default: true,
-      dependsOn: 'enableProductFrames',
-    },
+
     {
       key: 'enableImageCrop',
       label: 'Bật cắt ảnh theo tỉ lệ khi upload',

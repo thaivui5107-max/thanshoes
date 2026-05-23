@@ -264,14 +264,6 @@ async function resolveMediaUsageMap(
     collectUsageMatches(usageMap, candidates, "productVariants", record, "images", record.images);
   });
 
-  const productImageFrames = fullScan ? await ctx.db.query("productImageFrames").collect() : trimUsageRecords(await ctx.db.query("productImageFrames").take(MAX_USAGE_SCAN_PER_TABLE + 1), scanState);
-  productImageFrames.forEach(record => {
-    collectUsageMatches(usageMap, candidates, "productImageFrames", record, "overlayStorageId", record.overlayStorageId);
-    collectUsageMatches(usageMap, candidates, "productImageFrames", record, "overlayImageUrl", record.overlayImageUrl);
-    collectUsageMatches(usageMap, candidates, "productImageFrames", record, "logoConfig", record.logoConfig);
-    collectUsageMatches(usageMap, candidates, "productImageFrames", record, "metadata", record.metadata);
-  });
-
   const productSupplementalContents = fullScan ? await ctx.db.query("productSupplementalContents").collect() : trimUsageRecords(await ctx.db.query("productSupplementalContents").take(MAX_USAGE_SCAN_PER_TABLE + 1), scanState);
   productSupplementalContents.forEach(record => {
     collectUsageMatches(usageMap, candidates, "productSupplementalContents", record, "preContent", record.preContent);

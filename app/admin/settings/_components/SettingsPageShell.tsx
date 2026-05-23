@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { revalidateSeoPaths } from '@/app/actions/seo-revalidate';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, cn } from '../../components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Checkbox, Input, Label, cn } from '../../components/ui';
 import { ModuleGuard } from '../../components/ModuleGuard';
 import { SettingsImageUploader } from '../../components/SettingsImageUploader';
 import { TagInput } from '../../components/TagInput';
@@ -19,7 +19,7 @@ import { SeoBuilderDialog } from './SeoBuilderDialog';
 
 type SettingsSection = 'site' | 'contact' | 'seo' | 'advanced';
 type SettingsFormValue = string | boolean;
-type AdvancedTab = 'product-placeholder' | 'header';
+type AdvancedTab = 'product-placeholder' | 'product-frame' | 'header';
 type HeaderConfig = {
   showBrandName?: boolean;
   logoSizeLevel?: number;
@@ -318,6 +318,12 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       if (values.product_image_placeholder === undefined) {
         values.product_image_placeholder = '';
       }
+      if (values.product_frame_overlay_url === undefined) {
+        values.product_frame_overlay_url = '';
+      }
+      if (values.enable_product_frames === undefined) {
+        values.enable_product_frames = false;
+      }
       setIsSecondaryAuto(values.site_brand_mode === 'single' ? true : !values.site_brand_secondary);
       setForm(values);
       setInitialForm(values);
@@ -513,6 +519,21 @@ function SettingsContent({ section }: { section: SettingsSection }) {
           key: 'product_image_placeholder',
           storageId: mediaStorageIds.product_image_placeholder ?? null,
           value: form.product_image_placeholder || '',
+        });
+      }
+      if (!settingsToSave.some((item) => item.key === 'product_frame_overlay_url')) {
+        settingsToSave.push({
+          group: 'advanced',
+          key: 'product_frame_overlay_url',
+          storageId: mediaStorageIds.product_frame_overlay_url ?? null,
+          value: form.product_frame_overlay_url || '',
+        });
+      }
+      if (!settingsToSave.some((item) => item.key === 'enable_product_frames')) {
+        settingsToSave.push({
+          group: 'advanced',
+          key: 'enable_product_frames',
+          value: form.enable_product_frames === true || form.enable_product_frames === 'true',
         });
       }
       if (canEditHeaderMenu && !settingsToSave.some((item) => item.key === 'header_config')) {
@@ -1094,6 +1115,18 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     >
                       Ảnh sản phẩm
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdvancedTab('product-frame')}
+                      className={cn(
+                        'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                        advancedTab === 'product-frame'
+                          ? 'border-orange-500 text-slate-900 dark:text-slate-100'
+                          : 'border-transparent text-slate-500 hover:text-slate-700'
+                      )}
+                    >
+                      Khung viền sản phẩm
+                    </button>
                     {canEditHeaderMenu && (
                       <button
                         type="button"
@@ -1119,7 +1152,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                             label="Ảnh placeholder sản phẩm"
                             value={typeof form.product_image_placeholder === 'string' ? form.product_image_placeholder : ''}
                             storageId={mediaStorageIds.product_image_placeholder ?? undefined}
-                            onChange={(url, storageId) =>{  updateImageField('product_image_placeholder', url, storageId); }}
+                            onChange={(url, storageId) => { updateImageField('product_image_placeholder', url, storageId); }}
                             folder="settings"
                             previewSize="md"
                           />
@@ -1145,7 +1178,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() =>{  updateImageField('product_image_placeholder', '', null); }}
+                              onClick={() => { updateImageField('product_image_placeholder', '', null); }}
                             >
                               Xóa placeholder
                             </Button>
@@ -1155,6 +1188,63 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                           </p>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {advancedTab === 'product-frame' && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <Checkbox
+                          id="enable_product_frames"
+                          checked={form.enable_product_frames === true}
+                          onCheckedChange={(checked) => updateField('enable_product_frames', checked)}
+                        />
+                        <div className="space-y-0.5">
+                          <Label htmlFor="enable_product_frames" className="cursor-pointer">Bật khung viền sản phẩm</Label>
+                          <p className="text-xs text-slate-500">
+                            Hiển thị khung viền đè lên ảnh sản phẩm ở storefront.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <SettingsImageUploader
+                          label="Ảnh khung viền sản phẩm"
+                          value={typeof form.product_frame_overlay_url === 'string' ? form.product_frame_overlay_url : ''}
+                          storageId={mediaStorageIds.product_frame_overlay_url ?? undefined}
+                          onChange={(url, storageId) => { updateImageField('product_frame_overlay_url', url, storageId); }}
+                          folder="settings"
+                          previewSize="md"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { updateImageField('product_frame_overlay_url', '', null); }}
+                          >
+                            Xóa khung
+                          </Button>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          Upload ảnh PNG/WebP nền trong suốt. Nên dùng cùng tỷ lệ với ảnh sản phẩm, ví dụ 1:1.
+                        </p>
+                        {typeof form.product_frame_overlay_url === 'string' && form.product_frame_overlay_url && (
+                          <div className="relative mx-auto w-32 h-32 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800">
+                            <img
+                              src={typeof form.product_image_placeholder === 'string' && form.product_image_placeholder ? form.product_image_placeholder : undefined}
+                              alt=""
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                            <img
+                              src={form.product_frame_overlay_url}
+                              alt="Preview khung viền"
+                              className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                            />
+                            <span className="absolute bottom-1 left-0 right-0 text-center text-[10px] text-slate-500">Preview</span>
+                          </div>
+                        )}
+
+                      </div>
                     </div>
                   )}
 
@@ -1318,8 +1408,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
         <Card>
           <CardContent className="py-8 text-center text-slate-500">
             Không có trường nào được bật cho nhóm này.
-            <br />
-            <span className="text-sm">Kiểm tra cấu hình tại System → Modules → Settings</span>
           </CardContent>
         </Card>
       )}
