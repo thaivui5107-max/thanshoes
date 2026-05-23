@@ -207,8 +207,15 @@ async function assertUniqueProductSku(ctx: MutationCtx, sku: string, ignoreProdu
   }
 }
 
-async function generateUniqueSmartSku(ctx: MutationCtx | QueryCtx, name: string, ignoreProductId?: Id<"products">) {
-  const words = name.trim().split(/\s+/).filter(Boolean);
+async function generateUniqueSmartSku(
+  ctx: MutationCtx | QueryCtx,
+  name: string,
+  categoryId?: Id<"productCategories">,
+  ignoreProductId?: Id<"products">
+) {
+  const category = categoryId ? await ctx.db.get(categoryId) : null;
+  const source = category?.name?.trim() || name.trim();
+  const words = source.split(/\s+/).filter(Boolean);
   const prefix = words.map((word) => normalizeSkuText(word).charAt(0)).join("").slice(0, 4) || "SP";
   const stats = await ctx.db
     .query("productStats")
@@ -406,9 +413,9 @@ async function upsertVariants(
 }
 
 export const generateSmartSku = query({
-  args: { name: v.string() },
+  args: { name: v.string(), categoryId: v.optional(v.id("productCategories")) },
   handler: async (ctx, args) => {
-    return await generateUniqueSmartSku(ctx, args.name);
+    return await generateUniqueSmartSku(ctx, args.name, args.categoryId);
   },
 });
 
@@ -430,7 +437,7 @@ export const checkSkuExists = query({
 export const createProductWithVariants = mutation({
   args: smartProductArgs,
   handler: async (ctx, args) => {
-    const resolvedSku = args.sku.trim() || await generateUniqueSmartSku(ctx, args.name);
+    const resolvedSku = args.sku.trim() || await generateUniqueSmartSku(ctx, args.name, args.categoryId);
     await assertUniqueProductSku(ctx, resolvedSku);
 
     const normalizedOptions = normalizeInlineOptions(args.options);
@@ -504,7 +511,7 @@ export const updateProductWithVariants = mutation({
       throw new Error("Product not found");
     }
 
-    const resolvedSku = args.sku.trim() || await generateUniqueSmartSku(ctx, args.name, args.id);
+    const resolvedSku = args.sku.trim() || await generateUniqueSmartSku(ctx, args.name, args.categoryId, args.id);
     if (resolvedSku !== product.sku) {
       await assertUniqueProductSku(ctx, resolvedSku, args.id);
     }

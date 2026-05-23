@@ -80,7 +80,9 @@ function ProductCreateContent() {
   const lastGeneratedSkuRef = useRef('');
   const generatedSku = useQuery(
     api.productsSmart.generateSmartSku,
-    name.trim() ? { name: name.trim() } : 'skip'
+    name.trim()
+      ? { name: name.trim(), categoryId: categoryId ? categoryId as Id<"productCategories"> : undefined }
+      : 'skip'
   );
   const resolvedSkuPreview = sku.trim() || generatedSku || '';
   const skuExists = useQuery(

@@ -94,7 +94,9 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   }>({});
   const generatedSku = useQuery(
     api.productsSmart.generateSmartSku,
-    name.trim() ? { name: name.trim() } : 'skip'
+    name.trim()
+      ? { name: name.trim(), categoryId: categoryId ? categoryId as Id<"productCategories"> : undefined }
+      : 'skip'
   );
   const resolvedSkuPreview = sku.trim() || generatedSku || productData?.sku || '';
   const skuExists = useQuery(
