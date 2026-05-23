@@ -24,6 +24,8 @@ import { buildCategoryPath, buildDetailPath, normalizeRouteMode } from '@/lib/ia
 import { ProductImageFrameOverlay, useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
 import { ProductImageWatermarkBox } from '@/components/shared/ProductImageWatermarkOverlay';
 import { RichContent, withFormatMarker } from '@/components/common/RichContent';
+import { FaqSectionShared } from '@/app/admin/home-components/faq/_components/FaqSectionShared';
+import { getFaqColors } from '@/app/admin/home-components/faq/_lib/colors';
 import { useCustomerAuth } from '@/app/(site)/auth/context';
 import { notifyAddToCart, useCart } from '@/lib/cart';
 import { useCartConfig, useCheckoutConfig } from '@/lib/experiences';
@@ -393,6 +395,11 @@ export default function ProductDetailPage({ params }: PageProps) {
   const categories = useQuery(api.productCategories.listActive);
   const routeModeSetting = useQuery(api.settings.getValue, { key: 'ia_route_mode', defaultValue: 'unified' });
   const routeMode = useMemo(() => normalizeRouteMode(routeModeSetting), [routeModeSetting]);
+  const enableCategoryProductDetailSuffixSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableCategoryProductDetailSuffix' });
+  const enableCategoryProductDetailFaqSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableCategoryProductDetailFaq' });
+
+  const enableCategoryProductDetailSuffix = enableCategoryProductDetailSuffixSetting?.value === true;
+  const enableCategoryProductDetailFaq = enableCategoryProductDetailFaqSetting?.value === true;
   const categorySlugMap = useMemo(() => {
     if (!categories) {return new Map<string, string>();}
     return new Map(categories.map((item) => [item._id, item.slug]));
@@ -904,6 +911,9 @@ export default function ProductDetailPage({ params }: PageProps) {
           routeMode={routeMode}
           categorySlugMap={categorySlugMap}
           productImagePlaceholder={productImagePlaceholder}
+          category={category}
+          enableCategoryProductDetailSuffix={enableCategoryProductDetailSuffix}
+          enableCategoryProductDetailFaq={enableCategoryProductDetailFaq}
         />
       )}
       {experienceConfig.layoutStyle === 'modern' && (
@@ -949,6 +959,9 @@ export default function ProductDetailPage({ params }: PageProps) {
           routeMode={routeMode}
           categorySlugMap={categorySlugMap}
           productImagePlaceholder={productImagePlaceholder}
+          category={category}
+          enableCategoryProductDetailSuffix={enableCategoryProductDetailSuffix}
+          enableCategoryProductDetailFaq={enableCategoryProductDetailFaq}
         />
       )}
       {experienceConfig.layoutStyle === 'minimal' && (
@@ -994,6 +1007,9 @@ export default function ProductDetailPage({ params }: PageProps) {
           routeMode={routeMode}
           categorySlugMap={categorySlugMap}
           productImagePlaceholder={productImagePlaceholder}
+          category={category}
+          enableCategoryProductDetailSuffix={enableCategoryProductDetailSuffix}
+          enableCategoryProductDetailFaq={enableCategoryProductDetailFaq}
         />
       )}
       <ProductImageLightbox
@@ -1081,6 +1097,9 @@ interface StyleProps {
   routeMode: 'unified' | 'namespace';
   categorySlugMap: Map<string, string>;
   productImagePlaceholder: string;
+  category?: any;
+  enableCategoryProductDetailSuffix?: boolean;
+  enableCategoryProductDetailFaq?: boolean;
 }
 
 interface ExperienceBlocksProps {
@@ -1782,6 +1801,9 @@ function ClassicStyle({
   routeMode,
   categorySlugMap,
   productImagePlaceholder,
+  category,
+  enableCategoryProductDetailSuffix,
+  enableCategoryProductDetailFaq,
 }: ClassicStyleProps) {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -2129,11 +2151,20 @@ function ClassicStyle({
                     />
                   ) : null}
                   {showDescription && resolvedDescription && (
-                    <RichContent
-                      content={resolvedDescription}
-                      className="max-w-none"
-                      style={{ color: tokens.bodyText }}
-                    />
+                    <>
+                      <RichContent
+                        content={resolvedDescription}
+                        className="max-w-none"
+                        style={{ color: tokens.bodyText }}
+                      />
+                      {enableCategoryProductDetailSuffix && category?.productDetailSuffixContent && (
+                        <RichContent
+                          content={toRichTextContent(category.productDetailSuffixContent)}
+                          className="max-w-none mt-4 pt-4 border-t border-dashed border-slate-100 dark:border-slate-800"
+                          style={{ color: tokens.bodyText }}
+                        />
+                      )}
+                    </>
                   )}
                   {supplementalContent?.postContent ? (
                     <RichContent
@@ -2154,7 +2185,14 @@ function ClassicStyle({
               </div>
             ) : null}
 
-            <ProductSupplementalFaqAccordion faqItems={supplementalContent?.faqItems ?? []} tokens={tokens} />
+             <ProductSupplementalFaqAccordion 
+              faqItems={
+                (enableCategoryProductDetailFaq && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
+                  ? []
+                  : (supplementalContent?.faqItems ?? [])
+              } 
+              tokens={tokens} 
+            />
           </div>
         </div>
 
@@ -2181,6 +2219,28 @@ function ClassicStyle({
           categorySlugMap={categorySlugMap}
           productImagePlaceholder={productImagePlaceholder}
         />
+
+        {enableCategoryProductDetailFaq && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0 && (
+          <div className="mt-16 border-t pt-8" style={{ borderColor: tokens.divider }}>
+            <FaqSectionShared
+              items={category.productDetailFaqItems.map((item: any) => ({
+                id: item.id,
+                question: item.question,
+                answer: item.answer,
+              }))}
+              style={(category.productDetailFaqStyle as any) ?? 'accordion'}
+              title="Câu hỏi thường gặp"
+              suppressInternalHeader={false}
+              context="site"
+              tokens={getFaqColors({
+                primary: brandColor,
+                secondary: brandColor,
+                mode: 'single',
+                style: (category.productDetailFaqStyle as any) ?? 'accordion',
+              })}
+            />
+          </div>
+        )}
 
         <div className="mt-12 pt-8 border-t" style={{ borderColor: tokens.divider }}>
           <Link href="/products" className="inline-flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80" style={{ color: tokens.primary }}>
@@ -2235,6 +2295,9 @@ function ModernStyle({
   routeMode,
   categorySlugMap,
   productImagePlaceholder,
+  category,
+  enableCategoryProductDetailSuffix,
+  enableCategoryProductDetailFaq,
 }: StyleProps & ExperienceBlocksProps & HighlightBlockProps & { heroStyle: ModernHeroStyle }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -2654,11 +2717,20 @@ function ModernStyle({
                   />
                 ) : null}
                 {showDescription && resolvedDescription ? (
-                  <RichContent
-                    content={resolvedDescription}
-                    className="max-w-none"
-                    style={{ color: tokens.bodyText }}
-                  />
+                  <>
+                    <RichContent
+                      content={resolvedDescription}
+                      className="max-w-none"
+                      style={{ color: tokens.bodyText }}
+                    />
+                    {enableCategoryProductDetailSuffix && category?.productDetailSuffixContent && (
+                      <RichContent
+                        content={toRichTextContent(category.productDetailSuffixContent)}
+                        className="max-w-none mt-4 pt-4 border-t border-dashed border-slate-100 dark:border-slate-800"
+                        style={{ color: tokens.bodyText }}
+                      />
+                    )}
+                  </>
                 ) : null}
                 {supplementalContent?.postContent ? (
                   <RichContent
@@ -2681,7 +2753,14 @@ function ModernStyle({
             )}
           </div>
 
-          <ProductSupplementalFaqAccordion faqItems={supplementalContent?.faqItems ?? []} tokens={tokens} />
+          <ProductSupplementalFaqAccordion 
+            faqItems={
+              (enableCategoryProductDetailFaq && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
+                ? []
+                : (supplementalContent?.faqItems ?? [])
+            } 
+            tokens={tokens} 
+          />
         </div>
 
         {commentsSection}
@@ -2709,6 +2788,28 @@ function ModernStyle({
             productImagePlaceholder={productImagePlaceholder}
           />
         </div>
+
+        {enableCategoryProductDetailFaq && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0 && (
+          <div className="mt-16 border-t pt-8" style={{ borderColor: tokens.border }}>
+            <FaqSectionShared
+              items={category.productDetailFaqItems.map((item: any) => ({
+                id: item.id,
+                question: item.question,
+                answer: item.answer,
+              }))}
+              style={(category.productDetailFaqStyle as any) ?? 'accordion'}
+              title="Câu hỏi thường gặp"
+              suppressInternalHeader={false}
+              context="site"
+              tokens={getFaqColors({
+                primary: brandColor,
+                secondary: brandColor,
+                mode: 'single',
+                style: (category.productDetailFaqStyle as any) ?? 'accordion',
+              })}
+            />
+          </div>
+        )}
       </main>
     </div>
   );
@@ -2753,10 +2854,13 @@ function MinimalStyle({
   onAddToCart,
   onBuyNow,
   commentsSection,
-  supplementalContent,
-  routeMode,
-  categorySlugMap,
+  category,
+  enableCategoryProductDetailSuffix,
+  enableCategoryProductDetailFaq,
   productImagePlaceholder,
+  routeMode,
+  supplementalContent,
+  categorySlugMap,
 }: StyleProps & ExperienceBlocksProps & HighlightBlockProps & { contentWidth: MinimalContentWidth }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<VariantSelectionMap>({});
@@ -3115,11 +3219,20 @@ function MinimalStyle({
                 />
               ) : null}
               {showDescription && resolvedDescription && (
-                <RichContent
-                  content={resolvedDescription}
-                  className="leading-relaxed font-light text-justify"
-                  style={{ color: tokens.bodyText }}
-                />
+                <>
+                  <RichContent
+                    content={resolvedDescription}
+                    className="leading-relaxed font-light text-justify"
+                    style={{ color: tokens.bodyText }}
+                  />
+                  {enableCategoryProductDetailSuffix && category?.productDetailSuffixContent && (
+                    <RichContent
+                      content={toRichTextContent(category.productDetailSuffixContent)}
+                      className="leading-relaxed font-light text-justify mt-4 pt-4 border-t border-dashed border-slate-100 dark:border-slate-800"
+                      style={{ color: tokens.bodyText }}
+                    />
+                  )}
+                </>
               )}
               {supplementalContent?.postContent ? (
                 <RichContent
@@ -3140,7 +3253,14 @@ function MinimalStyle({
           </section>
         ) : null}
         <section className="mt-10">
-          <ProductSupplementalFaqAccordion faqItems={supplementalContent?.faqItems ?? []} tokens={tokens} />
+          <ProductSupplementalFaqAccordion
+            faqItems={
+              (enableCategoryProductDetailFaq && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
+                ? []
+                : (supplementalContent?.faqItems ?? [])
+            }
+            tokens={tokens}
+          />
         </section>
         <RelatedProductsSection
           products={relatedProducts}
@@ -3163,6 +3283,28 @@ function MinimalStyle({
           categorySlugMap={categorySlugMap}
           productImagePlaceholder={productImagePlaceholder}
         />
+
+        {enableCategoryProductDetailFaq && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0 && (
+          <div className="mt-16 border-t pt-8" style={{ borderColor: tokens.divider }}>
+            <FaqSectionShared
+              items={category.productDetailFaqItems.map((item: any) => ({
+                id: item.id,
+                question: item.question,
+                answer: item.answer,
+              }))}
+              style={(category.productDetailFaqStyle as any) ?? 'accordion'}
+              title="Câu hỏi thường gặp"
+              suppressInternalHeader={false}
+              context="site"
+              tokens={getFaqColors({
+                primary: brandColor,
+                secondary: brandColor,
+                mode: 'single',
+                style: (category.productDetailFaqStyle as any) ?? 'accordion',
+              })}
+            />
+          </div>
+        )}
       </main>
     </div>
   );

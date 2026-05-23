@@ -20,6 +20,8 @@ import { ChevronDown, Heart, Package, Search, ShoppingCart, SlidersHorizontal, X
 import type { Id } from '@/convex/_generated/dataModel';
 import { getPublicPriceLabel } from '@/lib/products/public-price';
 import { getProductImageAspectRatioCssValue, resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
+import { RichContent } from '@/components/common/RichContent';
+import { toRichTextContent } from '@/lib/products/product-supplemental-content';
 
 type ProductSortOption = 'newest' | 'oldest' | 'popular' | 'price_asc' | 'price_desc' | 'name';
 type ProductsListLayout = 'grid' | 'list' | 'catalog';
@@ -276,6 +278,17 @@ function ProductsContent() {
   }, [categorySlugFromPath, searchParams, categoryOptions]);
 
   const activeCategory = categoryFromUrl;
+
+  const showCategorySubtitleSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'showCategorySubtitle' });
+  const enableCategoryFilterFooterContentSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableCategoryFilterFooterContent' });
+
+  const showCategorySubtitle = showCategorySubtitleSetting?.value === true;
+  const enableCategoryFilterFooterContent = enableCategoryFilterFooterContentSetting?.value === true;
+
+  const activeCategoryDoc = useMemo(() => {
+    if (!activeCategory || categoryOptions.length === 0) {return null;}
+    return categoryOptions.find((c) => c._id === activeCategory) ?? null;
+  }, [activeCategory, categoryOptions]);
 
   const paginatedSortBy = sortBy === 'popular' ? 'popular' : (sortBy === 'oldest' ? 'oldest' : 'newest');
 
@@ -732,6 +745,9 @@ function ProductsContent() {
           imageAspectRatioStyle={imageAspectRatioStyle}
           overlayUrl={productFrameOverlayUrl}
           getDetailHref={getProductDetailHref}
+          activeCategoryDoc={activeCategoryDoc}
+          showCategorySubtitle={showCategorySubtitle}
+          enableCategoryFilterFooterContent={enableCategoryFilterFooterContent}
         />
         {quickAddModal}
       </>
@@ -773,6 +789,9 @@ function ProductsContent() {
           imageAspectRatioStyle={imageAspectRatioStyle}
           overlayUrl={productFrameOverlayUrl}
           getDetailHref={getProductDetailHref}
+          activeCategoryDoc={activeCategoryDoc}
+          showCategorySubtitle={showCategorySubtitle}
+          enableCategoryFilterFooterContent={enableCategoryFilterFooterContent}
         />
         {quickAddModal}
       </>
@@ -787,8 +806,13 @@ function ProductsContent() {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold" style={{ color: tokens.headingColor }}>
-              {activeCategory && categoryMap ? categoryMap.get(activeCategory as any) ?? 'Sản phẩm' : 'Sản phẩm'}
+              {activeCategoryDoc?.name ?? 'Sản phẩm'}
             </h1>
+            {showCategorySubtitle && activeCategoryDoc?.description && (
+              <p className="mt-2 text-base max-w-2xl mx-auto opacity-80" style={{ color: tokens.bodyText }}>
+                {activeCategoryDoc.description}
+              </p>
+            )}
           </div>
 
         <MobileProductsFilters
@@ -914,6 +938,12 @@ function ProductsContent() {
         )}
 
           {paginationNode}
+
+          {enableCategoryFilterFooterContent && activeCategoryDoc?.filterFooterContent && (
+            <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800 max-w-4xl mx-auto text-left">
+              <RichContent content={toRichTextContent(activeCategoryDoc.filterFooterContent)} />
+            </div>
+          )}
         </div>
       </div>
       {quickAddModal}
@@ -1178,7 +1208,7 @@ interface LayoutProps {
   isLoadingProducts: boolean;
   postsPerPage: number;
   products: ProductCardProps['product'][];
-  categories: { _id: Id<"productCategories">; name: string; slug: string }[];
+  categories: { _id: Id<"productCategories">; name: string; slug: string; description?: string; filterFooterContent?: string }[];
   categoryMap: Map<string, string>;
   selectedCategory: Id<"productCategories"> | null;
   onCategoryChange: (id: Id<"productCategories"> | null) => void;
@@ -1206,6 +1236,9 @@ interface LayoutProps {
   imageAspectRatioStyle: React.CSSProperties;
   overlayUrl?: string | null;
   getDetailHref: (product: ProductCardProps['product']) => string;
+  activeCategoryDoc?: { name: string; description?: string; filterFooterContent?: string } | null;
+  showCategorySubtitle?: boolean;
+  enableCategoryFilterFooterContent?: boolean;
 }
 
 interface MobileProductsFiltersProps {
@@ -1340,14 +1373,19 @@ function MobileProductsFilters({
   );
 }
 
-function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, getDetailHref }: LayoutProps) {
+function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent }: LayoutProps) {
   return (
     <div className="py-8 md:py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold" style={{ color: tokens.headingColor }}>
-            {selectedCategory && categoryMap ? categoryMap.get(selectedCategory as any) ?? 'Sản phẩm' : 'Sản phẩm'}
+            {activeCategoryDoc?.name ?? 'Sản phẩm'}
           </h1>
+          {showCategorySubtitle && activeCategoryDoc?.description && (
+            <p className="mt-2 text-base max-w-2xl mx-auto opacity-80" style={{ color: tokens.bodyText }}>
+              {activeCategoryDoc.description}
+            </p>
+          )}
         </div>
 
         <MobileProductsFilters
@@ -1514,6 +1552,12 @@ function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, 
         </div>
 
         {paginationNode}
+
+        {enableCategoryFilterFooterContent && activeCategoryDoc?.filterFooterContent && (
+          <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800 max-w-4xl mx-auto text-left">
+            <RichContent content={toRichTextContent(activeCategoryDoc.filterFooterContent)} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1521,14 +1565,19 @@ function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, 
 
 // ========== LIST LAYOUT (Full width list view) ==========
 
-function ListLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, overlayUrl, getDetailHref }: LayoutProps) {
+function ListLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, overlayUrl, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent }: LayoutProps) {
   return (
     <div className="py-8 md:py-12 px-4">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold" style={{ color: tokens.headingColor }}>
-            {selectedCategory && categoryMap ? categoryMap.get(selectedCategory as any) ?? 'Sản phẩm' : 'Sản phẩm'}
+            {activeCategoryDoc?.name ?? 'Sản phẩm'}
           </h1>
+          {showCategorySubtitle && activeCategoryDoc?.description && (
+            <p className="mt-2 text-base max-w-2xl mx-auto opacity-80" style={{ color: tokens.bodyText }}>
+              {activeCategoryDoc.description}
+            </p>
+          )}
         </div>
 
         <MobileProductsFilters
@@ -1631,6 +1680,12 @@ function ListLayout({ isLoadingProducts, postsPerPage, products, categories, cat
         )}
 
         {paginationNode}
+
+        {enableCategoryFilterFooterContent && activeCategoryDoc?.filterFooterContent && (
+          <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800 max-w-4xl mx-auto text-left">
+            <RichContent content={toRichTextContent(activeCategoryDoc.filterFooterContent)} />
+          </div>
+        )}
       </div>
     </div>
   );

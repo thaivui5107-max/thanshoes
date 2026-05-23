@@ -13,6 +13,19 @@ const categoryDoc = v.object({
   order: v.number(),
   parentId: v.optional(v.id("productCategories")),
   slug: v.string(),
+  filterFooterContent: v.optional(v.string()),
+  productDetailSuffixContent: v.optional(v.string()),
+  productDetailFaqItems: v.optional(
+    v.array(
+      v.object({
+        id: v.union(v.string(), v.number()),
+        question: v.string(),
+        answer: v.string(),
+        order: v.number(),
+      })
+    )
+  ),
+  productDetailFaqStyle: v.optional(v.string()),
 });
 
 export const listAll = query({
@@ -441,6 +454,19 @@ export const create = mutation({
     order: v.optional(v.number()),
     parentId: v.optional(v.id("productCategories")),
     slug: v.string(),
+    filterFooterContent: v.optional(v.string()),
+    productDetailSuffixContent: v.optional(v.string()),
+    productDetailFaqItems: v.optional(
+      v.array(
+        v.object({
+          id: v.union(v.string(), v.number()),
+          question: v.string(),
+          answer: v.string(),
+          order: v.number(),
+        })
+      )
+    ),
+    productDetailFaqStyle: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const hierarchyFeature = await ctx.db
@@ -487,6 +513,19 @@ export const update = mutation({
     order: v.optional(v.number()),
     parentId: v.optional(v.id("productCategories")),
     slug: v.optional(v.string()),
+    filterFooterContent: v.optional(v.string()),
+    productDetailSuffixContent: v.optional(v.string()),
+    productDetailFaqItems: v.optional(
+      v.array(
+        v.object({
+          id: v.union(v.string(), v.number()),
+          question: v.string(),
+          answer: v.string(),
+          order: v.number(),
+        })
+      )
+    ),
+    productDetailFaqStyle: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const hierarchyFeature = await ctx.db

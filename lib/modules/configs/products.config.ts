@@ -91,6 +91,34 @@ export const productsModule = defineModuleWithRuntime({
       group: 'supplementalContent',
     },
     {
+      key: 'showCategorySubtitle',
+      label: 'Hiện mô tả dưới tên danh mục',
+      type: 'toggle',
+      default: false,
+      group: 'categoryContent',
+    },
+    {
+      key: 'enableCategoryFilterFooterContent',
+      label: 'Hiện nội dung cuối trang danh mục',
+      type: 'toggle',
+      default: false,
+      group: 'categoryContent',
+    },
+    {
+      key: 'enableCategoryProductDetailSuffix',
+      label: 'Nối nội dung danh mục vào chi tiết sản phẩm',
+      type: 'toggle',
+      default: false,
+      group: 'categoryContent',
+    },
+    {
+      key: 'enableCategoryProductDetailFaq',
+      label: 'Hiện FAQ danh mục ở chi tiết sản phẩm',
+      type: 'toggle',
+      default: false,
+      group: 'categoryContent',
+    },
+    {
       key: 'supplementalContentAssignmentMode',
       label: 'Kiểu áp dụng mặc định',
       type: 'select',
@@ -213,6 +241,7 @@ export const productsModule = defineModuleWithRuntime({
 
    settingGroups: [
      { key: 'general', label: 'Cài đặt chung' },
+     { key: 'categoryContent', label: 'Nội dung danh mục', icon: FolderTree },
      { key: 'supplementalContent', label: 'Nội dung bổ sung chi tiết', icon: SquareStack },
      { key: 'variants', label: 'Phiên bản sản phẩm', icon: Layers },
      { key: 'digital', label: 'Sản phẩm Digital', icon: Download },
