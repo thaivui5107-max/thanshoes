@@ -16,6 +16,7 @@ import { LexicalEditor } from '@/app/admin/components/LexicalEditor';
 import { FaqForm } from '@/app/admin/home-components/faq/_components/FaqForm';
 import type { FaqItem, FaqStyle, FaqConfig } from '@/app/admin/home-components/faq/_types';
 import { HomeComponentStickyFooter } from '@/app/admin/home-components/_shared/components/HomeComponentStickyFooter';
+import { AiCategoryContentImport } from '../../_components/AiCategoryContentImport';
 
 const MODULE_KEY = 'productCategories';
 
@@ -61,6 +62,23 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
   const [faqStyle, setFaqStyle] = useState<FaqStyle>('accordion');
   const [faqConfig, setFaqConfig] = useState<FaqConfig>({ description: '', buttonText: '', buttonLink: '' });
   const [faqEnabled, setFaqEnabled] = useState(true);
+
+  const handleAiApply = (data: {
+    filterFooterContent: string;
+    productDetailSuffixContent: string;
+    faqItems: FaqItem[];
+  }) => {
+    if (data.filterFooterContent) {
+      setFilterFooterContent(data.filterFooterContent);
+    }
+    if (data.productDetailSuffixContent) {
+      setProductDetailSuffixContent(data.productDetailSuffixContent);
+    }
+    if (data.faqItems && data.faqItems.length > 0) {
+      setFaqItems(data.faqItems);
+      setFaqEnabled(true);
+    }
+  };
 
   const enabledFields = useMemo(() => {
     const fields = new Set<string>();
@@ -445,6 +463,11 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
             <>
               <Button type="button" variant="ghost" onClick={() => router.push('/admin/categories')} disabled={isSubmitting}>Hủy bỏ</Button>
               <div className="flex flex-wrap justify-end gap-2">
+                <AiCategoryContentImport 
+                  categoryName={name}
+                  categoryDescription={description}
+                  onApply={handleAiApply}
+                />
                 <Button
                   type="button"
                   variant="outline"
