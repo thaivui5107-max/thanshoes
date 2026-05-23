@@ -2187,7 +2187,7 @@ function ClassicStyle({
 
              <ProductSupplementalFaqAccordion 
               faqItems={
-                (enableCategoryProductDetailFaq && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
+                (enableCategoryProductDetailFaq && category?.productDetailFaqEnabled !== false && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
                   ? []
                   : (supplementalContent?.faqItems ?? [])
               } 
@@ -2220,7 +2220,7 @@ function ClassicStyle({
           productImagePlaceholder={productImagePlaceholder}
         />
 
-        {enableCategoryProductDetailFaq && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0 && (
+        {enableCategoryProductDetailFaq && category?.productDetailFaqEnabled !== false && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0 && (
           <div className="mt-16 border-t pt-8" style={{ borderColor: tokens.divider }}>
             <FaqSectionShared
               items={category.productDetailFaqItems.map((item: any) => ({
@@ -2755,7 +2755,7 @@ function ModernStyle({
 
           <ProductSupplementalFaqAccordion 
             faqItems={
-              (enableCategoryProductDetailFaq && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
+              (enableCategoryProductDetailFaq && category?.productDetailFaqEnabled !== false && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
                 ? []
                 : (supplementalContent?.faqItems ?? [])
             } 
@@ -2789,7 +2789,7 @@ function ModernStyle({
           />
         </div>
 
-        {enableCategoryProductDetailFaq && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0 && (
+        {enableCategoryProductDetailFaq && category?.productDetailFaqEnabled !== false && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0 && (
           <div className="mt-16 border-t pt-8" style={{ borderColor: tokens.border }}>
             <FaqSectionShared
               items={category.productDetailFaqItems.map((item: any) => ({
@@ -3255,7 +3255,7 @@ function MinimalStyle({
         <section className="mt-10">
           <ProductSupplementalFaqAccordion
             faqItems={
-              (enableCategoryProductDetailFaq && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
+              (enableCategoryProductDetailFaq && category?.productDetailFaqEnabled !== false && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
                 ? []
                 : (supplementalContent?.faqItems ?? [])
             }
@@ -3284,7 +3284,7 @@ function MinimalStyle({
           productImagePlaceholder={productImagePlaceholder}
         />
 
-        {enableCategoryProductDetailFaq && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0 && (
+        {enableCategoryProductDetailFaq && category?.productDetailFaqEnabled !== false && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0 && (
           <div className="mt-16 border-t pt-8" style={{ borderColor: tokens.divider }}>
             <FaqSectionShared
               items={category.productDetailFaqItems.map((item: any) => ({

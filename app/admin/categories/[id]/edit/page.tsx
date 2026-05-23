@@ -60,6 +60,7 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
   const [faqItems, setFaqItems] = useState<FaqItem[]>([{ id: Date.now(), question: '', answer: '' }]);
   const [faqStyle, setFaqStyle] = useState<FaqStyle>('accordion');
   const [faqConfig, setFaqConfig] = useState<FaqConfig>({ description: '', buttonText: '', buttonLink: '' });
+  const [faqEnabled, setFaqEnabled] = useState(true);
 
   const enabledFields = useMemo(() => {
     const fields = new Set<string>();
@@ -79,6 +80,7 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
     productDetailSuffixContent: string;
     faqItems: { id: string; question: string; answer: string; order: number }[];
     faqStyle: string;
+    faqEnabled: boolean;
   } | null>(null);
 
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('saved');
@@ -104,8 +106,9 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
       productDetailSuffixContent: productDetailSuffixContent.trim(),
       faqItems: resolvedFaqItems,
       faqStyle,
+      faqEnabled,
     };
-  }, [name, slug, description, parentId, active, filterFooterContent, productDetailSuffixContent, faqItems, faqStyle]);
+  }, [name, slug, description, parentId, active, filterFooterContent, productDetailSuffixContent, faqItems, faqStyle, faqEnabled]);
 
   const hasChanges = useMemo(() => {
     if (!initialSnapshotRef.current) {return false;}
@@ -158,6 +161,9 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
       const loadedFaqStyle = (categoryData.productDetailFaqStyle as FaqStyle) ?? 'accordion';
       setFaqStyle(loadedFaqStyle);
 
+      const loadedFaqEnabled = categoryData.productDetailFaqEnabled !== false;
+      setFaqEnabled(loadedFaqEnabled);
+
       const resolvedFaqItems = loadedFaqItems
         .filter(f => f.question.trim() || f.answer.trim())
         .map((f, idx) => ({
@@ -177,6 +183,7 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
         productDetailSuffixContent: loadedProductDetailSuffixContent.trim(),
         faqItems: resolvedFaqItems,
         faqStyle: loadedFaqStyle,
+        faqEnabled: loadedFaqEnabled,
       };
       setSnapshotVersion(prev => prev + 1);
     }
@@ -213,10 +220,11 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
         name: name.trim(),
         parentId: isHierarchyEnabled && parentId ? parentId as Id<"productCategories"> : undefined,
         slug: slug.trim(),
-        filterFooterContent: enableCategoryFilterFooterContent && filterFooterContent.trim() ? filterFooterContent : undefined,
-        productDetailSuffixContent: enableCategoryProductDetailSuffix && productDetailSuffixContent.trim() ? productDetailSuffixContent : undefined,
-        productDetailFaqItems: enableCategoryProductDetailFaq && resolvedFaqItems.length > 0 ? resolvedFaqItems : undefined,
+        filterFooterContent: enableCategoryFilterFooterContent ? filterFooterContent.trim() : undefined,
+        productDetailSuffixContent: enableCategoryProductDetailSuffix ? productDetailSuffixContent.trim() : undefined,
+        productDetailFaqItems: enableCategoryProductDetailFaq ? resolvedFaqItems : undefined,
         productDetailFaqStyle: enableCategoryProductDetailFaq ? faqStyle : undefined,
+        productDetailFaqEnabled: faqEnabled,
       });
 
       // Reset snapshot to current values upon successful save
@@ -230,6 +238,7 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
         productDetailSuffixContent: productDetailSuffixContent.trim(),
         faqItems: resolvedFaqItems,
         faqStyle,
+        faqEnabled,
       };
       setSnapshotVersion(prev => prev + 1);
       setSaveStatus('saved');
@@ -372,15 +381,57 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
 
               {enableCategoryProductDetailFaq && (
                 <div className="space-y-4 border-t border-slate-100 dark:border-slate-800 pt-4">
-                  <Label className="text-base font-semibold block">FAQ chi tiết sản phẩm</Label>
-                  <FaqForm
-                    faqItems={faqItems}
-                    setFaqItems={setFaqItems}
-                    faqStyle={faqStyle}
-                    brandColor="#f97316"
-                    faqConfig={faqConfig}
-                    setFaqConfig={setFaqConfig}
-                  />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-base font-semibold block">FAQ chi tiết sản phẩm</Label>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        Bật hoặc tắt hiển thị các câu hỏi thường gặp cho danh mục này trên trang chi tiết sản phẩm.
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={faqEnabled}
+                        onClick={() => setFaqEnabled(!faqEnabled)}
+                        className={cn(
+                          "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2",
+                          faqEnabled ? "bg-orange-500" : "bg-slate-200 dark:bg-slate-700"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                            faqEnabled ? "translate-x-5" : "translate-x-0"
+                          )}
+                        />
+                      </button>
+                      <span className={cn(
+                        "text-sm font-medium",
+                        faqEnabled ? "text-orange-600 dark:text-orange-400" : "text-slate-400"
+                      )}>
+                        {faqEnabled ? "Đang bật" : "Đã tắt"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {faqEnabled ? (
+                    <div className="space-y-4 pt-2">
+                      <FaqForm
+                        faqItems={faqItems}
+                        setFaqItems={setFaqItems}
+                        faqStyle={faqStyle}
+                        brandColor="#f97316"
+                        faqConfig={faqConfig}
+                        setFaqConfig={setFaqConfig}
+                      />
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-slate-200 dark:border-slate-700 p-6 text-center bg-slate-50/50 dark:bg-slate-900/50">
+                      <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">FAQ chi tiết sản phẩm đã bị tắt cho danh mục này</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Các câu hỏi FAQ đã soạn thảo vẫn được lưu trữ an toàn nhưng sẽ không hiển thị ngoài giao diện web cho đến khi bạn bật lại.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

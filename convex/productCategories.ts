@@ -26,6 +26,7 @@ const categoryDoc = v.object({
     )
   ),
   productDetailFaqStyle: v.optional(v.string()),
+  productDetailFaqEnabled: v.optional(v.boolean()),
 });
 
 export const listAll = query({
@@ -467,6 +468,7 @@ export const create = mutation({
       )
     ),
     productDetailFaqStyle: v.optional(v.string()),
+    productDetailFaqEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const hierarchyFeature = await ctx.db
@@ -526,6 +528,7 @@ export const update = mutation({
       )
     ),
     productDetailFaqStyle: v.optional(v.string()),
+    productDetailFaqEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const hierarchyFeature = await ctx.db

@@ -257,6 +257,7 @@ export default defineSchema({
       )
     ),
     productDetailFaqStyle: v.optional(v.string()),
+    productDetailFaqEnabled: v.optional(v.boolean()),
   })
     .index("by_slug", ["slug"])
     .index("by_parent", ["parentId"])
