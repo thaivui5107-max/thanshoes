@@ -50,7 +50,7 @@ export default function CategoryCreatePage() {
   const [filterFooterContent, setFilterFooterContent] = useState('');
   const [productDetailSuffixContent, setProductDetailSuffixContent] = useState('');
   const [faqItems, setFaqItems] = useState<FaqItem[]>([{ id: Date.now(), question: '', answer: '' }]);
-  const [faqStyle, setFaqStyle] = useState<FaqStyle>('accordion');
+  const [faqStyle] = useState<FaqStyle>('accordion');
   const [faqConfig, setFaqConfig] = useState<FaqConfig>({ description: '', buttonText: '', buttonLink: '' });
   const [faqEnabled, setFaqEnabled] = useState(true);
 
