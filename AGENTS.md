@@ -139,6 +139,17 @@
 - Trước commit chỉ chạy `bunx tsc --noEmit` khi có thay đổi code/TS; không chạy khi chỉ sửa docs/cấu hình không liên quan.
 - Khi chạy `bunx tsc --noEmit`, luôn pipe output qua `2>&1 | Select-Object -First 10` để giới hạn context (tsc luôn scan toàn bộ project bất kể pipe; pipe chỉ cắt hiển thị, không tăng tốc).
 
+# Task Completion Notification (Âm báo hoàn thành Task)
+- Khi hoàn thành xong task và chuẩn bị phản hồi kết quả cuối cùng cho người dùng, Agent BẮT BUỘC phải thực hiện chạy lệnh phát âm báo để thông báo cho người dùng trên Windows 11.
+- Chọn một trong các lệnh PowerShell "vui nhộn" và "pro" mà các Senior Dev hay dùng dưới đây để phát âm thanh (ưu tiên Option 1 hoặc 2):
+  - **Option 1: Giọng đọc Trợ lý AI báo hoàn thành cực ngầu (Speech Synthesis)**:
+    `powershell -c "(New-Object -ComObject SAPI.SpVoice).Speak('Mission accomplished, boss! Task is fully completed.')"`
+  - **Option 2: Nhạc chiến thắng Tada cổ điển (Tada Fanfare)**:
+    `powershell -c "(New-Object Media.SoundPlayer 'C:\Windows\Media\tada.wav').PlaySync()"`
+  - **Option 3: Âm thanh thông báo hiện đại của Windows 11**:
+    `powershell -c "(New-Object Media.SoundPlayer 'C:\Windows\Media\Windows Background.wav').PlaySync()"`
+- Chạy lệnh này bằng công cụ `run_command` với `WaitMsBeforeAsync: 5000` ngay trước khi viết phản hồi cuối cùng.
+
 # Convex Real Data Ops (Best Practices)
 - Mặc định ưu tiên sửa dữ liệu thật qua query/mutation/action đã có sẵn; không tự ý thêm schema/table/function mới nếu yêu cầu chỉ là chỉnh data.
 - Quy trình chuẩn khi user yêu cầu sửa data thật: Read surface đang dùng → xác định Convex function đang đọc/ghi → đọc dữ liệu hiện tại → patch tối thiểu → đọc lại để verify.
