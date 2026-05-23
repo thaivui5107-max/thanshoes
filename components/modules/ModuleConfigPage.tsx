@@ -274,12 +274,12 @@ export function ModuleConfigPage({
  
 const PRODUCTS_MODULE_HELP_MAP: Record<string, string> = {
   general: 'Cài đặt cơ bản của sản phẩm như số lượng sản phẩm hiển thị trên trang danh sách, trạng thái mặc định của sản phẩm mới tạo (Đang bán hoặc Bản nháp), chế độ bán hàng (Giỏ hàng, Liên hệ, Affiliate) và bật/tắt chức năng Excel.',
-  categoryContent: 'Quản lý hiển thị các trường nội dung đặc thù của danh mục: subtitle (mô tả ngắn dưới tiêu đề), filter footer (rich text bài viết dài tư vấn cuối trang danh mục), product suffix (rich text nối tiếp sau mô tả sản phẩm), và FAQ kéo-thả riêng cho từng danh mục.',
-  supplementalContent: 'Tính năng chèn nội dung bổ sung (preContent, postContent) hoặc FAQ hàng loạt cho nhiều sản phẩm cùng lúc bằng cách thiết lập các khung nội dung (Templates) chung theo sản phẩm hoặc theo danh mục. Chế độ chống chồng chéo đảm bảo mỗi sản phẩm chỉ chịu hiệu lực từ tối đa 1 Template.',
+  categoryContent: 'CẤU HÌNH NỘI DUNG RIÊNG CHO TỪNG DANH MỤC: Cho phép bạn nhập thông tin mô tả ngắn, viết bài viết dài chân trang danh mục, chèn thêm chính sách bảo hành/đổi trả riêng ở trang chi tiết sản phẩm, và thiết lập bộ câu hỏi FAQ riêng cho danh mục này. (Lưu ý: Nếu danh mục đã có FAQ riêng, hệ thống sẽ ưu tiên hiển thị FAQ này và tự động ẩn FAQ dùng chung đi để tránh lặp câu hỏi).',
+  supplementalContent: 'CẤU HÌNH MẪU NỘI DUNG DÙNG CHUNG (HÀNG LOẠT): Tạo sẵn các khung thông tin (Templates) như chính sách trả góp, hướng dẫn ship hàng, hoặc bộ câu hỏi FAQ chung của shop rồi áp dụng một lần cho nhiều danh mục hoặc nhiều sản phẩm cùng lúc. Giúp bạn không phải mất công copy-paste thủ công cho từng sản phẩm.',
   variants: 'Bật/tắt tính năng phân loại sản phẩm theo phiên bản (ví dụ: Size, Màu sắc...) và thiết lập cấu trúc quản lý giá bán, tồn kho, hình ảnh riêng biệt hoặc chung cho từng phiên bản.',
   digital: 'Cấu hình dành riêng cho các sản phẩm số (Digital), thiết lập loại giao hàng mặc định tự động như giao Tài khoản, License Key kích hoạt, hoặc liên kết File Download.',
-  fields_products: 'Bật/tắt các trường dữ liệu tùy chọn của thực thể Sản phẩm hiển thị trong Admin Form và ngoài trang Public (ví dụ: Giá khuyến mãi, Mã SKU, Tồn kho, Thư viện ảnh, SEO...).',
-  fields_categories: 'Bật/tắt các trường dữ liệu tùy chọn của thực thể Danh mục sản phẩm (ví dụ: Mô tả ngắn, Nội dung cuối trang danh mục, Nội dung nối đuôi sản phẩm, FAQ...).'
+  fields_products: 'BẬT/TẮT TRƯỜNG DỮ LIỆU SẢN PHẨM: Lựa chọn các trường thông tin nào sẽ hiển thị trong form Admin để bạn nhập và render ngoài trang Public (ví dụ: Giá khuyến mãi, Mã SKU, Tồn kho, Thư viện ảnh, SEO...).',
+  fields_categories: 'BẬT/TẮT TRƯỜNG DỮ LIỆU DANH MỤC: Lựa chọn các trường thông tin đặc thù của danh mục nào được phép sử dụng (ví dụ: Mô tả ngắn, Bài viết tư vấn chân trang, Chính sách nối đuôi sản phẩm, FAQ danh mục...).'
 };
 
 function ConfigTab({ config, moduleData, isReadOnly, localFeatures, localFields, localCategoryFields, localSettings, colorClasses, onToggleFeature, onToggleField, onToggleCategoryField, onSettingChange }: {

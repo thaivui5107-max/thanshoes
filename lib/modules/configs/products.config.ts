@@ -85,7 +85,7 @@ export const productsModule = defineModuleWithRuntime({
     },
     {
       key: 'enableProductSupplementalContent',
-      label: 'Bật nội dung bổ sung chi tiết sản phẩm',
+      label: 'Bật mẫu nội dung dùng chung cho sản phẩm',
       type: 'toggle',
       default: false,
       group: 'supplementalContent',
@@ -120,7 +120,7 @@ export const productsModule = defineModuleWithRuntime({
     },
     {
       key: 'supplementalContentAssignmentMode',
-      label: 'Kiểu áp dụng mặc định',
+      label: 'Phạm vi áp dụng mặc định',
       type: 'select',
       default: 'products',
       group: 'supplementalContent',
@@ -132,13 +132,13 @@ export const productsModule = defineModuleWithRuntime({
     },
     {
       key: 'supplementalContentConflictMode',
-      label: 'Chống chồng template',
+      label: 'Quy tắc chống trùng lặp template',
       type: 'select',
       default: 'strict_single_effective',
       group: 'supplementalContent',
       dependsOn: 'enableProductSupplementalContent',
       options: [
-        { value: 'strict_single_effective', label: 'Mỗi sản phẩm chỉ 1 template hiệu lực' },
+        { value: 'strict_single_effective', label: 'Mỗi sản phẩm chỉ dùng tối đa 1 template mẫu' },
       ],
     },
     { key: 'lowStockThreshold', label: 'Ngưỡng tồn kho thấp', type: 'number', default: 10 },
@@ -241,8 +241,8 @@ export const productsModule = defineModuleWithRuntime({
 
    settingGroups: [
      { key: 'general', label: 'Cài đặt chung' },
-     { key: 'categoryContent', label: 'Nội dung danh mục', icon: FolderTree },
-     { key: 'supplementalContent', label: 'Nội dung bổ sung chi tiết', icon: SquareStack },
+     { key: 'categoryContent', label: 'Nội dung riêng theo Danh mục', icon: FolderTree },
+     { key: 'supplementalContent', label: 'Mẫu nội dung dùng chung (Hàng loạt)', icon: SquareStack },
      { key: 'variants', label: 'Phiên bản sản phẩm', icon: Layers },
      { key: 'digital', label: 'Sản phẩm Digital', icon: Download },
    ],
