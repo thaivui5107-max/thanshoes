@@ -221,7 +221,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const featuresData = useQuery(api.admin.modules.listModuleFeatures, { moduleKey: MODULE_KEY });
   const fieldsData = useQuery(api.admin.modules.listModuleFields, { moduleKey: MODULE_KEY });
   const defaultImageAspectRatio = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
-  const enableProductWatermarkSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableProductWatermark' });
   const [selectedFrameAR, setSelectedFrameAR] = useState<string>('');
 
   const handlePreviewPointerDown = (e: React.PointerEvent<HTMLDivElement>, type: 'image-move' | 'image-resize' | 'text-move') => {
