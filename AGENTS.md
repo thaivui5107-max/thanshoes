@@ -142,14 +142,14 @@
 # Task Completion Notification (Âm báo hoàn thành Task)
 - Khi hoàn thành xong task và chuẩn bị phản hồi kết quả cuối cùng cho người dùng, Agent BẮT BUỘC phải thực hiện chạy lệnh phát âm báo để thông báo cho người dùng trên Windows 11.
 - Chọn một trong các lệnh PowerShell "vui nhộn" và "pro" mà các Senior Dev hay dùng dưới đây để phát âm thanh (ưu tiên Option 1 hoặc 2):
-  - **Option 1: Giọng đọc Trợ lý AI báo hoàn thành bằng Tiếng Việt (Tự động fallback Tiếng Anh nếu máy chưa cài giọng Việt)**:
-    `powershell -c "$s=New-Object -ComObject SAPI.SpVoice; $v=$null; foreach($i in $s.GetVoices()){ if($i.GetDescription() -like '*Viet*'){ $v=$i } }; if($v){ $s.Voice=$v; $s.Speak('Đã hoàn thành xong nhiệm vụ rồi thưa đại ca!') } else { $s.Speak('Task completed, master!') }"`
-  - **Option 2: Giọng đọc Trợ lý AI báo hoàn thành Tiếng Anh**:
-    `powershell -c "(New-Object -ComObject SAPI.SpVoice).Speak('Mission accomplished, boss! Task is fully completed.')"`
-  - **Option 3: Nhạc chiến thắng Tada cổ điển (Tada Fanfare)**:
+  - **Option 1: Giọng đọc Trợ lý AI báo hoàn thành bằng Tiếng Việt / Tiếng Anh (Tự động nhận diện và fallback - Khuyên dùng)**:
+    `powershell -ExecutionPolicy Bypass -File scripts/speak.ps1`
+  - **Option 2: Nhạc chiến thắng Tada cổ điển (Tada Fanfare)**:
     `powershell -c "(New-Object Media.SoundPlayer 'C:\Windows\Media\tada.wav').PlaySync()"`
-  - **Option 4: Âm thanh thông báo hiện đại của Windows 11**:
+  - **Option 3: Âm thanh thông báo hiện đại của Windows 11**:
     `powershell -c "(New-Object Media.SoundPlayer 'C:\Windows\Media\Windows Background.wav').PlaySync()"`
+- Ghi chú cài đặt giọng Việt trên Windows 11:
+  - Nếu muốn dùng giọng đọc Tiếng Việt cực chuẩn của Microsoft, vào **Settings (Cài đặt)** -> **Time & language (Thời gian & Ngôn ngữ)** -> **Speech (Giọng nói)**. Dưới mục **Manage voices (Quản lý giọng nói)**, nhấn vào **Add voices (Thêm giọng nói)**, tìm kiếm và cài gói **Vietnamese (Tiếng Việt)**. Sau khi cài xong, script trên sẽ tự động chuyển sang đọc giọng tiếng Việt!
 - Chạy lệnh này bằng công cụ `run_command` với `WaitMsBeforeAsync: 5000` ngay trước khi viết phản hồi cuối cùng.
 
 # Convex Real Data Ops (Best Practices)
