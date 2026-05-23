@@ -559,7 +559,7 @@ export const updateProductWithVariants = mutation({
       metaDescription: args.metaDescription,
       metaTitle: args.metaTitle,
       name: args.name,
-      order: args.order,
+      order: args.order ?? product.order,
       price: args.price,
       salePrice,
       sku: resolvedSku,
