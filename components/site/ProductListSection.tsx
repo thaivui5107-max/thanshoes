@@ -270,7 +270,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
       recordSlug: product.slug,
     });
   }, [categorySlugMap, routeMode]);
-  const { overlayUrl } = useProductFrameConfig();
+  const { overlayUrl } = useProductFrameConfig(imageAspectRatio);
   
   // Query products based on selection mode (skip for demo mode)
   const productsData = useQuery(

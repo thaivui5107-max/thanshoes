@@ -3764,7 +3764,7 @@ function CategoryProductsSection({
     () => ({ aspectRatio: getProductImageAspectRatioCssValue(imageAspectRatio) }),
     [imageAspectRatio]
   );
-  const { overlayUrl } = useProductFrameConfig();
+  const { overlayUrl } = useProductFrameConfig(imageAspectRatio);
 
   const resolvedSections = React.useMemo(() => {
     if (selectionMode === 'demo') {

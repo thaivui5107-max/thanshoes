@@ -4,21 +4,64 @@ import React, { useMemo } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
-// Simple overlay config - chỉ 1 URL global, không còn activeProductFrameId
-export function useProductFrameConfig() {
+// Simple overlay config - hỗ trợ 5 tỷ lệ khung hình (Aspect Ratio) overlay khác nhau
+export function useProductFrameConfig(aspectRatio?: string) {
   const enabledSetting = useQuery(api.settings.getValue, {
     key: 'enable_product_frames',
     defaultValue: false,
   });
-  const overlaySetting = useQuery(api.settings.getValue, {
+
+  // Query cả 5 cài đặt tỷ lệ khung hình
+  const squareSetting = useQuery(api.settings.getValue, { key: 'product_frame_overlay_square_url' });
+  const portrait916Setting = useQuery(api.settings.getValue, { key: 'product_frame_overlay_portrait916_url' });
+  const portrait34Setting = useQuery(api.settings.getValue, { key: 'product_frame_overlay_portrait34_url' });
+  const landscape43Setting = useQuery(api.settings.getValue, { key: 'product_frame_overlay_landscape43_url' });
+  const wide169Setting = useQuery(api.settings.getValue, { key: 'product_frame_overlay_wide169_url' });
+
+  // Query tỷ lệ ảnh mặc định của hệ thống
+  const defaultImageAspectRatio = useQuery(api.admin.modules.getModuleSetting, {
+    moduleKey: 'products',
+    settingKey: 'defaultImageAspectRatio',
+  });
+
+  // Query khung hình đơn lẻ cũ để tương thích ngược
+  const legacySetting = useQuery(api.settings.getValue, {
     key: 'product_frame_overlay_url',
   });
 
   const enabled = enabledSetting === true;
-  const overlayUrl = typeof overlaySetting === 'string' && overlaySetting ? overlaySetting : null;
+  const resolvedAr = aspectRatio || (typeof defaultImageAspectRatio === 'string' ? defaultImageAspectRatio : 'square');
+
+  const overlayUrl = useMemo(() => {
+    if (!enabled) return null;
+    let url = null;
+    switch (resolvedAr) {
+      case 'square':
+        url = squareSetting;
+        break;
+      case 'portrait916':
+        url = portrait916Setting;
+        break;
+      case 'portrait34':
+        url = portrait34Setting;
+        break;
+      case 'landscape43':
+        url = landscape43Setting;
+        break;
+      case 'wide169':
+        url = wide169Setting;
+        break;
+      default:
+        url = squareSetting;
+    }
+    // Tương thích ngược: Nếu ảnh khung cho tỷ lệ cụ thể trống, dùng product_frame_overlay_url cũ làm fallback
+    return (typeof url === 'string' && url)
+      ? url
+      : (typeof legacySetting === 'string' && legacySetting ? legacySetting : null);
+  }, [enabled, resolvedAr, squareSetting, portrait916Setting, portrait34Setting, landscape43Setting, wide169Setting, legacySetting]);
 
   return useMemo(
-    () => ({ enabled, overlayUrl: enabled ? overlayUrl : null }),
+    () => ({ enabled, overlayUrl }),
     [enabled, overlayUrl]
   );
 }

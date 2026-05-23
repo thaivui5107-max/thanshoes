@@ -184,7 +184,7 @@ function ProductsContent() {
     () => ({ aspectRatio: getProductImageAspectRatioCssValue(imageAspectRatio) }),
     [imageAspectRatio]
   );
-  const { overlayUrl: productFrameOverlayUrl } = useProductFrameConfig();
+  const { overlayUrl: productFrameOverlayUrl } = useProductFrameConfig(imageAspectRatio);
   const listConfig = useProductsListConfig();
   const layout: ProductsListLayout = listConfig.layoutStyle === 'sidebar' ? 'catalog' : listConfig.layoutStyle;
   const enableQuickAddVariant = listConfig.enableQuickAddVariant ?? true;

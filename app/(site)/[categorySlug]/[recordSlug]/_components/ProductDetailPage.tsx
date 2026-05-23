@@ -3573,7 +3573,7 @@ function RelatedProductsSection({
   categorySlugMap: Map<string, string>;
   productImagePlaceholder: string;
 }) {
-  const { overlayUrl } = useProductFrameConfig();
+  const { overlayUrl } = useProductFrameConfig(imageAspectRatio);
   const getDetailHref = useMemo(() => (
     (relatedProduct: RelatedProduct) => buildDetailPath({
       categorySlug: categorySlugMap.get(relatedProduct.categoryId),

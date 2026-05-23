@@ -110,7 +110,7 @@ export function ProductGridSection({ config, brandColor, secondary, title, snaps
       recordSlug: product.slug,
     });
   }, [categorySlugMap, routeMode]);
-  const { overlayUrl } = useProductFrameConfig();
+  const { overlayUrl } = useProductFrameConfig(imageAspectRatio);
 
   // Query products
   const productsData = useQuery(
