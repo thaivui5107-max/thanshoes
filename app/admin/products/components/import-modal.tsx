@@ -44,13 +44,20 @@ export function ImportExportModal() {
   };
 
   const categories = useQuery(api.productCategories.listAll, {}) || [];
+  const productOptions = useQuery(api.productOptions.listActiveWithValues, {}) || [];
   const upsertBulk = useMutation(api.productsImport.upsertBulk);
+
+  const excelOptions = productOptions.map((opt) => ({
+    name: opt.name,
+    slug: opt.slug,
+    values: opt.values.map((v) => v.value),
+  }));
 
   const handleDownloadTemplate = async () => {
     try {
       setIsLoading(true);
       const categoryList = categories.map(c => ({ id: c._id, name: c.name }));
-      const base64 = await generateProductTemplateBase64(configData, categoryList);
+      const base64 = await generateProductTemplateBase64(configData, categoryList, excelOptions);
       
       const link = document.createElement("a");
       link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${base64}`;
@@ -75,7 +82,7 @@ export function ImportExportModal() {
       setIsLoading(true);
       
       const base64String = await toBase64(file);
-      const result = await parseProductExcelBase64(base64String, configData);
+      const result = await parseProductExcelBase64(base64String, configData, excelOptions);
       
       if (!result.success) {
         toast.error(result.error);
@@ -83,7 +90,11 @@ export function ImportExportModal() {
       }
 
       console.log("Parsed Data:", result.data);
-      await upsertBulk({ products: result.data as any });
+      const optionNames = excelOptions.map((opt) => opt.name);
+      await upsertBulk({ 
+        products: result.data as any,
+        optionNames: optionNames.length > 0 ? optionNames : undefined,
+      });
       
       toast.success(`Upsert thành công ${result.data?.length} sản phẩm (Cha).`);
       setIsOpen(false);

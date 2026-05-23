@@ -8,6 +8,7 @@ const bulkVariantDoc = v.object({
   price: v.optional(v.number()),
   salePrice: v.optional(v.number()),
   stock: v.optional(v.number()),
+  imageUrl: v.optional(v.string()),
 });
 
 const bulkProductDoc = v.object({
@@ -26,8 +27,14 @@ const bulkProductDoc = v.object({
 });
 
 export const upsertBulk = mutation({
-  args: { products: v.array(bulkProductDoc) },
+  args: { 
+    products: v.array(bulkProductDoc),
+    optionNames: v.optional(v.array(v.string())),
+  },
   handler: async (ctx, args) => {
+    const opt1Name = args.optionNames?.[0] || "Phân loại 1";
+    const opt2Name = args.optionNames?.[1] || "Phân loại 2";
+
     // TỐI ƯU BANDWIDTH 1: Batch load existing products (Tránh N+1)
     const skus = args.products.map(p => p.sku);
     const existingProductsList = await Promise.all(
@@ -113,14 +120,14 @@ export const upsertBulk = mutation({
           const optionValuesData = [];
           
           if (vData.variantOption1) {
-            const vDoc = await getOrCreateOptionValue("Phân loại 1", vData.variantOption1);
+            const vDoc = await getOrCreateOptionValue(opt1Name, vData.variantOption1);
             if (vDoc) {
               optionValuesData.push({ optionId: vDoc.optionId, valueId: vDoc._id });
               if (!optionIdsToLink.includes(vDoc.optionId)) optionIdsToLink.push(vDoc.optionId);
             }
           }
           if (vData.variantOption2) {
-            const vDoc = await getOrCreateOptionValue("Phân loại 2", vData.variantOption2);
+            const vDoc = await getOrCreateOptionValue(opt2Name, vData.variantOption2);
             if (vDoc) {
               optionValuesData.push({ optionId: vDoc.optionId, valueId: vDoc._id });
               if (!optionIdsToLink.includes(vDoc.optionId)) optionIdsToLink.push(vDoc.optionId);
@@ -201,6 +208,7 @@ export const upsertBulk = mutation({
             stock: rv.vData.stock ?? 0,
             status: "Active",
             order: i,
+            image: rv.vData.imageUrl,
           });
         }
       }

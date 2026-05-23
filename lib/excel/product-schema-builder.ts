@@ -13,6 +13,12 @@ export interface ProductModuleConfig {
   imageStrategy: "INHERIT" | "OVERRIDE" | "MIXED";
 }
 
+export interface ExcelOptionDef {
+  name: string;
+  slug: string;
+  values: string[];
+}
+
 export interface ExcelColumnDef {
   key: string;
   group: string; // Tên nhóm (Row 1)
@@ -31,7 +37,10 @@ export interface ExcelColumnDef {
 // 2. Builder Engine
 // ==========================================
 
-export function buildExcelColumns(config: ProductModuleConfig): ExcelColumnDef[] {
+export function buildExcelColumns(
+  config: ProductModuleConfig,
+  options?: ExcelOptionDef[]
+): ExcelColumnDef[] {
   const columns: ExcelColumnDef[] = [];
 
   // --- THÔNG TIN CƠ BẢN ---
@@ -92,19 +101,26 @@ export function buildExcelColumns(config: ProductModuleConfig): ExcelColumnDef[]
 
   // --- PHÂN LOẠI / BIẾN THỂ ---
   if (config.hasVariants) {
+    const opt1 = options?.[0];
+    const opt2 = options?.[1];
+
     columns.push({
       key: "variantOption1",
       group: "PHÂN LOẠI (BIẾN THỂ)",
-      header: "Phân loại 1 (VD: Màu sắc)",
+      header: opt1 ? opt1.name : "Phân loại 1 (VD: Màu sắc)",
       width: 28,
+      type: opt1 && opt1.values.length > 0 ? "dropdown" : "string",
+      dropdownValues: opt1 ? opt1.values : undefined,
       microcopy: "Chỉ điền ở dòng Phiên bản",
       appliesTo: "VARIANT_ONLY",
     });
     columns.push({
       key: "variantOption2",
       group: "PHÂN LOẠI (BIẾN THỂ)",
-      header: "Phân loại 2 (VD: Kích cỡ)",
+      header: opt2 ? opt2.name : "Phân loại 2 (VD: Kích cỡ)",
       width: 28,
+      type: opt2 && opt2.values.length > 0 ? "dropdown" : "string",
+      dropdownValues: opt2 ? opt2.values : undefined,
       microcopy: "Chỉ điền ở dòng Phiên bản",
       appliesTo: "VARIANT_ONLY",
     });
