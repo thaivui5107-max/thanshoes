@@ -153,7 +153,7 @@ export async function parseProductExcelBase64(
   try {
     const buffer = Buffer.from(base64String, "base64");
     const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(buffer);
+    await wb.xlsx.load(buffer as any);
 
     const mainSheet = wb.getWorksheet("SanPham");
     if (!mainSheet) {

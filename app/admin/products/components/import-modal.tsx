@@ -27,7 +27,7 @@ export function ImportExportModal() {
     imageStrategy: (settings.find(s => s.settingKey === "imageStrategy")?.value as any) ?? "INHERIT"
   };
 
-  const categories = useQuery(api.productCategories.listAll) || [];
+  const categories = useQuery(api.productCategories.listAll, {}) || [];
   const upsertBulk = useMutation(api.productsImport.upsertBulk);
 
   const handleDownloadTemplate = async () => {

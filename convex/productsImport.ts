@@ -64,7 +64,7 @@ export const upsertBulk = mutation({
           isPreset: false,
           order: optionMap.size,
         });
-        option = await ctx.db.get(optionId);
+        option = (await ctx.db.get(optionId)) ?? undefined;
         if (option) optionMap.set(optionName.toLowerCase(), option);
       }
 
@@ -79,7 +79,7 @@ export const upsertBulk = mutation({
           value: valueStr,
           order: 0,
         });
-        valDoc = await ctx.db.get(valId);
+        valDoc = (await ctx.db.get(valId)) ?? undefined;
         if (valDoc) valueMap.set(valKey, valDoc);
       }
       return valDoc;

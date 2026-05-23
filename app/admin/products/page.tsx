@@ -13,7 +13,7 @@ import { BulkActionBar, ColumnToggle, generatePaginationItems, SelectCheckbox, S
 import { ModuleGuard } from '../components/ModuleGuard';
 import { DeleteConfirmDialog } from '../components/DeleteConfirmDialog';
 import { usePersistedPageSize } from '../components/usePersistedPageSize';
-import { ImportExportModal } from '../components/import-modal';
+import { ImportExportModal } from './components/import-modal';
 import {
   buildHeaderMap,
   getProductExcelColumns,
@@ -767,11 +767,11 @@ function ProductsContent() {
           {!excelActionsEnabled && (
             <div className="mt-1 text-xs text-slate-500">Excel actions đang tắt trong module settings</div>
           )}
-          <Button asChild>
-            <Link href="/admin/products/create" className="gap-2">
+          <Link href="/admin/products/create">
+            <Button className="gap-2">
               <Plus size={16} /> Thêm sản phẩm
-            </Link>
-          </Button>
+            </Button>
+          </Link>
         </div>
       </div>
 
