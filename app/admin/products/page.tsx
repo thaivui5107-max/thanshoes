@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AdminEntityImage } from '../components/AdminEntityImage';
 import Link from 'next/link';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { ChevronDown, Copy, Download, Edit, ExternalLink, Layers, Loader2, Plus, Search, Trash2, Upload } from 'lucide-react';
+import { ChevronDown, Copy, Edit, ExternalLink, Layers, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge, Button, Card, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui';
 import { BulkActionBar, ColumnToggle, generatePaginationItems, SelectCheckbox, SortableHeader, useSortableData } from '../components/TableUtilities';
@@ -14,24 +14,6 @@ import { ModuleGuard } from '../components/ModuleGuard';
 import { DeleteConfirmDialog } from '../components/DeleteConfirmDialog';
 import { usePersistedPageSize } from '../components/usePersistedPageSize';
 import { ImportExportModal } from './components/import-modal';
-import {
-  buildHeaderMap,
-  getProductExcelColumns,
-  isRowEmpty,
-  normalizeExcelText,
-  parseExcelImageUrls,
-  parseExcelNumber,
-  parseExcelStatus,
-} from '@/lib/products/excel-contract';
-import {
-  buildErrorSampleSheet,
-  buildGuideSheet,
-  buildProductExportSheet,
-  buildProductTemplateSheet,
-  fillProductExportRows,
-  getStatusLabel,
-  type ProductExcelRow,
-} from '@/lib/products/excel-styles';
 
 const MODULE_KEY = 'products';
 const PAGE_SIZE_OPTIONS = [12, 20, 30, 50, 100];
@@ -54,7 +36,6 @@ function ProductsContent() {
   const bulkRemove = useMutation(api.products.bulkRemove);
   const bulkUpdateStatus = useMutation(api.products.bulkUpdateStatus);
   const bulkClearBrokenMedia = useMutation(api.products.bulkClearBrokenMedia);
-  const importProducts = useMutation(api.products.importFromExcelRows);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -86,18 +67,6 @@ function ProductsContent() {
   const [deleteTargetId, setDeleteTargetId] = useState<Id<"products"> | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
-  const [excelActionState, setExcelActionState] = useState<'idle' | 'template' | 'import' | 'export-filter' | 'export-all' | 'export-selected'>('idle');
-  const [isExcelMenuOpen, setIsExcelMenuOpen] = useState(false);
-  const [excelImportSummary, setExcelImportSummary] = useState<{
-    created: number;
-    skipped: number;
-    errorCount: number;
-    messages: string[];
-  } | null>(null);
-  const [exportRequested, setExportRequested] = useState(false);
-  const [exportMode, setExportMode] = useState<'filter' | 'all' | 'selected' | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const excelMenuRef = useRef<HTMLDivElement>(null);
 
   const isSelectAllActive = selectionMode === 'all';
 
@@ -114,23 +83,6 @@ function ProductsContent() {
     }
   }, [visibleColumns]);
 
-  useEffect(() => {
-    if (!isExcelMenuOpen) {
-      return;
-    }
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!excelMenuRef.current) {
-        return;
-      }
-      if (!excelMenuRef.current.contains(event.target as Node)) {
-        setIsExcelMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isExcelMenuOpen]);
 
   // Get productsPerPage from module settings
   const productsPerPage = useMemo(() => {
@@ -150,8 +102,6 @@ function ProductsContent() {
     const setting = settingsData?.find(s => s.settingKey === 'variantPricing');
     return (setting?.value as string) || 'variant';
   }, [settingsData]);
-  const hideBasePricing = variantEnabled && variantPricing === 'variant';
-
   const saleMode = useMemo(() => {
     const setting = settingsData?.find(s => s.settingKey === 'saleMode');
     const value = setting?.value;
@@ -163,17 +113,8 @@ function ProductsContent() {
 
   const isContactLikeMode = saleMode === 'contact' || saleMode === 'affiliate';
 
-  const excelActionsEnabled = useMemo(() => {
-    const setting = settingsData?.find(s => s.settingKey === 'enableExcelActions');
-    return setting?.value === undefined ? true : Boolean(setting?.value);
-  }, [settingsData]);
-
   const offset = (currentPage - 1) * resolvedProductsPerPage;
   const resolvedSearch = debouncedSearchTerm.trim() ? debouncedSearchTerm.trim() : undefined;
-  const hasFilters = Boolean(resolvedSearch || filterCategory || filterStatus);
-  const isImporting = excelActionState === 'import';
-  const isTemplateDownloading = excelActionState === 'template';
-  const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
   const productsData = useQuery(api.products.listAdminWithOffset, {
     limit: resolvedProductsPerPage,
@@ -208,23 +149,6 @@ function ProductsContent() {
   const selectedIds = isSelectAllActive && selectAllData ? selectAllData.ids : manualSelectedIds;
   const isSelectingAll = isSelectAllActive && selectAllData === undefined;
 
-  const exportData = useQuery(
-    api.products.listAdminExport,
-    exportRequested
-      ? exportMode === 'selected'
-        ? {
-            limit: 5000,
-            ids: selectedIds.slice(0, 5000),
-          }
-        : {
-            limit: 5000,
-            categoryId: exportMode === 'filter' ? (filterCategory || undefined) : undefined,
-            search: exportMode === 'filter' ? resolvedSearch : undefined,
-            status: exportMode === 'filter' ? (filterStatus || undefined) : undefined,
-          }
-      : 'skip'
-  );
-
   const isTableLoading = productsData === undefined || totalCountData === undefined || categoriesData === undefined || fieldsData === undefined;
 
   useEffect(() => {
@@ -239,8 +163,6 @@ function ProductsContent() {
     fieldsData?.forEach(f => fields.add(f.fieldKey));
     return fields;
   }, [fieldsData]);
-
-  const excelColumns = useMemo(() => getProductExcelColumns(enabledFields), [enabledFields]);
 
   // Build columns based on enabled fields
   const columns = useMemo(() => {
@@ -296,281 +218,8 @@ function ProductsContent() {
       category: categoryMap[p.categoryId] || 'Không có',
     })) || [], [productsData, categoryMap]);
 
-  useEffect(() => {
-    if (!exportRequested || exportData === undefined) {
-      return;
-    }
-    if (!exportData.length) {
-      toast.error('Không có dữ liệu để xuất Excel');
-      setExportRequested(false);
-      setExportMode(null);
-      setExcelActionState('idle');
-      return;
-    }
-
-    const runExport = async () => {
-      try {
-        const { Workbook } = await import('exceljs');
-        const workbook = new Workbook();
-        const sheet = buildProductExportSheet(workbook, excelColumns);
-        const rows: ProductExcelRow[] = exportData.map((product) => ({
-          categorySlug: categorySlugMap[product.categoryId] ?? '',
-          description: product.description ?? '',
-          image: [product.image, ...(product.images || [])].filter(Boolean).join(';'),
-          name: product.name,
-          price: product.price,
-          salePrice: product.salePrice ?? null,
-          sku: product.sku,
-          slug: product.slug,
-          status: getStatusLabel(product.status),
-          stock: product.stock,
-        }));
-        fillProductExportRows(sheet, excelColumns, rows);
-        await downloadWorkbook(workbook, `products-${new Date().toISOString().slice(0, 10)}.xlsx`);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Xuất Excel thất bại');
-      } finally {
-        setExportRequested(false);
-        setExportMode(null);
-        setExcelActionState('idle');
-      }
-    };
-
-    void runExport();
-  }, [categorySlugMap, excelColumns, exportData, exportRequested]);
-
   const handleSort = (key: string) => {
     setSortConfig(prev => ({ direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc', key }));
-  };
-
-  const downloadWorkbook = async (workbook: { xlsx: { writeBuffer: () => Promise<ArrayBuffer> } }, fileName: string) => {
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleDownloadTemplate = async () => {
-    if (!excelActionsEnabled) {
-      return;
-    }
-    if (excelActionState !== 'idle') {
-      return;
-    }
-    setExcelActionState('template');
-    setIsExcelMenuOpen(false);
-    try {
-      const { Workbook } = await import('exceljs');
-      const workbook = new Workbook();
-      buildProductTemplateSheet(workbook, excelColumns);
-      buildGuideSheet(workbook, excelColumns);
-      buildErrorSampleSheet(workbook, excelColumns);
-      await downloadWorkbook(workbook, 'products-template.xlsx');
-      toast.success('Đã tải file mẫu');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Không thể tạo file mẫu');
-    } finally {
-      setExcelActionState('idle');
-    }
-  };
-
-  const handleExport = (mode: 'filter' | 'all' | 'selected') => {
-    if (!excelActionsEnabled) {
-      return;
-    }
-    if (excelActionState !== 'idle') {
-      return;
-    }
-    if (mode === 'selected' && selectedIds.length > 5000) {
-      toast.error('Tối đa 5.000 mục mỗi lần export.');
-      return;
-    }
-    const nextState = mode === 'filter' ? 'export-filter' : mode === 'selected' ? 'export-selected' : 'export-all';
-    setExcelActionState(nextState);
-    setExportMode(mode);
-    setExportRequested(true);
-    setIsExcelMenuOpen(false);
-  };
-
-  const handleImportClick = () => {
-    if (!excelActionsEnabled) {
-      return;
-    }
-    if (excelActionState !== 'idle') {
-      return;
-    }
-    setExcelImportSummary(null);
-    setIsExcelMenuOpen(false);
-    fileInputRef.current?.click();
-  };
-
-  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-    setExcelActionState('import');
-    try {
-      const { Workbook } = await import('exceljs');
-      const buffer = await file.arrayBuffer();
-      const workbook = new Workbook();
-      await workbook.xlsx.load(buffer);
-
-      const sheet = workbook.getWorksheet('Products') ?? workbook.worksheets[0];
-      if (!sheet) {
-        toast.error('Không tìm thấy sheet Products');
-        return;
-      }
-
-      const headers = Array.from({ length: sheet.columnCount }, (_, index) =>
-        normalizeExcelText(sheet.getRow(1).getCell(index + 1).value)
-      );
-      const headerMap = buildHeaderMap(headers);
-      const missingHeaders = excelColumns.filter((column) => column.required && !headerMap.has(column.key));
-      if (missingHeaders.length > 0) {
-        toast.error(`Thiếu cột bắt buộc: ${missingHeaders.map((column) => column.label).join(', ')}`);
-        return;
-      }
-      const clientErrors: { row: number; message: string }[] = [];
-      const payloadRows: {
-        categorySlug: string;
-        description?: string;
-        image?: string;
-        images?: string[];
-        name: string;
-        price: number;
-        rowNumber: number;
-        salePrice?: number;
-        sku: string;
-        slug: string;
-        status?: 'Active' | 'Draft' | 'Archived';
-        stock?: number;
-      }[] = [];
-
-      for (let rowIndex = 2; rowIndex <= sheet.rowCount; rowIndex += 1) {
-        const row = sheet.getRow(rowIndex);
-        const rowValues = excelColumns.map((column) => {
-          const columnIndex = headerMap.get(column.key);
-          if (columnIndex === undefined) {
-            return '';
-          }
-          return normalizeExcelText(row.getCell(columnIndex + 1).value);
-        });
-
-        if (isRowEmpty(rowValues)) {
-          continue;
-        }
-
-        const values: Record<string, string> = {};
-        excelColumns.forEach((column, columnIndex) => {
-          values[column.key] = rowValues[columnIndex] ?? '';
-        });
-
-        const requiredMissing = excelColumns
-          .filter((column) => column.required)
-          .some((column) => !values[column.key]);
-        if (requiredMissing) {
-          clientErrors.push({ message: 'Thiếu dữ liệu bắt buộc', row: rowIndex });
-          continue;
-        }
-
-        const normalizedSlug = values.slug.trim().toLowerCase();
-        const normalizedSku = values.sku.trim().toLowerCase();
-        const normalizedCategory = values.categorySlug.trim().toLowerCase();
-
-        const price = parseExcelNumber(values.price);
-        if (price === null || price < 0) {
-          clientErrors.push({ message: 'Giá bán không hợp lệ', row: rowIndex });
-          continue;
-        }
-        if (saleMode === 'cart' && !hideBasePricing && price <= 0) {
-          clientErrors.push({ message: 'Giá bán phải lớn hơn 0', row: rowIndex });
-          continue;
-        }
-
-        const statusValue = values.status;
-        const parsedStatus = statusValue ? parseExcelStatus(statusValue) : null;
-        if (statusValue && !parsedStatus) {
-          clientErrors.push({ message: 'Trạng thái không hợp lệ', row: rowIndex });
-          continue;
-        }
-
-        const salePrice = values.salePrice ? parseExcelNumber(values.salePrice) : null;
-        if (salePrice !== null && salePrice < 0) {
-          clientErrors.push({ message: 'Giá so sánh không hợp lệ', row: rowIndex });
-          continue;
-        }
-        if (salePrice !== null && salePrice > 0 && salePrice <= price) {
-          clientErrors.push({ message: 'Giá so sánh phải lớn hơn giá bán', row: rowIndex });
-          continue;
-        }
-        const stock = values.stock ? parseExcelNumber(values.stock) : null;
-        if (stock !== null && stock < 0) {
-          clientErrors.push({ message: 'Tồn kho không hợp lệ', row: rowIndex });
-          continue;
-        }
-        if (normalizedSlug && !slugPattern.test(normalizedSlug)) {
-          clientErrors.push({ message: 'Slug không đúng định dạng', row: rowIndex });
-          continue;
-        }
-        const imageUrls = parseExcelImageUrls(values.image);
-        const primaryImage = imageUrls[0];
-
-        payloadRows.push({
-          categorySlug: normalizedCategory,
-          description: values.description || undefined,
-          image: primaryImage,
-          images: imageUrls.length ? imageUrls : undefined,
-          name: values.name,
-          price,
-          rowNumber: rowIndex,
-          salePrice: salePrice ?? undefined,
-          sku: normalizedSku,
-          slug: normalizedSlug,
-          status: parsedStatus ?? undefined,
-          stock: stock ?? undefined,
-        });
-      }
-
-      if (!payloadRows.length) {
-        toast.error('Không có dữ liệu hợp lệ để import');
-        return;
-      }
-
-      const result = await importProducts({ rows: payloadRows });
-      const totalErrors = clientErrors.length + result.errors.length;
-      const summaryMessages = [] as string[];
-      if (result.errors.length > 0) {
-        summaryMessages.push(`Lỗi server: ${result.errors.length} dòng`);
-      }
-      if (clientErrors.length > 0) {
-        summaryMessages.push(`Lỗi client: ${clientErrors.length} dòng`);
-      }
-      if (result.skipped > 0) {
-        summaryMessages.push(`Bỏ qua: ${result.skipped} dòng`);
-      }
-      toast.success(`Đã tạo ${result.created} sản phẩm`);
-      if (totalErrors > 0 || result.skipped > 0) {
-        toast.error(`Có ${totalErrors + result.skipped} dòng cần kiểm tra`);
-      }
-      setExcelImportSummary({
-        created: result.created,
-        skipped: result.skipped,
-        errorCount: totalErrors,
-        messages: summaryMessages,
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Import Excel thất bại');
-    } finally {
-      setExcelActionState('idle');
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
   };
 
   const toggleColumn = (key: string) => {
@@ -583,9 +232,6 @@ function ProductsContent() {
   const totalPages = totalCount ? Math.ceil(totalCount / resolvedProductsPerPage) : 1;
   const paginatedData = sortedData;
   const tableColumnCount = visibleColumns.length;
-  const hasManualSelection = selectedIds.length > 0;
-  const isFilteredExportDisabled = !hasFilters || hasManualSelection || excelActionState !== 'idle';
-  const isSelectedExportDisabled = !hasManualSelection || selectedIds.length > 5000 || excelActionState !== 'idle';
 
   const applyManualSelection = (nextIds: Id<"products">[]) => {
     setSelectionMode('manual');
@@ -762,25 +408,6 @@ function ProductsContent() {
           </Link>
         </div>
       </div>
-
-      {excelImportSummary && (
-        <Card className="border border-orange-200 bg-orange-50/40 p-4 text-sm text-slate-700">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="font-semibold text-slate-900">Tóm tắt import Excel</div>
-              <div className="mt-1 text-xs text-slate-600">Tạo: {excelImportSummary.created} · Bỏ qua: {excelImportSummary.skipped} · Lỗi: {excelImportSummary.errorCount}</div>
-              {excelImportSummary.messages.length > 0 && (
-                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-slate-600">
-                  {excelImportSummary.messages.map((message) => (
-                    <li key={message}>{message}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <Button variant="ghost" size="sm" onClick={() =>{  setExcelImportSummary(null); }}>Đóng</Button>
-          </div>
-        </Card>
-      )}
 
       <BulkActionBar 
         selectedCount={selectedIds.length} 

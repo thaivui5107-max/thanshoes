@@ -211,7 +211,7 @@ async function resolveMediaUsageMap(
             isConvexId = true;
             record = await ctx.db.get(normalizedId);
           }
-        } catch (e) {
+        } catch {
           // Ignore invalid table names
         }
 

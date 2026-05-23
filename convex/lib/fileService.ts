@@ -47,7 +47,7 @@ export async function listFileUsagesByStorageId(
         isConvexId = true;
         record = await ctx.db.get(normalizedId);
       }
-    } catch (e) {}
+    } catch {}
 
     if (isConvexId && !record) {
       continue; // Orphaned reference

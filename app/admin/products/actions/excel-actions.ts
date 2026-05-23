@@ -1,7 +1,7 @@
 "use server";
 
 import * as ExcelJS from "exceljs";
-import { buildExcelColumns, ProductModuleConfig, ExcelColumnDef, ExcelOptionDef } from "@/lib/excel/product-schema-builder";
+import { buildExcelColumns, ProductModuleConfig, ExcelOptionDef } from "@/lib/excel/product-schema-builder";
 
 // ==========================================
 // Color palette — Professional navy/teal theme
@@ -152,7 +152,7 @@ export async function generateProductTemplateBase64(
 
     if (col.group !== currentGroup) {
       if (currentGroup !== "" && groupStartCol < colNum) {
-        try { mainSheet.mergeCells(1, groupStartCol, 1, colNum - 1); } catch (e) { /* merge overlap */ }
+        try { mainSheet.mergeCells(1, groupStartCol, 1, colNum - 1); } catch { /* merge overlap */ }
       }
       currentGroup = col.group;
       groupStartCol = colNum;
@@ -207,7 +207,7 @@ export async function generateProductTemplateBase64(
   });
 
   // Merge last group
-  try { mainSheet.mergeCells(1, groupStartCol, 1, columnsDef.length); } catch (e) { /* merge overlap */ }
+  try { mainSheet.mergeCells(1, groupStartCol, 1, columnsDef.length); } catch { /* merge overlap */ }
 
   // Style Row 1
   row1.height = 35;
@@ -246,7 +246,7 @@ export async function generateProductTemplateBase64(
   });
 
   // Sheet protection
-  mainSheet.protect("admin_secret_123", {
+  await mainSheet.protect("admin_secret_123", {
     selectLockedCells: true,
     selectUnlockedCells: true,
     formatCells: true,
@@ -309,7 +309,10 @@ export async function parseProductExcelBase64(
     // STRICT MODE CHECK
     for (let i = 0; i < columnsDef.length; i++) {
       const expectedHeader = columnsDef[i].header;
-      const actualHeader = row2.getCell(i + 1).value?.toString() || "";
+      const cellValue = row2.getCell(i + 1).value;
+      const actualHeader = typeof cellValue === "string" || typeof cellValue === "number" || typeof cellValue === "boolean"
+        ? String(cellValue)
+        : "";
       if (expectedHeader !== actualHeader) {
         return { 
           success: false, 

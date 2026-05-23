@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Button, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui";
 import { Trash2, Wand2, Plus, AlertTriangle, X } from "lucide-react";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
@@ -90,7 +90,7 @@ export function InlineMatrixBuilder({
     }
 
     // Map new combinations to existing variants to preserve inputted price/stock
-    const newVariants: VariantRow[] = combinations.map((combo, idx) => {
+    const newVariants: VariantRow[] = combinations.map((combo) => {
       const comboKey = combo.join("-");
       // Find if we already have this combo
       const existing = variants.find(v => v.optionValues.join("-") === comboKey);
@@ -190,7 +190,7 @@ export function InlineMatrixBuilder({
       setVariants(newVars);
       onChange(options, newVars);
       toast.success("Đã xóa biến thể và dọn dẹp các dữ liệu liên quan.");
-    } catch (error) {
+    } catch {
       toast.error("Lỗi khi xóa biến thể.");
     } finally {
       setVariantToDelete(null);
