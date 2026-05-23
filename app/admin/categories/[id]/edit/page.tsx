@@ -15,6 +15,7 @@ import { buildCategoryPath, normalizeRouteMode } from '@/lib/ia/route-mode';
 import { LexicalEditor } from '@/app/admin/components/LexicalEditor';
 import { FaqForm } from '@/app/admin/home-components/faq/_components/FaqForm';
 import type { FaqItem, FaqStyle, FaqConfig } from '@/app/admin/home-components/faq/_types';
+import { HomeComponentStickyFooter } from '@/app/admin/home-components/_shared/components/HomeComponentStickyFooter';
 
 const MODULE_KEY = 'productCategories';
 
@@ -161,9 +162,6 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Chỉnh sửa danh mục</h1>
           <Link href="/admin/categories" className="text-sm text-orange-600 hover:underline">Quay lại danh sách</Link>
         </div>
-        <Button variant="outline" className="gap-2" onClick={() => window.open(buildCategoryPath({ categorySlug: slug, mode: routeMode, moduleKey: 'products' }), '_blank')}>
-          <ExternalLink size={16}/> Xem trên web
-        </Button>
       </div>
 
       <div className="flex border-b border-slate-200 dark:border-slate-700">
@@ -188,8 +186,8 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
       </div>
 
       {activeTab === 'info' ? (
-        <Card className="w-full">
-          <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
+          <Card className="w-full">
             <CardContent className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
@@ -285,16 +283,41 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
                 </div>
               )}
             </CardContent>
-            
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 rounded-b-lg flex justify-end gap-3">
-              <Button type="button" variant="ghost" onClick={() =>{  router.push('/admin/categories'); }}>Hủy bỏ</Button>
-              <Button type="submit" variant="accent" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 size={16} className="animate-spin mr-2" />}
-                Lưu thay đổi
-              </Button>
-            </div>
-          </form>
-        </Card>
+          </Card>
+
+          <HomeComponentStickyFooter
+            isSubmitting={isSubmitting}
+            submitLabel="Lưu thay đổi"
+          >
+            <>
+              <Button type="button" variant="ghost" onClick={() => router.push('/admin/categories')} disabled={isSubmitting}>Hủy bỏ</Button>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.open(buildCategoryPath({ categorySlug: slug, mode: routeMode, moduleKey: 'products' }), '_blank')}
+                  className="gap-2"
+                  disabled={!slug.trim()}
+                >
+                  <ExternalLink size={16} />
+                  Xem trên web
+                </Button>
+                <Button
+                  type="submit"
+                  variant="accent"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin mr-2" />
+                      Đang lưu...
+                    </>
+                  ) : 'Lưu thay đổi'}
+                </Button>
+              </div>
+            </>
+          </HomeComponentStickyFooter>
+        </form>
       ) : (
         <Card>
           <Table>

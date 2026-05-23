@@ -13,6 +13,7 @@ import { Button, Card, CardContent, Input, Label } from '../../components/ui';
 import { LexicalEditor } from '../../components/LexicalEditor';
 import { FaqForm } from '@/app/admin/home-components/faq/_components/FaqForm';
 import type { FaqItem, FaqStyle, FaqConfig } from '@/app/admin/home-components/faq/_types';
+import { HomeComponentStickyFooter } from '@/app/admin/home-components/_shared/components/HomeComponentStickyFooter';
 
 const MODULE_KEY = 'productCategories';
 
@@ -114,8 +115,8 @@ export default function CategoryCreatePage() {
         </div>
       </div>
 
-      <Card className="w-full">
-        <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit}>
+        <Card className="w-full">
           <CardContent className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
@@ -201,16 +202,31 @@ export default function CategoryCreatePage() {
               </div>
             )}
           </CardContent>
-          
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 rounded-b-lg flex justify-end gap-3">
-            <Button type="button" variant="ghost" onClick={() =>{  router.push('/admin/categories'); }}>Hủy bỏ</Button>
-            <Button type="submit" variant="accent" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 size={16} className="animate-spin mr-2" />}
-              Tạo danh mục
-            </Button>
-          </div>
-        </form>
-      </Card>
+        </Card>
+
+        <HomeComponentStickyFooter
+          isSubmitting={isSubmitting}
+          submitLabel="Tạo danh mục"
+        >
+          <>
+            <Button type="button" variant="ghost" onClick={() => router.push('/admin/categories')} disabled={isSubmitting}>Hủy bỏ</Button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                type="submit"
+                variant="accent"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin mr-2" />
+                    Đang tạo...
+                  </>
+                ) : 'Tạo danh mục'}
+              </Button>
+            </div>
+          </>
+        </HomeComponentStickyFooter>
+      </form>
     </div>
   );
 }
