@@ -7,8 +7,7 @@ import { ArrowRight, ChevronLeft, ChevronRight, Package } from 'lucide-react';
 import { cn } from '../../../components/ui';
 import { PreviewImage } from '../../_shared/components/PreviewImage';
 import { getPreviewAwareClass } from '../../_shared/lib/previewResponsive';
-import { ProductImageFrameOverlay, useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
-import { ProductImageWatermarkBox } from '@/components/shared/ProductImageWatermarkOverlay';
+import { ProductImageWithOverlayAuto } from '@/components/shared/ProductImageWithOverlay';
 import { withAlpha, type ProductListColorTokens } from '../_lib/colors';
 import type { ProductListPreviewItem, ProductListStyle } from '../_types';
 
@@ -96,11 +95,9 @@ const ProductImage = ({
   className: string;
   sizes: string;
 }) => {
-  const { overlayUrl } = useProductFrameConfig();
-
   if (context === 'site') {
     return (
-      <>
+      <ProductImageWithOverlayAuto className="w-full h-full absolute inset-0">
         <Image
           src={src}
           alt={alt}
@@ -108,22 +105,18 @@ const ProductImage = ({
           sizes={sizes}
           className={className}
         />
-        <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-        <ProductImageWatermarkBox />
-      </>
+      </ProductImageWithOverlayAuto>
     );
   }
 
   return (
-    <>
+    <ProductImageWithOverlayAuto className="w-full h-full relative overflow-hidden">
       <PreviewImage
         src={src}
         alt={alt}
         className={className}
       />
-      <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-      <ProductImageWatermarkBox />
-    </>
+    </ProductImageWithOverlayAuto>
   );
 };
 

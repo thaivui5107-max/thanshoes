@@ -1,6 +1,7 @@
 'use client';
 
 import React, { use, useEffect, useMemo, useRef, useState } from 'react';
+import useEmblaCarousel from 'embla-carousel-react';
 import Link from 'next/link';
 import { PublicImage as Image } from '@/components/shared/PublicImage';
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
@@ -20,9 +21,7 @@ import {
   type ProductImageAspectRatio,
 } from '@/components/site/products/detail/_lib/image-aspect-ratio';
 import { resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
-import { buildCategoryPath, buildDetailPath, normalizeRouteMode } from '@/lib/ia/route-mode';
-import { ProductImageFrameOverlay, useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
-import { ProductImageWatermarkBox } from '@/components/shared/ProductImageWatermarkOverlay';
+import { ProductImageWithOverlay, ProductImageWithOverlayAuto, useProductImageOverlayConfigs } from '@/components/shared/ProductImageWithOverlay';
 import { RichContent, withFormatMarker } from '@/components/common/RichContent';
 import { FaqSectionShared } from '@/app/admin/home-components/faq/_components/FaqSectionShared';
 import { getFaqColors } from '@/app/admin/home-components/faq/_lib/colors';
@@ -34,6 +33,8 @@ import { VariantSelector, type VariantSelectorOption } from '@/components/produc
 import type { Id } from '@/convex/_generated/dataModel';
 import { getPublicPriceLabel } from '@/lib/products/public-price';
 import { sortSupplementalFaqItems, toRichTextContent } from '@/lib/products/product-supplemental-content';
+import { buildCategoryPath, buildDetailPath, normalizeRouteMode } from '@/lib/ia/route-mode';
+import { useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
 
 type ProductDetailStyle = 'classic' | 'modern' | 'minimal';
 type ModernHeroStyle = 'full' | 'split' | 'minimal';
@@ -1251,7 +1252,6 @@ function BlurredProductImage({ src, alt, sizes, fallbackSrc }: { src?: string | 
   const normalizedSrc = isValidImageSrc(src) ? src.trim() : null;
   const normalizedFallback = isValidImageSrc(fallbackSrc) ? fallbackSrc.trim() : null;
   const prefersReducedMotion = usePrefersReducedMotion();
-  const { overlayUrl } = useProductFrameConfig();
   const [currentSrc, setCurrentSrc] = useState<string | null>(normalizedSrc ?? normalizedFallback);
   const [incomingSrc, setIncomingSrc] = useState<string | null>(null);
   const [incomingVisible, setIncomingVisible] = useState(false);
@@ -1301,7 +1301,7 @@ function BlurredProductImage({ src, alt, sizes, fallbackSrc }: { src?: string | 
   }
 
   return (
-    <>
+    <ProductImageWithOverlayAuto className="w-full h-full absolute inset-0">
       <div
         className="absolute inset-0 scale-110"
         style={{
@@ -1329,11 +1329,7 @@ function BlurredProductImage({ src, alt, sizes, fallbackSrc }: { src?: string | 
           <ProductImageWithFallback mode="primary" src={incomingSrc} fallbackSrc={normalizedFallback} alt={alt} fill sizes={sizes} className="relative z-10 object-contain" />
         </div>
       )}
-      <div className="absolute inset-0 pointer-events-none z-20">
-        <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-        <ProductImageWatermarkBox />
-      </div>
-    </>
+    </ProductImageWithOverlayAuto>
   );
 }
 
@@ -1424,7 +1420,7 @@ function ProductDescriptionImages({
   frameAspectRatio: string;
   fallbackSrc?: string | null;
 }) {
-  const { overlayUrl } = useProductFrameConfig();
+  const { frameConfig, watermarkConfig } = useProductImageOverlayConfigs();
   if (images.length === 0) {
     return null;
   }
@@ -1433,15 +1429,15 @@ function ProductDescriptionImages({
     <div className="mt-6 border-t pt-6" style={{ borderColor: tokens.divider }}>
       <div className="space-y-4">
         {images.map((image, index) => (
-          <div
+          <ProductImageWithOverlay
             key={`${image}-${index}`}
+            frameConfig={frameConfig}
+            watermarkConfig={watermarkConfig}
             className="relative w-full overflow-hidden rounded-2xl"
             style={{ aspectRatio: frameAspectRatio, backgroundColor: tokens.surfaceMuted }}
           >
             <ProductImageWithFallback mode="primary" src={image} fallbackSrc={fallbackSrc} alt={`Ảnh sản phẩm ${index + 1}`} fill sizes="100vw" className="object-contain" />
-            <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-            <ProductImageWatermarkBox />
-          </div>
+          </ProductImageWithOverlay>
         ))}
       </div>
     </div>
@@ -1459,7 +1455,7 @@ type MobileImageCarouselProps = {
 function MobileImageCarousel({ images, selectedIndex, onSelect, alt, fallbackSrc }: MobileImageCarouselProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { overlayUrl } = useProductFrameConfig();
+  const { frameConfig, watermarkConfig } = useProductImageOverlayConfigs();
 
   useEffect(() => {
     const container = containerRef.current;
@@ -1509,11 +1505,14 @@ function MobileImageCarousel({ images, selectedIndex, onSelect, alt, fallbackSrc
       className="flex h-full w-full snap-x snap-mandatory overflow-x-auto no-scrollbar scroll-smooth"
     >
       {images.map((image, index) => (
-        <div key={`${image}-${index}`} className="relative h-full w-full shrink-0 snap-center">
+        <ProductImageWithOverlay
+          key={`${image}-${index}`}
+          frameConfig={frameConfig}
+          watermarkConfig={watermarkConfig}
+          className="relative h-full w-full shrink-0 snap-center"
+        >
           <ProductImageWithFallback mode="primary" src={image} fallbackSrc={fallbackSrc} alt={`${alt} ${index + 1}`} fill sizes="100vw" className="object-contain" />
-          <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-          <ProductImageWatermarkBox />
-        </div>
+        </ProductImageWithOverlay>
       ))}
     </div>
   );
@@ -1548,7 +1547,7 @@ function ThumbnailRail({
   inactiveClassName,
   fallbackSrc,
 }: ThumbnailRailProps) {
-  const { overlayUrl } = useProductFrameConfig();
+  const { frameConfig, watermarkConfig } = useProductImageOverlayConfigs();
   const [startIndex, setStartIndex] = useState(0);
   const hasOverflow = images.length > visibleSlots;
   const maxStartIndex = Math.max(0, images.length - visibleSlots);
@@ -1612,17 +1611,21 @@ function ThumbnailRail({
           const actualIndex = hasOverflow ? startIndex + index : index;
           const isActive = actualIndex === selectedIndex;
           return (
-            <button
+            <ProductImageWithOverlay
               key={`${img}-${actualIndex}`}
-              type="button"
-              onClick={() => onSelect(actualIndex)}
+              frameConfig={frameConfig}
+              watermarkConfig={watermarkConfig}
               className={`${itemClassName ?? 'w-20 rounded-lg'} relative overflow-hidden border-2 transition-colors ${isActive ? '' : inactiveClassName ?? ''}`.trim()}
               style={{ aspectRatio: thumbnailAspectRatio, borderColor: isActive ? tokens.thumbnailBorderActive : tokens.thumbnailBorder }}
             >
-              <ProductImageWithFallback mode="thumb" src={img} fallbackSrc={fallbackSrc} alt="" width={80} height={80} className="object-contain w-full h-full" />
-              <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-              <ProductImageWatermarkBox />
-            </button>
+              <button
+                type="button"
+                onClick={() => onSelect(actualIndex)}
+                className="w-full h-full block relative"
+              >
+                <ProductImageWithFallback mode="thumb" src={img} fallbackSrc={fallbackSrc} alt="" width={80} height={80} className="object-contain w-full h-full" />
+              </button>
+            </ProductImageWithOverlay>
           );
         })}
       </div>
@@ -1809,6 +1812,38 @@ function ClassicStyle({
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<VariantSelectionMap>({});
 
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false });
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    
+    const onSelect = () => {
+      const index = emblaApi.selectedScrollSnap();
+      setSelectedIndex(index);
+      setSelectedImage(index);
+      setCanScrollPrev(emblaApi.canScrollPrev());
+      setCanScrollNext(emblaApi.canScrollNext());
+    };
+
+    emblaApi.on('select', onSelect);
+    emblaApi.on('reInit', onSelect);
+    onSelect();
+
+    return () => {
+      emblaApi.off('select', onSelect);
+      emblaApi.off('reInit', onSelect);
+    };
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (emblaApi && selectedImage !== emblaApi.selectedScrollSnap()) {
+      emblaApi.scrollTo(selectedImage);
+    }
+  }, [emblaApi, selectedImage]);
+
   const hasVariants = Boolean(product.hasVariants && variants.length > 0 && variantOptions.length > 0);
   const imageFrame = getProductImageFrameConfig(imageAspectRatio, 'classic');
   const mainImageFrameStyle: React.CSSProperties = { aspectRatio: imageFrame.frameAspectRatio };
@@ -1946,34 +1981,56 @@ function ClassicStyle({
         <div className="lg:grid lg:grid-cols-2 lg:gap-12">
           {/* Product Images */}
           <div className="mb-6 lg:mb-0">
-            <div className={`${imageFrame.frameWidthClassName} mb-3 md:mb-4`}>
+            <div className={`${imageFrame.frameWidthClassName} mb-3 md:mb-4 group/carousel relative`}>
               <div
                 className={`relative rounded-2xl overflow-hidden ${canOpenLightbox ? 'cursor-zoom-in' : ''}`.trim()}
                 style={{ ...mainImageFrameStyle, backgroundColor: tokens.surfaceMuted }}
                 role={canOpenLightbox ? 'button' : undefined}
                 tabIndex={canOpenLightbox ? 0 : -1}
-                onClick={canOpenLightbox ? handleOpenLightbox : undefined}
                 onKeyDown={handleLightboxKeyDown}
               >
-                <div className="h-full w-full md:hidden">
-                  <MobileImageCarousel
-                    images={displayImages}
-                    selectedIndex={safeSelectedImage}
-                    onSelect={setSelectedImage}
-                    alt={product.name}
-                    fallbackSrc={productImagePlaceholder}
-                  />
-                </div>
-                <div className="hidden md:block h-full w-full">
-                  <BlurredProductImage src={displayImages[safeSelectedImage]} fallbackSrc={productImagePlaceholder} alt={product.name} sizes="(max-width: 1024px) 100vw, 50vw" />
+                <div className="embla overflow-hidden h-full w-full" ref={emblaRef}>
+                  <div className="embla__container flex h-full w-full">
+                    {displayImages.map((img, idx) => (
+                      <div 
+                        className="embla__slide flex-[0_0_100%] min-w-0 relative h-full w-full cursor-pointer" 
+                        key={idx}
+                        onClick={canOpenLightbox ? handleOpenLightbox : undefined}
+                      >
+                        <BlurredProductImage src={img} fallbackSrc={productImagePlaceholder} alt={product.name} sizes="(max-width: 1024px) 100vw, 50vw" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 {images.length > 1 && (
-                  <span className="absolute bottom-3 right-3 md:hidden px-2 py-0.5 text-[11px] font-semibold rounded-full backdrop-blur-sm" style={{ backgroundColor: tokens.surface, color: tokens.headingColor }}>
-                    {safeSelectedImage + 1}/{images.length}
+                  <>
+                    <button
+                      type="button"
+                      disabled={!canScrollPrev}
+                      onClick={(e) => { e.stopPropagation(); emblaApi?.scrollPrev(); }}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow transition-all opacity-0 group-hover/carousel:opacity-100 disabled:opacity-0 pointer-events-auto z-30"
+                      aria-label="Ảnh trước"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canScrollNext}
+                      onClick={(e) => { e.stopPropagation(); emblaApi?.scrollNext(); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow transition-all opacity-0 group-hover/carousel:opacity-100 disabled:opacity-0 pointer-events-auto z-30"
+                      aria-label="Ảnh sau"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </>
+                )}
+                {images.length > 1 && (
+                  <span className="absolute bottom-3 right-3 px-2 py-0.5 text-[11px] font-semibold rounded-full backdrop-blur-sm z-30" style={{ backgroundColor: tokens.surface, color: tokens.headingColor }}>
+                    {selectedIndex + 1}/{images.length}
                   </span>
                 )}
                 {showSalePrice && priceDisplay.comparePrice && (
-                  <span className="absolute top-3 left-3 px-3 py-1.5 text-sm font-bold rounded-lg" style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>-{discountPercent}%</span>
+                  <span className="absolute top-3 left-3 px-3 py-1.5 text-sm font-bold rounded-lg z-30" style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>-{discountPercent}%</span>
                 )}
               </div>
             </div>
@@ -2017,7 +2074,6 @@ function ClassicStyle({
             <h1 className="text-xl md:text-3xl font-bold mb-2 md:mb-4" style={{ color: tokens.headingColor }}>{product.name}</h1>
 
             <div className="flex flex-wrap items-center gap-4 mb-4 md:mb-6">
-              {showSku && <span className="text-sm" style={{ color: tokens.metaText }}>SKU: <span className="font-mono">{product.sku}</span></span>}
               {showRating && <RatingInline summary={ratingSummary} tokens={tokens} />}
             </div>
 
@@ -2140,60 +2196,63 @@ function ClassicStyle({
               </div>
             )}
 
-            {(showDescription && resolvedDescription) || showAllProductImagesSection || supplementalContent?.preContent || supplementalContent?.postContent ? (
-              <div className="border-t pt-6" style={{ borderColor: tokens.divider }}>
-                <ExpandableProductDescriptionBlock buttonStyle={{ color: tokens.primary }}>
-                  {supplementalContent?.preContent ? (
-                    <RichContent
-                      content={toRichTextContent(supplementalContent.preContent)}
-                      className="max-w-none"
-                      style={{ color: tokens.bodyText }}
-                    />
-                  ) : null}
-                  {showDescription && resolvedDescription && (
-                    <>
-                      <RichContent
-                        content={resolvedDescription}
-                        className="max-w-none"
-                        style={{ color: tokens.bodyText }}
-                      />
-                      {enableCategoryProductDetailSuffix && category?.productDetailSuffixContent && (
-                        <RichContent
-                          content={toRichTextContent(category.productDetailSuffixContent)}
-                          className="max-w-none mt-4 pt-4 border-t border-dashed border-slate-100 dark:border-slate-800"
-                          style={{ color: tokens.bodyText }}
-                        />
-                      )}
-                    </>
-                  )}
-                  {supplementalContent?.postContent ? (
-                    <RichContent
-                      content={toRichTextContent(supplementalContent.postContent)}
-                      className="max-w-none"
-                      style={{ color: tokens.bodyText }}
-                    />
-                  ) : null}
-                  {showAllProductImagesSection && (
-                    <ProductDescriptionImages
-                      images={images}
-                      tokens={tokens}
-                      frameAspectRatio={imageFrame.frameAspectRatio}
-                      fallbackSrc={productImagePlaceholder}
-                    />
-                  )}
-                </ExpandableProductDescriptionBlock>
-              </div>
-            ) : null}
-
-             <ProductSupplementalFaqAccordion 
-              faqItems={
-                (enableCategoryProductDetailFaq && category?.productDetailFaqEnabled !== false && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
-                  ? []
-                  : (supplementalContent?.faqItems ?? [])
-              } 
-              tokens={tokens} 
-            />
           </div>
+        </div>
+
+        {(showDescription && resolvedDescription) || showAllProductImagesSection || supplementalContent?.preContent || supplementalContent?.postContent ? (
+          <div className="border-t pt-6 mt-8 md:mt-12" style={{ borderColor: tokens.divider }}>
+            <ExpandableProductDescriptionBlock buttonStyle={{ color: tokens.primary }}>
+              {supplementalContent?.preContent ? (
+                <RichContent
+                  content={toRichTextContent(supplementalContent.preContent)}
+                  className="max-w-none"
+                  style={{ color: tokens.bodyText }}
+                />
+              ) : null}
+              {showDescription && resolvedDescription && (
+                <RichContent
+                  content={resolvedDescription}
+                  className="max-w-none"
+                  style={{ color: tokens.bodyText }}
+                />
+              )}
+              {showAllProductImagesSection && images.length > 0 && (
+                <div className="mt-6 border-t pt-6" style={{ borderColor: tokens.divider }}>
+                  <ProductDescriptionImages
+                    images={images}
+                    tokens={tokens}
+                    frameAspectRatio={imageFrame.frameAspectRatio}
+                    fallbackSrc={productImagePlaceholder}
+                  />
+                </div>
+              )}
+              {enableCategoryProductDetailSuffix && category?.productDetailSuffixContent && (
+                <RichContent
+                  content={toRichTextContent(category.productDetailSuffixContent)}
+                  className="max-w-none mt-4 pt-4 border-t border-dashed border-slate-100 dark:border-slate-800"
+                  style={{ color: tokens.bodyText }}
+                />
+              )}
+              {supplementalContent?.postContent ? (
+                <RichContent
+                  content={toRichTextContent(supplementalContent.postContent)}
+                  className="max-w-none"
+                  style={{ color: tokens.bodyText }}
+                />
+              ) : null}
+            </ExpandableProductDescriptionBlock>
+          </div>
+        ) : null}
+
+        <div className="mt-6">
+          <ProductSupplementalFaqAccordion 
+            faqItems={
+              (enableCategoryProductDetailFaq && category?.productDetailFaqEnabled !== false && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
+                ? []
+                : (supplementalContent?.faqItems ?? [])
+            } 
+            tokens={tokens} 
+          />
         </div>
 
       {commentsSection}
@@ -2302,6 +2361,38 @@ function ModernStyle({
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<VariantSelectionMap>({});
+
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false });
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    
+    const onSelect = () => {
+      const index = emblaApi.selectedScrollSnap();
+      setSelectedIndex(index);
+      setSelectedImageIndex(index);
+      setCanScrollPrev(emblaApi.canScrollPrev());
+      setCanScrollNext(emblaApi.canScrollNext());
+    };
+
+    emblaApi.on('select', onSelect);
+    emblaApi.on('reInit', onSelect);
+    onSelect();
+
+    return () => {
+      emblaApi.off('select', onSelect);
+      emblaApi.off('reInit', onSelect);
+    };
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (emblaApi && selectedImageIndex !== emblaApi.selectedScrollSnap()) {
+      emblaApi.scrollTo(selectedImageIndex);
+    }
+  }, [emblaApi, selectedImageIndex]);
 
   const hasVariants = Boolean(product.hasVariants && variants.length > 0 && variantOptions.length > 0);
   const resolvedDescription = useMemo(() => resolveProductContent(product), [product]);
@@ -2465,40 +2556,62 @@ function ModernStyle({
                 <div className="grid md:grid-cols-2 gap-3 items-center p-3 md:p-5">
                   <div className={imageFrame.frameWidthClassName}>
                     <div
-                      className={`relative rounded-xl flex items-center justify-center overflow-hidden ${canOpenLightbox ? 'cursor-zoom-in' : ''}`.trim()}
+                      className={`relative rounded-xl overflow-hidden group/carousel ${canOpenLightbox ? 'cursor-zoom-in' : ''}`.trim()}
                       style={{ ...mainImageFrameStyle, backgroundColor: tokens.surfaceMuted }}
                       role={canOpenLightbox ? 'button' : undefined}
                       tabIndex={canOpenLightbox ? 0 : -1}
-                      onClick={canOpenLightbox ? handleOpenLightbox : undefined}
                       onKeyDown={handleLightboxKeyDown}
                     >
                       {showSalePrice && priceDisplay.comparePrice && discountPercent > 0 && (
                         <span
-                          className="absolute left-3 top-3 z-20 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                          className="absolute left-3 top-3 z-30 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold"
                           style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>
                           -{discountPercent}%
                         </span>
                       )}
-                      <div className="h-full w-full md:hidden">
-                        <MobileImageCarousel
-                          images={displayImages}
-                          selectedIndex={safeSelectedImageIndex}
-                          onSelect={setSelectedImageIndex}
-                          alt={product.name}
-                          fallbackSrc={productImagePlaceholder}
-                        />
-                      </div>
-                      <div className="hidden md:block h-full w-full">
-                        <BlurredProductImage
-                          src={displayImages[safeSelectedImageIndex]}
-                          fallbackSrc={productImagePlaceholder}
-                          alt={product.name}
-                          sizes="(max-width: 1024px) 100vw, 50vw"
-                        />
+                      <div className="embla overflow-hidden h-full w-full" ref={emblaRef}>
+                        <div className="embla__container flex h-full w-full">
+                          {displayImages.map((img, idx) => (
+                            <div 
+                              className="embla__slide flex-[0_0_100%] min-w-0 relative h-full w-full cursor-pointer" 
+                              key={idx}
+                              onClick={canOpenLightbox ? handleOpenLightbox : undefined}
+                            >
+                              <BlurredProductImage
+                                src={img}
+                                fallbackSrc={productImagePlaceholder}
+                                alt={product.name}
+                                sizes="(max-width: 1024px) 100vw, 50vw"
+                              />
+                            </div>
+                          ))}
+                        </div>
                       </div>
                       {images.length > 1 && (
-                        <span className="absolute bottom-3 right-3 md:hidden px-2 py-0.5 text-[11px] font-semibold rounded-full backdrop-blur-sm" style={{ backgroundColor: tokens.surface, color: tokens.headingColor }}>
-                          {safeSelectedImageIndex + 1}/{images.length}
+                        <>
+                          <button
+                            type="button"
+                            disabled={!canScrollPrev}
+                            onClick={(e) => { e.stopPropagation(); emblaApi?.scrollPrev(); }}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow transition-all opacity-0 group-hover/carousel:opacity-100 disabled:opacity-0 pointer-events-auto z-30"
+                            aria-label="Ảnh trước"
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!canScrollNext}
+                            onClick={(e) => { e.stopPropagation(); emblaApi?.scrollNext(); }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow transition-all opacity-0 group-hover/carousel:opacity-100 disabled:opacity-0 pointer-events-auto z-30"
+                            aria-label="Ảnh sau"
+                          >
+                            <ChevronRight size={16} />
+                          </button>
+                        </>
+                      )}
+                      {images.length > 1 && (
+                        <span className="absolute bottom-3 right-3 px-2 py-0.5 text-[11px] font-semibold rounded-full backdrop-blur-sm z-30" style={{ backgroundColor: tokens.surface, color: tokens.headingColor }}>
+                          {selectedIndex + 1}/{images.length}
                         </span>
                       )}
                     </div>
@@ -2510,40 +2623,62 @@ function ModernStyle({
                 <div className={heroImageWrapperClass}>
                   <div className={imageFrame.frameWidthClassName}>
                     <div
-                      className={`relative overflow-hidden rounded-xl ${canOpenLightbox ? 'cursor-zoom-in' : ''}`.trim()}
+                      className={`relative overflow-hidden rounded-xl group/carousel ${canOpenLightbox ? 'cursor-zoom-in' : ''}`.trim()}
                       style={{ ...mainImageFrameStyle, backgroundColor: tokens.surfaceMuted }}
                       role={canOpenLightbox ? 'button' : undefined}
                       tabIndex={canOpenLightbox ? 0 : -1}
-                      onClick={canOpenLightbox ? handleOpenLightbox : undefined}
                       onKeyDown={handleLightboxKeyDown}
                     >
                       {showSalePrice && priceDisplay.comparePrice && discountPercent > 0 && (
                         <span
-                          className="absolute left-3 top-3 z-20 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                          className="absolute left-3 top-3 z-30 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold"
                           style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>
                           -{discountPercent}%
                         </span>
                       )}
-                      <div className="h-full w-full md:hidden">
-                        <MobileImageCarousel
-                          images={displayImages}
-                          selectedIndex={safeSelectedImageIndex}
-                          onSelect={setSelectedImageIndex}
-                          alt={product.name}
-                          fallbackSrc={productImagePlaceholder}
-                        />
-                      </div>
-                      <div className="hidden md:block h-full w-full">
-                        <BlurredProductImage
-                          src={displayImages[safeSelectedImageIndex]}
-                          fallbackSrc={productImagePlaceholder}
-                          alt={product.name}
-                          sizes="(max-width: 1024px) 100vw, 50vw"
-                        />
+                      <div className="embla overflow-hidden h-full w-full" ref={emblaRef}>
+                        <div className="embla__container flex h-full w-full">
+                          {displayImages.map((img, idx) => (
+                            <div 
+                              className="embla__slide flex-[0_0_100%] min-w-0 relative h-full w-full cursor-pointer" 
+                              key={idx}
+                              onClick={canOpenLightbox ? handleOpenLightbox : undefined}
+                            >
+                              <BlurredProductImage
+                                src={img}
+                                fallbackSrc={productImagePlaceholder}
+                                alt={product.name}
+                                sizes="(max-width: 1024px) 100vw, 50vw"
+                              />
+                            </div>
+                          ))}
+                        </div>
                       </div>
                       {images.length > 1 && (
-                        <span className="absolute bottom-3 right-3 md:hidden px-2 py-0.5 text-[11px] font-semibold rounded-full backdrop-blur-sm" style={{ backgroundColor: tokens.surface, color: tokens.headingColor }}>
-                          {safeSelectedImageIndex + 1}/{images.length}
+                        <>
+                          <button
+                            type="button"
+                            disabled={!canScrollPrev}
+                            onClick={(e) => { e.stopPropagation(); emblaApi?.scrollPrev(); }}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow transition-all opacity-0 group-hover/carousel:opacity-100 disabled:opacity-0 pointer-events-auto z-30"
+                            aria-label="Ảnh trước"
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!canScrollNext}
+                            onClick={(e) => { e.stopPropagation(); emblaApi?.scrollNext(); }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow transition-all opacity-0 group-hover/carousel:opacity-100 disabled:opacity-0 pointer-events-auto z-30"
+                            aria-label="Ảnh sau"
+                          >
+                            <ChevronRight size={16} />
+                          </button>
+                        </>
+                      )}
+                      {images.length > 1 && (
+                        <span className="absolute bottom-3 right-3 px-2 py-0.5 text-[11px] font-semibold rounded-full backdrop-blur-sm z-30" style={{ backgroundColor: tokens.surface, color: tokens.headingColor }}>
+                          {selectedIndex + 1}/{images.length}
                         </span>
                       )}
                     </div>
@@ -2708,46 +2843,48 @@ function ModernStyle({
         <div className="mt-12 lg:mt-16 space-y-6">
           <div className="mt-6 border rounded-2xl p-6" style={{ borderColor: tokens.border }}>
             {(showDescription && resolvedDescription) || showAllProductImagesSection || supplementalContent?.preContent || supplementalContent?.postContent ? (
-              <ExpandableProductDescriptionBlock buttonStyle={{ color: tokens.primary }}>
-                {supplementalContent?.preContent ? (
-                  <RichContent
-                    content={toRichTextContent(supplementalContent.preContent)}
-                    className="max-w-none"
-                    style={{ color: tokens.bodyText }}
-                  />
-                ) : null}
-                {showDescription && resolvedDescription ? (
-                  <>
+              <>
+                <ExpandableProductDescriptionBlock buttonStyle={{ color: tokens.primary }}>
+                  {supplementalContent?.preContent ? (
+                    <RichContent
+                      content={toRichTextContent(supplementalContent.preContent)}
+                      className="max-w-none"
+                      style={{ color: tokens.bodyText }}
+                    />
+                  ) : null}
+                  {showDescription && resolvedDescription ? (
                     <RichContent
                       content={resolvedDescription}
                       className="max-w-none"
                       style={{ color: tokens.bodyText }}
                     />
-                    {enableCategoryProductDetailSuffix && category?.productDetailSuffixContent && (
-                      <RichContent
-                        content={toRichTextContent(category.productDetailSuffixContent)}
-                        className="max-w-none mt-4 pt-4 border-t border-dashed border-slate-100 dark:border-slate-800"
-                        style={{ color: tokens.bodyText }}
+                  ) : null}
+                  {showAllProductImagesSection && images.length > 0 ? (
+                    <div className="mt-6 border-t pt-6" style={{ borderColor: tokens.divider }}>
+                      <ProductDescriptionImages
+                        images={images}
+                        tokens={tokens}
+                        frameAspectRatio={imageFrame.frameAspectRatio}
+                        fallbackSrc={productImagePlaceholder}
                       />
-                    )}
-                  </>
-                ) : null}
-                {supplementalContent?.postContent ? (
-                  <RichContent
-                    content={toRichTextContent(supplementalContent.postContent)}
-                    className="max-w-none"
-                    style={{ color: tokens.bodyText }}
-                  />
-                ) : null}
-                {showAllProductImagesSection ? (
-                  <ProductDescriptionImages
-                    images={images}
-                    tokens={tokens}
-                    frameAspectRatio={imageFrame.frameAspectRatio}
-                    fallbackSrc={productImagePlaceholder}
-                  />
-                ) : null}
-              </ExpandableProductDescriptionBlock>
+                    </div>
+                  ) : null}
+                  {enableCategoryProductDetailSuffix && category?.productDetailSuffixContent && (
+                    <RichContent
+                      content={toRichTextContent(category.productDetailSuffixContent)}
+                      className="max-w-none mt-4 pt-4 border-t border-dashed border-slate-100 dark:border-slate-800"
+                      style={{ color: tokens.bodyText }}
+                    />
+                  )}
+                  {supplementalContent?.postContent ? (
+                    <RichContent
+                      content={toRichTextContent(supplementalContent.postContent)}
+                      className="max-w-none"
+                      style={{ color: tokens.bodyText }}
+                    />
+                  ) : null}
+                </ExpandableProductDescriptionBlock>
+              </>
             ) : (
               <p style={{ color: tokens.metaText }}>Chưa có mô tả chi tiết.</p>
             )}
@@ -2864,6 +3001,38 @@ function MinimalStyle({
 }: StyleProps & ExperienceBlocksProps & HighlightBlockProps & { contentWidth: MinimalContentWidth }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<VariantSelectionMap>({});
+
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false });
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    
+    const onSelect = () => {
+      const index = emblaApi.selectedScrollSnap();
+      setSelectedIndex(index);
+      setSelectedImage(index);
+      setCanScrollPrev(emblaApi.canScrollPrev());
+      setCanScrollNext(emblaApi.canScrollNext());
+    };
+
+    emblaApi.on('select', onSelect);
+    emblaApi.on('reInit', onSelect);
+    onSelect();
+
+    return () => {
+      emblaApi.off('select', onSelect);
+      emblaApi.off('reInit', onSelect);
+    };
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (emblaApi && selectedImage !== emblaApi.selectedScrollSnap()) {
+      emblaApi.scrollTo(selectedImage);
+    }
+  }, [emblaApi, selectedImage]);
   const [mainImageHeight, setMainImageHeight] = useState<number | null>(null);
   const mainImageRef = useRef<HTMLDivElement>(null);
   const mainImageHeightRef = useRef<number | null>(null);
@@ -3052,35 +3221,62 @@ function MinimalStyle({
                 <div className={`flex-1 ${imageFrame.frameWidthClassName}`}>
                   <div
                     ref={mainImageRef}
-                    className={`relative w-full rounded-sm overflow-hidden ${canOpenLightbox ? 'cursor-zoom-in' : ''}`.trim()}
+                    className={`relative w-full rounded-sm overflow-hidden group/carousel ${canOpenLightbox ? 'cursor-zoom-in' : ''}`.trim()}
                     style={{ ...mainImageFrameStyle, backgroundColor: tokens.surfaceMuted }}
                     role={canOpenLightbox ? 'button' : undefined}
                     tabIndex={canOpenLightbox ? 0 : -1}
-                    onClick={canOpenLightbox ? handleOpenLightbox : undefined}
                     onKeyDown={handleLightboxKeyDown}
                   >
                     {showSalePrice && priceDisplay.comparePrice && discountPercent > 0 && (
                       <span
-                        className="absolute left-3 top-3 z-20 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                        className="absolute left-3 top-3 z-30 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold"
                         style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>
                         -{discountPercent}%
                       </span>
                     )}
-                    <div className="h-full w-full md:hidden">
-                      <MobileImageCarousel
-                        images={displayImages}
-                        selectedIndex={safeSelectedImage}
-                        onSelect={setSelectedImage}
-                        alt={product.name}
-                        fallbackSrc={productImagePlaceholder}
-                      />
-                    </div>
-                    <div className="hidden md:block h-full w-full">
-                      <BlurredProductImage src={displayImages[safeSelectedImage]} fallbackSrc={productImagePlaceholder} alt={product.name} sizes="(max-width: 1024px) 100vw, 60vw" />
+                    <div className="embla overflow-hidden h-full w-full" ref={emblaRef}>
+                      <div className="embla__container flex h-full w-full">
+                        {displayImages.map((img, idx) => (
+                          <div 
+                            className="embla__slide flex-[0_0_100%] min-w-0 relative h-full w-full cursor-pointer" 
+                            key={idx}
+                            onClick={canOpenLightbox ? handleOpenLightbox : undefined}
+                          >
+                            <BlurredProductImage
+                              src={img}
+                              fallbackSrc={productImagePlaceholder}
+                              alt={product.name}
+                              sizes="(max-width: 1024px) 100vw, 60vw"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     {images.length > 1 && (
-                      <span className="absolute bottom-3 right-3 md:hidden px-2 py-0.5 text-[11px] font-semibold rounded-full backdrop-blur-sm" style={{ backgroundColor: tokens.surface, color: tokens.headingColor }}>
-                        {safeSelectedImage + 1}/{images.length}
+                      <>
+                        <button
+                          type="button"
+                          disabled={!canScrollPrev}
+                          onClick={(e) => { e.stopPropagation(); emblaApi?.scrollPrev(); }}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow transition-all opacity-0 group-hover/carousel:opacity-100 disabled:opacity-0 pointer-events-auto z-30"
+                          aria-label="Ảnh trước"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!canScrollNext}
+                          onClick={(e) => { e.stopPropagation(); emblaApi?.scrollNext(); }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow transition-all opacity-0 group-hover/carousel:opacity-100 disabled:opacity-0 pointer-events-auto z-30"
+                          aria-label="Ảnh sau"
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                      </>
+                    )}
+                    {images.length > 1 && (
+                      <span className="absolute bottom-3 right-3 px-2 py-0.5 text-[11px] font-semibold rounded-full backdrop-blur-sm z-30" style={{ backgroundColor: tokens.surface, color: tokens.headingColor }}>
+                        {selectedIndex + 1}/{images.length}
                       </span>
                     )}
                   </div>
@@ -3193,17 +3389,6 @@ function MinimalStyle({
             )}
 
             {showHighlights && <HighlightsGrid highlights={highlights} tokens={tokens} />}
-
-            <div className="space-y-5 pt-0 flex-1">
-              <div className="space-y-3 text-sm font-light" style={{ color: tokens.metaText }}>
-                {showSku && product.sku && (
-                  <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: tokens.divider }}>
-                    <span>SKU</span>
-                    <span className="font-mono" style={{ color: tokens.bodyText }}>{product.sku}</span>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -3219,20 +3404,28 @@ function MinimalStyle({
                 />
               ) : null}
               {showDescription && resolvedDescription && (
-                <>
-                  <RichContent
-                    content={resolvedDescription}
-                    className="leading-relaxed font-light text-justify"
-                    style={{ color: tokens.bodyText }}
+                <RichContent
+                  content={resolvedDescription}
+                  className="leading-relaxed font-light text-justify"
+                  style={{ color: tokens.bodyText }}
+                />
+              )}
+              {showAllProductImagesSection && images.length > 0 && (
+                <div className="mt-6 border-t pt-6" style={{ borderColor: tokens.divider }}>
+                  <ProductDescriptionImages
+                    images={images}
+                    tokens={tokens}
+                    frameAspectRatio={imageFrame.frameAspectRatio}
+                    fallbackSrc={productImagePlaceholder}
                   />
-                  {enableCategoryProductDetailSuffix && category?.productDetailSuffixContent && (
-                    <RichContent
-                      content={toRichTextContent(category.productDetailSuffixContent)}
-                      className="leading-relaxed font-light text-justify mt-4 pt-4 border-t border-dashed border-slate-100 dark:border-slate-800"
-                      style={{ color: tokens.bodyText }}
-                    />
-                  )}
-                </>
+                </div>
+              )}
+              {enableCategoryProductDetailSuffix && category?.productDetailSuffixContent && (
+                <RichContent
+                  content={toRichTextContent(category.productDetailSuffixContent)}
+                  className="leading-relaxed font-light text-justify mt-4 pt-4 border-t border-dashed border-slate-100 dark:border-slate-800"
+                  style={{ color: tokens.bodyText }}
+                />
               )}
               {supplementalContent?.postContent ? (
                 <RichContent
@@ -3241,14 +3434,6 @@ function MinimalStyle({
                   style={{ color: tokens.bodyText }}
                 />
               ) : null}
-              {showAllProductImagesSection && (
-                <ProductDescriptionImages
-                  images={images}
-                  tokens={tokens}
-                  frameAspectRatio={imageFrame.frameAspectRatio}
-                  fallbackSrc={productImagePlaceholder}
-                />
-              )}
             </ExpandableProductDescriptionBlock>
           </section>
         ) : null}
@@ -3678,7 +3863,6 @@ function ProductCommentsSection({
   );
 }
 
-// Shared Related Products Section
 function RelatedProductsSection({
   products,
   categorySlug,
@@ -3720,7 +3904,7 @@ function RelatedProductsSection({
   categorySlugMap: Map<string, string>;
   productImagePlaceholder: string;
 }) {
-  const { overlayUrl } = useProductFrameConfig(imageAspectRatio);
+  const { frameConfig, watermarkConfig } = useProductImageOverlayConfigs(imageAspectRatio);
   const getDetailHref = useMemo(() => (
     (relatedProduct: RelatedProduct) => buildDetailPath({
       categorySlug: categorySlugMap.get(relatedProduct.categoryId),
@@ -3738,7 +3922,7 @@ function RelatedProductsSection({
   const relatedImageStyle: React.CSSProperties = {
     aspectRatio: getProductImageFrameConfig(imageAspectRatio, 'classic').frameAspectRatio,
   };
-
+  
   return (
     <section className="mt-16 pt-12 border-t" style={{ borderColor: tokens.divider }}>
       <div className="flex items-center justify-between mb-8">
@@ -3766,14 +3950,17 @@ function RelatedProductsSection({
             className="rounded-xl overflow-hidden border"
             style={{ borderColor: tokens.relatedCardBorder, backgroundColor: tokens.relatedCardBg }}
           >
-            <div className="overflow-hidden relative" style={{ ...relatedImageStyle, backgroundColor: tokens.surfaceMuted }}>
+            <ProductImageWithOverlay
+              frameConfig={frameConfig}
+              watermarkConfig={watermarkConfig}
+              className="overflow-hidden relative"
+              style={{ ...relatedImageStyle, backgroundColor: tokens.surfaceMuted }}
+            >
               <ProductImageWithFallback mode="thumb" src={p.image} fallbackSrc={productImagePlaceholder} alt={p.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
-              <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-              <ProductImageWatermarkBox />
               {showSalePrice && priceDisplay.comparePrice && !priceDisplay.isContactPrice && (
-                <span className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded" style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>-{Math.round((1 - p.price / priceDisplay.comparePrice) * 100)}%</span>
+                <span className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded z-30" style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>-{Math.round((1 - p.price / priceDisplay.comparePrice) * 100)}%</span>
               )}
-            </div>
+            </ProductImageWithOverlay>
             <div className="p-4">
               <h3 className="font-medium line-clamp-2 transition-colors mb-2 text-sm" style={{ color: tokens.headingColor }}>{p.name}</h3>
               {showPrice && (

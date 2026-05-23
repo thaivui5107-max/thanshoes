@@ -14,8 +14,8 @@ import { useCustomerAuth } from '@/app/(site)/auth/context';
 import { notifyAddToCart, useCart } from '@/lib/cart';
 import { buildCategoryPath, buildDetailPath, buildModuleListPath, normalizeRouteMode } from '@/lib/ia/route-mode';
 import { QuickAddVariantModal } from '@/components/products/QuickAddVariantModal';
-import { ProductImageFrameOverlay, useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
-import { ProductImageWatermarkOverlay, useProductWatermarkConfig } from '@/components/shared/ProductImageWatermarkOverlay';
+import { ProductImageWithOverlay, useProductImageOverlayConfigs } from '@/components/shared/ProductImageWithOverlay';
+import type { WatermarkConfig, ProductFrameConfig } from '@/components/shared/ProductImageWithOverlay';
 import { ChevronDown, Heart, Package, Search, ShoppingCart, SlidersHorizontal, X } from 'lucide-react';
 import type { Id } from '@/convex/_generated/dataModel';
 import { getPublicPriceLabel } from '@/lib/products/public-price';
@@ -187,7 +187,7 @@ function ProductsContent() {
     () => ({ aspectRatio: getProductImageAspectRatioCssValue(imageAspectRatio) }),
     [imageAspectRatio]
   );
-  const { overlayUrl: productFrameOverlayUrl } = useProductFrameConfig(imageAspectRatio);
+  const { frameConfig, watermarkConfig } = useProductImageOverlayConfigs(imageAspectRatio);
   const listConfig = useProductsListConfig();
   const layout: ProductsListLayout = listConfig.layoutStyle === 'sidebar' ? 'catalog' : listConfig.layoutStyle;
   const enableQuickAddVariant = listConfig.enableQuickAddVariant ?? true;
@@ -743,7 +743,8 @@ function ProductsContent() {
           onBuyNow={handlePrimaryAction}
           canUseWishlist={canUseWishlist}
           imageAspectRatioStyle={imageAspectRatioStyle}
-          overlayUrl={productFrameOverlayUrl}
+          frameConfig={frameConfig}
+          watermarkConfig={watermarkConfig}
           getDetailHref={getProductDetailHref}
           activeCategoryDoc={activeCategoryDoc}
           showCategorySubtitle={showCategorySubtitle}
@@ -787,7 +788,8 @@ function ProductsContent() {
           onBuyNow={handlePrimaryAction}
           canUseWishlist={canUseWishlist}
           imageAspectRatioStyle={imageAspectRatioStyle}
-          overlayUrl={productFrameOverlayUrl}
+          frameConfig={frameConfig}
+          watermarkConfig={watermarkConfig}
           getDetailHref={getProductDetailHref}
           activeCategoryDoc={activeCategoryDoc}
           showCategorySubtitle={showCategorySubtitle}
@@ -932,7 +934,8 @@ function ProductsContent() {
             onBuyNow={handlePrimaryAction}
             canUseWishlist={canUseWishlist}
             imageAspectRatioStyle={imageAspectRatioStyle}
-            overlayUrl={productFrameOverlayUrl}
+            frameConfig={frameConfig}
+            watermarkConfig={watermarkConfig}
             getDetailHref={getProductDetailHref}
           />
         )}
@@ -1009,8 +1012,7 @@ function ProductCardActions({ product, tokens, showStock, showAddToCartButton, s
   );
 }
 
-function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, overlayUrl, getDetailHref }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; overlayUrl?: string | null; getDetailHref: (product: ProductCardProps['product']) => string }) {
-  const watermarkConfig = useProductWatermarkConfig();
+function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; frameConfig?: ProductFrameConfig | null; watermarkConfig?: WatermarkConfig | null; getDetailHref: (product: ProductCardProps['product']) => string }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
       {products.map((product) => (
@@ -1023,17 +1025,20 @@ function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, 
           className="group rounded-xl overflow-hidden border transition-colors flex flex-col h-full"
           style={{ backgroundColor: tokens.cardBackground, borderColor: tokens.cardBorder }}
         >
-          <div className="overflow-hidden relative" style={{ ...imageAspectRatioStyle, backgroundColor: tokens.filterChipBg }}>
+          <ProductImageWithOverlay
+            frameConfig={frameConfig}
+            watermarkConfig={watermarkConfig}
+            className="overflow-hidden relative"
+            style={{ ...imageAspectRatioStyle, backgroundColor: tokens.filterChipBg }}
+          >
             {product.image ? (
                 <Image mode="thumb" src={product.image} alt={product.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover group-hover:scale-110 transition-transform duration-500" />
             ) : (
               <div className="w-full h-full flex items-center justify-center"><Package size={48} style={{ color: tokens.neutralTextLight }} /></div>
             )}
-            <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-            <ProductImageWatermarkOverlay config={watermarkConfig} />
             {showPromotionBadge && showSalePrice && priceDisplay.comparePrice && !priceDisplay.isContactPrice && (
               <span
-                className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded"
+                className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded z-30"
                 style={{ backgroundColor: tokens.promotionBadgeBg, color: tokens.promotionBadgeText }}
               >
                 -{Math.round((1 - product.price / priceDisplay.comparePrice) * 100)}%
@@ -1041,7 +1046,7 @@ function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, 
             )}
             {showWishlistButton && canUseWishlist && (
               <button
-                className="absolute top-2 right-2 p-2 rounded-full border transition-colors"
+                className="absolute top-2 right-2 p-2 rounded-full border transition-colors z-30"
                 style={{ backgroundColor: tokens.wishlistButtonBg, borderColor: tokens.wishlistButtonBorder, color: wishlistIdSet.has(product._id) ? tokens.wishlistIconActive : tokens.wishlistIcon }}
                 onClick={(event) => { event.preventDefault(); onToggleWishlist(product._id); }}
                 aria-label="Thêm vào yêu thích"
@@ -1049,7 +1054,7 @@ function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, 
                 <Heart size={16} />
               </button>
             )}
-          </div>
+          </ProductImageWithOverlay>
           <div className="p-4 flex flex-1 flex-col">
             <p className="text-xs mb-1" style={{ color: tokens.metaText }}>{categoryMap.get(product.categoryId) ?? 'Sản phẩm'}</p>
             <h3 className="font-medium line-clamp-2 transition-colors mb-2" style={{ color: tokens.bodyText }}>{product.name}</h3>
@@ -1088,8 +1093,7 @@ function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, 
   );
 }
 
-function ProductList({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, overlayUrl, getDetailHref }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; overlayUrl?: string | null; getDetailHref: (product: ProductCardProps['product']) => string }) {
-  const watermarkConfig = useProductWatermarkConfig();
+function ProductList({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; frameConfig?: ProductFrameConfig | null; watermarkConfig?: WatermarkConfig | null; getDetailHref: (product: ProductCardProps['product']) => string }) {
   return (
     <div className="space-y-4">
       {products.map((product) => (
@@ -1102,25 +1106,20 @@ function ProductList({ products, categoryMap, tokens, showPrice, showSalePrice, 
           className="group flex gap-4 rounded-xl overflow-hidden border transition-colors p-4"
           style={{ backgroundColor: tokens.cardBackground, borderColor: tokens.cardBorder }}
         >
-          <div className="w-32 md:w-40 shrink-0 overflow-hidden rounded-lg relative" style={{ ...imageAspectRatioStyle, backgroundColor: tokens.filterChipBg }}>
+          <ProductImageWithOverlay
+            frameConfig={frameConfig}
+            watermarkConfig={watermarkConfig}
+            className="w-32 md:w-40 shrink-0 overflow-hidden rounded-lg relative"
+            style={{ ...imageAspectRatioStyle, backgroundColor: tokens.filterChipBg }}
+          >
             {product.image ? (
                 <Image mode="thumb" src={product.image} alt={product.name} fill sizes="160px" className="object-cover group-hover:scale-110 transition-transform duration-500" />
             ) : (
               <div className="w-full h-full flex items-center justify-center"><Package size={32} style={{ color: tokens.neutralTextLight }} /></div>
             )}
-            <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-            <ProductImageWatermarkOverlay config={watermarkConfig} />
-            {showPromotionBadge && showSalePrice && priceDisplay.comparePrice && !priceDisplay.isContactPrice && (
-              <span
-                className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded"
-                style={{ backgroundColor: tokens.promotionBadgeBg, color: tokens.promotionBadgeText }}
-              >
-                -{Math.round((1 - product.price / priceDisplay.comparePrice) * 100)}%
-              </span>
-            )}
             {showWishlistButton && canUseWishlist && (
               <button
-                className="absolute top-2 right-2 p-2 rounded-full border transition-colors"
+                className="absolute top-2 right-2 p-2 rounded-full border transition-colors z-30"
                 style={{ backgroundColor: tokens.wishlistButtonBg, borderColor: tokens.wishlistButtonBorder, color: wishlistIdSet.has(product._id) ? tokens.wishlistIconActive : tokens.wishlistIcon }}
                 onClick={(event) => { event.preventDefault(); onToggleWishlist(product._id); }}
                 aria-label="Thêm vào yêu thích"
@@ -1128,7 +1127,7 @@ function ProductList({ products, categoryMap, tokens, showPrice, showSalePrice, 
                 <Heart size={16} />
               </button>
             )}
-          </div>
+          </ProductImageWithOverlay>
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <p className="text-xs mb-1" style={{ color: tokens.metaText }}>{categoryMap.get(product.categoryId) ?? 'Sản phẩm'}</p>
             <h3 className="font-semibold text-lg transition-colors mb-2" style={{ color: tokens.bodyText }}>{product.name}</h3>
@@ -1234,7 +1233,8 @@ interface LayoutProps {
   onBuyNow: (product: ProductCardProps['product']) => void;
   canUseWishlist: boolean;
   imageAspectRatioStyle: React.CSSProperties;
-  overlayUrl?: string | null;
+  frameConfig?: ProductFrameConfig | null;
+  watermarkConfig?: WatermarkConfig | null;
   getDetailHref: (product: ProductCardProps['product']) => string;
   activeCategoryDoc?: { name: string; description?: string; filterFooterContent?: string } | null;
   showCategorySubtitle?: boolean;
@@ -1373,7 +1373,7 @@ function MobileProductsFilters({
   );
 }
 
-function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap: _categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent }: LayoutProps) {
+function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap: _categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent }: LayoutProps) {
   return (
     <div className="py-8 md:py-12 px-4">
       <div className="max-w-7xl mx-auto">
@@ -1497,31 +1497,36 @@ function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, 
                     className="group rounded-xl overflow-hidden border transition-colors flex flex-col h-full"
                     style={{ backgroundColor: tokens.cardBackground, borderColor: tokens.cardBorder }}
                   >
-                    <div className="overflow-hidden relative" style={{ ...imageAspectRatioStyle, backgroundColor: tokens.filterChipBg }}>
-                      {product.image ? (
-                        <Image mode="thumb" src={product.image} alt={product.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover group-hover:scale-110 transition-transform duration-500" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center"><Package size={32} style={{ color: tokens.neutralTextLight }} /></div>
-                      )}
-                      {showPromotionBadge && showSalePrice && priceDisplay.comparePrice && !priceDisplay.isContactPrice && (
-                        <span
-                          className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded"
-                          style={{ backgroundColor: tokens.promotionBadgeBg, color: tokens.promotionBadgeText }}
-                        >
-                          -{Math.round((1 - product.price / priceDisplay.comparePrice) * 100)}%
-                        </span>
-                      )}
-                      {showWishlistButton && canUseWishlist && (
-                        <button
-                          className="absolute top-2 right-2 p-2 rounded-full border transition-colors"
-                          style={{ backgroundColor: tokens.wishlistButtonBg, borderColor: tokens.wishlistButtonBorder, color: wishlistIdSet.has(product._id) ? tokens.wishlistIconActive : tokens.wishlistIcon }}
-                          onClick={(event) => { event.preventDefault(); onToggleWishlist(product._id); }}
-                          aria-label="Thêm vào yêu thích"
-                        >
-                          <Heart size={16} />
-                        </button>
-                      )}
-                    </div>
+                  <ProductImageWithOverlay
+                    frameConfig={frameConfig}
+                    watermarkConfig={watermarkConfig}
+                    className="overflow-hidden relative"
+                    style={{ ...imageAspectRatioStyle, backgroundColor: tokens.filterChipBg }}
+                  >
+                    {product.image ? (
+                      <Image mode="thumb" src={product.image} alt={product.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover group-hover:scale-110 transition-transform duration-500" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center"><Package size={32} style={{ color: tokens.neutralTextLight }} /></div>
+                    )}
+                    {showPromotionBadge && showSalePrice && priceDisplay.comparePrice && !priceDisplay.isContactPrice && (
+                      <span
+                        className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded z-30"
+                        style={{ backgroundColor: tokens.promotionBadgeBg, color: tokens.promotionBadgeText }}
+                      >
+                        -{Math.round((1 - product.price / priceDisplay.comparePrice) * 100)}%
+                      </span>
+                    )}
+                    {showWishlistButton && canUseWishlist && (
+                      <button
+                        className="absolute top-2 right-2 p-2 rounded-full border transition-colors z-30"
+                        style={{ backgroundColor: tokens.wishlistButtonBg, borderColor: tokens.wishlistButtonBorder, color: wishlistIdSet.has(product._id) ? tokens.wishlistIconActive : tokens.wishlistIcon }}
+                        onClick={(event) => { event.preventDefault(); onToggleWishlist(product._id); }}
+                        aria-label="Thêm vào yêu thích"
+                      >
+                        <Heart size={16} />
+                      </button>
+                    )}
+                  </ProductImageWithOverlay>
                     <div className="p-3 flex flex-1 flex-col">
                       <h3 className="font-medium text-sm line-clamp-2 transition-colors" style={{ color: tokens.bodyText }}>{product.name}</h3>
                       {showPrice && <span className="font-bold text-sm block mt-1" style={{ color: tokens.priceColor }}>{priceDisplay.label}</span>}
@@ -1565,7 +1570,7 @@ function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, 
 
 // ========== LIST LAYOUT (Full width list view) ==========
 
-function ListLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, overlayUrl, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent }: LayoutProps) {
+function ListLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent }: LayoutProps) {
   return (
     <div className="py-8 md:py-12 px-4">
       <div className="max-w-5xl mx-auto">
@@ -1674,7 +1679,8 @@ function ListLayout({ isLoadingProducts, postsPerPage, products, categories, cat
             onBuyNow={onBuyNow}
             canUseWishlist={canUseWishlist}
             imageAspectRatioStyle={imageAspectRatioStyle}
-            overlayUrl={overlayUrl}
+            frameConfig={frameConfig}
+            watermarkConfig={watermarkConfig}
             getDetailHref={getDetailHref}
           />
         )}

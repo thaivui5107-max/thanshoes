@@ -1283,20 +1283,18 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     >
                       Khung viền sản phẩm
                     </button>
-                    {enableProductWatermark && (
-                      <button
-                        type="button"
-                        onClick={() => setAdvancedTab('watermark')}
-                        className={cn(
-                          'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-                          advancedTab === 'watermark'
-                            ? 'border-orange-500 text-slate-900 dark:text-slate-100'
-                            : 'border-transparent text-slate-500 hover:text-slate-700'
-                        )}
-                      >
-                        Watermark
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setAdvancedTab('watermark')}
+                      className={cn(
+                        'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                        advancedTab === 'watermark'
+                          ? 'border-orange-500 text-slate-900 dark:text-slate-100'
+                          : 'border-transparent text-slate-500 hover:text-slate-700'
+                      )}
+                    >
+                      Watermark
+                    </button>
                     {canEditHeaderMenu && (
                       <button
                         type="button"
@@ -1490,243 +1488,263 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                           </div>
                         );
                       })()}
-
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        * Upload ảnh PNG/WebP nền trong suốt. Nên chuẩn bị ảnh khung viền đúng tỷ lệ khung hình hiển thị để đảm bảo tính mỹ thuật cao nhất.
-                      </p>
                     </div>
                   )}
 
-                  {advancedTab === 'watermark' && enableProductWatermark && (
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-                      {/* Cấu hình cột trái (7 cols) */}
-                      <div className="lg:col-span-7 space-y-6">
-                        {/* 1. Watermark Hình */}
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <Checkbox
-                                id="product_watermark_image_enabled"
-                                checked={form.product_watermark_image_enabled === true || form.product_watermark_image_enabled === 'true'}
-                                onCheckedChange={(checked) => updateField('product_watermark_image_enabled', checked)}
-                              />
-                              <Label htmlFor="product_watermark_image_enabled" className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100">Bật watermark hình (logo)</Label>
-                            </div>
+                  {advancedTab === 'watermark' && (
+                    <div className="space-y-6">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="enable_product_watermark"
+                            checked={form.enable_product_watermark === true}
+                            onCheckedChange={(checked) => updateField('enable_product_watermark', checked)}
+                          />
+                          <div className="space-y-0.5">
+                            <Label htmlFor="enable_product_watermark" className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100">Bật watermark sản phẩm</Label>
+                            <p className="text-xs text-slate-500">
+                              Hiển thị watermark (chữ hoặc hình) đè lên ảnh sản phẩm ở storefront.
+                            </p>
                           </div>
-
-                          {(form.product_watermark_image_enabled === true || form.product_watermark_image_enabled === 'true') && (
-                            <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-                              <SettingsImageUploader
-                                label="Ảnh logo watermark"
-                                value={typeof form.product_watermark_image_url === 'string' ? form.product_watermark_image_url : ''}
-                                storageId={mediaStorageIds.product_watermark_image_url ?? undefined}
-                                onChange={(url, storageId) => { updateImageField('product_watermark_image_url', url, storageId); }}
-                                folder="settings"
-                                previewSize="md"
-                              />
-
-                              {typeof form.product_watermark_image_url === 'string' && form.product_watermark_image_url && (
-                                <div className="space-y-3">
-                                  <div className="space-y-1">
-                                    <div className="flex justify-between text-xs text-slate-500">
-                                      <Label>Độ trong suốt logo</Label>
-                                      <span>{form.product_watermark_image_opacity ?? 40}%</span>
-                                    </div>
-                                    <input
-                                      type="range"
-                                      min="0"
-                                      max="100"
-                                      value={parseFloat(String(form.product_watermark_image_opacity ?? 40))}
-                                      onChange={(e) => updateField('product_watermark_image_opacity', e.target.value)}
-                                      className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-orange-500"
-                                    />
-                                  </div>
-                                  <div className="flex justify-end">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => { updateImageField('product_watermark_image_url', '', null); }}
-                                      className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 text-xs px-2 py-1 h-auto"
-                                    >
-                                      Xóa ảnh logo
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* 2. Watermark Chữ */}
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <Checkbox
-                                id="product_watermark_text_enabled"
-                                checked={form.product_watermark_text_enabled === true || form.product_watermark_text_enabled === 'true'}
-                                onCheckedChange={(checked) => updateField('product_watermark_text_enabled', checked)}
-                              />
-                              <Label htmlFor="product_watermark_text_enabled" className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100">Bật watermark chữ</Label>
-                            </div>
-                          </div>
-
-                          {(form.product_watermark_text_enabled === true || form.product_watermark_text_enabled === 'true') && (
-                            <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-                              <div className="space-y-1.5">
-                                <Label>Nội dung chữ</Label>
-                                <Input
-                                  value={typeof form.product_watermark_text_content === 'string' ? form.product_watermark_text_content : ''}
-                                  onChange={(e) => updateField('product_watermark_text_content', e.target.value)}
-                                  placeholder="Nhập chữ watermark..."
-                                />
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                  <Label>Cỡ chữ (px)</Label>
-                                  <select
-                                    value={String(form.product_watermark_text_font_size ?? '8')}
-                                    onChange={(e) => updateField('product_watermark_text_font_size', e.target.value)}
-                                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                                  >
-                                    {Array.from({ length: 30 }, (_, i) => i + 1).map((size) => (
-                                      <option key={size} value={size}>{size}px</option>
-                                    ))}
-                                  </select>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                  <Label>Màu chữ</Label>
-                                  <div className="flex gap-2">
-                                    <input
-                                      type="color"
-                                      value={typeof form.product_watermark_text_color === 'string' && form.product_watermark_text_color.startsWith('#') ? form.product_watermark_text_color : '#64748B'}
-                                      onChange={(e) => updateField('product_watermark_text_color', e.target.value)}
-                                      className="w-10 h-10 rounded-md cursor-pointer border border-slate-200 dark:border-slate-700"
-                                    />
-                                    <Input
-                                      value={String(form.product_watermark_text_color ?? '#64748B').toUpperCase()}
-                                      onChange={(e) => updateField('product_watermark_text_color', e.target.value)}
-                                      className="font-mono text-sm uppercase flex-1"
-                                      maxLength={7}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="space-y-1">
-                                <div className="flex justify-between text-xs text-slate-500">
-                                  <Label>Độ trong suốt chữ</Label>
-                                  <span>{form.product_watermark_text_opacity ?? 35}%</span>
-                                </div>
-                                <input
-                                  type="range"
-                                  min="0"
-                                  max="100"
-                                  value={parseFloat(String(form.product_watermark_text_opacity ?? 35))}
-                                  onChange={(e) => updateField('product_watermark_text_opacity', e.target.value)}
-                                  className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-orange-500"
-                                />
-                              </div>
-
-                              <div className="flex items-center gap-3">
-                                <Checkbox
-                                  id="product_watermark_text_repeat"
-                                  checked={form.product_watermark_text_repeat === true || form.product_watermark_text_repeat === 'true'}
-                                  onCheckedChange={(checked) => updateField('product_watermark_text_repeat', checked)}
-                                />
-                                <Label htmlFor="product_watermark_text_repeat" className="cursor-pointer text-xs text-slate-600 dark:text-slate-400">Lặp watermark chữ theo hàng ngang</Label>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </div>
 
-                      {/* Preview cột phải (5 cols) */}
-                      <div className="lg:col-span-5 flex flex-col items-center justify-start space-y-4">
-                        <div className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col items-center">
-                          <Label className="font-semibold text-slate-900 dark:text-slate-100 self-start mb-3">Preview trực quan</Label>
+                      {form.enable_product_watermark !== true && (
+                        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-xs text-amber-800 dark:text-amber-300">
+                          Tính năng đang tắt. Hãy bật lên để hiển thị watermark trên ảnh sản phẩm ngoài trang chủ và chi tiết sản phẩm.
+                        </div>
+                      )}
 
-                          <div 
-                            ref={previewCanvasRef}
-                            className="relative w-64 aspect-square max-w-full border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 shadow-inner flex items-center justify-center select-none touch-none"
-                            onPointerMove={handlePreviewPointerMove}
-                            onPointerUp={handlePreviewPointerUp}
-                            onPointerLeave={handlePreviewPointerUp}
-                            style={{ cursor: activeDrag ? (activeDrag === 'image-resize' ? 'nwse-resize' : 'move') : 'default' }}
-                          >
-                            {/* Ảnh placeholder sản phẩm */}
-                            <img
-                              src={typeof form.product_image_placeholder === 'string' && form.product_image_placeholder ? form.product_image_placeholder : undefined}
-                              alt=""
-                              className="absolute inset-0 w-full h-full object-cover opacity-50 pointer-events-none select-none"
-                            />
-
-                            {/* Watermark hình */}
-                            {(form.product_watermark_image_enabled === true || form.product_watermark_image_enabled === 'true') && typeof form.product_watermark_image_url === 'string' && form.product_watermark_image_url && (
-                              <div
-                                className="absolute pointer-events-auto transform -translate-x-1/2 -translate-y-1/2 group cursor-move select-none touch-none"
-                                style={{
-                                  left: `${form.product_watermark_image_x ?? 80}%`,
-                                  top: `${form.product_watermark_image_y ?? 80}%`,
-                                  width: `${form.product_watermark_image_width ?? 28}%`,
-                                  opacity: (parseFloat(String(form.product_watermark_image_opacity ?? 40))) / 100,
-                                }}
-                                onPointerDown={(e) => handlePreviewPointerDown(e, 'image-move')}
-                                onPointerMove={handlePreviewPointerMove}
-                                onPointerUp={handlePreviewPointerUp}
-                              >
-                                <img
-                                  src={form.product_watermark_image_url}
-                                  alt="Image Watermark"
-                                  className="w-full h-auto object-contain pointer-events-none select-none border border-dashed border-transparent hover:border-orange-500 rounded-xs"
-                                  draggable="false"
+                      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                        {/* Cấu hình cột trái (7 cols) */}
+                        <div className="lg:col-span-7 space-y-6">
+                          {/* 1. Watermark Hình */}
+                          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Checkbox
+                                  id="product_watermark_image_enabled"
+                                  checked={form.product_watermark_image_enabled === true || form.product_watermark_image_enabled === 'true'}
+                                  onCheckedChange={(checked) => updateField('product_watermark_image_enabled', checked)}
                                 />
-                                {/* Resize handle */}
-                                <div
-                                  className="absolute bottom-[-6px] right-[-6px] w-3.5 h-3.5 bg-orange-500 rounded-full border border-white cursor-se-resize shadow-sm hover:scale-125 transition-transform z-20"
-                                  onPointerDown={(e) => { e.stopPropagation(); handlePreviewPointerDown(e, 'image-resize'); }}
-                                  onPointerMove={handlePreviewPointerMove}
-                                  onPointerUp={handlePreviewPointerUp}
-                                />
+                                <Label htmlFor="product_watermark_image_enabled" className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100">Bật watermark hình (logo)</Label>
                               </div>
-                            )}
+                            </div>
 
-                            {/* Watermark chữ */}
-                            {(form.product_watermark_text_enabled === true || form.product_watermark_text_enabled === 'true') && typeof form.product_watermark_text_content === 'string' && form.product_watermark_text_content && (
-                              <div
-                                className="absolute left-0 right-0 transform -translate-y-1/2 whitespace-nowrap text-center select-none pointer-events-auto hover:bg-orange-500/10 border-y border-dashed border-transparent hover:border-orange-500 py-1 touch-none"
-                                style={{
-                                  top: `${form.product_watermark_text_y ?? 80}%`,
-                                  opacity: (parseFloat(String(form.product_watermark_text_opacity ?? 35))) / 100,
-                                  color: String(form.product_watermark_text_color ?? '#64748B'),
-                                  fontSize: `${form.product_watermark_text_font_size ?? 8}px`,
-                                  fontFamily: '"Be Vietnam Pro", sans-serif',
-                                  cursor: 'ns-resize',
-                                }}
-                                onPointerDown={(e) => handlePreviewPointerDown(e, 'text-move')}
-                                onPointerMove={handlePreviewPointerMove}
-                                onPointerUp={handlePreviewPointerUp}
-                              >
-                                {form.product_watermark_text_repeat === true || form.product_watermark_text_repeat === 'true' ? (
-                                  <div className="w-full overflow-hidden inline-flex justify-center gap-4">
-                                    {Array(8).fill(null).map((_, i) => (
-                                      <span key={i}>{form.product_watermark_text_content as string}</span>
-                                    ))}
+                            {(form.product_watermark_image_enabled === true || form.product_watermark_image_enabled === 'true') && (
+                              <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <SettingsImageUploader
+                                  label="Ảnh logo watermark"
+                                  value={typeof form.product_watermark_image_url === 'string' ? form.product_watermark_image_url : ''}
+                                  storageId={mediaStorageIds.product_watermark_image_url ?? undefined}
+                                  onChange={(url, storageId) => { updateImageField('product_watermark_image_url', url, storageId); }}
+                                  folder="settings"
+                                  previewSize="md"
+                                />
+
+                                {typeof form.product_watermark_image_url === 'string' && form.product_watermark_image_url && (
+                                  <div className="space-y-3">
+                                    <div className="space-y-1">
+                                      <div className="flex justify-between text-xs text-slate-500">
+                                        <Label>Độ trong suốt logo</Label>
+                                        <span>{form.product_watermark_image_opacity ?? 40}%</span>
+                                      </div>
+                                      <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value={parseFloat(String(form.product_watermark_image_opacity ?? 40))}
+                                        onChange={(e) => updateField('product_watermark_image_opacity', e.target.value)}
+                                        className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-orange-500"
+                                      />
+                                    </div>
+                                    <div className="flex justify-end">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => { updateImageField('product_watermark_image_url', '', null); }}
+                                        className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 text-xs px-2 py-1 h-auto"
+                                      >
+                                        Xóa ảnh logo
+                                      </Button>
+                                    </div>
                                   </div>
-                                ) : (
-                                  <span>{form.product_watermark_text_content}</span>
                                 )}
                               </div>
                             )}
-
-                            <span className="absolute bottom-1 right-2 text-[9px] font-bold text-slate-500 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs px-1.5 py-0.5 rounded-sm">Preview</span>
                           </div>
 
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-3 text-center space-y-1">
-                            <p>💡 <b>Kéo logo hoặc dòng chữ</b> trực tiếp trong ảnh để đổi vị trí.</p>
-                            <p>💡 <b>Kéo chấm tròn màu cam</b> ở góc logo để điều chỉnh kích thước.</p>
+                          {/* 2. Watermark Chữ */}
+                          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Checkbox
+                                  id="product_watermark_text_enabled"
+                                  checked={form.product_watermark_text_enabled === true || form.product_watermark_text_enabled === 'true'}
+                                  onCheckedChange={(checked) => updateField('product_watermark_text_enabled', checked)}
+                                />
+                                <Label htmlFor="product_watermark_text_enabled" className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100">Bật watermark chữ</Label>
+                              </div>
+                            </div>
+
+                            {(form.product_watermark_text_enabled === true || form.product_watermark_text_enabled === 'true') && (
+                              <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <div className="space-y-1.5">
+                                  <Label>Nội dung chữ</Label>
+                                  <Input
+                                    value={typeof form.product_watermark_text_content === 'string' ? form.product_watermark_text_content : ''}
+                                    onChange={(e) => updateField('product_watermark_text_content', e.target.value)}
+                                    placeholder="Nhập chữ watermark..."
+                                  />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-1.5">
+                                    <Label>Cỡ chữ (px)</Label>
+                                    <select
+                                      value={String(form.product_watermark_text_font_size ?? '8')}
+                                      onChange={(e) => updateField('product_watermark_text_font_size', e.target.value)}
+                                      className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                                    >
+                                      {Array.from({ length: 30 }, (_, i) => i + 1).map((size) => (
+                                        <option key={size} value={size}>{size}px</option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  <div className="space-y-1.5">
+                                    <Label>Màu chữ</Label>
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="color"
+                                        value={typeof form.product_watermark_text_color === 'string' && form.product_watermark_text_color.startsWith('#') ? form.product_watermark_text_color : '#64748B'}
+                                        onChange={(e) => updateField('product_watermark_text_color', e.target.value)}
+                                        className="w-10 h-10 rounded-md cursor-pointer border border-slate-200 dark:border-slate-700"
+                                      />
+                                      <Input
+                                        value={String(form.product_watermark_text_color ?? '#64748B').toUpperCase()}
+                                        onChange={(e) => updateField('product_watermark_text_color', e.target.value)}
+                                        className="font-mono text-sm uppercase flex-1"
+                                        maxLength={7}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <div className="flex justify-between text-xs text-slate-500">
+                                    <Label>Độ trong suốt chữ</Label>
+                                    <span>{form.product_watermark_text_opacity ?? 35}%</span>
+                                  </div>
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={parseFloat(String(form.product_watermark_text_opacity ?? 35))}
+                                    onChange={(e) => updateField('product_watermark_text_opacity', e.target.value)}
+                                    className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-orange-500"
+                                  />
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  <Checkbox
+                                    id="product_watermark_text_repeat"
+                                    checked={form.product_watermark_text_repeat === true || form.product_watermark_text_repeat === 'true'}
+                                    onCheckedChange={(checked) => updateField('product_watermark_text_repeat', checked)}
+                                  />
+                                  <Label htmlFor="product_watermark_text_repeat" className="cursor-pointer text-xs text-slate-600 dark:text-slate-400">Lặp watermark chữ theo hàng ngang</Label>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Preview cột phải (5 cols) */}
+                        <div className="lg:col-span-5 flex flex-col items-center justify-start space-y-4">
+                          <div className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col items-center">
+                            <Label className="font-semibold text-slate-900 dark:text-slate-100 self-start mb-3">Preview trực quan</Label>
+
+                            <div 
+                              ref={previewCanvasRef}
+                              className="relative w-64 aspect-square max-w-full border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 shadow-inner flex items-center justify-center select-none touch-none"
+                              onPointerMove={handlePreviewPointerMove}
+                              onPointerUp={handlePreviewPointerUp}
+                              onPointerLeave={handlePreviewPointerUp}
+                              style={{ cursor: activeDrag ? (activeDrag === 'image-resize' ? 'nwse-resize' : 'move') : 'default' }}
+                            >
+                              {/* Ảnh placeholder sản phẩm */}
+                              <img
+                                src={typeof form.product_image_placeholder === 'string' && form.product_image_placeholder ? form.product_image_placeholder : undefined}
+                                alt=""
+                                className="absolute inset-0 w-full h-full object-cover opacity-50 pointer-events-none select-none"
+                              />
+
+                              {/* Watermark hình */}
+                              {(form.product_watermark_image_enabled === true || form.product_watermark_image_enabled === 'true') && typeof form.product_watermark_image_url === 'string' && form.product_watermark_image_url && (
+                                <div
+                                  className="absolute pointer-events-auto transform -translate-x-1/2 -translate-y-1/2 group cursor-move select-none touch-none"
+                                  style={{
+                                    left: `${form.product_watermark_image_x ?? 80}%`,
+                                    top: `${form.product_watermark_image_y ?? 80}%`,
+                                    width: `${form.product_watermark_image_width ?? 28}%`,
+                                    opacity: (parseFloat(String(form.product_watermark_image_opacity ?? 40))) / 100,
+                                  }}
+                                  onPointerDown={(e) => handlePreviewPointerDown(e, 'image-move')}
+                                  onPointerMove={handlePreviewPointerMove}
+                                  onPointerUp={handlePreviewPointerUp}
+                                >
+                                  <img
+                                    src={form.product_watermark_image_url}
+                                    alt="Image Watermark"
+                                    className="w-full h-auto object-contain pointer-events-none select-none border border-dashed border-transparent hover:border-orange-500 rounded-xs"
+                                    draggable="false"
+                                  />
+                                  {/* Resize handle */}
+                                  <div
+                                    className="absolute bottom-[-6px] right-[-6px] w-3.5 h-3.5 bg-orange-500 rounded-full border border-white cursor-se-resize shadow-sm hover:scale-125 transition-transform z-20"
+                                    onPointerDown={(e) => { e.stopPropagation(); handlePreviewPointerDown(e, 'image-resize'); }}
+                                    onPointerMove={handlePreviewPointerMove}
+                                    onPointerUp={handlePreviewPointerUp}
+                                  />
+                                </div>
+                              )}
+
+                              {/* Watermark chữ */}
+                              {(form.product_watermark_text_enabled === true || form.product_watermark_text_enabled === 'true') && typeof form.product_watermark_text_content === 'string' && form.product_watermark_text_content && (
+                                <div
+                                  className="absolute left-0 right-0 transform -translate-y-1/2 whitespace-nowrap text-center select-none pointer-events-auto hover:bg-orange-500/10 border-y border-dashed border-transparent hover:border-orange-500 py-1 touch-none"
+                                  style={{
+                                    top: `${form.product_watermark_text_y ?? 80}%`,
+                                    opacity: (parseFloat(String(form.product_watermark_text_opacity ?? 35))) / 100,
+                                    color: String(form.product_watermark_text_color ?? '#64748B'),
+                                    fontSize: `${form.product_watermark_text_font_size ?? 8}px`,
+                                    fontFamily: '"Be Vietnam Pro", sans-serif',
+                                    cursor: 'ns-resize',
+                                  }}
+                                  onPointerDown={(e) => handlePreviewPointerDown(e, 'text-move')}
+                                  onPointerMove={handlePreviewPointerMove}
+                                  onPointerUp={handlePreviewPointerUp}
+                                >
+                                  {form.product_watermark_text_repeat === true || form.product_watermark_text_repeat === 'true' ? (
+                                    <div className="w-full overflow-hidden inline-flex justify-center gap-4">
+                                      {Array(8).fill(null).map((_, i) => (
+                                        <span key={i}>{form.product_watermark_text_content as string}</span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span>{form.product_watermark_text_content}</span>
+                                  )}
+                                </div>
+                              )}
+
+                              <span className="absolute bottom-1 right-2 text-[9px] font-bold text-slate-500 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs px-1.5 py-0.5 rounded-sm">Preview</span>
+                            </div>
+
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-3 text-center space-y-1">
+                              <p>💡 <b>Kéo logo hoặc dòng chữ</b> trực tiếp trong ảnh để đổi vị trí.</p>
+                              <p>💡 <b>Kéo chấm tròn màu cam</b> ở góc logo để điều chỉnh kích thước.</p>
+                            </div>
                           </div>
                         </div>
                       </div>

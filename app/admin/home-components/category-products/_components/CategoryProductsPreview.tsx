@@ -8,8 +8,7 @@ import { BrowserFrame } from '../../_shared/components/BrowserFrame';
 import { PreviewImage } from '../../_shared/components/PreviewImage';
 import { ColorInfoPanel } from '../../_shared/components/ColorInfoPanel';
 import { PreviewWrapper } from '../../_shared/components/PreviewWrapper';
-import { ProductImageFrameOverlay, useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
-import { ProductImageWatermarkBox } from '@/components/shared/ProductImageWatermarkOverlay';
+import { ProductImageWithOverlayAuto } from '@/components/shared/ProductImageWithOverlay';
 import { deviceWidths, usePreviewDevice } from '../../_shared/hooks/usePreviewDevice';
 import { CATEGORY_PRODUCTS_STYLES } from '../_lib/constants';
 import { getCategoryProductsColors } from '../_lib/colors';
@@ -193,13 +192,10 @@ export const CategoryProductsPreview = ({
   );
 
   const FramePreviewImage = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
-    const { overlayUrl } = useProductFrameConfig();
     return (
-      <>
+      <ProductImageWithOverlayAuto className="w-full h-full relative overflow-hidden">
         <PreviewImage src={src} alt={alt} className={className} />
-        <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-        <ProductImageWatermarkBox />
-      </>
+      </ProductImageWithOverlayAuto>
     );
   };
 

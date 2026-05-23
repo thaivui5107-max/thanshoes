@@ -129,8 +129,8 @@ import { CaseStudySection } from './CaseStudySection';
 import { SpeedDialSection } from './SpeedDialSection';
 import { CountdownSectionWrapper } from './CountdownSectionWrapper';
 import type { HomepageCategoryHeroConfig } from '@/app/admin/home-components/homepage-category-hero/_types';
-import { ProductImageFrameOverlay, useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
-import { ProductImageWatermarkOverlay, useProductWatermarkConfig } from '@/components/shared/ProductImageWatermarkOverlay';
+import { ProductImageWithOverlay, useProductImageOverlayConfigs } from '@/components/shared/ProductImageWithOverlay';
+import type { WatermarkConfig, ProductFrameConfig } from '@/components/shared/ProductImageWithOverlay';
 import {
   ArrowUpRight,
   ArrowRight,
@@ -3765,8 +3765,7 @@ function CategoryProductsSection({
     () => ({ aspectRatio: getProductImageAspectRatioCssValue(imageAspectRatio) }),
     [imageAspectRatio]
   );
-  const { overlayUrl } = useProductFrameConfig(imageAspectRatio);
-  const watermarkConfig = useProductWatermarkConfig();
+  const { frameConfig, watermarkConfig } = useProductImageOverlayConfigs(imageAspectRatio);
 
   const resolvedSections = React.useMemo(() => {
     if (selectionMode === 'demo') {
@@ -3855,7 +3854,12 @@ function CategoryProductsSection({
   // Product Card Component with Equal Height (line-clamp + min-height)
   const ProductCard = ({ product, categoryId }: { product: { _id: string; name: string; image?: string; price?: number; salePrice?: number; slug?: string; hasVariants?: boolean }; categoryId: string }) => (
     <a href={resolveProductHrefByCategory({ categoryId, product })} aria-label={`${sectionTitle}: ${product.name}`} className="group cursor-pointer flex flex-col h-full">
-      <div className={cn('overflow-hidden mb-2', imageRadiusClassName)} style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}>
+      <ProductImageWithOverlay
+        frameConfig={frameConfig}
+        watermarkConfig={watermarkConfig}
+        className={cn('overflow-hidden mb-2', imageRadiusClassName)}
+        style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}
+      >
         {product.image ? (
           <SiteImage 
             src={product.image} 
@@ -3867,9 +3871,7 @@ function CategoryProductsSection({
             <Package size={24} style={{ color: colors.emptyStateIcon }} />
           </div>
         )}
-        <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-        <ProductImageWatermarkOverlay config={watermarkConfig} />
-      </div>
+      </ProductImageWithOverlay>
       <h4 className="font-medium text-sm line-clamp-2 min-h-[2.5rem]" style={{ color: colors.bodyText }}>{product.name || 'Tên sản phẩm'}</h4>
       <div className="flex flex-col mt-auto">
         {(() => {
@@ -4038,7 +4040,12 @@ function CategoryProductsSection({
                       className="flex-none w-36 md:w-48 group cursor-grab active:cursor-grabbing select-none"
                       draggable={false}
                     >
-                      <div className={cn('overflow-hidden mb-2', imageRadiusClassName)} style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}>
+                      <ProductImageWithOverlay
+                        frameConfig={frameConfig}
+                        watermarkConfig={watermarkConfig}
+                        className={cn('overflow-hidden mb-2', imageRadiusClassName)}
+                        style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}
+                      >
                         {product.image ? (
                           <SiteImage
                             src={product.image}
@@ -4051,9 +4058,7 @@ function CategoryProductsSection({
                             <Package size={24} style={{ color: colors.emptyStateIcon }} />
                           </div>
                         )}
-                        <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                        <ProductImageWatermarkOverlay config={watermarkConfig} />
-                      </div>
+                      </ProductImageWithOverlay>
                       <h4 className="font-medium text-sm line-clamp-2 mb-1" style={{ color: colors.bodyText }}>{product.name}</h4>
                       <span className="font-bold text-base" style={{ color: colors.buttonText }}>
                         {getPriceDisplay(product.price, product.salePrice, product.hasVariants).label}
@@ -4191,79 +4196,84 @@ function CategoryProductsSection({
                     {/* Desktop: Bento grid */}
                     <div className="hidden md:grid grid-cols-4 gap-4 auto-rows-[180px]">
                       {/* Featured - 2x2 */}
-                      {featured && (
-                        <a 
-                          href={resolveProductHrefByCategory({ categoryId: section.category._id, product: featured })}
+                        <ProductImageWithOverlay
+                          frameConfig={frameConfig}
+                          watermarkConfig={watermarkConfig}
                           className={cn('col-span-2 row-span-2 group cursor-pointer relative overflow-hidden', cardRadiusClassName)}
                           style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}
                         >
-                          {featured.image ? (
-                            <SiteImage 
-                              src={featured.image} 
-                              alt={featured.name} 
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Package size={48} style={{ color: colors.emptyStateIcon }} />
+                          <a 
+                            href={resolveProductHrefByCategory({ categoryId: section.category._id, product: featured })}
+                            className="absolute inset-0 block w-full h-full"
+                          >
+                            {featured.image ? (
+                              <SiteImage 
+                                src={featured.image} 
+                                alt={featured.name} 
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package size={48} style={{ color: colors.emptyStateIcon }} />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-30" />
+                            <div className="absolute bottom-0 left-0 right-0 p-5 text-white z-30">
+                              <span
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mb-2"
+                                style={{ backgroundColor: colors.featuredBadgeBackground, color: colors.featuredBadgeText }}
+                              >
+                                Nổi bật
+                              </span>
+                              <h3 className="font-bold text-lg line-clamp-2 mb-1">{featured.name}</h3>
+                              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
+                                {(() => {
+                                  const priceDisplay = getPriceDisplay(featured?.price, featured?.salePrice, featured?.hasVariants);
+                                  if (priceDisplay.comparePrice) {
+                                    return (
+                                      <>
+                                        <span className="font-bold text-lg">{priceDisplay.label}</span>
+                                        <span className="text-xs text-white/60 line-through">{formatComparePrice(priceDisplay.comparePrice)}</span>
+                                      </>
+                                    );
+                                  }
+                                  return <span className="font-bold text-lg">{priceDisplay.label}</span>;
+                                })()}
+                              </div>
                             </div>
-                          )}
-                          <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                          <ProductImageWatermarkOverlay config={watermarkConfig} />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                          <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
-                            <span
-                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mb-2"
-                              style={{ backgroundColor: colors.featuredBadgeBackground, color: colors.featuredBadgeText }}
-                            >
-                              Nổi bật
-                            </span>
-                            <h3 className="font-bold text-lg line-clamp-2 mb-1">{featured.name}</h3>
-                            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                              {(() => {
-                                const priceDisplay = getPriceDisplay(featured?.price, featured?.salePrice, featured?.hasVariants);
-                                if (priceDisplay.comparePrice) {
-                                  return (
-                                    <>
-                                      <span className="font-bold text-lg">{priceDisplay.label}</span>
-                                      <span className="text-xs text-white/60 line-through">{formatComparePrice(priceDisplay.comparePrice)}</span>
-                                    </>
-                                  );
-                                }
-                                return <span className="font-bold text-lg">{priceDisplay.label}</span>;
-                              })()}
-                            </div>
-                          </div>
-                        </a>
-                      )}
+                          </a>
+                        </ProductImageWithOverlay>
                       
-                      {/* Other products */}
                       {others.map((product) => (
-                        <a 
+                        <ProductImageWithOverlay
                           key={product._id}
-                          href={resolveProductHrefByCategory({ categoryId: section.category._id, product })}
+                          frameConfig={frameConfig}
+                          watermarkConfig={watermarkConfig}
                           className={cn('group cursor-pointer relative overflow-hidden', imageRadiusClassName)}
                           style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}
                         >
-                          {product.image ? (
-                            <SiteImage 
-                              src={product.image} 
-                              alt={product.name} 
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Package size={24} style={{ color: colors.emptyStateIcon }} />
+                          <a 
+                            href={resolveProductHrefByCategory({ categoryId: section.category._id, product })}
+                            className="absolute inset-0 block w-full h-full"
+                          >
+                            {product.image ? (
+                              <SiteImage 
+                                src={product.image} 
+                                alt={product.name} 
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package size={24} style={{ color: colors.emptyStateIcon }} />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-30" />
+                            <div className="absolute bottom-0 left-0 right-0 p-3 text-white transform translate-y-full group-hover:translate-y-0 transition-transform z-30">
+                              <h4 className="font-medium text-sm line-clamp-1">{product.name}</h4>
+                              <span className="font-bold text-sm">{getPriceDisplay(product.price, product.salePrice, product.hasVariants).label}</span>
                             </div>
-                          )}
-                          <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                          <ProductImageWatermarkOverlay config={watermarkConfig} />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <div className="absolute bottom-0 left-0 right-0 p-3 text-white transform translate-y-full group-hover:translate-y-0 transition-transform">
-                            <h4 className="font-medium text-sm line-clamp-1">{product.name}</h4>
-                            <span className="font-bold text-sm">{getPriceDisplay(product.price, product.salePrice, product.hasVariants).label}</span>
-                          </div>
-                        </a>
+                          </a>
+                        </ProductImageWithOverlay>
                       ))}
                     </div>
                   </>
@@ -4327,51 +4337,53 @@ function CategoryProductsSection({
                     <div className="hidden md:grid grid-cols-2 gap-6">
                       {/* Featured Item - Large */}
                       {featured && (
-                        <a 
-                          href={resolveProductHrefByCategory({ categoryId: section.category._id, product: featured })}
+                        <ProductImageWithOverlay
+                          frameConfig={frameConfig}
+                          watermarkConfig={watermarkConfig}
                           className={cn('group cursor-pointer relative overflow-hidden', cardRadiusClassName)}
                           style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}
                         >
-                          {featured.image ? (
-                            <SiteImage 
-                              src={featured.image} 
-                              alt={featured.name} 
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Package size={48} style={{ color: colors.emptyStateIcon }} />
+                          <a 
+                            href={resolveProductHrefByCategory({ categoryId: section.category._id, product: featured })}
+                            className="absolute inset-0 block w-full h-full"
+                          >
+                            {featured.image ? (
+                              <SiteImage 
+                                src={featured.image} 
+                                alt={featured.name} 
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package size={48} style={{ color: colors.emptyStateIcon }} />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent z-30" />
+                            <div className="absolute bottom-0 left-0 right-0 p-6 text-white z-30">
+                              <span
+                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-3"
+                                style={{ backgroundColor: colors.featuredBadgeBackground, color: colors.featuredBadgeText }}
+                              >
+                                Nổi bật
+                              </span>
+                              <h3 className="font-bold text-xl md:text-2xl line-clamp-2 mb-2">{featured.name}</h3>
+                              <div className="flex items-baseline gap-3">
+                                {(() => {
+                                  const priceDisplay = getPriceDisplay(featured?.price, featured?.salePrice, featured?.hasVariants);
+                                  if (priceDisplay.comparePrice) {
+                                    return (
+                                      <>
+                                        <span className="font-bold text-2xl">{priceDisplay.label}</span>
+                                        <span className="text-sm text-white/60 line-through">{formatComparePrice(priceDisplay.comparePrice)}</span>
+                                      </>
+                                    );
+                                  }
+                                  return <span className="font-bold text-2xl">{priceDisplay.label}</span>;
+                                })()}
+                              </div>
                             </div>
-                          )}
-                          <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                          <ProductImageWatermarkOverlay config={watermarkConfig} />
-                          {/* Gradient overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                          {/* Content */}
-                          <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                            <span
-                              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-3"
-                              style={{ backgroundColor: colors.featuredBadgeBackground, color: colors.featuredBadgeText }}
-                            >
-                              Nổi bật
-                            </span>
-                            <h3 className="font-bold text-xl md:text-2xl line-clamp-2 mb-2">{featured.name}</h3>
-                            <div className="flex items-baseline gap-3">
-                              {(() => {
-                                const priceDisplay = getPriceDisplay(featured?.price, featured?.salePrice, featured?.hasVariants);
-                                if (priceDisplay.comparePrice) {
-                                  return (
-                                    <>
-                                      <span className="font-bold text-2xl">{priceDisplay.label}</span>
-                                      <span className="text-sm text-white/60 line-through">{formatComparePrice(priceDisplay.comparePrice)}</span>
-                                    </>
-                                  );
-                                }
-                                return <span className="font-bold text-2xl">{priceDisplay.label}</span>;
-                              })()}
-                            </div>
-                          </div>
-                        </a>
+                          </a>
+                        </ProductImageWithOverlay>
                       )}
                       
                       {/* Grid 2x2 */}
@@ -4382,7 +4394,9 @@ function CategoryProductsSection({
                             href={resolveProductHrefByCategory({ categoryId: section.category._id, product })}
                             className="group cursor-pointer"
                           >
-                            <div 
+                            <ProductImageWithOverlay
+                              frameConfig={frameConfig}
+                              watermarkConfig={watermarkConfig}
                               className={cn('overflow-hidden mb-3 relative', imageRadiusClassName)}
                               style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}
                             >
@@ -4397,11 +4411,9 @@ function CategoryProductsSection({
                                 <Package size={24} style={{ color: colors.emptyStateIcon }} />
                                 </div>
                               )}
-                              <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                              <ProductImageWatermarkOverlay config={watermarkConfig} />
                               {/* Quick view overlay */}
                               <div 
-                                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-30"
                               style={{ backgroundColor: colors.neutralSurface }}
                               >
                                 <span 
@@ -4411,7 +4423,7 @@ function CategoryProductsSection({
                                   Xem nhanh
                                 </span>
                               </div>
-                            </div>
+                            </ProductImageWithOverlay>
                           <h4 className="font-medium text-sm line-clamp-2 min-h-[2.5rem]" style={{ color: colors.bodyText }}>{product.name}</h4>
                             <div className="flex items-baseline gap-2 mt-1">
                               {(() => {
@@ -4521,7 +4533,11 @@ function CategoryProductsSection({
                                   -{discount}%
                                 </span>
                               )}
-                              <div className="relative h-full w-full">
+                              <ProductImageWithOverlay
+                                frameConfig={frameConfig}
+                                watermarkConfig={watermarkConfig}
+                                className="w-full h-full relative"
+                              >
                                 {product.image ? (
                                   <SiteImage
                                     src={product.image}
@@ -4533,8 +4549,7 @@ function CategoryProductsSection({
                                     <Package size={28} style={{ color: colors.emptyStateIcon }} />
                                   </div>
                                 )}
-                                <ProductImageWatermarkOverlay config={watermarkConfig} />
-                              </div>
+                              </ProductImageWithOverlay>
                             </div>
                           </a>
 
@@ -4630,10 +4645,15 @@ function CategoryProductsSection({
                     className="group cursor-pointer block"
                   >
                     {/* Image Container với effects */}
-                    <div className={cn('relative overflow-hidden mb-3', cardRadiusClassName)} style={imageAspectRatioStyle}>
+                    <ProductImageWithOverlay
+                      frameConfig={frameConfig}
+                      watermarkConfig={watermarkConfig}
+                      className={cn('relative overflow-hidden mb-3', cardRadiusClassName)}
+                      style={imageAspectRatioStyle}
+                    >
                       {/* Background gradient on hover */}
                       <div 
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30"
                         style={{ background: `linear-gradient(135deg, ${colors.neutralBorder} 0%, transparent 50%, ${colors.neutralBackground} 100%)` }}
                       />
                       
@@ -4648,8 +4668,6 @@ function CategoryProductsSection({
                           <Package size={32} style={{ color: colors.emptyStateIcon }} />
                         </div>
                       )}
-                      <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                      <ProductImageWatermarkOverlay config={watermarkConfig} />
                       
                       {/* Gradient overlay bottom */}
                       <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20" />
@@ -4674,7 +4692,7 @@ function CategoryProductsSection({
                           </div>
                         );
                       })()}
-                    </div>
+                    </ProductImageWithOverlay>
                     
                     {/* Product info */}
                     <div className="space-y-1">

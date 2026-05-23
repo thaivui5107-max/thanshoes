@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
@@ -9,7 +9,14 @@ export function useProductWatermarkConfig() {
     moduleKey: 'products',
     settingKey: 'enableProductWatermark',
   });
+  const globalEnabledSetting = useQuery(api.settings.getValue, {
+    key: 'enable_product_watermark',
+    defaultValue: false,
+  });
+
   const moduleEnabled = moduleEnabledSetting?.value === true || moduleEnabledSetting?.value === 'true';
+  const globalEnabled = globalEnabledSetting === true;
+  const enabled = moduleEnabled || globalEnabled;
 
   // Image watermark query
   const imageEnabledSetting = useQuery(api.settings.getValue, { key: 'product_watermark_image_enabled' });
@@ -29,7 +36,7 @@ export function useProductWatermarkConfig() {
   const textRepeatSetting = useQuery(api.settings.getValue, { key: 'product_watermark_text_repeat' });
 
   return useMemo(() => {
-    if (!moduleEnabled) {
+    if (!enabled) {
       return {
         enabled: false,
         image: null,
@@ -68,7 +75,7 @@ export function useProductWatermarkConfig() {
       } : null,
     };
   }, [
-    moduleEnabled,
+    enabled,
     imageEnabledSetting,
     imageUrlSetting,
     imageXSetting,
@@ -85,8 +92,10 @@ export function useProductWatermarkConfig() {
   ]);
 }
 
+export type WatermarkConfig = ReturnType<typeof useProductWatermarkConfig>;
+
 type ProductImageWatermarkOverlayProps = {
-  config: ReturnType<typeof useProductWatermarkConfig>;
+  config: WatermarkConfig;
   className?: string;
   style?: React.CSSProperties;
 };
@@ -96,6 +105,12 @@ export function ProductImageWatermarkOverlay({
   className,
   style,
 }: ProductImageWatermarkOverlayProps) {
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [config.image?.url]);
+
   if (!config.enabled) return null;
 
   const { image, text } = config;
@@ -105,10 +120,13 @@ export function ProductImageWatermarkOverlay({
   return (
     <div 
       className={className ? `absolute inset-0 pointer-events-none select-none z-10 overflow-hidden ${className}` : 'absolute inset-0 pointer-events-none select-none z-10 overflow-hidden'}
-      style={style}
+      style={{
+        ...style,
+        containerType: 'inline-size',
+      }}
     >
       {/* Watermark hình */}
-      {image && (
+      {image && !imageError && (
         <img
           src={image.url}
           alt=""
@@ -120,6 +138,7 @@ export function ProductImageWatermarkOverlay({
             width: `${image.width}%`,
             opacity: image.opacity / 100,
           }}
+          onError={() => setImageError(true)}
         />
       )}
 
@@ -131,12 +150,12 @@ export function ProductImageWatermarkOverlay({
             top: `${text.y}%`,
             opacity: text.opacity / 100,
             color: text.color,
-            fontSize: `${text.fontSize}px`,
+            fontSize: `calc(${text.fontSize} * 0.25cqw)`,
             fontFamily: '"Be Vietnam Pro", sans-serif',
           }}
         >
           {text.repeat ? (
-            <div className="w-full overflow-hidden inline-flex justify-center gap-8">
+            <div className="w-full overflow-hidden inline-flex justify-center" style={{ gap: '1.5em' }}>
               {Array(15).fill(null).map((_, i) => (
                 <span key={i}>{text.content}</span>
               ))}

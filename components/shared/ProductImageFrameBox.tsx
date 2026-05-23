@@ -66,6 +66,9 @@ export function useProductFrameConfig(aspectRatio?: string) {
   );
 }
 
+// Export type để ProductImageWithOverlay có thể sử dụng
+export type ProductFrameConfig = ReturnType<typeof useProductFrameConfig>;
+
 type ProductImageFrameBoxProps = {
   overlayUrl?: string | null;
   className?: string;

@@ -8,8 +8,7 @@ import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { ArrowRight, ChevronLeft, ChevronRight, Loader2, Package } from 'lucide-react';
 import { BrandBadge, SaleBadge } from '@/components/site/shared/BrandColorHelpers';
-import { ProductImageFrameOverlay, useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
-import { ProductImageWatermarkOverlay, useProductWatermarkConfig } from '@/components/shared/ProductImageWatermarkOverlay';
+import { ProductImageWithOverlay, useProductImageOverlayConfigs } from '@/components/shared/ProductImageWithOverlay';
 import { getPublicPriceLabel } from '@/lib/products/public-price';
 import { getProductImageAspectRatioCssValue, resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
 import { buildDetailPath, normalizeRouteMode } from '@/lib/ia/route-mode';
@@ -52,7 +51,6 @@ function WineCarouselSiteSection({
   itemCount,
   brandColor,
   header,
-  overlayUrl,
   getProductDetailHref,
   getPriceDisplay,
   getDiscount,
@@ -64,7 +62,6 @@ function WineCarouselSiteSection({
   itemCount: number;
   brandColor: string;
   header: React.ReactNode;
-  overlayUrl: string | null | undefined;
   getProductDetailHref: (product?: { slug?: string | null; categoryId?: string }) => string;
   getPriceDisplay: (price?: number, salePrice?: number, isRangeFromVariant?: boolean) => ReturnType<typeof getPublicPriceLabel>;
   getDiscount: (currentPrice?: number, comparePrice?: number, isContactPrice?: boolean) => string | null;
@@ -79,7 +76,7 @@ function WineCarouselSiteSection({
     loop: false,
     slidesToScroll: 1,
   });
-  const watermarkConfig = useProductWatermarkConfig();
+  const { frameConfig, watermarkConfig } = useProductImageOverlayConfigs();
   const [canScrollPrev, setCanScrollPrev] = React.useState(false);
   const [canScrollNext, setCanScrollNext] = React.useState(false);
 
@@ -151,7 +148,7 @@ function WineCarouselSiteSection({
                             {discount}
                           </span>
                         ) : null}
-                        <div className="relative h-full w-full">
+                        <ProductImageWithOverlay className="w-full h-full" frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
                           {product.image ? (
                             <Image mode="thumb" src={product.image} alt={product.name} fill sizes="(max-width: 640px) 140px, (max-width: 768px) 150px, (max-width: 1024px) 190px, 20vw" className="object-contain p-1 transition-opacity duration-300" />
                           ) : (
@@ -159,9 +156,7 @@ function WineCarouselSiteSection({
                               <Package size={34} className="text-stone-300" />
                             </div>
                           )}
-                          <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                          <ProductImageWatermarkOverlay config={watermarkConfig} />
-                        </div>
+                        </ProductImageWithOverlay>
                       </div>
                     </Link>
 
@@ -273,8 +268,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
       recordSlug: product.slug,
     });
   }, [categorySlugMap, routeMode]);
-  const { overlayUrl } = useProductFrameConfig(imageAspectRatio);
-  const watermarkConfig = useProductWatermarkConfig();
+  const { frameConfig, watermarkConfig } = useProductImageOverlayConfigs(imageAspectRatio);
   
   // Query products based on selection mode (skip for demo mode)
   const productsData = useQuery(
@@ -403,7 +397,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
               const discount = getDiscount(product.price, priceDisplay.comparePrice, priceDisplay.isContactPrice);
               return (
                 <Link key={product._id} href={getProductDetailHref(product)} className={cn("group bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col cursor-pointer", cardRadiusClassName)}>
-                  <div className="relative bg-slate-100 overflow-hidden" style={imageAspectRatioStyle}>
+                  <ProductImageWithOverlay className="relative bg-slate-100 overflow-hidden" style={imageAspectRatioStyle} frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
                     {product.image ? (
                       <Image
                         mode="thumb"
@@ -418,14 +412,12 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                         <Package size={32} className="text-slate-300" />
                       </div>
                     )}
-                    <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                    <ProductImageWatermarkOverlay config={watermarkConfig} />
                     {discount && (
-                      <div className="absolute top-2 right-2">
+                      <div className="absolute top-2 right-2 z-30">
                         <SaleBadge text={discount} className="text-[10px] px-2 py-0.5" />
                       </div>
                     )}
-                  </div>
+                  </ProductImageWithOverlay>
 
                   <div className="p-3 flex flex-col flex-1">
                     <h3 className="font-bold text-slate-900 text-sm line-clamp-2 mb-1 group-hover:opacity-80 transition-colors">
@@ -487,7 +479,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                   className={cn("group bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-slate-300 transition-all duration-300 flex flex-col", cardRadiusClassName)}
                 >
                   {/* Image */}
-                  <div className="relative bg-slate-100 overflow-hidden" style={imageAspectRatioStyle}>
+                  <ProductImageWithOverlay className="relative bg-slate-100 overflow-hidden" style={imageAspectRatioStyle} frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
                     {product.image ? (
                       <Image
                         mode="thumb"
@@ -502,14 +494,12 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                         <Package size={40} className="text-slate-300" />
                       </div>
                     )}
-                    <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                    <ProductImageWatermarkOverlay config={watermarkConfig} />
                     {discount && (
-                      <div className="absolute top-2 right-2">
+                      <div className="absolute top-2 right-2 z-30">
                         <SaleBadge text={discount} className="text-[10px] px-2 py-1" />
                       </div>
                     )}
-                  </div>
+                  </ProductImageWithOverlay>
 
                   {/* Content */}
                   <div className="p-4 flex flex-col flex-1">
@@ -642,9 +632,11 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                     className="flex-shrink-0 snap-start w-[160px] md:w-[220px] lg:w-[260px] group cursor-pointer"
                     draggable={false}
                   >
-                    <div
+                    <ProductImageWithOverlay
                       className={cn("relative overflow-hidden rounded-xl bg-slate-100 mb-3 border border-transparent hover:border-slate-200 transition-all", cardRadiusClassName)}
                       style={imageAspectRatioStyle}
+                      frameConfig={frameConfig}
+                      watermarkConfig={watermarkConfig}
                     >
                       {product.image ? (
                         <Image
@@ -659,14 +651,12 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                       ) : (
                         <div className="h-full w-full flex items-center justify-center"><Package size={40} className="text-slate-300" /></div>
                       )}
-                      <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                      <ProductImageWatermarkOverlay config={watermarkConfig} />
                       {discount && (
-                        <div className="absolute top-2 left-2">
+                        <div className="absolute top-2 left-2 z-30">
                           <SaleBadge text={discount} className="text-[10px] px-2 py-1" />
                         </div>
                       )}
-                    </div>
+                    </ProductImageWithOverlay>
                     <h3 className="font-medium text-slate-900 text-sm line-clamp-2 group-hover:opacity-80 transition-colors">{product.name}</h3>
                     <div className="flex items-center gap-2 mt-1">
                     <span className="font-bold text-sm" style={{ color: brandColor }}>{priceDisplay.label}</span>
@@ -701,7 +691,6 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
         itemCount={itemCount}
         brandColor={brandColor}
         header={renderSiteHeader({ className: 'mb-1 md:mb-2' })}
-        overlayUrl={overlayUrl}
         getProductDetailHref={getProductDetailHref}
         getPriceDisplay={getPriceDisplay}
         getDiscount={getDiscount}
@@ -726,7 +715,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
               const discount = getDiscount(product.price, priceDisplay.comparePrice, priceDisplay.isContactPrice);
               return (
                 <Link key={product._id} href={getProductDetailHref(product)} className={cn("group cursor-pointer bg-white border border-slate-100 p-2 hover:shadow-md hover:border-slate-200 transition-all", cardRadiusClassName)}>
-                  <div className={cn("relative overflow-hidden bg-slate-50 mb-2", imageRadiusClassName)} style={imageAspectRatioStyle}>
+                  <ProductImageWithOverlay className={cn("relative overflow-hidden bg-slate-50 mb-2", imageRadiusClassName)} style={imageAspectRatioStyle} frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
                     {product.image ? (
                       <Image
                         mode="thumb"
@@ -739,14 +728,12 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                     ) : (
                       <div className="h-full w-full flex items-center justify-center"><Package size={24} className="text-slate-300" /></div>
                     )}
-                    <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                    <ProductImageWatermarkOverlay config={watermarkConfig} />
                     {discount && (
-                      <div className="absolute top-1 left-1">
+                      <div className="absolute top-1 left-1 z-30">
                         <SaleBadge text={discount} className="text-[9px] px-1.5 py-0.5" />
                       </div>
                     )}
-                  </div>
+                  </ProductImageWithOverlay>
                   <h3 className="font-medium text-xs text-slate-900 line-clamp-2 group-hover:opacity-80 transition-colors">{product.name}</h3>
                   <span className="font-bold text-xs mt-0.5 block" style={{ color: brandColor }}>{priceDisplay.label}</span>
                 </Link>
@@ -779,20 +766,18 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
               const discount = getDiscount(product.price, priceDisplay.comparePrice, priceDisplay.isContactPrice);
               return (
                 <Link key={product._id} href={getProductDetailHref(product)} className={cn("group bg-white border border-slate-200 p-2 flex flex-col cursor-pointer hover:shadow-md transition-all", cardRadiusClassName)}>
-                  <div className={cn("relative w-full bg-slate-100 overflow-hidden mb-2", imageRadiusClassName)} style={imageAspectRatioStyle}>
+                  <ProductImageWithOverlay className={cn("relative w-full bg-slate-100 overflow-hidden mb-2", imageRadiusClassName)} style={imageAspectRatioStyle} frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
                     {product.image ? (
                       <Image mode="thumb" src={product.image} alt={product.name} fill sizes="(max-width: 768px) 50vw, 160px" className="object-cover" />
                     ) : (
                       <div className="h-full w-full flex items-center justify-center"><Package size={24} className="text-slate-300" /></div>
                     )}
-                    <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                    <ProductImageWatermarkOverlay config={watermarkConfig} />
                     {discount && (
-                      <div className="absolute top-2 left-2">
+                      <div className="absolute top-2 left-2 z-30">
                         <SaleBadge text={discount} className="text-[10px] px-1.5 py-0.5" />
                       </div>
                     )}
-                  </div>
+                  </ProductImageWithOverlay>
                   <h4 className="font-medium text-sm text-slate-900 line-clamp-2">{product.name}</h4>
                   <span className="text-sm font-bold mt-1" style={{ color: brandColor }}>{priceDisplay.label}</span>
                 </Link>
@@ -808,27 +793,27 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
               className={cn("relative group overflow-hidden cursor-pointer min-h-[400px] border border-slate-200 hover:border-slate-300 transition-colors", cardRadiusClassName)}
               style={{ backgroundColor: `${secondary}05` }}
             >
-              {showcaseFeatured?.image ? (
-                <Image
-                  mode="thumb"
-                  src={showcaseFeatured.image}
-                  alt={showcaseFeatured.name}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 66vw"
-                  className="object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-              ) : (
-                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-100"><Package size={64} className="text-slate-300" /></div>
-              )}
-              <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-              <ProductImageWatermarkOverlay config={watermarkConfig} />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              <ProductImageWithOverlay className="absolute inset-0" frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
+                {showcaseFeatured?.image ? (
+                  <Image
+                    mode="thumb"
+                    src={showcaseFeatured.image}
+                    alt={showcaseFeatured.name}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 66vw"
+                    className="object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-100"><Package size={64} className="text-slate-300" /></div>
+                )}
+              </ProductImageWithOverlay>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-30" />
               {showcaseDiscount && (
-                <div className="absolute top-4 left-4">
+                <div className="absolute top-4 left-4 z-40">
                   <SaleBadge text={showcaseDiscount} className="text-sm px-3 py-1" />
                 </div>
               )}
-              <div className="absolute bottom-0 left-0 p-6 w-full">
+              <div className="absolute bottom-0 left-0 p-6 w-full z-40">
                 <BrandBadge text="Nổi bật" variant="solid" brandColor={brandColor} secondary={secondary} className="mb-2" />
                 <h3 className="text-xl md:text-2xl font-bold text-white mb-2 line-clamp-2">{showcaseFeatured?.name}</h3>
                 <div className="flex items-center justify-between">
@@ -845,20 +830,18 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                 const discount = getDiscount(product.price, priceDisplay.comparePrice, priceDisplay.isContactPrice);
                 return (
                   <Link key={product._id} href={getProductDetailHref(product)} className={cn("group bg-white border border-slate-200 p-3 flex flex-col cursor-pointer hover:shadow-md hover:border-slate-300 transition-all", cardRadiusClassName)}>
-                    <div className={cn("relative w-full bg-slate-50 overflow-hidden mb-3", imageRadiusClassName)} style={imageAspectRatioStyle}>
+                    <ProductImageWithOverlay className={cn("relative w-full bg-slate-50 overflow-hidden mb-3", imageRadiusClassName)} style={imageAspectRatioStyle} frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
                       {product.image ? (
                         <Image mode="thumb" src={product.image} alt={product.name} fill sizes="(max-width: 1024px) 50vw, 200px" className="object-cover group-hover:scale-105 transition-transform duration-300" />
                       ) : (
                         <div className="h-full w-full flex items-center justify-center"><Package size={32} className="text-slate-300" /></div>
                       )}
-                      <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                      <ProductImageWatermarkOverlay config={watermarkConfig} />
                       {discount && (
-                        <div className="absolute top-2 left-2">
+                        <div className="absolute top-2 left-2 z-30">
                           <SaleBadge text={discount} className="text-[10px] px-1.5 py-0.5" />
                         </div>
                       )}
-                    </div>
+                    </ProductImageWithOverlay>
                     <h4 className="font-medium text-sm text-slate-900 line-clamp-2 group-hover:opacity-80 transition-colors">{product.name}</h4>
                     <div className="flex items-center gap-2 mt-1">
                     <span className="text-sm font-bold" style={{ color: brandColor }}>{priceDisplay.label}</span>
@@ -939,7 +922,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                   className={cn("group bg-white overflow-hidden flex flex-col cursor-pointer hover:shadow-lg transition-all border border-slate-100", cardRadiusClassName)}
                 >
                   {/* Image + discount */}
-                  <div className={cn("relative bg-slate-50 overflow-hidden", imageRadiusClassName)} style={imageAspectRatioStyle}>
+                  <ProductImageWithOverlay className={cn("relative bg-slate-50 overflow-hidden", imageRadiusClassName)} style={imageAspectRatioStyle} frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
                     {product.image ? (
                       <Image
                         mode="thumb"
@@ -954,14 +937,12 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                         <Package size={28} className="text-slate-300" />
                       </div>
                     )}
-                    <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                    <ProductImageWatermarkOverlay config={watermarkConfig} />
                     {discount && (
-                      <div className="absolute top-2 right-2">
+                      <div className="absolute top-2 right-2 z-30">
                         <SaleBadge text={discount} className="inline-flex items-center justify-center w-10 h-10 rounded-full text-[11px] font-bold" />
                       </div>
                     )}
-                  </div>
+                  </ProductImageWithOverlay>
 
                   {/* Info */}
                   <div className="p-3 flex flex-col flex-1">
@@ -1060,23 +1041,23 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                           imageRadiusClassName,
                         )}
                       >
-                        {image ? (
-                          <Image
-                            mode="thumb"
-                            src={image}
-                            alt={imageAlt}
-                            fill
-                            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                            className={cn("object-cover transition duration-500 group-hover:brightness-95", isActive && "brightness-95")}
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
-                            <Package size={48} className="text-slate-300" />
-                          </div>
-                        )}
-                        <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                        <ProductImageWatermarkOverlay config={watermarkConfig} />
-                        <div className={cn("absolute inset-0 z-10 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent opacity-70 transition duration-500 group-hover:opacity-0", isActive && "opacity-0")} />
+                        <ProductImageWithOverlay className="absolute inset-0" frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
+                          {image ? (
+                            <Image
+                              mode="thumb"
+                              src={image}
+                              alt={imageAlt}
+                              fill
+                              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                              className={cn("object-cover transition duration-500 group-hover:brightness-95", isActive && "brightness-95")}
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
+                              <Package size={48} className="text-slate-300" />
+                            </div>
+                          )}
+                        </ProductImageWithOverlay>
+                        <div className={cn("absolute inset-0 z-30 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent opacity-70 transition duration-500 group-hover:opacity-0", isActive && "opacity-0")} />
                         <div className={cn("absolute inset-0 z-10 bg-white opacity-0 transition duration-500 group-hover:opacity-100", isActive && "opacity-100")} />
                         {discount && (
                           <div className="absolute right-3 top-3 z-20">
@@ -1153,24 +1134,24 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
             className={cn("col-span-2 row-span-2 relative group overflow-hidden cursor-pointer min-h-[400px] border border-transparent hover:border-slate-300 transition-colors", cardRadiusClassName)}
             style={{ ...imageAspectRatioStyle, backgroundColor: `${secondary}10` }}
           >
-            {featured?.image ? (
-              <Image
-                mode="thumb"
-                src={featured.image}
-                alt={featured.name}
-                fill
-                sizes="(max-width: 1024px) 100vw, 66vw"
-                className="object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-            ) : (
-              <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-100">
-                <Package size={64} className="text-slate-300" />
-              </div>
-            )}
-            <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-            <ProductImageWatermarkOverlay config={watermarkConfig} />
+            <ProductImageWithOverlay className="absolute inset-0" frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
+              {featured?.image ? (
+                <Image
+                  mode="thumb"
+                  src={featured.image}
+                  alt={featured.name}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 66vw"
+                  className="object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+              ) : (
+                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-100">
+                  <Package size={64} className="text-slate-300" />
+                </div>
+              )}
+            </ProductImageWithOverlay>
             {/* Overlay gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-30" />
             
             {/* Discount Badge */}
             {featuredDiscount && (
@@ -1203,7 +1184,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                 className={cn("col-span-1 row-span-1 bg-white border border-slate-200 p-3 flex flex-col group hover:shadow-lg hover:border-slate-300 transition-all cursor-pointer relative overflow-hidden", cardRadiusClassName)}
               >
                 {/* Image Area */}
-                <div className={cn("relative w-full overflow-hidden mb-3", imageRadiusClassName)} style={{ ...imageAspectRatioStyle, backgroundColor: `${secondary}08` }}>
+                <ProductImageWithOverlay className={cn("relative w-full overflow-hidden mb-3", imageRadiusClassName)} style={{ ...imageAspectRatioStyle, backgroundColor: `${secondary}08` }} frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
                   {product.image ? (
                     <Image
                       mode="thumb"
@@ -1218,23 +1199,21 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                       <Package size={32} className="text-slate-300" />
                     </div>
                   )}
-                  <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                  <ProductImageWatermarkOverlay config={watermarkConfig} />
-                  
+
                   {/* Discount Badge */}
                   {discount && (
-                    <div className="absolute top-2 left-2">
+                    <div className="absolute top-2 left-2 z-30">
                       <SaleBadge text={discount} className="text-[10px] px-1.5 py-0.5" />
                     </div>
                   )}
 
                   {/* Hover Action Button */}
-                  <div className="absolute bottom-2 right-2 translate-y-10 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                  <div className="absolute bottom-2 right-2 translate-y-10 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-30">
                     <div className="text-white p-2 rounded-full shadow-lg" style={{ backgroundColor: brandColor }}>
                       <ArrowRight size={16} />
                     </div>
                   </div>
-                </div>
+                </ProductImageWithOverlay>
 
                 {/* Info Area */}
                 <div className="mt-auto px-1">
@@ -1260,20 +1239,18 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
           const discount = getDiscount(product.price, priceDisplay.comparePrice, priceDisplay.isContactPrice);
             return (
               <Link key={product._id} href={getProductDetailHref(product)} className={cn("group bg-white border border-slate-200 p-2 flex flex-col cursor-pointer hover:shadow-md transition-all", cardRadiusClassName)}>
-                <div className={cn("relative w-full bg-slate-100 overflow-hidden mb-2", imageRadiusClassName)} style={imageAspectRatioStyle}>
+                <ProductImageWithOverlay className={cn("relative w-full bg-slate-100 overflow-hidden mb-2", imageRadiusClassName)} style={imageAspectRatioStyle} frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
                   {product.image ? (
                     <Image mode="thumb" src={product.image} alt={product.name} fill sizes="(max-width: 768px) 50vw, 160px" className="object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : (
                     <div className="h-full w-full flex items-center justify-center"><Package size={24} className="text-slate-300" /></div>
                   )}
-                  <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                  <ProductImageWatermarkOverlay config={watermarkConfig} />
                   {discount && (
-                    <div className="absolute top-2 left-2">
+                    <div className="absolute top-2 left-2 z-30">
                       <SaleBadge text={discount} className="text-[10px] px-1.5 py-0.5" />
                     </div>
                   )}
-                </div>
+                </ProductImageWithOverlay>
                 <h4 className="font-medium text-sm text-slate-900 line-clamp-2 group-hover:opacity-80 transition-colors">{product.name}</h4>
                 <span className="text-sm font-bold mt-1" style={{ color: brandColor }}>{priceDisplay.label}</span>
               </Link>

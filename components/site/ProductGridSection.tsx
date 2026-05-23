@@ -8,8 +8,8 @@ import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { ArrowRight, Loader2, Package } from 'lucide-react';
 import { SaleBadge } from '@/components/site/shared/BrandColorHelpers';
-import { ProductImageFrameOverlay, useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
-import { ProductImageWatermarkOverlay, useProductWatermarkConfig } from '@/components/shared/ProductImageWatermarkOverlay';
+import { ProductImageWithOverlay, useProductImageOverlayConfigs } from '@/components/shared/ProductImageWithOverlay';
+import type { WatermarkConfig, ProductFrameConfig } from '@/components/shared/ProductImageWithOverlay';
 import { getPublicPriceLabel } from '@/lib/products/public-price';
 import { getProductImageAspectRatioCssValue, resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
 import { buildDetailPath, normalizeRouteMode } from '@/lib/ia/route-mode';
@@ -111,8 +111,7 @@ export function ProductGridSection({ config, brandColor, secondary, title, snaps
       recordSlug: product.slug,
     });
   }, [categorySlugMap, routeMode]);
-  const { overlayUrl } = useProductFrameConfig(imageAspectRatio);
-  const watermarkConfig = useProductWatermarkConfig();
+  const { frameConfig, watermarkConfig } = useProductImageOverlayConfigs(imageAspectRatio);
 
   // Query products
   const productsData = useQuery(
@@ -335,7 +334,9 @@ export function ProductGridSection({ config, brandColor, secondary, title, snaps
         }`, size === 'sm' || size === 'lg' ? cardRadiusClassName : undefined)}
       >
         {/* Image */}
-        <div
+        <ProductImageWithOverlay
+          frameConfig={frameConfig}
+          watermarkConfig={watermarkConfig}
           className={cn(`relative overflow-hidden bg-slate-100 ${
             size === 'sm' ? 'rounded-md mb-2' : size === 'lg' ? '' : 'rounded-2xl mb-4 border border-transparent hover:border-slate-200 transition-all'
           }`, size === 'lg' ? undefined : imageRadiusClassName)}
@@ -355,22 +356,20 @@ export function ProductGridSection({ config, brandColor, secondary, title, snaps
               <Package size={size === 'sm' ? 24 : 40} className="text-slate-300" />
             </div>
           )}
-          <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-          <ProductImageWatermarkOverlay config={watermarkConfig} />
           {discount && (
-            <div className={size === 'sm' ? 'absolute top-1 left-1' : 'absolute top-2 left-2'}>
+            <div className={size === 'sm' ? 'absolute top-1 left-1 z-30' : 'absolute top-2 left-2 z-30'}>
               <SaleBadge text={discount} className={size === 'sm' ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-1'} />
             </div>
           )}
           {/* Hover CTA for minimal */}
           {size === 'md' && (
-            <div className="absolute inset-x-4 bottom-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100">
+            <div className="absolute inset-x-4 bottom-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100 z-30">
               <span className="block w-full bg-white/95 hover:bg-white backdrop-blur-md shadow-lg font-bold py-2 px-4 rounded-lg text-sm text-center" style={{ color: brandColor }}>
                 Xem chi tiết
               </span>
             </div>
           )}
-        </div>
+        </ProductImageWithOverlay>
 
         {/* Info */}
         <div className={size === 'lg' ? 'p-4 flex flex-col flex-1' : 'space-y-1'}>
@@ -448,31 +447,35 @@ export function ProductGridSection({ config, brandColor, secondary, title, snaps
           const pd = getPriceDisplay(p.price, p.salePrice, p.hasVariants);
           const d = getDiscount(p.price, pd.comparePrice, pd.isContactPrice);
           return (
-            <Link
+            <ProductImageWithOverlay
               key={p._id}
-              href={getProductDetailHref(p)}
+              frameConfig={frameConfig}
+              watermarkConfig={watermarkConfig}
               className={cn('group relative rounded-2xl overflow-hidden cursor-pointer', cardRadiusClassName)}
               style={{ ...imageAspectRatioStyle }}
             >
-              {p.image ? (
-                <Image mode="thumb" src={p.image} alt={p.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
-              ) : (
-                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-100"><Package size={40} className="text-slate-300" /></div>
-              )}
-              <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-              <ProductImageWatermarkOverlay config={watermarkConfig} />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-              {d && (
-                <div className="absolute top-2 left-2"><SaleBadge text={d} className="text-[10px] px-2 py-0.5" /></div>
-              )}
-              <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4">
-                <h3 className="text-sm md:text-base font-bold text-white truncate mb-1">{p.name}</h3>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-white">{pd.label}</span>
-                  {pd.comparePrice && <span className="text-[10px] text-white/60 line-through">{formatComparePrice(pd.comparePrice)}</span>}
+              <Link
+                href={getProductDetailHref(p)}
+                className="absolute inset-0 block w-full h-full"
+              >
+                {p.image ? (
+                  <Image mode="thumb" src={p.image} alt={p.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                ) : (
+                  <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-100"><Package size={40} className="text-slate-300" /></div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent z-30" />
+                {d && (
+                  <div className="absolute top-2 left-2 z-30"><SaleBadge text={d} className="text-[10px] px-2 py-0.5" /></div>
+                )}
+                <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 z-30">
+                  <h3 className="text-sm md:text-base font-bold text-white truncate mb-1">{p.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-white">{pd.label}</span>
+                    {pd.comparePrice && <span className="text-[10px] text-white/60 line-through">{formatComparePrice(pd.comparePrice)}</span>}
+                  </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+            </ProductImageWithOverlay>
           );
         })}
       </div>
@@ -498,19 +501,22 @@ export function ProductGridSection({ config, brandColor, secondary, title, snaps
               href={getProductDetailHref(p)}
               className={cn('bg-white border border-slate-200 rounded-2xl p-3 flex flex-col group hover:shadow-lg hover:border-slate-300 transition-all cursor-pointer overflow-hidden', cardRadiusClassName)}
             >
-              <div className={cn('relative w-full rounded-xl overflow-hidden mb-3', imageRadiusClassName)} style={{ ...imageAspectRatioStyle, backgroundColor: `${secondary}08` }}>
+              <ProductImageWithOverlay
+                frameConfig={frameConfig}
+                watermarkConfig={watermarkConfig}
+                className={cn('relative w-full rounded-xl overflow-hidden mb-3', imageRadiusClassName)}
+                style={{ ...imageAspectRatioStyle, backgroundColor: `${secondary}08` }}
+              >
                 {p.image ? (
                   <Image mode="thumb" src={p.image} alt={p.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center"><Package size={32} className="text-slate-300" /></div>
                 )}
-                <ProductImageFrameOverlay overlayUrl={overlayUrl} />
-                <ProductImageWatermarkOverlay config={watermarkConfig} />
-                {d && <div className="absolute top-2 left-2"><SaleBadge text={d} className="text-[10px] px-1.5 py-0.5" /></div>}
-                <div className="absolute bottom-2 right-2 translate-y-10 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                {d && <div className="absolute top-2 left-2 z-30"><SaleBadge text={d} className="text-[10px] px-1.5 py-0.5" /></div>}
+                <div className="absolute bottom-2 right-2 translate-y-10 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-30">
                   <div className="text-white p-2 rounded-full shadow-lg" style={{ backgroundColor: brandColor }}><ArrowRight size={16} /></div>
                 </div>
-              </div>
+              </ProductImageWithOverlay>
               <div className="mt-auto px-1">
                 <h4 className="font-medium text-sm text-slate-900 truncate group-hover:opacity-80 transition-colors">{p.name}</h4>
                 <div className="flex items-center gap-2 mt-1">
