@@ -59,15 +59,32 @@ export function AiCategoryContentImport({
   }, [open, categoryName, categoryDescription]);
 
   const prompt = useMemo(() => {
-    return `Hãy đóng vai trò là một chuyên gia SEO và Content Marketer hàng đầu. Tôi muốn bạn tạo nội dung chất lượng cao chuẩn EEAT (Experience - Expertise - Authoritativeness - Trustworthiness) cho danh mục sản phẩm sau:
+    return `Hãy đóng vai trò là một chuyên gia SEO và Content Marketer hàng đầu. Tôi muốn bạn tạo nội dung chất lượng cao chuẩn EEAT (Experience - Expertise - Authoritativeness - Trustworthiness) của Google cho danh mục sản phẩm sau:
 
 - **Tên danh mục**: "${nameInput.trim() || '(Chưa nhập tên danh mục)'}"
-- **Mô tả / Thông tin bổ sung**: "${infoInput.trim() || '(Chưa có thông tin bổ sung)'}"
+- **Thông tin bổ sung / Đặc tính sản phẩm**: "${infoInput.trim() || '(Chưa có thông tin bổ sung)'}"
 
-Yêu cầu cụ thể:
-1. **Nội dung cuối trang danh mục (filterFooterContent)**: Viết một bài chia sẻ hoặc hướng dẫn chuyên sâu từ 200-400 từ dưới dạng HTML (chỉ sử dụng các thẻ cơ bản như h2, h3, p, strong, ul, li). Bài viết cần cung cấp giá trị thực tế, lời khuyên chọn mua hữu ích, cách bảo quản hoặc phân biệt sản phẩm để đáp ứng tiêu chuẩn EEAT của Google.
-2. **Nội dung nối đuôi chi tiết sản phẩm (productDetailSuffixContent)**: Viết một đoạn ngắn khoảng 80-150 từ dưới dạng HTML (thẻ p, strong, ul, li) tập trung vào chính sách cam kết chất lượng, bảo hành chính hãng, hỗ trợ đổi trả linh hoạt, và lý do khách hàng nên tin tưởng lựa chọn sản phẩm từ cửa hàng của chúng tôi.
-3. **Danh sách câu hỏi thường gặp FAQ (faqItems)**: Tạo từ 3 đến 5 câu hỏi thường gặp thực tế liên quan trực tiếp đến danh mục sản phẩm này kèm câu trả lời chi tiết, thuyết phục và hữu ích cho người mua hàng.
+Yêu cầu cụ thể theo Best Practice của các hệ thống SaaS Thương mại điện tử lớn:
+
+1. **Nội dung cuối trang danh mục (filterFooterContent) - "Cẩm nang chọn mua và Kiến thức chuyên gia"**:
+   - Viết một bài hướng dẫn/chia sẻ từ 250-400 từ bằng ngôn ngữ tự nhiên, chuyên sâu, đáng tin cậy.
+   - Định dạng bằng các thẻ HTML cơ bản (h2, h3, p, strong, ul, li).
+   - Nội dung phải:
+     * Tránh sáo rỗng, tránh nhồi nhét từ khóa.
+     * Cung cấp tiêu chí so sánh, cách chọn size/kiểu dáng/chất liệu phù hợp với nhu cầu sử dụng thực tế (ví dụ: chạy bộ, đi làm, leo núi...).
+     * Hướng dẫn chi tiết cách bảo quản, vệ sinh để tăng tuổi thọ sản phẩm.
+     * Thể hiện góc nhìn chuyên gia ("Tại sao nên chọn mua tại hệ thống của chúng tôi?").
+
+2. **Nội dung nối đuôi chi tiết sản phẩm (productDetailSuffixContent) - "Cam kết Vàng & Bảo chứng lòng tin"**:
+   - Đoạn ngắn từ 80-150 từ bằng HTML (thẻ p, strong, ul, li).
+   - Tập trung củng cố lòng tin tại "Điểm đưa ra quyết định mua hàng" (Point of Decision):
+     * Liệt kê 3-4 cam kết cực kỳ rõ ràng, đanh thép (ví dụ: Bảo hành chính hãng 12 tháng, Đổi trả 7 ngày linh hoạt nếu không vừa size, Giao hàng siêu tốc 2h).
+     * Sử dụng thẻ <ul> và <li> với các cụm từ quan trọng được bôi đậm (<strong>) làm nổi bật các lợi ích thiết thực.
+     * Tích hợp khéo léo các liên kết giả lập để tạo độ uy tín cao cho Google bot quét (ví dụ: thêm các thẻ <a href="/chinh-sach-bao-hanh" class="text-orange-500 hover:underline">Chính sách bảo hành</a> và <a href="/chinh-sach-doi-tra" class="text-orange-500 hover:underline">Chính sách đổi trả</a>).
+
+3. **Danh sách câu hỏi thường gặp FAQ (faqItems) - "FAQPage Schema & Trực quan hóa câu trả lời"**:
+   - Tạo từ 3 đến 5 câu hỏi thực tế và cụ thể nhất mà khách hàng thường thắc mắc khi mua danh mục này (về size giày, độ bền, xuất xứ, đổi hàng).
+   - Câu trả lời phải đi thẳng vào vấn đề, rõ ràng, chi tiết, cung cấp thông tin hữu ích và giải quyết triệt để nỗi lo ngại của người mua.
 
 Chỉ trả về DUY NHẤT một đối tượng JSON hợp lệ, không bọc trong khối code markdown (\`\`\`json ... \`\`\`), không có bất kỳ lời mở đầu, giải thích hay hậu từ nào khác.
 
