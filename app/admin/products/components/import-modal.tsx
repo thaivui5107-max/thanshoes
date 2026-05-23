@@ -24,16 +24,17 @@ export function ImportExportModal() {
   const [isLoading, setIsLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
 
-  // Mock config fetcher (In reality, fetch from convex `getSettings`)
-  // For demonstration, assuming we have a query `api.settings.getProductConfig`
-  // const configData = useQuery(api.settings.getProductConfig);
+  // Fetch Live config from Convex `admin.modules`
+  const features = useQuery(api.admin.modules.listModuleFeatures, { moduleKey: "products" }) || [];
+  const settings = useQuery(api.admin.modules.listModuleSettings, { moduleKey: "products" }) || [];
+
   const configData: ProductModuleConfig = {
-    hasVariants: true,
-    isPhysicalEnabled: true,
-    isDigitalEnabled: false,
-    priceStrategy: "VARIANT_LEVEL",
-    inventoryStrategy: "VARIANT_LEVEL",
-    imageStrategy: "INHERIT"
+    hasVariants: features.find(f => f.featureKey === "variants" || f.featureKey === "enableVariants")?.enabled ?? true,
+    isPhysicalEnabled: features.find(f => f.featureKey === "physical" || f.featureKey === "enablePhysical")?.enabled ?? true,
+    isDigitalEnabled: features.find(f => f.featureKey === "digital" || f.featureKey === "enableDigital")?.enabled ?? false,
+    priceStrategy: (settings.find(s => s.settingKey === "priceStrategy")?.value as any) ?? "VARIANT_LEVEL",
+    inventoryStrategy: (settings.find(s => s.settingKey === "inventoryStrategy")?.value as any) ?? "VARIANT_LEVEL",
+    imageStrategy: (settings.find(s => s.settingKey === "imageStrategy")?.value as any) ?? "INHERIT"
   };
 
   const categories = useQuery(api.productCategories.listAll) || [];
