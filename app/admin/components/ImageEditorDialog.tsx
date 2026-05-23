@@ -112,7 +112,8 @@ async function fetchImageAsBlob(url: string): Promise<Blob> {
   }
 
   const blob = await res.blob();
-  if (!blob.type.startsWith('image/')) {
+  const mimeType = blob.type ? blob.type.toLowerCase() : '';
+  if (mimeType && !mimeType.startsWith('image/') && mimeType !== 'application/octet-stream') {
     throw new Error('URL không trả về file ảnh hợp lệ');
   }
 

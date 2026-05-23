@@ -162,9 +162,17 @@ function findBoxByBackground(data: Uint8ClampedArray, width: number, height: num
   if (right < left || subjectPixels / totalPixels < MIN_SUBJECT_PIXELS_RATIO) return null;
 
   const boxAreaRatio = ((right - left + 1) * (bottom - top + 1)) / totalPixels;
+  const isTouchingLeftAndRight = left === 0 && right === width - 1;
+  const isLargeBox = boxAreaRatio > 0.6;
+  
+  let confidence = boxAreaRatio > 0.96 ? 0.35 : 0.78;
+  if (isLargeBox && isTouchingLeftAndRight) {
+    confidence = 0.5;
+  }
+
   return {
     bottom,
-    confidence: boxAreaRatio > 0.96 ? 0.35 : 0.78,
+    confidence,
     left,
     right,
     source: 'background',
