@@ -173,3 +173,15 @@ export async function deletePageViewAggregates(ctx: MutationCtx, doc: Doc<"pageV
     pageViewsByOs.deleteIfExists(ctx, doc),
   ]);
 }
+
+export async function clearAllPageViewAggregates(ctx: MutationCtx) {
+  await Promise.all([
+    pageViewsByTime.clearAll(ctx),
+    pageViewsByPath.clearAll(ctx),
+    pageViewsBySource.clearAll(ctx),
+    pageViewsByDevice.clearAll(ctx),
+    pageViewsByBrowser.clearAll(ctx),
+    pageViewsByOs.clearAll(ctx),
+  ]);
+}
+
