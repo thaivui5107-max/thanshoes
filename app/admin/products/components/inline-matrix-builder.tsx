@@ -1,24 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui";
 import { Trash2, Wand2, Plus, AlertTriangle, X } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 // Define Types
 export type VariantOption = { name: string; values: string[] };
@@ -336,29 +324,29 @@ export function InlineMatrixBuilder({
       )}
 
       {/* 2-Step Confirmation Dialog */}
-      <AlertDialog open={!!variantToDelete} onOpenChange={() => setVariantToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+      <Dialog open={!!variantToDelete} onOpenChange={() => setVariantToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="w-5 h-5" /> Cảnh báo quan trọng!
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-700">
+            </DialogTitle>
+            <DialogDescription className="text-slate-700">
               Bạn đang yêu cầu <b>xóa vĩnh viễn (Hard Delete)</b> biến thể <b>{variantToDelete?.optionValues.join(" - ")}</b>.
               <br/><br/>
               Hệ thống sẽ <b>tự động dọn dẹp</b> các Giỏ hàng (Carts) và Danh sách yêu thích (Wishlist) đang chứa biến thể này.
               Lịch sử Đơn hàng (Orders) vẫn sẽ được giữ lại an toàn.
               <br/><br/>
               Bạn có chắc chắn muốn xóa không? Hành động này không thể hoàn tác.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteVariant} className="bg-red-600 hover:bg-red-700">
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVariantToDelete(null)}>Hủy</Button>
+            <Button onClick={confirmDeleteVariant} className="bg-red-600 hover:bg-red-700 text-white">
               Vẫn xóa vĩnh viễn
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

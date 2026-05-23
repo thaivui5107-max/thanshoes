@@ -1,17 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input } from "../../components/ui";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { generateProductTemplateBase64, parseProductExcelBase64 } from "../actions/excel-actions";
@@ -81,7 +71,7 @@ export function ImportExportModal() {
       }
 
       console.log("Parsed Data:", result.data);
-      await upsertBulk({ products: result.data });
+      await upsertBulk({ products: result.data as any });
       
       toast.success(`Upsert thành công ${result.data?.length} sản phẩm (Cha).`);
       setIsOpen(false);
@@ -95,12 +85,10 @@ export function ImportExportModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          <FileSpreadsheet className="h-4 w-4" />
-          Import / Export
-        </Button>
-      </DialogTrigger>
+      <Button variant="outline" className="gap-2" onClick={() => setIsOpen(true)}>
+        <FileSpreadsheet className="h-4 w-4" />
+        Import / Export
+      </Button>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Quản lý Dữ liệu Excel (Schema-Driven)</DialogTitle>
