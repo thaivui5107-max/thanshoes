@@ -3,7 +3,45 @@
 import * as ExcelJS from "exceljs";
 import { buildExcelColumns, ProductModuleConfig, ExcelColumnDef } from "@/lib/excel/product-schema-builder";
 
-// ... (existing generateProductTemplateBase64)
+// ==========================================
+// Color palette — Professional navy/teal theme
+// ==========================================
+const COLORS = {
+  // Row 1 — Group header
+  groupBg: "FF1B3A5C",       // Navy đậm
+  groupFont: "FFFFFFFF",
+  // Row 2 — Column header (required)
+  headerReqBg: "FF2E7D9B",   // Teal trung
+  headerReqFont: "FFFFFFFF",
+  // Row 2 — Column header (optional)
+  headerOptBg: "FFB0C4DE",   // Steel blue nhạt
+  headerOptFont: "FF1B3A5C",
+  // Row 3 — Microcopy
+  microcopyBg: "FFF0F4F8",   // Off-white xanh
+  microcopyFont: "FF64748B",  // Slate
+  // Data cells
+  dataRequired: "FFFFFBEB",   // Vàng kem nhạt — nhắc user cần điền
+  dataReadOnly: "FFF1F5F9",   // Xám nhạt — locked
+  dataDefault: "FFFFFFFF",    // Trắng
+  // Border
+  border: "FFCBD5E1",        // Slate-300
+  headerBorder: "FF94A3B8",  // Slate-400
+} as const;
+
+const THIN_BORDER = {
+  top: { style: "thin" as const, color: { argb: COLORS.border } },
+  left: { style: "thin" as const, color: { argb: COLORS.border } },
+  bottom: { style: "thin" as const, color: { argb: COLORS.border } },
+  right: { style: "thin" as const, color: { argb: COLORS.border } },
+};
+
+const HEADER_BORDER = {
+  top: { style: "thin" as const, color: { argb: COLORS.headerBorder } },
+  left: { style: "thin" as const, color: { argb: COLORS.headerBorder } },
+  bottom: { style: "thin" as const, color: { argb: COLORS.headerBorder } },
+  right: { style: "thin" as const, color: { argb: COLORS.headerBorder } },
+};
+
 export async function generateProductTemplateBase64(
   config: ProductModuleConfig,
   categories: { id: string; name: string }[]
@@ -13,6 +51,7 @@ export async function generateProductTemplateBase64(
   wb.creator = "SystemAdmin";
   wb.created = new Date();
 
+  // --- Reference sheet (hidden) for category dropdown ---
   const refSheet = wb.addWorksheet("_Data_TuDien", { state: "hidden" });
   refSheet.getColumn(1).values = ["Categories", ...categories.map((c) => `${c.id} | ${c.name}`)];
 
@@ -23,6 +62,13 @@ export async function generateProductTemplateBase64(
   const row1 = mainSheet.getRow(1);
   const row2 = mainSheet.getRow(2);
   const row3 = mainSheet.getRow(3);
+
+  // --- Lock header rows ---
+  for (let r = 1; r <= 3; r++) {
+    mainSheet.getRow(r).eachCell({ includeEmpty: true }, (cell) => {
+      cell.protection = { locked: true };
+    });
+  }
 
   let currentGroup = "";
   let groupStartCol = 1;
@@ -35,7 +81,7 @@ export async function generateProductTemplateBase64(
 
     if (col.group !== currentGroup) {
       if (currentGroup !== "" && groupStartCol < colNum) {
-        try { mainSheet.mergeCells(1, groupStartCol, 1, colNum - 1); } catch (e) {}
+        try { mainSheet.mergeCells(1, groupStartCol, 1, colNum - 1); } catch (e) { /* merge overlap */ }
       }
       currentGroup = col.group;
       groupStartCol = colNum;
@@ -43,20 +89,23 @@ export async function generateProductTemplateBase64(
 
     mainSheet.getColumn(colNum).width = col.width;
 
-    let bgColor = "FFFFFFFF";
-    if (col.readOnly) bgColor = "FFE0E0E0";
-    else if (col.required) bgColor = "FFFFF9C4";
+    // --- Pre-fill data area: background + unlock/lock ---
+    const bgColor = col.readOnly
+      ? COLORS.dataReadOnly
+      : col.required
+        ? COLORS.dataRequired
+        : COLORS.dataDefault;
 
-    const columnObj = mainSheet.getColumn(colNum);
-    columnObj.eachCell({ includeEmpty: true }, (cell, rowNumber) => {
-      if (rowNumber > 3) {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
-        if (col.readOnly) {
-          cell.protection = { locked: true };
-        }
-      }
-    });
+    for (let r = 4; r <= 1004; r++) {
+      const cell = mainSheet.getCell(r, colNum);
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
+      cell.border = THIN_BORDER;
+      cell.alignment = { vertical: "middle", wrapText: true };
+      // Unlock editable cells, lock readOnly
+      cell.protection = { locked: !!col.readOnly };
+    }
 
+    // --- Data validation (dropdown) ---
     if (col.type === "dropdown") {
       let formula = "";
       if (col.key === "category") {
@@ -71,47 +120,68 @@ export async function generateProductTemplateBase64(
             allowBlank: !col.required,
             formulae: [formula],
             showErrorMessage: true,
-            errorTitle: "Lỗi nhập liệu",
-            error: "Vui lòng chọn giá trị từ danh sách thả xuống.",
+            showInputMessage: true,
+            promptTitle: col.header,
+            prompt: "Chọn giá trị từ danh sách.",
+            errorTitle: "Giá trị không hợp lệ",
+            error: `Vui lòng chọn đúng giá trị trong danh sách cho cột "${col.header}".`,
           };
         }
       }
     }
   });
 
-  try { mainSheet.mergeCells(1, groupStartCol, 1, columnsDef.length); } catch (e) {}
+  // Merge last group
+  try { mainSheet.mergeCells(1, groupStartCol, 1, columnsDef.length); } catch (e) { /* merge overlap */ }
 
-  row1.height = 30;
+  // ==========================================
+  // Style Row 1 — Group header (navy)
+  // ==========================================
+  row1.height = 32;
   row1.eachCell((cell) => {
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF424242" } };
-    cell.font = { color: { argb: "FFFFFFFF" }, bold: true, size: 11 };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLORS.groupBg } };
+    cell.font = { color: { argb: COLORS.groupFont }, bold: true, size: 11, name: "Segoe UI" };
     cell.alignment = { vertical: "middle", horizontal: "center" };
+    cell.border = HEADER_BORDER;
   });
 
-  row2.height = 25;
+  // ==========================================
+  // Style Row 2 — Column header (teal/steel)
+  // ==========================================
+  row2.height = 28;
   row2.eachCell((cell, colNumber) => {
     const colDef = columnsDef[colNumber - 1];
-    let headerColor = "FFE0E0E0";
-    if (colDef.required) headerColor = "FFFF9800";
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerColor } };
-    cell.font = { bold: true };
-    cell.alignment = { vertical: "middle", horizontal: "center" };
-    cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
-  });
-
-  row3.height = 20;
-  row3.eachCell((cell) => {
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F5F5" } };
-    cell.font = { italic: true, color: { argb: "FF757575" }, size: 9 };
+    if (colDef.required) {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLORS.headerReqBg } };
+      cell.font = { bold: true, color: { argb: COLORS.headerReqFont }, size: 10, name: "Segoe UI" };
+    } else {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLORS.headerOptBg } };
+      cell.font = { bold: true, color: { argb: COLORS.headerOptFont }, size: 10, name: "Segoe UI" };
+    }
     cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    cell.border = HEADER_BORDER;
   });
 
+  // ==========================================
+  // Style Row 3 — Microcopy (subtle)
+  // ==========================================
+  row3.height = 22;
+  row3.eachCell((cell) => {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLORS.microcopyBg } };
+    cell.font = { italic: true, color: { argb: COLORS.microcopyFont }, size: 9, name: "Segoe UI" };
+    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    cell.border = HEADER_BORDER;
+  });
+
+  // ==========================================
+  // Sheet protection: header locked, data unlocked
+  // ==========================================
   mainSheet.protect("admin_secret_123", {
     selectLockedCells: true,
     selectUnlockedCells: true,
-    formatCells: false,
+    formatCells: true,
     formatColumns: false,
-    formatRows: false,
+    formatRows: true,
     insertColumns: false,
     insertRows: true,
     insertHyperlinks: true,
