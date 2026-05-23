@@ -277,6 +277,7 @@ export interface ParsedProductRecord {
   digitalDeliveryType?: string;
   digitalData?: string;
   imageUrl?: string;
+  images?: string[];
   variants: {
     variantOption1?: string;
     variantOption2?: string;
@@ -363,6 +364,13 @@ export async function parseProductExcelBase64(
           digitalDeliveryType: rowData["digitalDeliveryType"],
           digitalData: rowData["digitalData"],
           imageUrl: rowData["imageUrl"],
+          images: rowData["imagesUrl"]
+            ? rowData["imagesUrl"]
+                .toString()
+                .split(/[;,\n]+/)
+                .map((url: string) => url.trim())
+                .filter(Boolean)
+            : undefined,
           variants: []
         };
         recordsMap.set(sku, parentRecord);

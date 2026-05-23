@@ -23,6 +23,7 @@ const bulkProductDoc = v.object({
   digitalDeliveryType: v.optional(v.string()),
   digitalData: v.optional(v.string()),
   imageUrl: v.optional(v.string()),
+  images: v.optional(v.array(v.string())),
   variants: v.array(bulkVariantDoc),
 });
 
@@ -154,6 +155,7 @@ export const upsertBulk = mutation({
           stock: p.stock ?? existing.stock,
           categoryId: categoryId ?? existing.categoryId,
           image: p.imageUrl ?? existing.image,
+          images: p.images ?? existing.images,
           hasVariants: hasVariants ? true : existing.hasVariants,
           optionIds: optionIdsToLink.length > 0 ? optionIdsToLink : existing.optionIds,
         });
@@ -173,6 +175,7 @@ export const upsertBulk = mutation({
           sales: 0,
           order: nextOrder,
           image: p.imageUrl,
+          images: p.images,
           hasVariants: hasVariants,
           optionIds: optionIdsToLink.length > 0 ? optionIdsToLink : undefined,
           productType: p.productType,

@@ -196,6 +196,15 @@ export function buildExcelColumns(
     appliesTo: "PARENT_ONLY",
   });
 
+  columns.push({
+    key: "imagesUrl",
+    group: "MEDIA",
+    header: "Thư Viện Ảnh (Cách nhau bởi dấu ;)",
+    width: 45,
+    microcopy: "Chỉ điền ở dòng SP Cha. Ví dụ: url1; url2; url3",
+    appliesTo: "PARENT_ONLY",
+  });
+
   if (config.hasVariants && (config.imageStrategy === "OVERRIDE" || config.imageStrategy === "MIXED")) {
     columns.push({
       key: "variantImageUrl",
