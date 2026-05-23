@@ -267,7 +267,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
     if (activeDrag) {
       try {
         e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch (err) {
+      } catch {
         // ignore
       }
       setActiveDrag(null);
