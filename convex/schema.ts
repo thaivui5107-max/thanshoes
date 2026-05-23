@@ -313,6 +313,15 @@ export default defineSchema({
     .searchIndex("search_name", { filterFields: ["status", "categoryId"], searchField: "name" })
     .searchIndex("search_sku", { filterFields: ["status", "categoryId"], searchField: "sku" }),
 
+  productCategoryAssignments: defineTable({
+    categoryId: v.id("productCategories"),
+    createdAt: v.number(),
+    productId: v.id("products"),
+  })
+    .index("by_product", ["productId"])
+    .index("by_category", ["categoryId"])
+    .index("by_product_category", ["productId", "categoryId"]),
+
   // 10a. productOptions - Loại option cho variants
   productOptions: defineTable({
     active: v.boolean(),
@@ -515,6 +524,15 @@ export default defineSchema({
     .index("by_status_publishedAt", ["status", "publishedAt"])
     .index("by_status_views", ["status", "views"])
     .searchIndex("search_title", { filterFields: ["status", "categoryId"], searchField: "title" }),
+
+  postCategoryAssignments: defineTable({
+    categoryId: v.id("postCategories"),
+    createdAt: v.number(),
+    postId: v.id("posts"),
+  })
+    .index("by_post", ["postId"])
+    .index("by_category", ["categoryId"])
+    .index("by_post_category", ["postId", "categoryId"]),
 
   // 13. comments - Bình luận (Polymorphic) - SVC-011: Added "service" targetType
   comments: defineTable({
@@ -1031,6 +1049,15 @@ export default defineSchema({
     .index("by_status_featured", ["status", "featured"])
     .index("by_booking_enabled", ["bookingEnabled"])
     .searchIndex("search_title", { filterFields: ["status", "categoryId"], searchField: "title" }),
+
+  serviceCategoryAssignments: defineTable({
+    categoryId: v.id("serviceCategories"),
+    createdAt: v.number(),
+    serviceId: v.id("services"),
+  })
+    .index("by_service", ["serviceId"])
+    .index("by_category", ["categoryId"])
+    .index("by_service_category", ["serviceId", "categoryId"]),
 
   // 27a. bookings - Đặt lịch
   bookings: defineTable({

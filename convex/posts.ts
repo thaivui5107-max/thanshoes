@@ -17,6 +17,12 @@ import {
 import { generateArticlePayload } from "../lib/posts/generator/assembler";
 import { getMacroTemplate } from "../lib/posts/generator/macro-templates";
 import type { GeneratorProduct, GeneratorSettings, GeneratorRequest } from "../lib/posts/generator/types";
+import {
+  isMultiCategoryEnabled,
+  listPostAdditionalCategoryIds,
+  mergePostsByCategoryAssignments,
+  syncPostCategoryAssignments,
+} from "./lib/multiCategory";
 
 const postDoc = v.object({
   _creationTime: v.number(),
@@ -240,6 +246,18 @@ export const getBySlug = query({
   returns: v.union(postDoc, v.null()),
 });
 
+export const getAdditionalCategoryIds = query({
+  args: { id: v.id("posts") },
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.id);
+    if (!post) {
+      return [];
+    }
+    return listPostAdditionalCategoryIds(ctx, args.id, post.categoryId);
+  },
+  returns: v.array(v.id("postCategories")),
+});
+
 export const listByCategory = query({
   args: {
     categoryId: v.id("postCategories"),
@@ -258,9 +276,12 @@ export const listByCategory = query({
         return result;
       }
       const now = Date.now();
+      const page = await isMultiCategoryEnabled(ctx, "posts")
+        ? await mergePostsByCategoryAssignments(ctx, args.categoryId, result.page, args.paginationOpts.numItems)
+        : result.page;
       return {
         ...result,
-        page: result.page.filter((post) => !post.publishedAt || post.publishedAt <= now),
+        page: page.filter((post) => post.status === "Published" && (!post.publishedAt || post.publishedAt <= now)),
       };
     }
     return  ctx.db
@@ -363,6 +384,10 @@ export const searchPublished = query({
           q.eq("categoryId", args.categoryId!).eq("status", "Published")
         )
         .take(limit * 2); // Get more for client-side filtering
+      if (await isMultiCategoryEnabled(ctx, "posts")) {
+        posts = await mergePostsByCategoryAssignments(ctx, args.categoryId, posts, limit * 2);
+        posts = posts.filter((post) => post.status === "Published");
+      }
     } else {
       // Get all published posts
       if (sortBy === "popular") {
@@ -451,7 +476,10 @@ export const countPublished = query({
           q.eq("categoryId", args.categoryId!).eq("status", "Published")
         )
         .take(1000);
-      return posts.filter((post) => !post.publishedAt || post.publishedAt <= now).length;
+      const mergedPosts = await isMultiCategoryEnabled(ctx, "posts")
+        ? await mergePostsByCategoryAssignments(ctx, args.categoryId, posts, 1000)
+        : posts;
+      return mergedPosts.filter((post) => post.status === "Published" && (!post.publishedAt || post.publishedAt <= now)).length;
     }
     const posts = await ctx.db
       .query("posts")
@@ -558,6 +586,10 @@ export const listPublishedWithOffset = query({
           q.eq("categoryId", args.categoryId!).eq("status", "Published")
         )
         .take(fetchLimit);
+      if (await isMultiCategoryEnabled(ctx, "posts")) {
+        posts = await mergePostsByCategoryAssignments(ctx, args.categoryId, posts, fetchLimit);
+        posts = posts.filter((post) => post.status === "Published");
+      }
     } else if (sortBy === "popular") {
       posts = await ctx.db
         .query("posts")
@@ -687,6 +719,7 @@ export const create = mutation({
   args: {
     authorName: v.optional(v.string()),
     categoryId: v.id("postCategories"),
+    additionalCategoryIds: v.optional(v.array(v.id("postCategories"))),
     content: v.string(),
     renderType: v.optional(v.union(
       v.literal("content"),
@@ -709,6 +742,9 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const id = await PostsModel.create(ctx, args);
+    if (await isMultiCategoryEnabled(ctx, "posts")) {
+      await syncPostCategoryAssignments(ctx, id, args.categoryId, args.additionalCategoryIds);
+    }
     if (args.thumbnailStorageId) {
       await syncOwnerFilesAndCleanup(ctx, {
         ownerField: "thumbnail",
@@ -727,6 +763,7 @@ export const update = mutation({
   args: {
     authorName: v.optional(v.string()),
     categoryId: v.optional(v.id("postCategories")),
+    additionalCategoryIds: v.optional(v.array(v.id("postCategories"))),
     content: v.optional(v.string()),
     renderType: v.optional(v.union(
       v.literal("content"),
@@ -758,7 +795,12 @@ export const update = mutation({
     ) {
       nextArgs.thumbnail = "";
     }
-    await PostsModel.update(ctx, nextArgs);
+    const modelArgs = { ...nextArgs };
+    delete (modelArgs as { additionalCategoryIds?: unknown }).additionalCategoryIds;
+    await PostsModel.update(ctx, modelArgs);
+    if (previous && await isMultiCategoryEnabled(ctx, "posts")) {
+      await syncPostCategoryAssignments(ctx, args.id, args.categoryId ?? previous.categoryId, args.additionalCategoryIds);
+    }
     const shouldCheckStorage = Object.prototype.hasOwnProperty.call(args, "thumbnailStorageId");
     if (shouldCheckStorage && previous) {
       const nextThumbnailStorageId = Object.prototype.hasOwnProperty.call(args, "thumbnailStorageId")

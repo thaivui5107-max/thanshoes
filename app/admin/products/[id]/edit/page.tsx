@@ -19,6 +19,7 @@ import { DigitalCredentialsForm } from '@/components/orders/DigitalCredentialsFo
 import { stripHtml, truncateText } from '@/lib/seo';
 import { ProductCategoryCombobox } from '@/app/admin/products/components/ProductCategoryCombobox';
 import { QuickCreateCategoryModal } from '@/app/admin/products/components/QuickCreateCategoryModal';
+import { CategoryTagsInput } from '@/app/admin/components/AdditionalCategoriesSelect';
 import { normalizeRichText } from '@/app/admin/lib/normalize-rich-text';
 import { resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
 import { HomeComponentStickyFooter } from '@/app/admin/home-components/_shared/components/HomeComponentStickyFooter';
@@ -41,6 +42,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
 
   const productData = useQuery(api.products.getById, { id: id as Id<"products"> });
+  const additionalCategoryIdsData = useQuery(api.products.getAdditionalCategoryIds, { id: id as Id<"products"> });
   const categoriesData = useQuery(api.productCategories.listActive);
   const updateProduct = useMutation(api.productsSmart.updateProductWithVariants);
   const fieldsData = useQuery(api.admin.modules.listEnabledModuleFields, { moduleKey: MODULE_KEY });
@@ -57,6 +59,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   const [stock, setStock] = useState('0');
   const [affiliateLink, setAffiliateLink] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [additionalCategoryIds, setAdditionalCategoryIds] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [renderType, setRenderType] = useState<'content' | 'markdown' | 'html'>('content');
   const [markdownRender, setMarkdownRender] = useState('');
@@ -106,6 +109,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   const initialSnapshotRef = useRef<{
     affiliateLink: string;
     categoryId: string;
+    additionalCategoryIds: string[];
     description: string;
     renderType: 'content' | 'markdown' | 'html';
     markdownRender: string;
@@ -167,6 +171,9 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     const value = setting?.value as 'physical' | 'digital' | 'both' | undefined;
     return value ?? 'both';
   }, [settingsData]);
+  const multiCategoryEnabled = useMemo(() => (
+    Boolean(settingsData?.find(s => s.settingKey === 'enableMultipleCategories')?.value)
+  ), [settingsData]);
 
   const digitalEnabled = productTypeMode !== 'physical';
 
@@ -229,6 +236,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   const currentSnapshot = useMemo(() => ({
     affiliateLink: affiliateLink.trim(),
     categoryId,
+    additionalCategoryIds,
     description: normalizedDescription,
     renderType,
     markdownRender: markdownRender.trim(),
@@ -254,6 +262,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   }), [
     affiliateLink,
     categoryId,
+    additionalCategoryIds,
     normalizedDescription,
     renderType,
     markdownRender,
@@ -389,6 +398,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
       setStock(productData.stock.toString());
       setAffiliateLink(((productData as { affiliateLink?: string }).affiliateLink ?? '').toString());
       setCategoryId(productData.categoryId);
+      setAdditionalCategoryIds(additionalCategoryIdsData ?? []);
       setDescription(productData.description ?? '');
       const nextRenderType = productData.renderType ?? 'content';
       const allowedRenderTypes = new Set<'content' | 'markdown' | 'html'>(['content']);
@@ -417,6 +427,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
       initialSnapshotRef.current = {
         affiliateLink: ((productData as { affiliateLink?: string }).affiliateLink ?? '').trim(),
         categoryId: productData.categoryId,
+        additionalCategoryIds: additionalCategoryIdsData ?? [],
         description: normalizeRichText(productData.description ?? ''),
         renderType: productData.renderType ?? 'content',
         markdownRender: (productData.markdownRender ?? '').trim(),
@@ -445,7 +456,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
       setSnapshotVersion((prev) => prev + 1);
       setIsDataLoaded(true);
     }
-  }, [productData, isDataLoaded, hasMarkdownRender, hasHtmlRender, optionsData, valuesData, variantsData]);
+  }, [productData, additionalCategoryIdsData, isDataLoaded, hasMarkdownRender, hasHtmlRender, optionsData, valuesData, variantsData]);
 
   useEffect(() => {
     const allowedRenderTypes = new Set<'content' | 'markdown' | 'html'>(['content']);
@@ -577,6 +588,9 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
       await updateProduct({
         ...(isAffiliateMode ? { affiliateLink: affiliateLink.trim() || undefined } : {}),
         categoryId: categoryId as Id<"productCategories">,
+        additionalCategoryIds: multiCategoryEnabled
+          ? additionalCategoryIds.filter((category) => category !== categoryId) as Id<"productCategories">[]
+          : undefined,
         description: description.trim() || undefined,
         renderType,
         markdownRender: markdownRender.trim() || undefined,
@@ -1005,12 +1019,27 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
               </div>
               <div className="space-y-2">
                 <Label>Danh mục <span className="text-red-500">*</span></Label>
-                <ProductCategoryCombobox
-                  categories={categoriesData}
-                  value={categoryId}
-                  onChange={setCategoryId}
-                  onQuickCreate={() => setShowCategoryModal(true)}
-                />
+                {multiCategoryEnabled ? (
+                  <>
+                  <CategoryTagsInput
+                    categories={categoriesData}
+                    value={[categoryId, ...additionalCategoryIds].filter(Boolean)}
+                    onQuickCreate={() => setShowCategoryModal(true)}
+                    onChange={(ids) => {
+                      setCategoryId(ids[0] ?? '');
+                      setAdditionalCategoryIds(ids.slice(1));
+                    }}
+                  />
+                  <p className="text-xs text-slate-500">Thẻ đầu tiên là danh mục chính/canonical, các thẻ sau là danh mục phụ.</p>
+                  </>
+                ) : (
+                  <ProductCategoryCombobox
+                    categories={categoriesData}
+                    value={categoryId}
+                    onChange={setCategoryId}
+                    onQuickCreate={() => setShowCategoryModal(true)}
+                  />
+                )}
               </div>
             </CardContent>
           </Card>

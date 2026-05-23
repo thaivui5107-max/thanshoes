@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { listSlugConflicts, resolveSlugConflicts } from "./lib/iaSlugs";
+import { isMultiCategoryEnabled } from "./lib/multiCategory";
 
 export const resolveUnifiedCategory = query({
   args: { slug: v.string() },
@@ -69,35 +70,62 @@ export const resolveUnifiedDetail = query({
 
     if (match.moduleKey === "posts") {
       const post = await ctx.db.query("posts").withIndex("by_slug", (q) => q.eq("slug", recordSlug)).unique();
-      if (!post || post.categoryId !== match.category._id || post.status !== "Published") {return null;}
+      if (!post || post.status !== "Published") {return null;}
       const now = Date.now();
       if (typeof post.publishedAt === "number" && post.publishedAt > now) {return null;}
+      if (post.categoryId !== match.category._id) {
+        const assignment = await ctx.db
+          .query("postCategoryAssignments")
+          .withIndex("by_post_category", (q) => q.eq("postId", post._id).eq("categoryId", match.category._id))
+          .unique();
+        if (!assignment || !await isMultiCategoryEnabled(ctx, "posts")) {return null;}
+      }
+      const primaryCategory = await ctx.db.get(post.categoryId);
+      if (!primaryCategory) {return null;}
       return {
         moduleKey: "posts" as const,
-        categoryId: match.category._id,
-        categorySlug: match.category.slug,
+        categoryId: primaryCategory._id,
+        categorySlug: primaryCategory.slug,
         recordId: post._id,
         recordSlug: post.slug,
       };
     }
     if (match.moduleKey === "products") {
       const product = await ctx.db.query("products").withIndex("by_slug", (q) => q.eq("slug", recordSlug)).unique();
-      if (!product || product.categoryId !== match.category._id || product.status !== "Active") {return null;}
+      if (!product || product.status !== "Active") {return null;}
+      if (product.categoryId !== match.category._id) {
+        const assignment = await ctx.db
+          .query("productCategoryAssignments")
+          .withIndex("by_product_category", (q) => q.eq("productId", product._id).eq("categoryId", match.category._id))
+          .unique();
+        if (!assignment || !await isMultiCategoryEnabled(ctx, "products")) {return null;}
+      }
+      const primaryCategory = await ctx.db.get(product.categoryId);
+      if (!primaryCategory) {return null;}
       return {
         moduleKey: "products" as const,
-        categoryId: match.category._id,
-        categorySlug: match.category.slug,
+        categoryId: primaryCategory._id,
+        categorySlug: primaryCategory.slug,
         recordId: product._id,
         recordSlug: product.slug,
       };
     }
     if (match.moduleKey === "services") {
       const service = await ctx.db.query("services").withIndex("by_slug", (q) => q.eq("slug", recordSlug)).unique();
-      if (!service || service.categoryId !== match.category._id || service.status !== "Published") {return null;}
+      if (!service || service.status !== "Published") {return null;}
+      if (service.categoryId !== match.category._id) {
+        const assignment = await ctx.db
+          .query("serviceCategoryAssignments")
+          .withIndex("by_service_category", (q) => q.eq("serviceId", service._id).eq("categoryId", match.category._id))
+          .unique();
+        if (!assignment || !await isMultiCategoryEnabled(ctx, "services")) {return null;}
+      }
+      const primaryCategory = await ctx.db.get(service.categoryId);
+      if (!primaryCategory) {return null;}
       return {
         moduleKey: "services" as const,
-        categoryId: match.category._id,
-        categorySlug: match.category.slug,
+        categoryId: primaryCategory._id,
+        categorySlug: primaryCategory.slug,
         recordId: service._id,
         recordSlug: service.slug,
       };

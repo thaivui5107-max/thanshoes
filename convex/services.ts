@@ -14,6 +14,12 @@ import {
   removeOwnerFilesAndCleanup,
   syncOwnerFilesAndCleanup,
 } from "./lib/fileService";
+import {
+  isMultiCategoryEnabled,
+  listServiceAdditionalCategoryIds,
+  mergeServicesByCategoryAssignments,
+  syncServiceCategoryAssignments,
+} from "./lib/multiCategory";
 
 const serviceDoc = v.object({
   _creationTime: v.number(),
@@ -241,6 +247,18 @@ export const getBySlug = query({
   returns: v.union(serviceDoc, v.null()),
 });
 
+export const getAdditionalCategoryIds = query({
+  args: { id: v.id("services") },
+  handler: async (ctx, args) => {
+    const service = await ctx.db.get(args.id);
+    if (!service) {
+      return [];
+    }
+    return listServiceAdditionalCategoryIds(ctx, args.id, service.categoryId);
+  },
+  returns: v.array(v.id("serviceCategories")),
+});
+
 export const listByCategory = query({
   args: {
     categoryId: v.id("serviceCategories"),
@@ -342,13 +360,17 @@ export const listPublishedPaginated = query({
     const sortBy = args.sortBy ?? "newest";
 
     if (args.categoryId) {
-      return ctx.db
+      const result = await ctx.db
         .query("services")
         .withIndex("by_category_status", (q) =>
           q.eq("categoryId", args.categoryId!).eq("status", "Published")
         )
         .order(sortBy === "oldest" ? "asc" : "desc")
         .paginate(args.paginationOpts);
+      const page = await isMultiCategoryEnabled(ctx, "services")
+        ? await mergeServicesByCategoryAssignments(ctx, args.categoryId, result.page, args.paginationOpts.numItems)
+        : result.page;
+      return { ...result, page: page.filter((service) => service.status === "Published") };
     }
 
     if (sortBy === "popular") {
@@ -408,6 +430,10 @@ export const listPublishedWithOffset = query({
           q.eq("categoryId", args.categoryId!).eq("status", "Published")
         )
         .take(fetchLimit);
+      if (await isMultiCategoryEnabled(ctx, "services")) {
+        services = await mergeServicesByCategoryAssignments(ctx, args.categoryId, services, fetchLimit);
+        services = services.filter((service) => service.status === "Published");
+      }
     } else if (sortBy === "popular") {
       services = await ctx.db
         .query("services")
@@ -486,6 +512,10 @@ export const searchPublished = query({
           q.eq("categoryId", args.categoryId!).eq("status", "Published")
         )
         .take(limit * 2);
+      if (await isMultiCategoryEnabled(ctx, "services")) {
+        services = await mergeServicesByCategoryAssignments(ctx, args.categoryId, services, limit * 2);
+        services = services.filter((service) => service.status === "Published");
+      }
     } else {
       if (sortBy === "popular") {
         services = await ctx.db
@@ -556,7 +586,10 @@ export const countPublished = query({
           q.eq("categoryId", args.categoryId!).eq("status", "Published")
         )
         .take(1000);
-      return services.length;
+      const mergedServices = await isMultiCategoryEnabled(ctx, "services")
+        ? await mergeServicesByCategoryAssignments(ctx, args.categoryId, services, 1000)
+        : services;
+      return mergedServices.filter((service) => service.status === "Published").length;
     }
     const services = await ctx.db
       .query("services")
@@ -570,6 +603,7 @@ export const countPublished = query({
 export const create = mutation({
   args: {
     categoryId: v.id("serviceCategories"),
+    additionalCategoryIds: v.optional(v.array(v.id("serviceCategories"))),
     content: v.string(),
     renderType: v.optional(v.union(
       v.literal("content"),
@@ -599,6 +633,9 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const id = await ServicesModel.create(ctx, args);
+    if (await isMultiCategoryEnabled(ctx, "services")) {
+      await syncServiceCategoryAssignments(ctx, id, args.categoryId, args.additionalCategoryIds);
+    }
     if (args.thumbnailStorageId) {
       await syncOwnerFilesAndCleanup(ctx, {
         ownerField: "thumbnail",
@@ -616,6 +653,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     categoryId: v.optional(v.id("serviceCategories")),
+    additionalCategoryIds: v.optional(v.array(v.id("serviceCategories"))),
     content: v.optional(v.string()),
     renderType: v.optional(v.union(
       v.literal("content"),
@@ -654,7 +692,12 @@ export const update = mutation({
     ) {
       nextArgs.thumbnail = "";
     }
-    await ServicesModel.update(ctx, nextArgs);
+    const modelArgs = { ...nextArgs };
+    delete (modelArgs as { additionalCategoryIds?: unknown }).additionalCategoryIds;
+    await ServicesModel.update(ctx, modelArgs);
+    if (previous && await isMultiCategoryEnabled(ctx, "services")) {
+      await syncServiceCategoryAssignments(ctx, args.id, args.categoryId ?? previous.categoryId, args.additionalCategoryIds);
+    }
     const shouldCheckStorage = Object.prototype.hasOwnProperty.call(args, "thumbnailStorageId");
     if (shouldCheckStorage && previous) {
       const nextThumbnailStorageId = Object.prototype.hasOwnProperty.call(args, "thumbnailStorageId")

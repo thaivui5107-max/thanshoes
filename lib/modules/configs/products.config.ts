@@ -41,6 +41,12 @@ export const productsModule = defineModuleWithRuntime({
       ],
     },
     {
+      key: 'enableMultipleCategories',
+      label: 'Cho phép nhiều danh mục',
+      type: 'toggle',
+      default: false,
+    },
+    {
       key: 'saleMode',
       label: 'Chế độ bán hàng',
       type: 'select',

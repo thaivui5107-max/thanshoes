@@ -22,6 +22,7 @@ import { QuickCreateCategoryModal } from '@/app/admin/products/components/QuickC
 import { resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
 import { HomeComponentStickyFooter } from '@/app/admin/home-components/_shared/components/HomeComponentStickyFooter';
 import { AiEntityImportDialog, type AiEntityImportPayload } from '@/app/admin/components/AiEntityImportDialog';
+import { CategoryTagsInput } from '@/app/admin/components/AdditionalCategoriesSelect';
 import { InlineMatrixBuilder, type OptionCatalogItem, type VariantOptionSelection, type VariantRow } from '@/app/admin/products/components/inline-matrix-builder';
 import { normalizeVariantRows, normalizeVariantSelections, validateVariantPayload } from '@/app/admin/products/components/inline-variant-utils';
 
@@ -51,6 +52,7 @@ function ProductCreateContent() {
   const [stock, setStock] = useState('0');
   const [affiliateLink, setAffiliateLink] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [additionalCategoryIds, setAdditionalCategoryIds] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [renderType, setRenderType] = useState<'content' | 'markdown' | 'html'>('content');
   const [markdownRender, setMarkdownRender] = useState('');
@@ -126,6 +128,9 @@ function ProductCreateContent() {
     const value = setting?.value as 'physical' | 'digital' | 'both' | undefined;
     return value ?? 'both';
   }, [settingsData]);
+  const multiCategoryEnabled = useMemo(() => (
+    Boolean(settingsData?.find(s => s.settingKey === 'enableMultipleCategories')?.value)
+  ), [settingsData]);
 
   const digitalEnabled = productTypeMode !== 'physical';
 
@@ -345,6 +350,9 @@ function ProductCreateContent() {
       await createProduct({
         ...(isAffiliateMode ? { affiliateLink: affiliateLink.trim() || undefined } : {}),
         categoryId: categoryId as Id<"productCategories">,
+        additionalCategoryIds: multiCategoryEnabled
+          ? additionalCategoryIds.filter((id) => id !== categoryId) as Id<"productCategories">[]
+          : undefined,
         description: description.trim() || undefined,
         renderType,
         markdownRender: markdownRender.trim() || undefined,
@@ -699,12 +707,27 @@ function ProductCreateContent() {
               </div>
               <div className="space-y-2">
                 <Label>Danh mục <span className="text-red-500">*</span></Label>
-                <ProductCategoryCombobox
-                  categories={categoriesData}
-                  value={categoryId}
-                  onChange={setCategoryId}
-                  onQuickCreate={() =>{  setShowCategoryModal(true); }}
-                />
+                {multiCategoryEnabled ? (
+                  <>
+                  <CategoryTagsInput
+                    categories={categoriesData}
+                    value={[categoryId, ...additionalCategoryIds].filter(Boolean)}
+                    onQuickCreate={() =>{  setShowCategoryModal(true); }}
+                    onChange={(ids) => {
+                      setCategoryId(ids[0] ?? '');
+                      setAdditionalCategoryIds(ids.slice(1));
+                    }}
+                  />
+                  <p className="text-xs text-slate-500">Thẻ đầu tiên là danh mục chính/canonical, các thẻ sau là danh mục phụ.</p>
+                  </>
+                ) : (
+                  <ProductCategoryCombobox
+                    categories={categoriesData}
+                    value={categoryId}
+                    onChange={setCategoryId}
+                    onQuickCreate={() =>{  setShowCategoryModal(true); }}
+                  />
+                )}
               </div>
             </CardContent>
           </Card>

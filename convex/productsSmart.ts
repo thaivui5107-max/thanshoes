@@ -4,6 +4,7 @@ import { ConvexError, v } from "convex/values";
 import { productStatus } from "./lib/validators";
 import { resolveUniqueSlug } from "./lib/iaSlugs";
 import { dedupeStorageIds, syncOwnerFilesAndCleanup } from "./lib/fileService";
+import { isMultiCategoryEnabled, syncProductCategoryAssignments } from "./lib/multiCategory";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 
@@ -46,6 +47,7 @@ const inlineOptionDoc = v.object({
 const smartProductArgs = {
   affiliateLink: v.optional(v.string()),
   categoryId: v.id("productCategories"),
+  additionalCategoryIds: v.optional(v.array(v.id("productCategories"))),
   description: v.optional(v.string()),
   renderType: v.optional(renderTypeDoc),
   markdownRender: v.optional(v.string()),
@@ -485,6 +487,10 @@ export const createProductWithVariants = mutation({
       optionIds: hasVariants ? optionIds : undefined,
     });
 
+    if (await isMultiCategoryEnabled(ctx, "products")) {
+      await syncProductCategoryAssignments(ctx, productId, args.categoryId, args.additionalCategoryIds);
+    }
+
     await syncOwnerFilesAndCleanup(ctx, {
       ownerField: "images",
       ownerId: productId,
@@ -563,6 +569,10 @@ export const updateProductWithVariants = mutation({
       hasVariants,
       optionIds: hasVariants ? optionIds : [],
     });
+
+    if (await isMultiCategoryEnabled(ctx, "products")) {
+      await syncProductCategoryAssignments(ctx, args.id, args.categoryId, args.additionalCategoryIds);
+    }
 
     await syncOwnerFilesAndCleanup(ctx, {
       ownerField: "images",

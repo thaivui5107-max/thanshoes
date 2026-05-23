@@ -13,6 +13,11 @@ import {
   removeOwnerFilesAndCleanup,
   syncOwnerFilesAndCleanup,
 } from "./lib/fileService";
+import {
+  isMultiCategoryEnabled,
+  listProductAdditionalCategoryIds,
+  mergeProductsByCategoryAssignments,
+} from "./lib/multiCategory";
 
 const productDoc = v.object({
   _creationTime: v.number(),
@@ -642,6 +647,18 @@ export const getBySlug = query({
   returns: v.union(productDoc, v.null()),
 });
 
+export const getAdditionalCategoryIds = query({
+  args: { id: v.id("products") },
+  handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.id);
+    if (!product) {
+      return [];
+    }
+    return listProductAdditionalCategoryIds(ctx, args.id, product.categoryId);
+  },
+  returns: v.array(v.id("productCategories")),
+});
+
 export const listByCategory = query({
   args: {
     categoryId: v.id("productCategories"),
@@ -736,6 +753,13 @@ export const listPublishedPaginated = query({
         )
         .order(sortBy === "oldest" ? "asc" : "desc")
         .paginate(args.paginationOpts);
+      if (await isMultiCategoryEnabled(ctx, "products")) {
+        result = {
+          ...result,
+          page: (await mergeProductsByCategoryAssignments(ctx, args.categoryId, result.page, args.paginationOpts.numItems))
+            .filter((product) => product.status === "Active"),
+        };
+      }
     } else if (sortBy === "popular") {
       result = await ctx.db
         .query("products")
@@ -798,6 +822,10 @@ export const listPublishedWithOffset = query({
           q.eq("categoryId", args.categoryId!).eq("status", "Active")
         )
         .take(fetchLimit);
+      if (await isMultiCategoryEnabled(ctx, "products")) {
+        products = await mergeProductsByCategoryAssignments(ctx, args.categoryId, products, fetchLimit);
+        products = products.filter((product) => product.status === "Active");
+      }
     } else if (sortBy === "popular") {
       products = await ctx.db
         .query("products")
@@ -896,6 +924,10 @@ export const searchPublished = query({
           q.eq("categoryId", args.categoryId!).eq("status", "Active")
         )
         .take(limit * 2);
+      if (await isMultiCategoryEnabled(ctx, "products")) {
+        products = await mergeProductsByCategoryAssignments(ctx, args.categoryId, products, limit * 2);
+        products = products.filter((product) => product.status === "Active");
+      }
     } else {
       products = await ctx.db
         .query("products")
@@ -978,6 +1010,11 @@ export const countPublished = query({
           .query("products")
           .withIndex("by_status_order", (q) => q.eq("status", "Active"))
           .collect();
+
+    if (args.categoryId && await isMultiCategoryEnabled(ctx, "products")) {
+      products = await mergeProductsByCategoryAssignments(ctx, args.categoryId, products, 1000);
+      products = products.filter((product) => product.status === "Active");
+    }
 
     if (args.search?.trim()) {
       const searchLower = args.search.toLowerCase().trim();

@@ -35,6 +35,7 @@ import type * as lib_fileService from "../lib/fileService.js";
 import type * as lib_helpers from "../lib/helpers.js";
 import type * as lib_iaSlugs from "../lib/iaSlugs.js";
 import type * as lib_moduleConfigSync from "../lib/moduleConfigSync.js";
+import type * as lib_multiCategory from "../lib/multiCategory.js";
 import type * as lib_password from "../lib/password.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
@@ -118,6 +119,7 @@ declare const fullApi: ApiFromModules<{
   "lib/helpers": typeof lib_helpers;
   "lib/iaSlugs": typeof lib_iaSlugs;
   "lib/moduleConfigSync": typeof lib_moduleConfigSync;
+  "lib/multiCategory": typeof lib_multiCategory;
   "lib/password": typeof lib_password;
   "lib/permissions": typeof lib_permissions;
   "lib/rateLimit": typeof lib_rateLimit;
