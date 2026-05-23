@@ -24,7 +24,7 @@ export function ProductImageLightbox({
   onClose,
   onIndexChange,
   useNativeImage = false,
-  overlayUrl,
+  overlayUrl: _overlayUrl,
   fallbackSrc,
 }: ProductImageLightboxProps) {
   const [mounted, setMounted] = useState(false);

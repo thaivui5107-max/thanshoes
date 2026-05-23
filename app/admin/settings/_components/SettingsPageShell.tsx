@@ -224,8 +224,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const enableProductWatermarkSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableProductWatermark' });
   const [selectedFrameAR, setSelectedFrameAR] = useState<string>('');
 
-  const enableProductWatermark = enableProductWatermarkSetting?.value === true || enableProductWatermarkSetting?.value === 'true';
-
   const handlePreviewPointerDown = (e: React.PointerEvent<HTMLDivElement>, type: 'image-move' | 'image-resize' | 'text-move') => {
     e.preventDefault();
     e.stopPropagation();

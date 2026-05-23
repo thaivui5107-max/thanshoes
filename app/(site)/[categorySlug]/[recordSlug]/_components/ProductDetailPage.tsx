@@ -1452,7 +1452,7 @@ type MobileImageCarouselProps = {
   fallbackSrc?: string | null;
 };
 
-function MobileImageCarousel({ images, selectedIndex, onSelect, alt, fallbackSrc }: MobileImageCarouselProps) {
+function _MobileImageCarousel({ images, selectedIndex, onSelect, alt, fallbackSrc }: MobileImageCarouselProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { frameConfig, watermarkConfig } = useProductImageOverlayConfigs();
@@ -1886,7 +1886,7 @@ function ClassicStyle({
   const showSalePrice = enabledFields.has('salePrice');
   const showStock = enabledFields.has('stock');
   const showDescription = enabledFields.has('description');
-  const showSku = enabledFields.has('sku');
+  const _showSku = enabledFields.has('sku');
 
   const images = buildProductImages(product);
   const displayImages = images.length > 0 ? images : [productImagePlaceholder];
@@ -3094,7 +3094,7 @@ function MinimalStyle({
   const showSalePrice = enabledFields.has('salePrice');
   const showStock = enabledFields.has('stock');
   const showDescription = enabledFields.has('description');
-  const showSku = enabledFields.has('sku');
+  const _showSku = enabledFields.has('sku');
 
   const images = buildProductImages(product);
   const displayImages = images.length > 0 ? images : [productImagePlaceholder];

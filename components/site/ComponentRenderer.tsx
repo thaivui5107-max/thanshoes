@@ -130,7 +130,6 @@ import { SpeedDialSection } from './SpeedDialSection';
 import { CountdownSectionWrapper } from './CountdownSectionWrapper';
 import type { HomepageCategoryHeroConfig } from '@/app/admin/home-components/homepage-category-hero/_types';
 import { ProductImageWithOverlay, useProductImageOverlayConfigs } from '@/components/shared/ProductImageWithOverlay';
-import type { WatermarkConfig, ProductFrameConfig } from '@/components/shared/ProductImageWithOverlay';
 import {
   ArrowUpRight,
   ArrowRight,

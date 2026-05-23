@@ -9,7 +9,6 @@ import type { Id } from '@/convex/_generated/dataModel';
 import { ArrowRight, Loader2, Package } from 'lucide-react';
 import { SaleBadge } from '@/components/site/shared/BrandColorHelpers';
 import { ProductImageWithOverlay, useProductImageOverlayConfigs } from '@/components/shared/ProductImageWithOverlay';
-import type { WatermarkConfig, ProductFrameConfig } from '@/components/shared/ProductImageWithOverlay';
 import { getPublicPriceLabel } from '@/lib/products/public-price';
 import { getProductImageAspectRatioCssValue, resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
 import { buildDetailPath, normalizeRouteMode } from '@/lib/ia/route-mode';
