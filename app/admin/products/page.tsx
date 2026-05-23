@@ -13,6 +13,7 @@ import { BulkActionBar, ColumnToggle, generatePaginationItems, SelectCheckbox, S
 import { ModuleGuard } from '../components/ModuleGuard';
 import { DeleteConfirmDialog } from '../components/DeleteConfirmDialog';
 import { usePersistedPageSize } from '../components/usePersistedPageSize';
+import { ImportExportModal } from '../components/import-modal';
 import {
   buildHeaderMap,
   getProductExcelColumns,
@@ -762,116 +763,15 @@ function ProductsContent() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative" ref={excelMenuRef}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx"
-              className="hidden"
-              onChange={handleImportFile}
-            />
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={() =>{  if (excelActionsEnabled) { setIsExcelMenuOpen((prev) => !prev); } }}
-              aria-expanded={isExcelMenuOpen}
-              disabled={!excelActionsEnabled || excelActionState !== 'idle'}
-            >
-              <Download size={16} /> Excel Actions <ChevronDown size={16} className="text-slate-400" />
-            </Button>
-            {!excelActionsEnabled && (
-              <div className="mt-1 text-xs text-slate-500">Excel actions đang tắt trong module settings</div>
-            )}
-            {excelActionsEnabled && isExcelMenuOpen && (
-              <div className="absolute right-0 z-20 mt-2 w-[320px] max-w-[calc(100vw-2rem)] rounded-md border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900 sm:w-[360px]">
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Template</div>
-                  <button
-                    type="button"
-                    onClick={handleDownloadTemplate}
-                    disabled={excelActionState !== 'idle'}
-                    className="flex w-full items-start gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-slate-800"
-                  >
-                    <Download size={16} className="mt-0.5 text-slate-500" />
-                    <div className="flex-1">
-                      <div className="font-medium">Tải mẫu (Template)</div>
-                      <div className="text-xs text-slate-500">File mẫu có hướng dẫn và lỗi mẫu.</div>
-                    </div>
-                    {isTemplateDownloading && <Loader2 size={14} className="mt-0.5 animate-spin text-slate-500" />}
-                  </button>
-
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Import</div>
-                  <button
-                    type="button"
-                    onClick={handleImportClick}
-                    disabled={excelActionState !== 'idle'}
-                    className="flex w-full items-start gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-slate-800"
-                  >
-                    <Upload size={16} className="mt-0.5 text-slate-500" />
-                    <div className="flex-1">
-                      <div className="font-medium">Nhập Excel (Import)</div>
-                      <div className="text-xs text-slate-500">Chọn file .xlsx để tạo sản phẩm hàng loạt.</div>
-                    </div>
-                    {isImporting && <Loader2 size={14} className="mt-0.5 animate-spin text-slate-500" />}
-                  </button>
-
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Export</div>
-                  <button
-                    type="button"
-                    onClick={() =>{  handleExport('filter'); }}
-                    disabled={isFilteredExportDisabled}
-                    className="flex w-full items-start gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-slate-800"
-                  >
-                    <Download size={16} className="mt-0.5 text-slate-500" />
-                    <div className="flex-1">
-                      <div className="font-medium">Xuất theo lọc (Export Filtered)</div>
-                      <div className="text-xs text-slate-500">Áp dụng bộ lọc hiện tại, tối đa 5.000 dòng.</div>
-                    </div>
-                    {excelActionState === 'export-filter' && <Loader2 size={14} className="mt-0.5 animate-spin text-slate-500" />}
-                  </button>
-                  {!hasFilters && !hasManualSelection && (
-                    <div className="px-3 text-xs text-slate-500">Chưa có bộ lọc, vui lòng chọn lọc trước khi xuất.</div>
-                  )}
-                  {hasManualSelection && (
-                    <div className="px-3 text-xs text-slate-500">Đang chọn thủ công, vui lòng Bỏ chọn tất cả để dùng Xuất theo lọc.</div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() =>{  handleExport('selected'); }}
-                    disabled={isSelectedExportDisabled}
-                    className="flex w-full items-start gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-slate-800"
-                  >
-                    <Download size={16} className="mt-0.5 text-slate-500" />
-                    <div className="flex-1">
-                      <div className="font-medium">Xuất đã chọn (Export Selected)</div>
-                      <div className="text-xs text-slate-500">Chỉ xuất các sản phẩm đang được tick trong danh sách.</div>
-                    </div>
-                    {excelActionState === 'export-selected' && <Loader2 size={14} className="mt-0.5 animate-spin text-slate-500" />}
-                  </button>
-                  {!hasManualSelection && (
-                    <div className="px-3 text-xs text-slate-500">Chưa có lựa chọn thủ công, vui lòng tick sản phẩm để xuất.</div>
-                  )}
-                  {selectedIds.length > 5000 && (
-                    <div className="px-3 text-xs text-slate-500">Tối đa 5.000 mục mỗi lần export.</div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() =>{  handleExport('all'); }}
-                    disabled={excelActionState !== 'idle'}
-                    className="flex w-full items-start gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-slate-800"
-                  >
-                    <Download size={16} className="mt-0.5 text-slate-500" />
-                    <div className="flex-1">
-                      <div className="font-medium">Xuất toàn bộ (Export All)</div>
-                      <div className="text-xs text-slate-500">Tối đa 5.000 dòng mỗi lần export.</div>
-                    </div>
-                    {excelActionState === 'export-all' && <Loader2 size={14} className="mt-0.5 animate-spin text-slate-500" />}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-          <Link href="/admin/products/create"><Button className="gap-2"><Plus size={16}/> Thêm sản phẩm</Button></Link>
+          {excelActionsEnabled && <ImportExportModal />}
+          {!excelActionsEnabled && (
+            <div className="mt-1 text-xs text-slate-500">Excel actions đang tắt trong module settings</div>
+          )}
+          <Button asChild>
+            <Link href="/admin/products/create" className="gap-2">
+              <Plus size={16} /> Thêm sản phẩm
+            </Link>
+          </Button>
         </div>
       </div>
 
