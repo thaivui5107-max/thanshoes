@@ -576,17 +576,17 @@ export const count = query({
 export const getStats = query({
   args: {},
   handler: async (ctx) => {
-    const [activeStats, draftStats, archivedStats, totalStats] = await Promise.all([
-      ctx.db.query("productStats").withIndex("by_key", (q) => q.eq("key", "Active")).unique(),
-      ctx.db.query("productStats").withIndex("by_key", (q) => q.eq("key", "Draft")).unique(),
-      ctx.db.query("productStats").withIndex("by_key", (q) => q.eq("key", "Archived")).unique(),
-      ctx.db.query("productStats").withIndex("by_key", (q) => q.eq("key", "total")).unique(),
+    // Đếm thật từ bảng products (source of truth) thay vì dùng counter cache
+    const [activeList, draftList, archivedList] = await Promise.all([
+      ctx.db.query("products").withIndex("by_status", (q) => q.eq("status", "Active")).collect(),
+      ctx.db.query("products").withIndex("by_status", (q) => q.eq("status", "Draft")).collect(),
+      ctx.db.query("products").withIndex("by_status", (q) => q.eq("status", "Archived")).collect(),
     ]);
 
-    const active = activeStats?.count ?? 0;
-    const draft = draftStats?.count ?? 0;
-    const archived = archivedStats?.count ?? 0;
-    const total = totalStats?.count ?? active + draft + archived;
+    const active = activeList.length;
+    const draft = draftList.length;
+    const archived = archivedList.length;
+    const total = active + draft + archived;
 
     return { active, archived, draft, total };
   },
