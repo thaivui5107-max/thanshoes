@@ -1067,37 +1067,29 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
             </CardContent>
           </Card>
 
-          {enabledFields.has('images') && (
+          {enabledFields.has('images') && image && (
             <Card>
               <CardHeader><CardTitle className="text-base">Thư viện ảnh</CardTitle></CardHeader>
               <CardContent>
-                {!image ? (
-                  <div className="text-center py-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-900/50">
-                    <ImageIcon className="mx-auto mb-2 text-slate-400" size={32} />
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Thư viện ảnh chưa khả dụng</p>
-                    <p className="text-xs text-slate-400 mt-1">Vui lòng tải lên ảnh chính trước để mở khóa thư viện ảnh.</p>
-                  </div>
-                ) : (
-                  <MultiImageUploader<ImageItem>
-                    items={galleryItems}
-                    onChange={setGalleryItems}
-                    folder="products"
-                    naming={{ entityName: slug.trim() || 'product', style: 'slug-index' }}
-                    namingIndexOffset={image ? 1 : 0}
-                    deleteMode="defer"
-                    imageKey="url"
-                    minItems={0}
-                    maxItems={20}
-                    aspectRatio="square"
-                    enableCrop={enableImageCrop}
-                    cropAspectRatio={defaultImageAspectRatio}
-                    imageAspectRatio={defaultImageAspectRatio}
-                    columns={2}
-                    addButtonText="Thêm ảnh"
-                    emptyText="Chưa có ảnh trong thư viện"
-                    layout="vertical"
-                  />
-                )}
+                <MultiImageUploader<ImageItem>
+                  items={galleryItems}
+                  onChange={setGalleryItems}
+                  folder="products"
+                  naming={{ entityName: slug.trim() || 'product', style: 'slug-index' }}
+                  namingIndexOffset={1}
+                  deleteMode="defer"
+                  imageKey="url"
+                  minItems={0}
+                  maxItems={20}
+                  aspectRatio="square"
+                  enableCrop={enableImageCrop}
+                  cropAspectRatio={defaultImageAspectRatio}
+                  imageAspectRatio={defaultImageAspectRatio}
+                  columns={2}
+                  addButtonText="Thêm ảnh"
+                  emptyText="Chưa có ảnh trong thư viện"
+                  layout="vertical"
+                />
               </CardContent>
             </Card>
           )}
