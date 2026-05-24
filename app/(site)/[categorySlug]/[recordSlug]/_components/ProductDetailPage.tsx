@@ -4209,6 +4209,8 @@ function ProductCombosBlock({
 
   let animateClass = '';
   let titleEffectClass = '';
+  let isGradientEffect = false;
+  let effectColorVal = '';
   const titleEffectStyle: React.CSSProperties & Record<string, string> = {};
 
   const applyEffectColor = () => {
@@ -4258,6 +4260,9 @@ function ProductCombosBlock({
       isGradient = true;
     }
 
+    isGradientEffect = isGradient;
+    effectColorVal = colorVal;
+
     if (isGradient) {
       titleEffectStyle.backgroundImage = `linear-gradient(90deg, ${titleEffectStyle['--combo-sparkle-a']}, ${titleEffectStyle['--combo-sparkle-b']}, ${titleEffectStyle['--combo-sparkle-c']})`;
       titleEffectStyle.WebkitBackgroundClip = 'text';
@@ -4300,21 +4305,36 @@ function ProductCombosBlock({
     }
 
     return (
-      <span className="combo-title-text inline-flex flex-wrap" style={titleEffectStyle}>
-        {Array.from(text).map((char, index) => (
-          <span
-            key={`${char}-${index}`}
-            className="animate-combo-letter-wave"
-            style={{
-              animationDelay: `${index * 0.06}s`,
-              display: 'inline-block',
-              color: 'inherit',
-              WebkitTextFillColor: 'inherit'
-            }}
-          >
-            {char === ' ' ? '\u00A0' : char}
-          </span>
-        ))}
+      <span className="combo-title-text inline-block">
+        {Array.from(text).map((char, index, arr) => {
+          const L = arr.length;
+          const charStyle: React.CSSProperties = {
+            animationDelay: `${index * 0.06}s`,
+            display: 'inline-block',
+          };
+
+          if (isGradientEffect) {
+            charStyle.backgroundImage = `linear-gradient(90deg, ${titleEffectStyle['--combo-sparkle-a']}, ${titleEffectStyle['--combo-sparkle-b']}, ${titleEffectStyle['--combo-sparkle-c']})`;
+            charStyle.backgroundSize = `${L * 100}% 100%`;
+            charStyle.backgroundPosition = `${(index / (L - 1 || 1)) * 100}% 0`;
+            charStyle.WebkitBackgroundClip = 'text';
+            charStyle.backgroundClip = 'text';
+            charStyle.WebkitTextFillColor = 'transparent';
+            charStyle.color = 'transparent';
+          } else if (effectColorVal) {
+            charStyle.color = effectColorVal;
+          }
+
+          return (
+            <span
+              key={`${char}-${index}`}
+              className="animate-combo-letter-wave"
+              style={charStyle}
+            >
+              {char === ' ' ? '\u00A0' : char}
+            </span>
+          );
+        })}
       </span>
     );
   };
@@ -4402,7 +4422,7 @@ function ProductCombosBlock({
           return (
             <div
               key={combo.id ?? index}
-              className={`group relative flex flex-col overflow-hidden rounded-lg border p-2.5 transition-all hover:border-slate-300 dark:hover:border-slate-600 ${animateClass} ${combo.type === 'mix' ? 'cursor-pointer' : ''}`}
+              className={`group relative flex flex-col overflow-hidden rounded-md border p-3 transition-all hover:border-slate-300 dark:hover:border-slate-700 ${animateClass} ${combo.type === 'mix' ? 'cursor-pointer' : ''}`}
               style={{
                 borderColor: tokens.border,
                 backgroundColor: tokens.surface,
@@ -4415,29 +4435,18 @@ function ProductCombosBlock({
             >
               <div className="flex items-center justify-between gap-2.5 min-w-0 w-full">
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  {/* Icon Box */}
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-transform group-hover:scale-105"
-                    style={{
-                      backgroundColor: tokens.surfaceSoft,
-                      color: tokens.primary,
-                    }}
-                  >
-                    <Icon size={18} className="stroke-[1.75]" />
-                  </div>
-
                   {/* Content */}
                   <div className="min-w-0 flex-1 space-y-0.5">
-                    <div className="font-semibold text-sm leading-snug truncate flex items-center gap-1.5" style={{ color: tokens.headingColor }}>
+                    <div className="font-bold text-[15px] leading-snug flex items-center gap-1.5 flex-wrap" style={{ color: tokens.headingColor }}>
                       {renderEffectText(details.title)}
                       {combo.type === 'mix' && (
-                        <span className="text-[10px] px-1 bg-purple-50 text-purple-600 dark:bg-purple-950/30 dark:text-purple-400 rounded shrink-0">Theo bộ</span>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 rounded-sm font-bold uppercase tracking-wider shrink-0">Theo bộ</span>
                       )}
                     </div>
                     
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
                       {details.conditionText && (
-                        <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 truncate max-w-[220px] md:max-w-[320px]">
+                        <span className="font-medium text-slate-500 dark:text-slate-400 truncate max-w-[240px] md:max-w-[360px]">
                           {details.conditionText}
                         </span>
                       )}
@@ -4445,7 +4454,7 @@ function ProductCombosBlock({
                         <span className="text-slate-300">•</span>
                       )}
                       {details.rewardText && (
-                        <span className="inline-flex items-center font-medium text-emerald-600 shrink-0">
+                        <span className="font-bold text-emerald-600 dark:text-emerald-500 shrink-0">
                           {details.rewardText}
                         </span>
                       )}

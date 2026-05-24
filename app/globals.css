@@ -294,15 +294,18 @@ body {
 }
 
 @keyframes combo-letter-wave {
-  0%, 70%, 100% {
-    transform: translateY(0) scale(1);
+  0%, 60%, 100% {
+    transform: translateY(0);
   }
-  20% {
-    transform: translateY(-0.22em) scale(1.08);
+  25% {
+    transform: translateY(-0.15em);
   }
-  38% {
-    transform: translateY(0.04em) scale(0.98);
-  }
+}
+
+.animate-combo-letter-wave {
+  animation: combo-letter-wave 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  display: inline-block;
+  will-change: transform;
 }
 
 @keyframes combo-fire-text {
@@ -371,11 +374,7 @@ body {
   animation: combo-fire-glow 3.4s ease-in-out infinite;
 }
 
-.animate-combo-letter-wave {
-  animation: combo-letter-wave 1.45s ease-in-out infinite;
-  display: inline-block;
-  will-change: transform;
-}
+
 
 .animate-combo-fire-text {
   animation: combo-fire-text 1.8s ease-in-out infinite;
