@@ -215,6 +215,13 @@ export const productsModule = defineModuleWithRuntime({
       ],
       group: 'digital',
     },
+    {
+      key: 'enableCombos',
+      label: 'Bật hệ thống Combo',
+      type: 'toggle',
+      default: false,
+      group: 'general',
+    },
    ],
 
    settingGroups: [

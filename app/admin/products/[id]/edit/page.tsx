@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { Check, Copy, ExternalLink, Loader2 } from 'lucide-react';
+import { Check, Copy, ExternalLink, Loader2, Trash, Trash2, Plus, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAdminMutationErrorMessage } from '@/app/admin/lib/mutation-error';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '../../../components/ui';
@@ -50,6 +50,11 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   const optionsData = useQuery(api.productOptions.listAll, { limit: 500 });
   const valuesData = useQuery(api.productOptionValues.listAll, { limit: 500 });
   const variantsData = useQuery(api.productVariants.listByProduct, { productId: id as Id<"products"> });
+  const allProducts = useQuery(api.products.listAll, { limit: 500 });
+
+  const allActiveProducts = useMemo(() => {
+    return allProducts?.filter(p => p.status === 'Active') ?? [];
+  }, [allProducts]);
 
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -80,6 +85,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   const [variantSelections, setVariantSelections] = useState<VariantOptionSelection[]>([]);
   const [variantRows, setVariantRows] = useState<VariantRow[]>([]);
   const [productType, setProductType] = useState<'physical' | 'digital'>('physical');
+  const [combos, setCombos] = useState<any[]>([]);
 
   const selectedCategorySlug = useMemo(
     () => categoriesData?.find((category) => category._id === categoryId)?.slug,
@@ -139,6 +145,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     stock: string;
     variantSelections: ReturnType<typeof normalizeVariantSelections>;
     variantRows: ReturnType<typeof normalizeVariantRows>;
+    combos: any[];
   } | null>(null);
 
   const enabledFields = useMemo(() => {
@@ -194,6 +201,12 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     const setting = settingsData?.find(s => s.settingKey === 'defaultImageAspectRatio');
     return resolveProductImageAspectRatio(setting?.value);
   }, [settingsData]);
+  const enableCombosSetting = useMemo(() => {
+    const setting = settingsData?.find(s => s.settingKey === 'enableCombos');
+    return Boolean(setting?.value);
+  }, [settingsData]);
+
+  const showCombosPanel = enableCombosSetting && saleMode === 'contact' && !hasVariants;
 
   const isAffiliateMode = saleMode === 'affiliate';
   const isPriceRequired = saleMode === 'cart';
@@ -259,6 +272,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     stock: stock.trim(),
     variantSelections: normalizedVariantSelections,
     variantRows: normalizedVariantRows,
+    combos,
   }), [
     affiliateLink,
     categoryId,
@@ -285,6 +299,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     stock,
     normalizedVariantSelections,
     normalizedVariantRows,
+    combos,
   ]);
 
   const hasChanges = useMemo(() => {
@@ -424,6 +439,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
       setProductType(productData.productType ?? 'physical');
       setDigitalDeliveryType(productData.digitalDeliveryType ?? 'account');
       setDigitalCredentialsTemplate(productData.digitalCredentialsTemplate ?? {});
+      setCombos((productData as any).combos ?? []);
       initialSnapshotRef.current = {
         affiliateLink: ((productData as { affiliateLink?: string }).affiliateLink ?? '').trim(),
         categoryId: productData.categoryId,
@@ -444,7 +460,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
         metaTitle: (productData.metaTitle ?? '').trim(),
         name: productData.name.trim(),
         price: productData.price.toString(),
-        productType: productData.productType ?? 'physical',
+        productType: productTypeMode === 'both' ? (productData.productType ?? 'physical') : productTypeMode,
         salePrice: productData.salePrice?.toString() ?? '',
         sku: productData.sku.trim(),
         slug: productData.slug.trim(),
@@ -452,6 +468,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
         stock: productData.stock.toString(),
         variantSelections: nextNormalizedVariantSelections,
         variantRows: nextNormalizedVariantRows,
+        combos: (productData as any).combos ?? [],
       };
       setSnapshotVersion((prev) => prev + 1);
       setIsDataLoaded(true);
@@ -625,6 +642,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
         digitalCredentialsTemplate: digitalEnabled && productType === 'digital' && Object.keys(digitalCredentialsTemplate).length > 0
           ? digitalCredentialsTemplate
           : undefined,
+        combos,
       });
       const persistedSnapshot = {
         ...currentSnapshot,
@@ -634,6 +652,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
         htmlRender: htmlRender.trim(),
         metaDescription: resolvedMetaDescriptionValue,
         metaTitle: resolvedMetaTitleValue,
+        combos,
       };
       if (enabledFields.has('metaTitle')) {
         setMetaTitle(resolvedMetaTitleValue);
@@ -949,6 +968,470 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
                       setVariantRows(variants);
                     }}
                   />
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {showCombosPanel && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={16} className="text-orange-500 shrink-0" />
+                  <div>
+                    <CardTitle className="text-base">Cấu hình Combo</CardTitle>
+                    <p className="text-xs text-slate-500 mt-0.5">Để trống giá combo thì trang sản phẩm sẽ hiện "Liên hệ".</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setCombos(prev => [
+                        ...prev,
+                        {
+                          name: '',
+                          type: 'standard',
+                          standardConfig: {
+                            minQty: 2,
+                            rewardType: 'discount_percent',
+                            rewardValue: 10,
+                          }
+                        }
+                      ]);
+                    }}
+                    className="gap-1"
+                  >
+                    <Plus size={14} /> Thêm combo thường
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setCombos(prev => [
+                        ...prev,
+                        {
+                          name: '',
+                          type: 'mix',
+                          mixConfig: {
+                            items: [],
+                            rewardType: 'discount_percent',
+                            rewardValue: 10,
+                          }
+                        }
+                      ]);
+                    }}
+                    className="gap-1"
+                  >
+                    <Plus size={14} /> Thêm combo mix
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {combos.length === 0 ? (
+                  <div className="text-center py-6 text-slate-400 text-sm">
+                    Chưa có cấu hình combo nào cho sản phẩm này.
+                  </div>
+                ) : (
+                  <div className="space-y-6 divide-y divide-slate-100 dark:divide-slate-800">
+                    {combos.map((combo, index) => (
+                      <div key={index} className={`space-y-4 ${index > 0 ? 'pt-6' : ''}`}>
+                        <div className="flex gap-4 items-start">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                combo.type === 'standard' 
+                                  ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400' 
+                                  : 'bg-purple-50 text-purple-600 dark:bg-purple-950/30 dark:text-purple-400'
+                              }`}>
+                                {combo.type === 'standard' ? 'Combo thường' : 'Combo mix'}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Tên combo (Tùy chọn)</Label>
+                                <Input
+                                  value={combo.name}
+                                  onChange={(e) => {
+                                    const next = [...combos];
+                                    next[index].name = e.target.value;
+                                    setCombos(next);
+                                  }}
+                                  placeholder="VD: Mua 5 chai nha, Set Quà Tết"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Giá combo (VND - Tùy chọn)</Label>
+                                <Input
+                                  type="number"
+                                  value={combo.price ?? ''}
+                                  onChange={(e) => {
+                                    const next = [...combos];
+                                    next[index].price = e.target.value ? Number(e.target.value) : undefined;
+                                    setCombos(next);
+                                  }}
+                                  placeholder="Liên hệ"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 mt-6 shrink-0"
+                            onClick={() => {
+                              setCombos(prev => prev.filter((_, i) => i !== index));
+                            }}
+                            title="Xóa combo"
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
+
+                        {/* Cấu hình chi tiết cho từng loại */}
+                        {combo.type === 'standard' && combo.standardConfig && (
+                          <div className="pl-4 border-l-2 border-slate-100 dark:border-slate-800 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Số lượng mua tối thiểu <span className="text-red-500">*</span></Label>
+                                <Input
+                                  type="number"
+                                  value={combo.standardConfig.minQty}
+                                  onChange={(e) => {
+                                    const next = [...combos];
+                                    next[index].standardConfig.minQty = Math.max(1, Number(e.target.value));
+                                    setCombos(next);
+                                  }}
+                                  min={1}
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Hình thức ưu đãi <span className="text-red-500">*</span></Label>
+                                <select
+                                  value={combo.standardConfig.rewardType}
+                                  onChange={(e) => {
+                                    const next = [...combos];
+                                    next[index].standardConfig.rewardType = e.target.value;
+                                    if (e.target.value === 'gift_self') {
+                                      next[index].standardConfig.giftQty = 1;
+                                      next[index].standardConfig.giftProductId = undefined;
+                                      next[index].standardConfig.rewardValue = undefined;
+                                    } else if (e.target.value === 'gift_other') {
+                                      next[index].standardConfig.giftQty = 1;
+                                      next[index].standardConfig.rewardValue = undefined;
+                                    } else {
+                                      next[index].standardConfig.rewardValue = 10;
+                                      next[index].standardConfig.giftProductId = undefined;
+                                      next[index].standardConfig.giftQty = undefined;
+                                    }
+                                    setCombos(next);
+                                  }}
+                                  className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                                >
+                                  <option value="discount_percent">Giảm giá theo %</option>
+                                  <option value="discount_amount">Giảm số tiền cụ thể</option>
+                                  <option value="gift_self">Tặng thêm chính sản phẩm này</option>
+                                  <option value="gift_other">Tặng sản phẩm khác</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* Cấu hình reward value */}
+                            {(combo.standardConfig.rewardType === 'discount_percent' || combo.standardConfig.rewardType === 'discount_amount') && (
+                              <div className="space-y-1">
+                                <Label className="text-xs">
+                                  Mức giảm giá{' '}
+                                  {combo.standardConfig.rewardType === 'discount_percent' ? '(%)' : '(VND)'}
+                                </Label>
+                                <Input
+                                  type="number"
+                                  value={combo.standardConfig.rewardValue ?? ''}
+                                  onChange={(e) => {
+                                    const next = [...combos];
+                                    next[index].standardConfig.rewardValue = Number(e.target.value);
+                                    setCombos(next);
+                                  }}
+                                  min={1}
+                                  max={combo.standardConfig.rewardType === 'discount_percent' ? 100 : undefined}
+                                  required
+                                />
+                              </div>
+                            )}
+
+                            {/* Tặng chính sản phẩm này */}
+                            {combo.standardConfig.rewardType === 'gift_self' && (
+                              <div className="space-y-1">
+                                <Label className="text-xs">Số lượng tặng <span className="text-red-500">*</span></Label>
+                                <Input
+                                  type="number"
+                                  value={combo.standardConfig.giftQty ?? 1}
+                                  onChange={(e) => {
+                                    const next = [...combos];
+                                    next[index].standardConfig.giftQty = Math.max(1, Number(e.target.value));
+                                    setCombos(next);
+                                  }}
+                                  min={1}
+                                  required
+                                />
+                              </div>
+                            )}
+
+                            {/* Tặng sản phẩm khác */}
+                            {combo.standardConfig.rewardType === 'gift_other' && (
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Sản phẩm tặng kèm <span className="text-red-500">*</span></Label>
+                                  <select
+                                    value={combo.standardConfig.giftProductId ?? ''}
+                                    onChange={(e) => {
+                                      const next = [...combos];
+                                      next[index].standardConfig.giftProductId = e.target.value ? e.target.value : undefined;
+                                      setCombos(next);
+                                    }}
+                                    className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                                    required
+                                  >
+                                    <option value="">-- Chọn sản phẩm tặng --</option>
+                                    {allActiveProducts.map((p: any) => (
+                                      <option key={p._id} value={p._id}>{p.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Số lượng tặng <span className="text-red-500">*</span></Label>
+                                  <Input
+                                    type="number"
+                                    value={combo.standardConfig.giftQty ?? 1}
+                                    onChange={(e) => {
+                                      const next = [...combos];
+                                      next[index].standardConfig.giftQty = Math.max(1, Number(e.target.value));
+                                      setCombos(next);
+                                    }}
+                                    min={1}
+                                    required
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Combo Mix */}
+                        {combo.type === 'mix' && combo.mixConfig && (
+                          <div className="pl-4 border-l-2 border-slate-100 dark:border-slate-800 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Số lượng của sản phẩm này trong combo <span className="text-red-500">*</span></Label>
+                                <Input
+                                  type="number"
+                                  value={combo.mixConfig.currentProductQty ?? 1}
+                                  onChange={(e) => {
+                                    const next = [...combos];
+                                    next[index].mixConfig.currentProductQty = Math.max(1, Number(e.target.value));
+                                    setCombos(next);
+                                  }}
+                                  min={1}
+                                  required
+                                />
+                              </div>
+                              <div className="flex items-center gap-2 mt-6">
+                                <input
+                                  type="checkbox"
+                                  id={`sync-combo-${index}`}
+                                  checked={combo.isSynced ?? false}
+                                  onChange={(e) => {
+                                    const next = [...combos];
+                                    next[index].isSynced = e.target.checked;
+                                    if (e.target.checked && !next[index].syncId) {
+                                      next[index].syncId = 'sync-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                                    }
+                                    setCombos(next);
+                                  }}
+                                  className="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                                />
+                                <Label htmlFor={`sync-combo-${index}`} className="text-xs font-medium cursor-pointer">
+                                  Đồng bộ Combo sang các sản phẩm kèm
+                                </Label>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <Label className="text-xs font-semibold">Sản phẩm mua kèm thêm (Tối đa 5 sản phẩm)</Label>
+                                {(combo.mixConfig.items?.length ?? 0) < 5 && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs gap-1"
+                                    onClick={() => {
+                                      const next = [...combos];
+                                      const currentItems = next[index].mixConfig.items || [];
+                                      next[index].mixConfig.items = [
+                                        ...currentItems,
+                                        { productId: '', quantity: 1 }
+                                      ];
+                                      setCombos(next);
+                                    }}
+                                  >
+                                    <Plus size={12} /> Thêm sản phẩm kèm
+                                  </Button>
+                                )}
+                              </div>
+                              
+                              {(combo.mixConfig.items?.length ?? 0) === 0 ? (
+                                <p className="text-xs text-slate-400">Chưa chọn sản phẩm kèm nào. Vui lòng bấm thêm.</p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {combo.mixConfig.items.map((item: any, itemIndex: number) => (
+                                    <div key={itemIndex} className="flex gap-2 items-center">
+                                      <select
+                                        value={item.productId}
+                                        onChange={(e) => {
+                                          const next = [...combos];
+                                          next[index].mixConfig.items[itemIndex].productId = e.target.value;
+                                          setCombos(next);
+                                        }}
+                                        className="flex-1 h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1 text-xs"
+                                        required
+                                      >
+                                        <option value="">-- Chọn sản phẩm --</option>
+                                        {allActiveProducts
+                                          .filter((p: any) => p._id !== id) // không chọn chính nó
+                                          .map((p: any) => (
+                                            <option key={p._id} value={p._id}>{p.name}</option>
+                                          ))}
+                                      </select>
+                                      <div className="w-20 shrink-0">
+                                        <Input
+                                          type="number"
+                                          value={item.quantity}
+                                          onChange={(e) => {
+                                            const next = [...combos];
+                                            next[index].mixConfig.items[itemIndex].quantity = Math.max(1, Number(e.target.value));
+                                            setCombos(next);
+                                          }}
+                                          min={1}
+                                          className="h-9 text-xs"
+                                          placeholder="SL"
+                                          required
+                                        />
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-9 w-9 text-slate-400 hover:text-red-500 shrink-0"
+                                        onClick={() => {
+                                          const next = [...combos];
+                                          next[index].mixConfig.items = next[index].mixConfig.items.filter((_: any, i: number) => i !== itemIndex);
+                                          setCombos(next);
+                                        }}
+                                      >
+                                        <Trash size={14} />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Hình thức ưu đãi <span className="text-red-500">*</span></Label>
+                                <select
+                                  value={combo.mixConfig.rewardType}
+                                  onChange={(e) => {
+                                    const next = [...combos];
+                                    next[index].mixConfig.rewardType = e.target.value;
+                                    if (e.target.value === 'gift_other') {
+                                      next[index].mixConfig.giftQty = 1;
+                                      next[index].mixConfig.rewardValue = undefined;
+                                    } else {
+                                      next[index].mixConfig.rewardValue = 10;
+                                      next[index].mixConfig.giftProductId = undefined;
+                                      next[index].mixConfig.giftQty = undefined;
+                                    }
+                                    setCombos(next);
+                                  }}
+                                  className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                                >
+                                  <option value="discount_percent">Giảm giá theo %</option>
+                                  <option value="discount_amount">Giảm số tiền cụ thể</option>
+                                  <option value="gift_other">Tặng sản phẩm khác</option>
+                                </select>
+                              </div>
+
+                              {/* Cấu hình reward value */}
+                              {(combo.mixConfig.rewardType === 'discount_percent' || combo.mixConfig.rewardType === 'discount_amount') && (
+                                <div className="space-y-1">
+                                  <Label className="text-xs">
+                                    Mức giảm giá{' '}
+                                    {combo.mixConfig.rewardType === 'discount_percent' ? '(%)' : '(VND)'}
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    value={combo.mixConfig.rewardValue ?? ''}
+                                    onChange={(e) => {
+                                      const next = [...combos];
+                                      next[index].mixConfig.rewardValue = Number(e.target.value);
+                                      setCombos(next);
+                                    }}
+                                    min={1}
+                                    max={combo.mixConfig.rewardType === 'discount_percent' ? 100 : undefined}
+                                    required
+                                  />
+                                </div>
+                              )}
+
+                              {/* Tặng sản phẩm khác */}
+                              {combo.mixConfig.rewardType === 'gift_other' && (
+                                <div className="grid grid-cols-2 gap-4 col-span-2">
+                                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                                    <Label className="text-xs">Sản phẩm tặng kèm <span className="text-red-500">*</span></Label>
+                                    <select
+                                      value={combo.mixConfig.giftProductId ?? ''}
+                                      onChange={(e) => {
+                                        const next = [...combos];
+                                        next[index].mixConfig.giftProductId = e.target.value ? e.target.value : undefined;
+                                        setCombos(next);
+                                      }}
+                                      className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                                      required
+                                    >
+                                      <option value="">-- Chọn sản phẩm tặng --</option>
+                                      {allActiveProducts.map((p: any) => (
+                                        <option key={p._id} value={p._id}>{p.name}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                                    <Label className="text-xs">Số lượng tặng <span className="text-red-500">*</span></Label>
+                                    <Input
+                                      type="number"
+                                      value={combo.mixConfig.giftQty ?? 1}
+                                      onChange={(e) => {
+                                        const next = [...combos];
+                                        next[index].mixConfig.giftQty = Math.max(1, Number(e.target.value));
+                                        setCombos(next);
+                                      }}
+                                      min={1}
+                                      required
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>

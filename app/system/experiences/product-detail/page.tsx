@@ -666,6 +666,7 @@ export default function ProductDetailExperiencePage() {
     const base: { value: ProductDetailElementColorChoice; label: string }[] = [
       { value: 'white', label: 'Trắng' },
       { value: 'black', label: 'Đen' },
+      { value: 'red', label: 'Đỏ' },
       { value: 'primary', label: 'Màu chính' },
     ];
     if (colorMode === 'dual') {

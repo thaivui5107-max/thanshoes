@@ -282,7 +282,7 @@ const PRODUCTS_MODULE_HELP_MAP: Record<string, string> = {
   fields_categories: 'BẬT/TẮT TRƯỜNG DỮ LIỆU DANH MỤC: Lựa chọn các trường thông tin đặc thù của danh mục nào được phép sử dụng (ví dụ: Mô tả ngắn, Bài viết tư vấn chân trang, Chính sách nối đuôi sản phẩm, FAQ danh mục...).'
 };
 
-function ConfigTab({ config, moduleData, isReadOnly, localFeatures, localFields, localCategoryFields, localSettings, colorClasses, onToggleFeature, onToggleField, onToggleCategoryField, onSettingChange }: {
+export function ConfigTab({ config, moduleData, isReadOnly, localFeatures, localFields, localCategoryFields, localSettings, colorClasses, onToggleFeature, onToggleField, onToggleCategoryField, onSettingChange }: {
    config: ModuleDefinition;
    moduleData: { isCore?: boolean; enabled?: boolean } | null | undefined;
    isReadOnly: boolean;

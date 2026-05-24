@@ -24,6 +24,7 @@ import {
   Minus,
   Phone,
   Plus,
+  Package,
   RotateCcw,
   Share2,
   Shield,
@@ -37,6 +38,9 @@ import {
   Youtube,
   Send,
   Mail,
+  Percent,
+  Tag,
+  Sparkles,
 } from 'lucide-react';
 import { CommentsPreview } from './DetailPreview';
 import {
@@ -837,6 +841,8 @@ export function ProductDetailPreview({
                   comboAnimateType={comboAnimateType}
                   comboEffectColor={comboEffectColor}
                   comboBadgeColors={comboBadgeColors}
+                  currentProductName={productName}
+                  currentProductImage={PREVIEW_IMAGES[0]}
                 />
               )}
 
@@ -1111,6 +1117,8 @@ export function ProductDetailPreview({
                     comboAnimateType={comboAnimateType}
                     comboEffectColor={comboEffectColor}
                     comboBadgeColors={comboBadgeColors}
+                    currentProductName={productName}
+                    currentProductImage={PREVIEW_IMAGES[0]}
                   />
                 )}
 
@@ -1326,6 +1334,8 @@ export function ProductDetailPreview({
                     comboAnimateType={comboAnimateType}
                     comboEffectColor={comboEffectColor}
                     comboBadgeColors={comboBadgeColors}
+                    currentProductName={productName}
+                    currentProductImage={PREVIEW_IMAGES[0]}
                   />
                 )}
 
@@ -1468,6 +1478,7 @@ const MOCK_COMBOS = [
     price: 35500000,
     type: 'mix',
     mixConfig: {
+      currentProductQty: 1,
       items: [
         { productId: 'mock-charger', quantity: 1 }
       ],
@@ -1477,8 +1488,8 @@ const MOCK_COMBOS = [
   }
 ];
 
-const MOCK_PRODUCTS_MAP = new Map([
-  ['mock-charger', { name: 'Củ sạc nhanh Type-C 20W' }]
+const MOCK_PRODUCTS_MAP = new Map<string, any>([
+  ['mock-charger', { name: 'Củ sạc nhanh Type-C 20W', image: '' }]
 ]);
 
 function PreviewCombosBlock({
@@ -1488,6 +1499,8 @@ function PreviewCombosBlock({
   comboAnimateType = 'none',
   comboEffectColor = 'gradient-1',
   comboBadgeColors,
+  currentProductName,
+  currentProductImage,
 }: {
   combos: typeof MOCK_COMBOS;
   comboProductsMap: typeof MOCK_PRODUCTS_MAP;
@@ -1495,41 +1508,82 @@ function PreviewCombosBlock({
   comboAnimateType?: string;
   comboEffectColor?: 'black' | 'white' | 'red' | 'primary' | 'secondary' | 'gradient-1' | 'gradient-2' | 'gradient-3';
   comboBadgeColors: ReturnType<typeof resolveProductDetailElementColor>;
+  currentProductName: string;
+  currentProductImage?: string;
 }) {
+  if (!combos || combos.length === 0) return null;
+
+  const [expandedCombos, setExpandedCombos] = useState<Record<number, boolean>>({});
+
   let animateClass = '';
   let titleEffectClass = '';
   const titleEffectStyle: React.CSSProperties & Record<string, string> = {};
+
   const applyEffectColor = () => {
+    let colorVal = '';
+    let isGradient = false;
+
     if (comboEffectColor === 'black') {
       titleEffectStyle['--combo-sparkle-a'] = '#020617';
       titleEffectStyle['--combo-sparkle-b'] = '#64748b';
-      titleEffectStyle['--combo-sparkle-c'] = '#f8fafc';
+      titleEffectStyle['--combo-sparkle-c'] = '#cbd5e1';
+      colorVal = '#020617';
     } else if (comboEffectColor === 'white') {
       titleEffectStyle['--combo-sparkle-a'] = '#f8fafc';
       titleEffectStyle['--combo-sparkle-b'] = '#ffffff';
       titleEffectStyle['--combo-sparkle-c'] = '#cbd5e1';
+      colorVal = '#ffffff';
     } else if (comboEffectColor === 'red') {
       titleEffectStyle['--combo-sparkle-a'] = '#dc2626';
       titleEffectStyle['--combo-sparkle-b'] = '#f97316';
       titleEffectStyle['--combo-sparkle-c'] = '#991b1b';
+      colorVal = '#dc2626';
     } else if (comboEffectColor === 'primary') {
       titleEffectStyle['--combo-sparkle-a'] = tokens.primary;
       titleEffectStyle['--combo-sparkle-b'] = tokens.secondary;
       titleEffectStyle['--combo-sparkle-c'] = comboBadgeColors.text;
+      colorVal = tokens.primary;
     } else if (comboEffectColor === 'secondary') {
       titleEffectStyle['--combo-sparkle-a'] = tokens.secondary;
       titleEffectStyle['--combo-sparkle-b'] = tokens.primary;
       titleEffectStyle['--combo-sparkle-c'] = comboBadgeColors.text;
+      colorVal = tokens.secondary;
     } else if (comboEffectColor === 'gradient-2') {
       titleEffectStyle['--combo-sparkle-a'] = '#92400e';
       titleEffectStyle['--combo-sparkle-b'] = '#f59e0b';
       titleEffectStyle['--combo-sparkle-c'] = '#fde68a';
+      isGradient = true;
     } else if (comboEffectColor === 'gradient-3') {
       titleEffectStyle['--combo-sparkle-a'] = '#065f46';
       titleEffectStyle['--combo-sparkle-b'] = '#10b981';
       titleEffectStyle['--combo-sparkle-c'] = '#a7f3d0';
+      isGradient = true;
+    } else {
+      // gradient-1 (default)
+      titleEffectStyle['--combo-sparkle-a'] = '#6366f1';
+      titleEffectStyle['--combo-sparkle-b'] = '#ec4899';
+      titleEffectStyle['--combo-sparkle-c'] = '#f59e0b';
+      isGradient = true;
+    }
+
+    if (isGradient) {
+      titleEffectStyle.backgroundImage = `linear-gradient(90deg, ${titleEffectStyle['--combo-sparkle-a']}, ${titleEffectStyle['--combo-sparkle-b']}, ${titleEffectStyle['--combo-sparkle-c']})`;
+      titleEffectStyle.WebkitBackgroundClip = 'text';
+      titleEffectStyle.backgroundClip = 'text';
+      titleEffectStyle.WebkitTextFillColor = 'transparent';
+      titleEffectStyle.color = 'transparent';
+    } else if (colorVal) {
+      titleEffectStyle.backgroundImage = 'none';
+      titleEffectStyle.WebkitBackgroundClip = 'initial';
+      titleEffectStyle.backgroundClip = 'initial';
+      titleEffectStyle.WebkitTextFillColor = 'initial';
+      titleEffectStyle.color = colorVal;
     }
   };
+
+  // Luôn áp dụng màu hiệu ứng để mọi hiệu ứng chữ đều nhận màu
+  applyEffectColor();
+
   if (comboAnimateType === 'luxury-sheen' || comboAnimateType === 'pulse' || comboAnimateType === 'bounce') {
     animateClass = 'animate-combo-luxury-sheen';
   } else if (comboAnimateType === 'typing') {
@@ -1542,24 +1596,27 @@ function PreviewCombosBlock({
   } else if (comboAnimateType === 'sparkle' || comboAnimateType.startsWith('sparkle-')) {
     animateClass = 'animate-combo-sparkle';
     titleEffectClass = 'animate-combo-sparkle-text';
-    applyEffectColor();
   } else if (comboAnimateType === 'text-highlight') {
     animateClass = 'animate-combo-text-highlight';
   } else if (comboAnimateType === 'border-rainbow') {
     animateClass = 'animate-combo-border-rainbow';
   }
+
   const renderEffectText = (text: string) => {
     if (comboAnimateType !== 'letter-wave') {
       return <span className={`combo-title-text ${titleEffectClass}`.trim()} style={titleEffectStyle}>{text}</span>;
     }
 
     return (
-      <span className="combo-title-text inline-flex flex-wrap" style={titleEffectStyle}>
+      <span className="combo-title-text inline-flex flex-wrap">
         {Array.from(text).map((char, index) => (
           <span
             key={`${char}-${index}`}
             className="animate-combo-letter-wave"
-            style={{ animationDelay: `${index * 0.06}s` }}
+            style={{
+              ...titleEffectStyle,
+              animationDelay: `${index * 0.06}s`
+            }}
           >
             {char === ' ' ? '\u00A0' : char}
           </span>
@@ -1567,37 +1624,31 @@ function PreviewCombosBlock({
       </span>
     );
   };
-  const [emblaRef, emblaApi] = useEmblaCarousel({ align: 'start', axis: 'y', loop: false });
-  const [canScrollPrev, setCanScrollPrev] = useState(false);
-  const [canScrollNext, setCanScrollNext] = useState(false);
 
-  useEffect(() => {
-    if (!emblaApi) return;
-
-    const onSelect = () => {
-      setCanScrollPrev(emblaApi.canScrollPrev());
-      setCanScrollNext(emblaApi.canScrollNext());
-    };
-
-    emblaApi.on('select', onSelect);
-    emblaApi.on('reInit', onSelect);
-    onSelect();
-
-    return () => {
-      emblaApi.off('select', onSelect);
-      emblaApi.off('reInit', onSelect);
-    };
-  }, [emblaApi]);
-
-  const getComboMeta = (combo: typeof MOCK_COMBOS[number]) => {
-    let conditionLabel = '';
-    let rewardLabel = '';
+  const getComboDetails = (combo: any) => {
+    let title = typeof combo.name === 'string' ? combo.name.trim() : '';
+    let conditionText = '';
+    let rewardText = '';
+    let iconType: 'gift' | 'percent' | 'amount' = 'gift';
 
     if (combo.type === 'standard') {
       const cfg = combo.standardConfig;
-      conditionLabel = `Mua từ ${cfg?.minQty || 1} sản phẩm`;
-      if (cfg?.rewardType === 'gift_self') {
-        rewardLabel = `Tặng thêm ${cfg.giftQty || 1} sản phẩm này`;
+      const minQty = cfg?.minQty || 1;
+      conditionText = `Mua từ ${minQty} sản phẩm`;
+      
+      if (cfg?.rewardType === 'discount_percent') {
+        rewardText = `Giảm ${cfg.rewardValue}%`;
+        iconType = 'percent';
+      } else if (cfg?.rewardType === 'discount_amount') {
+        rewardText = `Giảm ${formatVND(cfg.rewardValue || 0)}`;
+        iconType = 'amount';
+      } else if (cfg?.rewardType === 'gift_self') {
+        rewardText = `Tặng thêm ${cfg.giftQty || 1} sản phẩm này`;
+        iconType = 'gift';
+      } else if (cfg?.rewardType === 'gift_other' && cfg.giftProductId) {
+        const giftProduct = comboProductsMap.get(cfg.giftProductId);
+        rewardText = `Tặng kèm ${cfg.giftQty || 1} ${giftProduct?.name || 'Sản phẩm khác'}`;
+        iconType = 'gift';
       }
     } else if (combo.type === 'mix') {
       const cfg = combo.mixConfig;
@@ -1605,106 +1656,186 @@ function PreviewCombosBlock({
         const p = comboProductsMap.get(item.productId);
         return `${item.quantity}x ${p?.name || 'sản phẩm đi kèm'}`;
       }).join(', ');
-      conditionLabel = itemsLabel ? `Mua kèm ${itemsLabel}` : 'Mua kèm sản phẩm';
-      if (cfg?.rewardType === 'discount_amount') {
-        rewardLabel = `Giảm ${formatVND(cfg.rewardValue || 0)}`;
+      
+      const curQty = cfg?.currentProductQty || 1;
+      conditionText = itemsLabel 
+        ? `Mua ${curQty} sản phẩm này kèm ${itemsLabel}` 
+        : `Mua ${curQty} sản phẩm này`;
+      
+      if (cfg?.rewardType === 'discount_percent') {
+        rewardText = `Giảm ${cfg.rewardValue}%`;
+        iconType = 'percent';
+      } else if (cfg?.rewardType === 'discount_amount') {
+        rewardText = `Giảm ${formatVND(cfg.rewardValue || 0)}`;
+        iconType = 'amount';
+      } else if (cfg?.rewardType === 'gift_other' && cfg.giftProductId) {
+        const giftProduct = comboProductsMap.get(cfg.giftProductId);
+        rewardText = `Tặng kèm ${cfg.giftQty || 1} ${giftProduct?.name || 'Sản phẩm khác'}`;
+        iconType = 'gift';
       }
     }
 
+    if (!title) {
+      title = combo.type === 'mix' ? 'Combo trọn bộ' : 'Combo mua nhiều';
+    }
+
     return {
-      conditionLabel,
-      name: typeof combo.name === 'string' ? combo.name.trim() : '',
-      priceLabel: combo.price ? formatVND(combo.price) : 'Liên hệ',
-      rewardLabel,
+      title,
+      conditionText,
+      rewardText,
+      priceText: combo.price ? formatVND(combo.price) : 'Liên hệ',
+      iconType,
     };
   };
 
-  const renderComboCard = (combo: typeof MOCK_COMBOS[number], index: number) => {
-    const meta = getComboMeta(combo);
-    const mainText = meta.name || meta.conditionLabel || meta.rewardLabel || 'Combo ưu đãi';
-
-    return (
-      <div
-        className={`group relative flex min-h-12 items-center gap-2 overflow-hidden rounded-xl border bg-[var(--surface-color)] px-3 py-2 transition-all hover:shadow-md ${animateClass}`}
-        style={{
-          borderColor: tokens.quantityBorder,
-          '--surface-color': tokens.surface,
-        } as React.CSSProperties}
-      >
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-2 text-xs md:text-sm">
-            <span className="min-w-0 truncate font-semibold" style={{ color: tokens.headingColor }}>
-              {renderEffectText(mainText)}
-            </span>
-            {meta.name && meta.conditionLabel && (
-              <span className="hidden min-w-0 truncate sm:inline" style={{ color: tokens.bodyText }}>
-                {meta.conditionLabel}
-              </span>
-            )}
-            {meta.rewardLabel && (
-              <span
-                className="hidden shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold md:inline-flex"
-                style={{ backgroundColor: tokens.surface, borderColor: comboBadgeColors.border, color: comboBadgeColors.bg === tokens.surface ? comboBadgeColors.text : comboBadgeColors.bg }}
-              >
-                <Gift size={10} />
-                {meta.rewardLabel}
-              </span>
-            )}
-          </div>
-          {meta.name && (meta.conditionLabel || meta.rewardLabel) && (
-            <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] md:hidden" style={{ color: tokens.bodyText }}>
-              {meta.conditionLabel && <span className="truncate">{meta.conditionLabel}</span>}
-              {meta.rewardLabel && <span className="shrink-0">• {meta.rewardLabel}</span>}
-            </div>
-          )}
-        </div>
-        <span
-          className="shrink-0 rounded-full px-2 py-0.5 text-xs font-bold md:text-sm"
-          style={{ backgroundColor: comboBadgeColors.bg, color: comboBadgeColors.text }}
-        >
-          {meta.priceLabel}
-        </span>
-      </div>
-    );
-  };
-  const hasMultipleCombos = combos.length > 1;
-
   return (
-    <div className="relative my-4 rounded-2xl border p-2.5" style={{ borderColor: tokens.divider, backgroundColor: tokens.surfaceMuted }}>
-      <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1 overflow-hidden" ref={emblaRef}>
-          <div className="flex max-h-16 flex-col">
-            {combos.map((combo, index) => (
-              <div key={index} className="min-w-0 flex-[0_0_100%]">
-                {renderComboCard(combo, index)}
+    <div className="mt-2.5 mb-3.5 space-y-2">
+      <div className="text-xs font-bold uppercase tracking-wider" style={{ color: tokens.headingColor }}>
+        Combo ưu đãi đặc biệt
+      </div>
+      <div className="space-y-2">
+        {combos.map((combo, index) => {
+          const details = getComboDetails(combo);
+          const isExpanded = expandedCombos[index] ?? false;
+          
+          let Icon = Gift;
+          if (details.iconType === 'percent') {
+            Icon = Percent;
+          } else if (details.iconType === 'amount') {
+            Icon = Tag;
+          }
+
+          return (
+            <div
+              key={index}
+              className={`group relative flex flex-col overflow-hidden rounded-lg border p-2.5 transition-all hover:border-slate-300 dark:hover:border-slate-600 ${animateClass} ${combo.type === 'mix' ? 'cursor-pointer' : ''}`}
+              style={{
+                borderColor: tokens.border,
+                backgroundColor: tokens.surface,
+              }}
+              onClick={() => {
+                if (combo.type === 'mix') {
+                  setExpandedCombos(prev => ({ ...prev, [index]: !prev[index] }));
+                }
+              }}
+            >
+              <div className="flex items-center justify-between gap-2.5 min-w-0 w-full">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {/* Icon Box */}
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-transform group-hover:scale-105"
+                    style={{
+                      backgroundColor: tokens.surfaceSoft,
+                      color: tokens.primary,
+                    }}
+                  >
+                    <Icon size={18} className="stroke-[1.75]" />
+                  </div>
+
+                  {/* Content */}
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="font-semibold text-sm leading-snug truncate flex items-center gap-1.5" style={{ color: tokens.headingColor }}>
+                      {renderEffectText(details.title)}
+                      {combo.type === 'mix' && (
+                        <span className="text-[10px] px-1 bg-purple-50 text-purple-600 dark:bg-purple-950/30 dark:text-purple-400 rounded shrink-0">Theo bộ</span>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                      {details.conditionText && (
+                        <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 truncate max-w-[220px] md:max-w-[320px]">
+                          {details.conditionText}
+                        </span>
+                      )}
+                      {details.conditionText && details.rewardText && (
+                        <span className="text-slate-300">•</span>
+                      )}
+                      {details.rewardText && (
+                        <span className="inline-flex items-center font-medium text-emerald-600 shrink-0">
+                          {details.rewardText}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Price block */}
+                <div className="flex items-center gap-2 shrink-0 pl-2">
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: tokens.softText }}>
+                      Giá combo
+                    </span>
+                    <span className="text-sm font-bold tracking-tight" style={{ color: tokens.primary }}>
+                      {details.priceText}
+                    </span>
+                  </div>
+                  {combo.type === 'mix' && (
+                    <div className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors ml-1">
+                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </div>
+                  )}
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-        {hasMultipleCombos && (
-          <div className="flex shrink-0 flex-col gap-1">
-            <button
-              type="button"
-              onClick={() => emblaApi?.scrollPrev()}
-              disabled={!canScrollPrev}
-              className="flex h-6 w-6 items-center justify-center rounded-full border text-slate-500 transition disabled:opacity-35"
-              style={{ borderColor: tokens.quantityBorder, backgroundColor: tokens.surface }}
-              aria-label="Combo trước"
-            >
-              <ChevronUp size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => emblaApi?.scrollNext()}
-              disabled={!canScrollNext}
-              className="flex h-6 w-6 items-center justify-center rounded-full border text-slate-500 transition disabled:opacity-35"
-              style={{ borderColor: tokens.quantityBorder, backgroundColor: tokens.surface }}
-              aria-label="Combo sau"
-            >
-              <ChevronDown size={14} />
-            </button>
-          </div>
-        )}
+
+              {/* Danh sách chi tiết các sản phẩm trong Combo Mix */}
+              {combo.type === 'mix' && isExpanded && combo.mixConfig?.items && (
+                <div 
+                  className="mt-2.5 pt-2.5 border-t border-dashed space-y-1.5 text-xs w-full" 
+                  style={{ borderColor: tokens.border }}
+                  onClick={(e) => e.stopPropagation()} // tránh trigger click cha
+                >
+                  <div className="font-semibold text-slate-400 uppercase tracking-wider text-[9px] mb-1">
+                    Danh sách sản phẩm trong combo:
+                  </div>
+                  
+                  {/* Sản phẩm chủ thể hiện tại */}
+                  <div className="flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 p-1.5 rounded gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {currentProductImage ? (
+                        <img src={currentProductImage} alt={currentProductName} className="h-7 w-7 object-cover rounded border shrink-0 bg-white" />
+                      ) : (
+                        <div className="h-7 w-7 rounded border shrink-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                          <Package size={12} />
+                        </div>
+                      )}
+                      <span className="font-medium text-slate-700 dark:text-slate-300 truncate">{currentProductName} <span className="text-[10px] text-slate-400 font-normal">(Sản phẩm này)</span></span>
+                    </div>
+                    <span className="shrink-0 text-slate-500 font-bold px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[10px]">x{combo.mixConfig.currentProductQty || 1}</span>
+                  </div>
+
+                  {/* Các sản phẩm mua kèm thêm */}
+                  {combo.mixConfig.items.map((item: any, idx: number) => {
+                    const pInfo = comboProductsMap.get(item.productId);
+                    return (
+                      <div key={idx} className="flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 p-1.5 rounded gap-2">
+                        {pInfo ? (
+                          <div className="flex items-center gap-2 min-w-0">
+                            {pInfo.image ? (
+                              <img src={pInfo.image} alt={pInfo.name} className="h-7 w-7 object-cover rounded border shrink-0 bg-white" />
+                            ) : (
+                              <div className="h-7 w-7 rounded border shrink-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                                <Package size={12} />
+                              </div>
+                            )}
+                            <span className="font-medium text-slate-700 dark:text-slate-300 truncate">{pInfo.name}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="h-7 w-7 rounded border shrink-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                              <Package size={12} />
+                            </div>
+                            <span className="font-medium text-slate-400 truncate">Sản phẩm không có sẵn</span>
+                          </div>
+                        )}
+                        <span className="shrink-0 text-slate-500 font-bold px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[10px]">x{item.quantity}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

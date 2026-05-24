@@ -19,6 +19,44 @@ import {
   mergeProductsByCategoryAssignments,
 } from "./lib/multiCategory";
 
+const comboItemDoc = v.object({
+  name: v.string(),
+  price: v.optional(v.number()),
+  type: v.union(v.literal("standard"), v.literal("mix")),
+  standardConfig: v.optional(
+    v.object({
+      minQty: v.number(),
+      rewardType: v.union(
+        v.literal("discount_percent"),
+        v.literal("discount_amount"),
+        v.literal("gift_self"),
+        v.literal("gift_other")
+      ),
+      rewardValue: v.optional(v.number()),
+      giftProductId: v.optional(v.id("products")),
+      giftQty: v.optional(v.number()),
+    })
+  ),
+  mixConfig: v.optional(
+    v.object({
+      items: v.array(
+        v.object({
+          productId: v.id("products"),
+          quantity: v.number(),
+        })
+      ),
+      rewardType: v.union(
+        v.literal("discount_percent"),
+        v.literal("discount_amount"),
+        v.literal("gift_other")
+      ),
+      rewardValue: v.optional(v.number()),
+      giftProductId: v.optional(v.id("products")),
+      giftQty: v.optional(v.number()),
+    })
+  ),
+});
+
 const productDoc = v.object({
   _creationTime: v.number(),
   _id: v.id("products"),
@@ -66,6 +104,7 @@ const productDoc = v.object({
   slug: v.string(),
   status: productStatus,
   stock: v.number(),
+  combos: v.optional(v.array(comboItemDoc)),
 });
 
 const productAdminDoc = v.object({
@@ -118,6 +157,7 @@ const productAdminDoc = v.object({
   variantMinPrice: v.optional(v.union(v.number(), v.null())),
   hasPricedActiveVariant: v.optional(v.boolean()),
   hasInvalidVariantComparePrice: v.optional(v.boolean()),
+  combos: v.optional(v.array(comboItemDoc)),
 });
 
 const paginatedProducts = v.object({

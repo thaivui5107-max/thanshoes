@@ -44,6 +44,47 @@ const inlineOptionDoc = v.object({
   valueIds: v.array(v.id("productOptionValues")),
 });
 
+const comboItemDoc = v.object({
+  name: v.string(),
+  price: v.optional(v.number()),
+  type: v.union(v.literal("standard"), v.literal("mix")),
+  syncId: v.optional(v.string()),
+  isSynced: v.optional(v.boolean()),
+  standardConfig: v.optional(
+    v.object({
+      minQty: v.number(),
+      rewardType: v.union(
+        v.literal("discount_percent"),
+        v.literal("discount_amount"),
+        v.literal("gift_self"),
+        v.literal("gift_other")
+      ),
+      rewardValue: v.optional(v.number()),
+      giftProductId: v.optional(v.id("products")),
+      giftQty: v.optional(v.number()),
+    })
+  ),
+  mixConfig: v.optional(
+    v.object({
+      currentProductQty: v.optional(v.number()),
+      items: v.array(
+        v.object({
+          productId: v.id("products"),
+          quantity: v.number(),
+        })
+      ),
+      rewardType: v.union(
+        v.literal("discount_percent"),
+        v.literal("discount_amount"),
+        v.literal("gift_other")
+      ),
+      rewardValue: v.optional(v.number()),
+      giftProductId: v.optional(v.id("products")),
+      giftQty: v.optional(v.number()),
+    })
+  ),
+});
+
 const smartProductArgs = {
   affiliateLink: v.optional(v.string()),
   categoryId: v.id("productCategories"),
@@ -72,6 +113,7 @@ const smartProductArgs = {
   stock: v.optional(v.number()),
   options: v.array(inlineOptionDoc),
   variants: v.array(inlineVariantDoc),
+  combos: v.optional(v.array(comboItemDoc)),
 };
 
 type InlineOptionInput = {
@@ -492,6 +534,7 @@ export const createProductWithVariants = mutation({
       sales: 0,
       hasVariants,
       optionIds: hasVariants ? optionIds : undefined,
+      combos: args.combos,
     });
 
     if (await isMultiCategoryEnabled(ctx, "products")) {
@@ -555,9 +598,91 @@ export const updateProductWithVariants = mutation({
     await assertProductPrice(ctx, args.price, salePrice, hasVariants);
     const optionIds = hasVariants ? await validateOptionSelections(ctx, normalizedOptions) : [];
 
+    async function syncProductCombos(
+      ctx: MutationCtx,
+      currentProductId: Id<"products">,
+      currentProductCombos: any[] | undefined,
+      oldProductCombos: any[] | undefined
+    ) {
+      const oldSyncIds = (oldProductCombos || []).filter((c: any) => c.syncId && c.isSynced).map((c: any) => c.syncId);
+      const newSyncIds = (currentProductCombos || []).filter((c: any) => c.syncId && c.isSynced).map((c: any) => c.syncId);
+      const removedSyncIds = oldSyncIds.filter((id: string) => !newSyncIds.includes(id));
+
+      // 1. Dọn dẹp các combo bị xóa hoặc hủy đồng bộ trên các sản phẩm đi kèm
+      for (const removedSyncId of removedSyncIds) {
+        const oldCombo = (oldProductCombos || []).find((c: any) => c.syncId === removedSyncId);
+        if (oldCombo && oldCombo.mixConfig && oldCombo.mixConfig.items) {
+          const relatedProductIds = oldCombo.mixConfig.items.map((item: any) => item.productId);
+          for (const pId of relatedProductIds) {
+            const pDoc = await ctx.db.get(pId) as any;
+            if (pDoc && pDoc.combos) {
+              const updatedCombos = pDoc.combos.filter((c: any) => c.syncId !== removedSyncId);
+              await ctx.db.patch(pId, { combos: updatedCombos });
+            }
+          }
+        }
+      }
+
+      // 2. Tạo mới hoặc cập nhật các combo mix có bật đồng bộ sang các sản phẩm đi kèm
+      const activeSyncCombos = (currentProductCombos || []).filter((c: any) => c.type === "mix" && c.syncId && c.isSynced);
+      for (const combo of activeSyncCombos) {
+        if (!combo.mixConfig || !combo.mixConfig.items) continue;
+
+        const participants = [
+          { productId: currentProductId, quantity: combo.mixConfig.currentProductQty || 1 },
+          ...combo.mixConfig.items,
+        ];
+
+        for (const part of combo.mixConfig.items) {
+          const pId = part.productId;
+          if (!pId) continue;
+
+          const pDoc = await ctx.db.get(pId) as any;
+          if (!pDoc) continue;
+
+          const itemsForP = participants
+            .filter((item: any) => item.productId !== pId)
+            .map((item: any) => ({ productId: item.productId, quantity: item.quantity }));
+
+          const currentQtyForP = participants.find((item: any) => item.productId === pId)?.quantity || 1;
+
+          const comboForP = {
+            name: combo.name,
+            price: combo.price,
+            type: "mix",
+            syncId: combo.syncId,
+            isSynced: true,
+            mixConfig: {
+              currentProductQty: currentQtyForP,
+              items: itemsForP,
+              rewardType: combo.mixConfig.rewardType,
+              rewardValue: combo.mixConfig.rewardValue,
+              giftProductId: combo.mixConfig.giftProductId,
+              giftQty: combo.mixConfig.giftQty,
+            },
+          };
+
+          const pCombos = pDoc.combos || [];
+          const existingIndex = pCombos.findIndex((c: any) => c.syncId === combo.syncId);
+
+          let updatedCombos = [...pCombos];
+          if (existingIndex >= 0) {
+            updatedCombos[existingIndex] = comboForP;
+          } else {
+            updatedCombos.push(comboForP);
+          }
+
+          await ctx.db.patch(pId, { combos: updatedCombos });
+        }
+      }
+    }
+
     if (args.status && args.status !== product.status) {
       await updateStats(ctx, { old: product.status, new: args.status });
     }
+
+    // Thực hiện đồng bộ combo mix chéo
+    await syncProductCombos(ctx, args.id, args.combos, product.combos);
 
     await ctx.db.patch(args.id, {
       affiliateLink: args.affiliateLink,
@@ -585,6 +710,7 @@ export const updateProductWithVariants = mutation({
       stock: args.stock ?? product.stock,
       hasVariants,
       optionIds: hasVariants ? optionIds : [],
+      combos: args.combos,
     });
 
     if (await isMultiCategoryEnabled(ctx, "products")) {

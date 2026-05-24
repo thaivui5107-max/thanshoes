@@ -315,6 +315,50 @@ export default defineSchema({
       customContent: v.optional(v.string()),
       expiresAt: v.optional(v.number()),
     })),
+    combos: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          price: v.optional(v.number()),
+          type: v.union(v.literal("standard"), v.literal("mix")),
+          syncId: v.optional(v.string()),
+          isSynced: v.optional(v.boolean()),
+          standardConfig: v.optional(
+            v.object({
+              minQty: v.number(),
+              rewardType: v.union(
+                v.literal("discount_percent"),
+                v.literal("discount_amount"),
+                v.literal("gift_self"),
+                v.literal("gift_other")
+              ),
+              rewardValue: v.optional(v.number()),
+              giftProductId: v.optional(v.id("products")),
+              giftQty: v.optional(v.number()),
+            })
+          ),
+          mixConfig: v.optional(
+            v.object({
+              currentProductQty: v.optional(v.number()),
+              items: v.array(
+                v.object({
+                  productId: v.id("products"),
+                  quantity: v.number(),
+                })
+              ),
+              rewardType: v.union(
+                v.literal("discount_percent"),
+                v.literal("discount_amount"),
+                v.literal("gift_other")
+              ),
+              rewardValue: v.optional(v.number()),
+              giftProductId: v.optional(v.id("products")),
+              giftQty: v.optional(v.number()),
+            })
+          ),
+        })
+      )
+    ),
   })
     .index("by_sku", ["sku"])
     .index("by_slug", ["slug"])

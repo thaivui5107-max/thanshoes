@@ -48,7 +48,7 @@ const getAPCALc = (text: string, background: string) => {
 };
 
 export type ProductDetailColorMode = 'single' | 'dual';
-export type ProductDetailElementColorChoice = 'white' | 'black' | 'primary' | 'secondary';
+export type ProductDetailElementColorChoice = 'white' | 'black' | 'primary' | 'secondary' | 'red';
 
 export type ProductDetailElementResolvedColors = {
   bg: string;
@@ -104,6 +104,10 @@ export const resolveProductDetailElementColor = (
 
   if (choice === 'black') {
     return { bg: '#111111', text: '#ffffff', border: '#111111' };
+  }
+
+  if (choice === 'red') {
+    return { bg: '#dc2626', text: '#ffffff', border: '#dc2626' };
   }
 
   return { bg: tokens.surface, text: tokens.headingColor, border: tokens.border };

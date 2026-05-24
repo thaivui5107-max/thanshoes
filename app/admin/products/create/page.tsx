@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAdminMutationErrorMessage } from '@/app/admin/lib/mutation-error';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '../../components/ui';
@@ -146,6 +146,11 @@ function ProductCreateContent() {
       return value;
     }
     return 'cart';
+  }, [settingsData]);
+
+  const enableCombos = useMemo(() => {
+    const setting = settingsData?.find(s => s.settingKey === 'enableCombos');
+    return setting?.value === true;
   }, [settingsData]);
 
   const enableImageCrop = useMemo(() => {
@@ -638,6 +643,23 @@ function ProductCreateContent() {
                     }}
                   />
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {enableCombos && saleMode === 'contact' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles size={16} className="text-orange-500 shrink-0" />
+                  Combo ưu đãi
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="p-3.5 rounded-lg border border-orange-100 bg-orange-50/50 text-orange-800 text-xs dark:border-orange-950/20 dark:bg-orange-950/10 dark:text-orange-400">
+                  <p className="font-semibold mb-1">Cấu hình Combo</p>
+                  <p>Hệ thống Combo chỉ có thể cấu hình sau khi sản phẩm được tạo thành công. Vui lòng tạo sản phẩm trước, sau đó truy cập trang chỉnh sửa sản phẩm để thiết lập Combo.</p>
+                </div>
               </CardContent>
             </Card>
           )}
