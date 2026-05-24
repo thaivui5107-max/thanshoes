@@ -75,7 +75,8 @@ type ProductDetailPreviewProps = {
   relatedProductsMode?: 'fixed' | 'infiniteScroll' | 'pagination';
   relatedProductsPerPage?: number;
   enableCombos?: boolean;
-  comboAnimateType?: 'none' | 'luxury-sheen' | 'typing' | 'letter-wave' | 'fire' | 'sparkle-gradient' | 'sparkle-black' | 'sparkle-gold' | 'sparkle-emerald' | 'sparkle-red' | 'sparkle-primary' | 'sparkle-secondary' | 'pulse' | 'bounce' | 'text-highlight' | 'border-rainbow';
+  comboAnimateType?: 'none' | 'luxury-sheen' | 'typing' | 'letter-wave' | 'fire' | 'sparkle' | 'sparkle-gradient' | 'sparkle-black' | 'sparkle-gold' | 'sparkle-emerald' | 'sparkle-red' | 'sparkle-primary' | 'sparkle-secondary' | 'pulse' | 'bounce' | 'text-highlight' | 'border-rainbow';
+  comboEffectColor?: 'black' | 'white' | 'red' | 'primary' | 'secondary' | 'gradient-1' | 'gradient-2' | 'gradient-3';
   accentColors?: {
     categoryBadge?: ProductDetailElementColorChoice;
     discountBadge?: ProductDetailElementColorChoice;
@@ -541,6 +542,7 @@ export function ProductDetailPreview({
   relatedProductsPerPage = 8,
   enableCombos = true,
   comboAnimateType = 'none',
+  comboEffectColor = 'gradient-1',
   accentColors,
   showSocialButtons = false,
   socialButtons = [],
@@ -832,6 +834,7 @@ export function ProductDetailPreview({
                   comboProductsMap={MOCK_PRODUCTS_MAP}
                   tokens={tokens}
                   comboAnimateType={comboAnimateType}
+                  comboEffectColor={comboEffectColor}
                   comboBadgeColors={comboBadgeColors}
                 />
               )}
@@ -1105,6 +1108,7 @@ export function ProductDetailPreview({
                     comboProductsMap={MOCK_PRODUCTS_MAP}
                     tokens={tokens}
                     comboAnimateType={comboAnimateType}
+                    comboEffectColor={comboEffectColor}
                     comboBadgeColors={comboBadgeColors}
                   />
                 )}
@@ -1319,6 +1323,7 @@ export function ProductDetailPreview({
                     comboProductsMap={MOCK_PRODUCTS_MAP}
                     tokens={tokens}
                     comboAnimateType={comboAnimateType}
+                    comboEffectColor={comboEffectColor}
                     comboBadgeColors={comboBadgeColors}
                   />
                 )}
@@ -1480,17 +1485,50 @@ function PreviewCombosBlock({
   comboProductsMap,
   tokens,
   comboAnimateType = 'none',
+  comboEffectColor = 'gradient-1',
   comboBadgeColors,
 }: {
   combos: typeof MOCK_COMBOS;
   comboProductsMap: typeof MOCK_PRODUCTS_MAP;
   tokens: ReturnType<typeof getProductDetailColors>;
   comboAnimateType?: string;
+  comboEffectColor?: 'black' | 'white' | 'red' | 'primary' | 'secondary' | 'gradient-1' | 'gradient-2' | 'gradient-3';
   comboBadgeColors: ReturnType<typeof resolveProductDetailElementColor>;
 }) {
   let animateClass = '';
   let titleEffectClass = '';
   const titleEffectStyle: React.CSSProperties & Record<string, string> = {};
+  const applyEffectColor = () => {
+    if (comboEffectColor === 'black') {
+      titleEffectStyle['--combo-sparkle-a'] = '#020617';
+      titleEffectStyle['--combo-sparkle-b'] = '#64748b';
+      titleEffectStyle['--combo-sparkle-c'] = '#f8fafc';
+    } else if (comboEffectColor === 'white') {
+      titleEffectStyle['--combo-sparkle-a'] = '#f8fafc';
+      titleEffectStyle['--combo-sparkle-b'] = '#ffffff';
+      titleEffectStyle['--combo-sparkle-c'] = '#cbd5e1';
+    } else if (comboEffectColor === 'red') {
+      titleEffectStyle['--combo-sparkle-a'] = '#dc2626';
+      titleEffectStyle['--combo-sparkle-b'] = '#f97316';
+      titleEffectStyle['--combo-sparkle-c'] = '#991b1b';
+    } else if (comboEffectColor === 'primary') {
+      titleEffectStyle['--combo-sparkle-a'] = tokens.primary;
+      titleEffectStyle['--combo-sparkle-b'] = tokens.secondary;
+      titleEffectStyle['--combo-sparkle-c'] = comboBadgeColors.text;
+    } else if (comboEffectColor === 'secondary') {
+      titleEffectStyle['--combo-sparkle-a'] = tokens.secondary;
+      titleEffectStyle['--combo-sparkle-b'] = tokens.primary;
+      titleEffectStyle['--combo-sparkle-c'] = comboBadgeColors.text;
+    } else if (comboEffectColor === 'gradient-2') {
+      titleEffectStyle['--combo-sparkle-a'] = '#92400e';
+      titleEffectStyle['--combo-sparkle-b'] = '#f59e0b';
+      titleEffectStyle['--combo-sparkle-c'] = '#fde68a';
+    } else if (comboEffectColor === 'gradient-3') {
+      titleEffectStyle['--combo-sparkle-a'] = '#065f46';
+      titleEffectStyle['--combo-sparkle-b'] = '#10b981';
+      titleEffectStyle['--combo-sparkle-c'] = '#a7f3d0';
+    }
+  };
   if (comboAnimateType === 'luxury-sheen' || comboAnimateType === 'pulse' || comboAnimateType === 'bounce') {
     animateClass = 'animate-combo-luxury-sheen';
   } else if (comboAnimateType === 'typing') {
@@ -1500,45 +1538,10 @@ function PreviewCombosBlock({
   } else if (comboAnimateType === 'fire') {
     animateClass = 'animate-combo-fire';
     titleEffectClass = 'animate-combo-fire-text';
-  } else if (comboAnimateType === 'sparkle-gradient') {
+  } else if (comboAnimateType === 'sparkle' || comboAnimateType.startsWith('sparkle-')) {
     animateClass = 'animate-combo-sparkle';
     titleEffectClass = 'animate-combo-sparkle-text';
-  } else if (comboAnimateType === 'sparkle-black') {
-    animateClass = 'animate-combo-sparkle';
-    titleEffectClass = 'animate-combo-sparkle-text';
-    titleEffectStyle['--combo-sparkle-a' as string] = '#020617';
-    titleEffectStyle['--combo-sparkle-b' as string] = '#64748b';
-    titleEffectStyle['--combo-sparkle-c' as string] = '#f8fafc';
-  } else if (comboAnimateType === 'sparkle-gold') {
-    animateClass = 'animate-combo-sparkle';
-    titleEffectClass = 'animate-combo-sparkle-text';
-    titleEffectStyle['--combo-sparkle-a' as string] = '#92400e';
-    titleEffectStyle['--combo-sparkle-b' as string] = '#f59e0b';
-    titleEffectStyle['--combo-sparkle-c' as string] = '#fde68a';
-  } else if (comboAnimateType === 'sparkle-emerald') {
-    animateClass = 'animate-combo-sparkle';
-    titleEffectClass = 'animate-combo-sparkle-text';
-    titleEffectStyle['--combo-sparkle-a' as string] = '#065f46';
-    titleEffectStyle['--combo-sparkle-b' as string] = '#10b981';
-    titleEffectStyle['--combo-sparkle-c' as string] = '#a7f3d0';
-  } else if (comboAnimateType === 'sparkle-red') {
-    animateClass = 'animate-combo-sparkle';
-    titleEffectClass = 'animate-combo-sparkle-text';
-    titleEffectStyle['--combo-sparkle-a' as string] = '#dc2626';
-    titleEffectStyle['--combo-sparkle-b' as string] = '#f97316';
-    titleEffectStyle['--combo-sparkle-c' as string] = '#991b1b';
-  } else if (comboAnimateType === 'sparkle-primary') {
-    animateClass = 'animate-combo-sparkle';
-    titleEffectClass = 'animate-combo-sparkle-text';
-    titleEffectStyle['--combo-sparkle-a' as string] = tokens.primary;
-    titleEffectStyle['--combo-sparkle-b' as string] = tokens.secondary;
-    titleEffectStyle['--combo-sparkle-c' as string] = comboBadgeColors.text;
-  } else if (comboAnimateType === 'sparkle-secondary') {
-    animateClass = 'animate-combo-sparkle';
-    titleEffectClass = 'animate-combo-sparkle-text';
-    titleEffectStyle['--combo-sparkle-a' as string] = tokens.secondary;
-    titleEffectStyle['--combo-sparkle-b' as string] = tokens.primary;
-    titleEffectStyle['--combo-sparkle-c' as string] = comboBadgeColors.text;
+    applyEffectColor();
   } else if (comboAnimateType === 'text-highlight') {
     animateClass = 'animate-combo-text-highlight';
   } else if (comboAnimateType === 'border-rainbow') {

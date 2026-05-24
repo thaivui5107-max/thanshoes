@@ -47,12 +47,23 @@ type MinimalContentWidth = 'narrow' | 'medium' | 'wide';
 type ProductsSaleMode = 'cart' | 'contact' | 'affiliate';
 type RelatedProductsMode = 'fixed' | 'infiniteScroll' | 'pagination';
 type ProductImageAspectRatioSource = 'module' | 'custom';
-type ComboAnimateType = 'none' | 'luxury-sheen' | 'typing' | 'letter-wave' | 'fire' | 'sparkle-gradient' | 'sparkle-black' | 'sparkle-gold' | 'sparkle-emerald' | 'sparkle-red' | 'sparkle-primary' | 'sparkle-secondary' | 'text-highlight' | 'border-rainbow';
+type ComboAnimateType = 'none' | 'luxury-sheen' | 'typing' | 'letter-wave' | 'fire' | 'sparkle' | 'text-highlight' | 'border-rainbow';
+type ComboEffectColor = 'black' | 'white' | 'red' | 'primary' | 'secondary' | 'gradient-1' | 'gradient-2' | 'gradient-3';
 type ProductDetailAccentColorConfig = {
   categoryBadge?: ProductDetailElementColorChoice;
   discountBadge?: ProductDetailElementColorChoice;
   primaryButton?: ProductDetailElementColorChoice;
   comboBadge?: ProductDetailElementColorChoice;
+};
+
+const LEGACY_COMBO_EFFECT_MAP: Partial<Record<string, { type: ComboAnimateType; color: ComboEffectColor }>> = {
+  'sparkle-gradient': { type: 'sparkle', color: 'gradient-1' },
+  'sparkle-black': { type: 'sparkle', color: 'black' },
+  'sparkle-gold': { type: 'sparkle', color: 'gradient-2' },
+  'sparkle-emerald': { type: 'sparkle', color: 'gradient-3' },
+  'sparkle-red': { type: 'sparkle', color: 'red' },
+  'sparkle-primary': { type: 'sparkle', color: 'primary' },
+  'sparkle-secondary': { type: 'sparkle', color: 'secondary' },
 };
 
 type BaseImageLayoutConfig = {
@@ -98,6 +109,7 @@ type ProductDetailExperienceConfig = {
   relatedProductsMode: RelatedProductsMode;
   relatedProductsPerPage: number;
   comboAnimateType?: ComboAnimateType;
+  comboEffectColor?: ComboEffectColor;
   accentColors?: ProductDetailAccentColorConfig;
   showSocialButtons?: boolean;
   socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
@@ -241,7 +253,8 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
       imageAspectRatioSource?: ProductImageAspectRatioSource;
       relatedProductsMode: RelatedProductsMode;
       relatedProductsPerPage: number;
-      comboAnimateType?: ComboAnimateType | 'pulse' | 'bounce';
+      comboAnimateType?: ComboAnimateType | 'pulse' | 'bounce' | keyof typeof LEGACY_COMBO_EFFECT_MAP;
+      comboEffectColor?: ComboEffectColor;
       accentColors?: ProductDetailAccentColorConfig;
       showSocialButtons?: boolean;
       socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
@@ -288,6 +301,10 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
     const showCommentLikes = layoutComments?.showCommentLikes ?? raw?.showCommentLikes ?? true;
     const showCommentReplies = layoutComments?.showCommentReplies ?? raw?.showCommentReplies ?? true;
     const showShare = layoutComments?.showShare ?? raw?.showShare ?? true;
+    const legacyComboEffect = raw?.comboAnimateType ? LEGACY_COMBO_EFFECT_MAP[raw.comboAnimateType] : undefined;
+    const comboAnimateType: ComboAnimateType = raw?.comboAnimateType === 'pulse' || raw?.comboAnimateType === 'bounce'
+      ? 'luxury-sheen'
+      : legacyComboEffect?.type ?? (raw?.comboAnimateType as ComboAnimateType | undefined) ?? 'luxury-sheen';
     return {
       layoutStyle,
       showAddToCart: configShowAddToCart && cartAvailable,
@@ -312,9 +329,8 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
       imageAspectRatio: resolvedImageAspectRatio,
       relatedProductsMode: normalizedRelatedMode,
       relatedProductsPerPage,
-      comboAnimateType: raw?.comboAnimateType === 'pulse' || raw?.comboAnimateType === 'bounce'
-        ? 'luxury-sheen'
-        : raw?.comboAnimateType ?? 'luxury-sheen',
+      comboAnimateType,
+      comboEffectColor: raw?.comboEffectColor ?? legacyComboEffect?.color ?? 'gradient-1',
       accentColors: {
         categoryBadge: 'secondary',
         discountBadge: 'primary',
@@ -993,6 +1009,7 @@ export default function ProductDetailPage({ params }: PageProps) {
           enableCombos={enableCombos}
           comboProductsMap={comboProductsMap}
           comboAnimateType={experienceConfig.comboAnimateType}
+          comboEffectColor={experienceConfig.comboEffectColor}
           accentColors={experienceConfig.accentColors}
           showSocialButtons={experienceConfig.showSocialButtons}
           socialButtons={experienceConfig.socialButtons}
@@ -1047,6 +1064,7 @@ export default function ProductDetailPage({ params }: PageProps) {
           enableCombos={enableCombos}
           comboProductsMap={comboProductsMap}
           comboAnimateType={experienceConfig.comboAnimateType}
+          comboEffectColor={experienceConfig.comboEffectColor}
           accentColors={experienceConfig.accentColors}
           showSocialButtons={experienceConfig.showSocialButtons}
           socialButtons={experienceConfig.socialButtons}
@@ -1101,6 +1119,7 @@ export default function ProductDetailPage({ params }: PageProps) {
           enableCombos={enableCombos}
           comboProductsMap={comboProductsMap}
           comboAnimateType={experienceConfig.comboAnimateType}
+          comboEffectColor={experienceConfig.comboEffectColor}
           accentColors={experienceConfig.accentColors}
           showSocialButtons={experienceConfig.showSocialButtons}
           socialButtons={experienceConfig.socialButtons}
@@ -1197,6 +1216,7 @@ interface StyleProps {
   enableCombos?: boolean;
   comboProductsMap?: Map<string, any>;
   comboAnimateType?: string;
+  comboEffectColor?: ComboEffectColor;
   accentColors?: ProductDetailAccentColorConfig;
   showSocialButtons?: boolean;
   socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
@@ -1873,6 +1893,7 @@ function ClassicStyle({
   enableCombos,
   comboProductsMap,
   comboAnimateType,
+  comboEffectColor,
   accentColors,
   showSocialButtons,
   socialButtons,
@@ -2176,6 +2197,7 @@ function ClassicStyle({
                 brandColor={brandColor}
                 tokens={tokens}
                 comboAnimateType={comboAnimateType}
+                comboEffectColor={comboEffectColor}
                 comboBadgeColors={comboBadgeColors}
               />
             )}
@@ -2428,6 +2450,7 @@ function ModernStyle({
   enableCombos,
   comboProductsMap,
   comboAnimateType,
+  comboEffectColor,
   accentColors,
   showSocialButtons,
   socialButtons,
@@ -2840,6 +2863,7 @@ function ModernStyle({
                 brandColor={brandColor}
                 tokens={tokens}
                 comboAnimateType={comboAnimateType}
+                comboEffectColor={comboEffectColor}
                 comboBadgeColors={comboBadgeColors}
               />
             )}
@@ -3077,6 +3101,7 @@ function MinimalStyle({
   enableCombos,
   comboProductsMap,
   comboAnimateType,
+  comboEffectColor,
   accentColors,
   showSocialButtons,
   socialButtons,
@@ -3425,6 +3450,7 @@ function MinimalStyle({
                 brandColor={brandColor}
                 tokens={tokens}
                 comboAnimateType={comboAnimateType}
+                comboEffectColor={comboEffectColor}
                 comboBadgeColors={comboBadgeColors}
               />
             )}
@@ -4154,6 +4180,7 @@ interface ProductCombosBlockProps {
   brandColor: string;
   tokens: ProductDetailColors;
   comboAnimateType?: string;
+  comboEffectColor?: ComboEffectColor;
   comboBadgeColors: ReturnType<typeof resolveProductDetailElementColor>;
 }
 
@@ -4163,6 +4190,7 @@ function ProductCombosBlock({
   brandColor,
   tokens,
   comboAnimateType = 'none',
+  comboEffectColor = 'gradient-1',
   comboBadgeColors,
 }: ProductCombosBlockProps) {
   if (!combos || combos.length === 0) return null;
@@ -4170,6 +4198,37 @@ function ProductCombosBlock({
   let animateClass = '';
   let titleEffectClass = '';
   const titleEffectStyle: React.CSSProperties & Record<string, string> = {};
+  const applyEffectColor = () => {
+    if (comboEffectColor === 'black') {
+      titleEffectStyle['--combo-sparkle-a'] = '#020617';
+      titleEffectStyle['--combo-sparkle-b'] = '#64748b';
+      titleEffectStyle['--combo-sparkle-c'] = '#f8fafc';
+    } else if (comboEffectColor === 'white') {
+      titleEffectStyle['--combo-sparkle-a'] = '#f8fafc';
+      titleEffectStyle['--combo-sparkle-b'] = '#ffffff';
+      titleEffectStyle['--combo-sparkle-c'] = '#cbd5e1';
+    } else if (comboEffectColor === 'red') {
+      titleEffectStyle['--combo-sparkle-a'] = '#dc2626';
+      titleEffectStyle['--combo-sparkle-b'] = '#f97316';
+      titleEffectStyle['--combo-sparkle-c'] = '#991b1b';
+    } else if (comboEffectColor === 'primary') {
+      titleEffectStyle['--combo-sparkle-a'] = tokens.primary;
+      titleEffectStyle['--combo-sparkle-b'] = tokens.secondary;
+      titleEffectStyle['--combo-sparkle-c'] = comboBadgeColors.text;
+    } else if (comboEffectColor === 'secondary') {
+      titleEffectStyle['--combo-sparkle-a'] = tokens.secondary;
+      titleEffectStyle['--combo-sparkle-b'] = tokens.primary;
+      titleEffectStyle['--combo-sparkle-c'] = comboBadgeColors.text;
+    } else if (comboEffectColor === 'gradient-2') {
+      titleEffectStyle['--combo-sparkle-a'] = '#92400e';
+      titleEffectStyle['--combo-sparkle-b'] = '#f59e0b';
+      titleEffectStyle['--combo-sparkle-c'] = '#fde68a';
+    } else if (comboEffectColor === 'gradient-3') {
+      titleEffectStyle['--combo-sparkle-a'] = '#065f46';
+      titleEffectStyle['--combo-sparkle-b'] = '#10b981';
+      titleEffectStyle['--combo-sparkle-c'] = '#a7f3d0';
+    }
+  };
   if (comboAnimateType === 'luxury-sheen' || comboAnimateType === 'pulse' || comboAnimateType === 'bounce') {
     animateClass = 'animate-combo-luxury-sheen';
   } else if (comboAnimateType === 'typing') {
@@ -4179,45 +4238,10 @@ function ProductCombosBlock({
   } else if (comboAnimateType === 'fire') {
     animateClass = 'animate-combo-fire';
     titleEffectClass = 'animate-combo-fire-text';
-  } else if (comboAnimateType === 'sparkle-gradient') {
+  } else if (comboAnimateType === 'sparkle' || comboAnimateType.startsWith('sparkle-')) {
     animateClass = 'animate-combo-sparkle';
     titleEffectClass = 'animate-combo-sparkle-text';
-  } else if (comboAnimateType === 'sparkle-black') {
-    animateClass = 'animate-combo-sparkle';
-    titleEffectClass = 'animate-combo-sparkle-text';
-    titleEffectStyle['--combo-sparkle-a' as string] = '#020617';
-    titleEffectStyle['--combo-sparkle-b' as string] = '#64748b';
-    titleEffectStyle['--combo-sparkle-c' as string] = '#f8fafc';
-  } else if (comboAnimateType === 'sparkle-gold') {
-    animateClass = 'animate-combo-sparkle';
-    titleEffectClass = 'animate-combo-sparkle-text';
-    titleEffectStyle['--combo-sparkle-a' as string] = '#92400e';
-    titleEffectStyle['--combo-sparkle-b' as string] = '#f59e0b';
-    titleEffectStyle['--combo-sparkle-c' as string] = '#fde68a';
-  } else if (comboAnimateType === 'sparkle-emerald') {
-    animateClass = 'animate-combo-sparkle';
-    titleEffectClass = 'animate-combo-sparkle-text';
-    titleEffectStyle['--combo-sparkle-a' as string] = '#065f46';
-    titleEffectStyle['--combo-sparkle-b' as string] = '#10b981';
-    titleEffectStyle['--combo-sparkle-c' as string] = '#a7f3d0';
-  } else if (comboAnimateType === 'sparkle-red') {
-    animateClass = 'animate-combo-sparkle';
-    titleEffectClass = 'animate-combo-sparkle-text';
-    titleEffectStyle['--combo-sparkle-a' as string] = '#dc2626';
-    titleEffectStyle['--combo-sparkle-b' as string] = '#f97316';
-    titleEffectStyle['--combo-sparkle-c' as string] = '#991b1b';
-  } else if (comboAnimateType === 'sparkle-primary') {
-    animateClass = 'animate-combo-sparkle';
-    titleEffectClass = 'animate-combo-sparkle-text';
-    titleEffectStyle['--combo-sparkle-a' as string] = tokens.primary;
-    titleEffectStyle['--combo-sparkle-b' as string] = tokens.secondary;
-    titleEffectStyle['--combo-sparkle-c' as string] = comboBadgeColors.text;
-  } else if (comboAnimateType === 'sparkle-secondary') {
-    animateClass = 'animate-combo-sparkle';
-    titleEffectClass = 'animate-combo-sparkle-text';
-    titleEffectStyle['--combo-sparkle-a' as string] = tokens.secondary;
-    titleEffectStyle['--combo-sparkle-b' as string] = tokens.primary;
-    titleEffectStyle['--combo-sparkle-c' as string] = comboBadgeColors.text;
+    applyEffectColor();
   } else if (comboAnimateType === 'text-highlight') {
     animateClass = 'animate-combo-text-highlight';
   } else if (comboAnimateType === 'border-rainbow') {

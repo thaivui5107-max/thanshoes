@@ -162,7 +162,8 @@ const renderSocialIcon = (value: string, size = 16) => {
 type ProductsDetailStyle = 'classic' | 'modern' | 'minimal';
 type RelatedProductsMode = 'fixed' | 'infiniteScroll' | 'pagination';
 type ProductImageAspectRatioSource = 'module' | 'custom';
-type ComboAnimateType = 'none' | 'luxury-sheen' | 'typing' | 'letter-wave' | 'fire' | 'sparkle-gradient' | 'sparkle-black' | 'sparkle-gold' | 'sparkle-emerald' | 'sparkle-red' | 'sparkle-primary' | 'sparkle-secondary' | 'text-highlight' | 'border-rainbow';
+type ComboAnimateType = 'none' | 'luxury-sheen' | 'typing' | 'letter-wave' | 'fire' | 'sparkle' | 'text-highlight' | 'border-rainbow';
+type ComboEffectColor = 'black' | 'white' | 'red' | 'primary' | 'secondary' | 'gradient-1' | 'gradient-2' | 'gradient-3';
 
 type ProductDetailAccentColorConfig = {
   categoryBadge?: ProductDetailElementColorChoice;
@@ -186,6 +187,7 @@ type ProductDetailExperienceConfig = {
   relatedProductsMode: RelatedProductsMode;
   relatedProductsPerPage: number;
   comboAnimateType?: ComboAnimateType;
+  comboEffectColor?: ComboEffectColor;
   accentColors?: ProductDetailAccentColorConfig;
   showSocialButtons?: boolean;
   socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
@@ -264,6 +266,7 @@ const DEFAULT_CONFIG: ProductDetailExperienceConfig = {
   relatedProductsMode: 'fixed',
   relatedProductsPerPage: 8,
   comboAnimateType: 'luxury-sheen',
+  comboEffectColor: 'gradient-1',
   accentColors: {
     categoryBadge: 'secondary',
     discountBadge: 'primary',
@@ -272,6 +275,16 @@ const DEFAULT_CONFIG: ProductDetailExperienceConfig = {
   },
   showSocialButtons: false,
   socialButtons: [],
+};
+
+const LEGACY_COMBO_EFFECT_MAP: Partial<Record<string, { type: ComboAnimateType; color: ComboEffectColor }>> = {
+  'sparkle-gradient': { type: 'sparkle', color: 'gradient-1' },
+  'sparkle-black': { type: 'sparkle', color: 'black' },
+  'sparkle-gold': { type: 'sparkle', color: 'gradient-2' },
+  'sparkle-emerald': { type: 'sparkle', color: 'gradient-3' },
+  'sparkle-red': { type: 'sparkle', color: 'red' },
+  'sparkle-primary': { type: 'sparkle', color: 'primary' },
+  'sparkle-secondary': { type: 'sparkle', color: 'secondary' },
 };
 
 const HINTS = [
@@ -565,7 +578,8 @@ export default function ProductDetailExperiencePage() {
       imageAspectRatioSource?: ProductImageAspectRatioSource;
       showAllProductImagesSection?: boolean;
       enableImageLightbox?: boolean;
-      comboAnimateType?: ComboAnimateType | 'pulse' | 'bounce';
+      comboAnimateType?: ComboAnimateType | 'pulse' | 'bounce' | keyof typeof LEGACY_COMBO_EFFECT_MAP;
+      comboEffectColor?: ComboEffectColor;
       accentColors?: ProductDetailAccentColorConfig;
       showSocialButtons?: boolean;
       socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
@@ -593,6 +607,10 @@ export default function ProductDetailExperiencePage() {
         || isProductImageAspectRatio(raw?.layouts?.minimal?.imageAspectRatio)
         ? 'custom'
         : 'module';
+    const legacyComboEffect = raw?.comboAnimateType ? LEGACY_COMBO_EFFECT_MAP[raw.comboAnimateType] : undefined;
+    const comboAnimateType: ComboAnimateType = raw?.comboAnimateType === 'pulse' || raw?.comboAnimateType === 'bounce'
+      ? 'luxury-sheen'
+      : legacyComboEffect?.type ?? (raw?.comboAnimateType as ComboAnimateType | undefined) ?? DEFAULT_CONFIG.comboAnimateType ?? 'luxury-sheen';
     return {
       layoutStyle: raw?.layoutStyle ?? legacyStyle ?? DEFAULT_CONFIG.layoutStyle,
       imageAspectRatioSource,
@@ -621,9 +639,8 @@ export default function ProductDetailExperiencePage() {
       relatedProductsPerPage: typeof raw?.relatedProductsPerPage === 'number' && raw.relatedProductsPerPage > 0
         ? raw.relatedProductsPerPage
         : DEFAULT_CONFIG.relatedProductsPerPage,
-      comboAnimateType: raw?.comboAnimateType === 'pulse' || raw?.comboAnimateType === 'bounce'
-        ? 'luxury-sheen'
-        : raw?.comboAnimateType ?? DEFAULT_CONFIG.comboAnimateType,
+      comboAnimateType,
+      comboEffectColor: raw?.comboEffectColor ?? legacyComboEffect?.color ?? DEFAULT_CONFIG.comboEffectColor,
       accentColors: {
         ...DEFAULT_CONFIG.accentColors,
         ...raw?.accentColors,
@@ -783,6 +800,7 @@ export default function ProductDetailExperiencePage() {
       relatedProductsMode: config.relatedProductsMode,
       relatedProductsPerPage: config.relatedProductsPerPage,
       comboAnimateType: config.comboAnimateType,
+      comboEffectColor: config.comboEffectColor,
       accentColors: config.accentColors,
       showSocialButtons: config.showSocialButtons,
       socialButtons: config.socialButtons,
@@ -1250,18 +1268,29 @@ export default function ProductDetailExperiencePage() {
                   { value: 'typing', label: 'Đánh chữ' },
                   { value: 'letter-wave', label: 'Chữ nhảy tuần tự' },
                   { value: 'fire', label: 'Ngọn lửa cháy' },
-                  { value: 'sparkle-gradient', label: 'Chữ lấp lánh gradient' },
-                  { value: 'sparkle-black', label: 'Chữ lấp lánh màu đen' },
-                  { value: 'sparkle-gold', label: 'Chữ lấp lánh màu vàng' },
-                  { value: 'sparkle-emerald', label: 'Chữ lấp lánh xanh ngọc' },
-                  { value: 'sparkle-red', label: 'Chữ lấp lánh màu đỏ' },
-                  { value: 'sparkle-primary', label: 'Chữ lấp lánh màu chính' },
-                  { value: 'sparkle-secondary', label: 'Chữ lấp lánh màu phụ' },
+                  { value: 'sparkle', label: 'Chữ lấp lánh' },
                   { value: 'text-highlight', label: 'Chữ ánh kim nhẹ' },
                   { value: 'border-rainbow', label: 'Viền ánh sáng nhẹ' },
                 ]}
                 onChange={(value) => setConfig(prev => ({ ...prev, comboAnimateType: value as ComboAnimateType }))}
               />
+              {config.comboAnimateType !== 'none' && (
+                <SelectRow
+                  label="Màu hiệu ứng"
+                  value={config.comboEffectColor ?? DEFAULT_CONFIG.comboEffectColor ?? 'gradient-1'}
+                  options={[
+                    { value: 'black', label: 'Đen' },
+                    { value: 'white', label: 'Trắng' },
+                    { value: 'red', label: 'Đỏ' },
+                    { value: 'primary', label: 'Màu chính' },
+                    { value: 'secondary', label: 'Màu phụ' },
+                    { value: 'gradient-1', label: 'Gradient kiểu 1' },
+                    { value: 'gradient-2', label: 'Gradient kiểu 2' },
+                    { value: 'gradient-3', label: 'Gradient kiểu 3' },
+                  ]}
+                  onChange={(value) => setConfig(prev => ({ ...prev, comboEffectColor: value as ComboEffectColor }))}
+                />
+              )}
             </ControlCard>
           )}
 
