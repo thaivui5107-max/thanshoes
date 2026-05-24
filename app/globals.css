@@ -204,3 +204,88 @@ body {
     transform: translateX(-50%);
   }
 }
+
+/* ============================================
+   Combo Animations
+   ============================================ */
+@keyframes combo-text-highlight {
+  0%, 100% {
+    color: #ef4444; /* Red */
+  }
+  33% {
+    color: #f97316; /* Orange */
+  }
+  66% {
+    color: #eab308; /* Yellow */
+  }
+}
+
+@keyframes combo-border-rainbow {
+  0%, 100% {
+    border-color: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+  }
+  20% {
+    border-color: #3b82f6;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+  }
+  40% {
+    border-color: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+  }
+  60% {
+    border-color: #eab308;
+    box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
+  }
+  80% {
+    border-color: #a855f7;
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+  }
+}
+
+@keyframes combo-luxury-sheen {
+  0%, 100% {
+    box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+  }
+  50% {
+    box-shadow: 0 18px 52px rgba(15, 23, 42, 0.14);
+  }
+}
+
+@keyframes combo-luxury-glint {
+  0% {
+    transform: translateX(-130%) skewX(-18deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.48;
+  }
+  55%, 100% {
+    transform: translateX(160%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+.animate-combo-text-highlight {
+  animation: combo-text-highlight 3s infinite linear;
+}
+
+.animate-combo-border-rainbow {
+  animation: combo-border-rainbow 4s infinite linear;
+}
+
+.animate-combo-luxury-sheen {
+  animation: combo-luxury-sheen 4.8s ease-in-out infinite;
+}
+
+.animate-combo-luxury-sheen::before {
+  animation: combo-luxury-glint 5.8s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  content: "";
+  height: 160%;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: -30%;
+  width: 32%;
+}

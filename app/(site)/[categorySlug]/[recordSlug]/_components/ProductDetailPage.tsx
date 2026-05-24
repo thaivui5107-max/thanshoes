@@ -11,7 +11,12 @@ import { toast } from 'sonner';
 import { useInView } from 'react-intersection-observer';
 import { api } from '@/convex/_generated/api';
 import { useBrandColors } from '@/components/site/hooks';
-import { getProductDetailColors, type ProductDetailColors } from '@/components/site/products/detail/_lib/colors';
+import {
+  getProductDetailColors,
+  resolveProductDetailElementColor,
+  type ProductDetailColors,
+  type ProductDetailElementColorChoice,
+} from '@/components/site/products/detail/_lib/colors';
 import { ProductImageLightbox } from '@/components/site/products/detail/_components/ProductImageLightbox';
 import {
   DEFAULT_PRODUCT_IMAGE_ASPECT_RATIO,
@@ -28,7 +33,7 @@ import { getFaqColors } from '@/app/admin/home-components/faq/_lib/colors';
 import { useCustomerAuth } from '@/app/(site)/auth/context';
 import { notifyAddToCart, useCart } from '@/lib/cart';
 import { useCartConfig, useCheckoutConfig } from '@/lib/experiences';
-import { ArrowLeft, Award, BadgeCheck, Bell, Bolt, Calendar, Camera, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, CreditCard, Gift, Globe, Heart, HeartHandshake, Leaf, Lock, MapPin, MessageSquare, Minus, Package, Phone, Plus, Reply, RotateCcw, Share2, Shield, ShoppingBag, ShoppingCart, Star, ThumbsUp, Truck } from 'lucide-react';
+import { ArrowLeft, Award, BadgeCheck, Bell, Bolt, Calendar, Camera, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, CreditCard, Gift, Globe, Heart, HeartHandshake, Leaf, Lock, MapPin, MessageSquare, Minus, Package, Phone, Plus, Reply, RotateCcw, Share2, Shield, ShoppingBag, ShoppingCart, Star, ThumbsUp, Truck, Facebook, Instagram, Youtube, Mail, Send } from 'lucide-react';
 import { VariantSelector, type VariantSelectorOption } from '@/components/products/VariantSelector';
 import type { Id } from '@/convex/_generated/dataModel';
 import { getPublicPriceLabel } from '@/lib/products/public-price';
@@ -42,6 +47,13 @@ type MinimalContentWidth = 'narrow' | 'medium' | 'wide';
 type ProductsSaleMode = 'cart' | 'contact' | 'affiliate';
 type RelatedProductsMode = 'fixed' | 'infiniteScroll' | 'pagination';
 type ProductImageAspectRatioSource = 'module' | 'custom';
+type ComboAnimateType = 'none' | 'luxury-sheen' | 'text-highlight' | 'border-rainbow';
+type ProductDetailAccentColorConfig = {
+  categoryBadge?: ProductDetailElementColorChoice;
+  discountBadge?: ProductDetailElementColorChoice;
+  primaryButton?: ProductDetailElementColorChoice;
+  comboBadge?: ProductDetailElementColorChoice;
+};
 
 type BaseImageLayoutConfig = {
   showRating: boolean;
@@ -85,6 +97,10 @@ type ProductDetailExperienceConfig = {
   imageAspectRatio: ProductImageAspectRatio;
   relatedProductsMode: RelatedProductsMode;
   relatedProductsPerPage: number;
+  comboAnimateType?: ComboAnimateType;
+  accentColors?: ProductDetailAccentColorConfig;
+  showSocialButtons?: boolean;
+  socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
 };
 
 type ProductVariantOptionValue = {
@@ -225,6 +241,10 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
       imageAspectRatioSource?: ProductImageAspectRatioSource;
       relatedProductsMode: RelatedProductsMode;
       relatedProductsPerPage: number;
+      comboAnimateType?: ComboAnimateType | 'pulse' | 'bounce';
+      accentColors?: ProductDetailAccentColorConfig;
+      showSocialButtons?: boolean;
+      socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
     }> | undefined;
     const layoutStyle = raw?.layoutStyle ?? legacyStyle;
     const layoutConfig = raw?.layouts?.[layoutStyle];
@@ -292,6 +312,18 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
       imageAspectRatio: resolvedImageAspectRatio,
       relatedProductsMode: normalizedRelatedMode,
       relatedProductsPerPage,
+      comboAnimateType: raw?.comboAnimateType === 'pulse' || raw?.comboAnimateType === 'bounce'
+        ? 'luxury-sheen'
+        : raw?.comboAnimateType ?? 'luxury-sheen',
+      accentColors: {
+        categoryBadge: 'secondary',
+        discountBadge: 'primary',
+        primaryButton: 'primary',
+        comboBadge: 'black',
+        ...raw?.accentColors,
+      },
+      showSocialButtons: raw?.showSocialButtons ?? false,
+      socialButtons: raw?.socialButtons ?? [],
     };
   }, [experienceSetting?.value, legacyHighlightsEnabled, legacyStyle, cartAvailable, canUseComments, canUseCommentLikes, canUseCommentReplies, canUseWishlist, ordersEnabled, moduleDefaultAspectRatio]);
 }
@@ -384,6 +416,50 @@ export default function ProductDetailPage({ params }: PageProps) {
   const decrementLike = useMutation(api.comments.decrementLike);
   
   const product = useQuery(api.products.getBySlug, { slug });
+
+  const enableCombosSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableCombos' });
+  const enableCombos = enableCombosSetting?.value === true;
+
+  const comboProductIds = useMemo(() => {
+    if (!product || !product.combos || product.combos.length === 0) {
+      return [] as Id<'products'>[];
+    }
+    const ids = new Set<Id<'products'>>();
+    product.combos.forEach((combo: any) => {
+      if (combo.type === 'standard') {
+        if (combo.standardConfig?.giftProductId) {
+          ids.add(combo.standardConfig.giftProductId);
+        }
+      } else if (combo.type === 'mix') {
+        if (combo.mixConfig?.giftProductId) {
+          ids.add(combo.mixConfig.giftProductId);
+        }
+        if (combo.mixConfig?.items) {
+          combo.mixConfig.items.forEach((item: any) => {
+            if (item.productId) {
+              ids.add(item.productId);
+            }
+          });
+        }
+      }
+    });
+    return Array.from(ids);
+  }, [product?.combos]);
+
+  const comboProducts = useQuery(
+    api.products.listByIds,
+    comboProductIds.length > 0 ? { ids: comboProductIds } : 'skip'
+  );
+
+  const comboProductsMap = useMemo(() => {
+    const map = new Map<string, any>();
+    if (comboProducts) {
+      comboProducts.forEach((p) => {
+        map.set(p._id, p);
+      });
+    }
+    return map;
+  }, [comboProducts]);
   const supplementalTemplate = useQuery(
     api.productSupplementalContents.getEffectiveByProduct,
     product?._id ? { productId: product._id } : 'skip'
@@ -914,6 +990,12 @@ export default function ProductDetailPage({ params }: PageProps) {
           category={category}
           enableCategoryProductDetailSuffix={enableCategoryProductDetailSuffix}
           enableCategoryProductDetailFaq={enableCategoryProductDetailFaq}
+          enableCombos={enableCombos}
+          comboProductsMap={comboProductsMap}
+          comboAnimateType={experienceConfig.comboAnimateType}
+          accentColors={experienceConfig.accentColors}
+          showSocialButtons={experienceConfig.showSocialButtons}
+          socialButtons={experienceConfig.socialButtons}
         />
       )}
       {experienceConfig.layoutStyle === 'modern' && (
@@ -962,6 +1044,12 @@ export default function ProductDetailPage({ params }: PageProps) {
           category={category}
           enableCategoryProductDetailSuffix={enableCategoryProductDetailSuffix}
           enableCategoryProductDetailFaq={enableCategoryProductDetailFaq}
+          enableCombos={enableCombos}
+          comboProductsMap={comboProductsMap}
+          comboAnimateType={experienceConfig.comboAnimateType}
+          accentColors={experienceConfig.accentColors}
+          showSocialButtons={experienceConfig.showSocialButtons}
+          socialButtons={experienceConfig.socialButtons}
         />
       )}
       {experienceConfig.layoutStyle === 'minimal' && (
@@ -1010,6 +1098,12 @@ export default function ProductDetailPage({ params }: PageProps) {
           category={category}
           enableCategoryProductDetailSuffix={enableCategoryProductDetailSuffix}
           enableCategoryProductDetailFaq={enableCategoryProductDetailFaq}
+          enableCombos={enableCombos}
+          comboProductsMap={comboProductsMap}
+          comboAnimateType={experienceConfig.comboAnimateType}
+          accentColors={experienceConfig.accentColors}
+          showSocialButtons={experienceConfig.showSocialButtons}
+          socialButtons={experienceConfig.socialButtons}
         />
       )}
       <ProductImageLightbox
@@ -1044,6 +1138,7 @@ interface ProductData {
   categoryId: Id<"productCategories">;
   categoryName: string;
   categorySlug?: string;
+  combos?: any[];
 }
 
 interface RelatedProduct {
@@ -1099,6 +1194,12 @@ interface StyleProps {
   category?: any;
   enableCategoryProductDetailSuffix?: boolean;
   enableCategoryProductDetailFaq?: boolean;
+  enableCombos?: boolean;
+  comboProductsMap?: Map<string, any>;
+  comboAnimateType?: string;
+  accentColors?: ProductDetailAccentColorConfig;
+  showSocialButtons?: boolean;
+  socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
 }
 
 interface ExperienceBlocksProps {
@@ -1706,6 +1807,22 @@ function RatingInline({ summary, tokens }: { summary: RatingSummary; tokens: Pro
   );
 }
 
+function InlineStockBadge({ label, color, tokens }: { label: string; color: string; tokens: ProductDetailColors }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+      style={{
+        borderColor: tokens.quantityBorder,
+        backgroundColor: tokens.surface,
+        color,
+      }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
+      {label}
+    </span>
+  );
+}
+
 // ====================================================================================
 // STYLE 1: CLASSIC - Standard e-commerce product page
 // ====================================================================================
@@ -1753,6 +1870,12 @@ function ClassicStyle({
   category,
   enableCategoryProductDetailSuffix,
   enableCategoryProductDetailFaq,
+  enableCombos,
+  comboProductsMap,
+  comboAnimateType,
+  accentColors,
+  showSocialButtons,
+  socialButtons,
 }: ClassicStyleProps) {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -1887,6 +2010,10 @@ function ClassicStyle({
         ? { label: `Chỉ còn ${stockValue} sản phẩm`, color: tokens.stockWarningText }
         : { label: 'Hết hàng', color: tokens.stockDangerText }
     : null;
+  const categoryBadgeColors = resolveProductDetailElementColor(accentColors?.categoryBadge ?? 'secondary', tokens);
+  const discountBadgeColors = resolveProductDetailElementColor(accentColors?.discountBadge ?? 'primary', tokens);
+  const primaryButtonColors = resolveProductDetailElementColor(accentColors?.primaryButton ?? 'primary', tokens);
+  const comboBadgeColors = resolveProductDetailElementColor(accentColors?.comboBadge ?? 'black', tokens);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: tokens.surface }}>
@@ -1976,7 +2103,7 @@ function ClassicStyle({
                   </span>
                 )}
                 {showSalePrice && priceDisplay.comparePrice && (
-                  <span className="absolute top-3 left-3 px-3 py-1.5 text-sm font-bold rounded-lg z-30" style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>-{discountPercent}%</span>
+                  <span className="absolute top-3 left-3 px-3 py-1.5 text-sm font-bold rounded-lg z-30" style={{ backgroundColor: discountBadgeColors.bg, color: discountBadgeColors.text }}>-{discountPercent}%</span>
                 )}
               </div>
             </div>
@@ -2005,16 +2132,11 @@ function ClassicStyle({
               <Link
                 href={buildCategoryPath({ categorySlug: product.categorySlug ?? '', mode: routeMode, moduleKey: 'products' })}
                 className="inline-block px-3 py-1 text-xs md:text-sm font-medium rounded-full transition-colors hover:opacity-80"
-                style={{ backgroundColor: tokens.categoryBadgeBg, color: tokens.categoryBadgeText }}
+                style={{ backgroundColor: categoryBadgeColors.bg, color: categoryBadgeColors.text, borderColor: categoryBadgeColors.border, borderWidth: 1 }}
               >
                 {product.categoryName}
               </Link>
-              {stockStatus && (
-                <div className="flex items-center gap-2 text-[11px] font-semibold md:hidden" style={{ color: stockStatus.color }}>
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stockStatus.color }} />
-                  <span>{stockStatus.label}</span>
-                </div>
-              )}
+              {stockStatus && <InlineStockBadge label={stockStatus.label} color={stockStatus.color} tokens={tokens} />}
             </div>
 
             <h1 className="text-xl md:text-3xl font-bold mb-2 md:mb-4" style={{ color: tokens.headingColor }}>{product.name}</h1>
@@ -2029,7 +2151,7 @@ function ClassicStyle({
                 {showSalePrice && priceDisplay.comparePrice && (
                   <>
                     <span className="text-xl line-through" style={{ color: tokens.priceOriginalText }}>{formatPrice(priceDisplay.comparePrice)}</span>
-                    <span className="px-2 py-0.5 text-sm font-medium rounded" style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>Tiết kiệm {formatPrice(priceDisplay.comparePrice - basePrice)}</span>
+                    <span className="px-2 py-0.5 text-sm font-medium rounded" style={{ backgroundColor: discountBadgeColors.bg, color: discountBadgeColors.text }}>Tiết kiệm {formatPrice(priceDisplay.comparePrice - basePrice)}</span>
                   </>
                 )}
               </div>
@@ -2045,6 +2167,17 @@ function ClassicStyle({
                   accentColor={brandColor}
                 />
               </div>
+            )}
+
+            {enableCombos && saleMode === 'contact' && !product.hasVariants && product.combos && product.combos.length > 0 && (
+              <ProductCombosBlock
+                combos={product.combos}
+                comboProductsMap={comboProductsMap || new Map()}
+                brandColor={brandColor}
+                tokens={tokens}
+                comboAnimateType={comboAnimateType}
+                comboBadgeColors={comboBadgeColors}
+              />
             )}
 
             <div className="flex flex-wrap items-center gap-4 mb-4 md:mb-8">
@@ -2070,7 +2203,7 @@ function ClassicStyle({
                 {showAddToCart && (
                   <button
                     className={`py-3.5 px-8 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${inStock ? 'hover:shadow-lg hover:scale-[1.02]' : 'opacity-50 cursor-not-allowed'}`}
-                    style={{ backgroundColor: tokens.ctaPrimaryBg, color: tokens.ctaPrimaryText }}
+                    style={{ backgroundColor: primaryButtonColors.bg, color: primaryButtonColors.text }}
                     disabled={!inStock}
                     onClick={() => { if (inStock) { onAddToCart(quantity, selectedVariant?._id); } }}
                   >
@@ -2121,11 +2254,11 @@ function ClassicStyle({
               )}
             </div>
 
-            {stockStatus && (
-              <div className="hidden md:flex items-center gap-2 text-xs md:text-sm font-medium" style={{ color: stockStatus.color }}>
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stockStatus.color }} />
-                <span>{stockStatus.label}</span>
-              </div>
+            {showSocialButtons && (
+              <ProductSocialButtons
+                buttons={socialButtons || []}
+                tokens={tokens}
+              />
             )}
 
             {highlightsEnabled && highlights.length > 0 && (
@@ -2292,6 +2425,12 @@ function ModernStyle({
   category,
   enableCategoryProductDetailSuffix,
   enableCategoryProductDetailFaq,
+  enableCombos,
+  comboProductsMap,
+  comboAnimateType,
+  accentColors,
+  showSocialButtons,
+  socialButtons,
 }: StyleProps & ExperienceBlocksProps & HighlightBlockProps & { heroStyle: ModernHeroStyle }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -2426,6 +2565,10 @@ function ModernStyle({
         ? { label: `Chỉ còn ${stockValue} sản phẩm`, color: tokens.stockWarningText }
         : { label: 'Hết hàng', color: tokens.stockDangerText }
     : null;
+  const categoryBadgeColors = resolveProductDetailElementColor(accentColors?.categoryBadge ?? 'secondary', tokens);
+  const discountBadgeColors = resolveProductDetailElementColor(accentColors?.discountBadge ?? 'primary', tokens);
+  const primaryButtonColors = resolveProductDetailElementColor(accentColors?.primaryButton ?? 'primary', tokens);
+  const comboBadgeColors = resolveProductDetailElementColor(accentColors?.comboBadge ?? 'black', tokens);
 
   const heroContainerClass = heroStyle === 'full'
     ? 'border rounded-2xl'
@@ -2500,7 +2643,7 @@ function ModernStyle({
                       {showSalePrice && priceDisplay.comparePrice && discountPercent > 0 && (
                         <span
                           className="absolute left-3 top-3 z-30 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                          style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>
+                          style={{ backgroundColor: discountBadgeColors.bg, color: discountBadgeColors.text }}>
                           -{discountPercent}%
                         </span>
                       )}
@@ -2567,7 +2710,7 @@ function ModernStyle({
                       {showSalePrice && priceDisplay.comparePrice && discountPercent > 0 && (
                         <span
                           className="absolute left-3 top-3 z-30 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                          style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>
+                          style={{ backgroundColor: discountBadgeColors.bg, color: discountBadgeColors.text }}>
                           -{discountPercent}%
                         </span>
                       )}
@@ -2646,20 +2789,15 @@ function ModernStyle({
               <span
                 className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
                 style={{
-                  backgroundColor: tokens.categoryBadgeBg,
-                  color: tokens.categoryBadgeText,
-                  borderColor: tokens.categoryBadgeBorder,
+                  backgroundColor: categoryBadgeColors.bg,
+                  color: categoryBadgeColors.text,
+                  borderColor: categoryBadgeColors.border,
                   borderWidth: 1,
                 }}
               >
                 {product.categoryName}
               </span>
-              {stockStatus && (
-                <div className="flex items-center gap-2 text-[11px] font-semibold md:hidden" style={{ color: stockStatus.color }}>
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stockStatus.color }} />
-                  <span>{stockStatus.label}</span>
-                </div>
-              )}
+              {stockStatus && <InlineStockBadge label={stockStatus.label} color={stockStatus.color} tokens={tokens} />}
             </div>
 
             <h1 className="text-xl md:text-3xl lg:text-4xl font-light tracking-tight" style={{ color: tokens.headingColor }}>
@@ -2695,6 +2833,17 @@ function ModernStyle({
 
             <div className="h-px w-full" style={{ backgroundColor: tokens.divider }} />
 
+            {enableCombos && saleMode === 'contact' && !product.hasVariants && product.combos && product.combos.length > 0 && (
+              <ProductCombosBlock
+                combos={product.combos}
+                comboProductsMap={comboProductsMap || new Map()}
+                brandColor={brandColor}
+                tokens={tokens}
+                comboAnimateType={comboAnimateType}
+                comboBadgeColors={comboBadgeColors}
+              />
+            )}
+
             <div className="space-y-1.5">
               <label className="text-sm font-medium" style={{ color: tokens.bodyText }}>Số lượng</label>
               <div className="flex items-center gap-3">
@@ -2727,7 +2876,7 @@ function ModernStyle({
                 {showAddToCart && (
                   <button
                     className={`w-full h-12 text-base font-semibold transition-all ${inStock ? 'hover:shadow-lg hover:scale-[1.01]' : 'opacity-50 cursor-not-allowed'}`}
-                    style={{ backgroundColor: tokens.ctaPrimaryBg, color: tokens.ctaPrimaryText }}
+                    style={{ backgroundColor: primaryButtonColors.bg, color: primaryButtonColors.text }}
                     disabled={!inStock}
                     onClick={() => { if (inStock) { onAddToCart(quantity, selectedVariant?._id); } }}
                   >
@@ -2762,13 +2911,14 @@ function ModernStyle({
                     {isWishlisted ? 'Đã yêu thích' : 'Thêm vào yêu thích'}
                   </button>
                 )}
-                {stockStatus && (
-                  <div className="hidden md:flex items-center gap-2 text-xs md:text-sm font-medium" style={{ color: stockStatus.color }}>
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stockStatus.color }} />
-                    <span>{stockStatus.label}</span>
-                  </div>
-                )}
               </div>
+            )}
+
+            {showSocialButtons && (
+              <ProductSocialButtons
+                buttons={socialButtons || []}
+                tokens={tokens}
+              />
             )}
 
             {showHighlights && <HighlightsGrid highlights={highlights} tokens={tokens} />}
@@ -2924,6 +3074,12 @@ function MinimalStyle({
   routeMode,
   supplementalContent,
   categorySlugMap,
+  enableCombos,
+  comboProductsMap,
+  comboAnimateType,
+  accentColors,
+  showSocialButtons,
+  socialButtons,
 }: StyleProps & ExperienceBlocksProps & HighlightBlockProps & { contentWidth: MinimalContentWidth }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<VariantSelectionMap>({});
@@ -3058,6 +3214,10 @@ function MinimalStyle({
         ? { label: `Chỉ còn ${stockValue} sản phẩm`, color: tokens.stockWarningText }
         : { label: 'Hết hàng', color: tokens.stockDangerText }
     : null;
+  const categoryBadgeColors = resolveProductDetailElementColor(accentColors?.categoryBadge ?? 'secondary', tokens);
+  const discountBadgeColors = resolveProductDetailElementColor(accentColors?.discountBadge ?? 'primary', tokens);
+  const primaryButtonColors = resolveProductDetailElementColor(accentColors?.primaryButton ?? 'primary', tokens);
+  const comboBadgeColors = resolveProductDetailElementColor(accentColors?.comboBadge ?? 'black', tokens);
   const canOpenLightbox = enableImageLightbox && images.length > 0;
 
   const handleOpenLightbox = () => {
@@ -3156,7 +3316,7 @@ function MinimalStyle({
                     {showSalePrice && priceDisplay.comparePrice && discountPercent > 0 && (
                       <span
                         className="absolute left-3 top-3 z-30 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                        style={{ backgroundColor: tokens.discountBadgeBg, color: tokens.discountBadgeText }}>
+                        style={{ backgroundColor: discountBadgeColors.bg, color: discountBadgeColors.text }}>
                         -{discountPercent}%
                       </span>
                     )}
@@ -3217,20 +3377,15 @@ function MinimalStyle({
                 <span
                   className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] md:text-xs font-semibold"
                   style={{
-                    backgroundColor: tokens.categoryBadgeBg,
-                    color: tokens.categoryBadgeText,
-                    borderColor: tokens.categoryBadgeBorder,
+                    backgroundColor: categoryBadgeColors.bg,
+                    color: categoryBadgeColors.text,
+                    borderColor: categoryBadgeColors.border,
                     borderWidth: 1,
                   }}
                 >
                   {product.categoryName}
                 </span>
-                {stockStatus && (
-                  <div className="flex items-center gap-2 text-[11px] font-semibold md:hidden" style={{ color: stockStatus.color }}>
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stockStatus.color }} />
-                    <span>{stockStatus.label}</span>
-                  </div>
-                )}
+                {stockStatus && <InlineStockBadge label={stockStatus.label} color={stockStatus.color} tokens={tokens} />}
               </div>
 
               <h1 className="text-xl md:text-3xl lg:text-[2rem] font-medium leading-tight tracking-tight" style={{ color: tokens.headingColor }}>
@@ -3263,13 +3418,24 @@ function MinimalStyle({
               </div>
             )}
 
+            {enableCombos && saleMode === 'contact' && !product.hasVariants && product.combos && product.combos.length > 0 && (
+              <ProductCombosBlock
+                combos={product.combos}
+                comboProductsMap={comboProductsMap || new Map()}
+                brandColor={brandColor}
+                tokens={tokens}
+                comboAnimateType={comboAnimateType}
+                comboBadgeColors={comboBadgeColors}
+              />
+            )}
+
             {(showAddToCart || showBuyNow || showWishlist) && (
               <div className="flex flex-col gap-2.5 md:gap-3 mb-5 md:mb-6 border-t pt-4 md:pt-5" style={{ borderColor: tokens.divider }}>
                 <div className="flex gap-4">
                   {showAddToCart && (
                     <button
                       className={`flex-1 h-14 uppercase tracking-wider text-sm font-medium transition-colors ${inStock ? '' : 'opacity-50 cursor-not-allowed'}`}
-                      style={{ backgroundColor: tokens.ctaPrimaryBg, color: tokens.ctaPrimaryText }}
+                      style={{ backgroundColor: primaryButtonColors.bg, color: primaryButtonColors.text }}
                       disabled={!inStock}
                       onClick={() => { if (inStock) { onAddToCart(1, selectedVariant?._id); } }}
                     >
@@ -3305,13 +3471,14 @@ function MinimalStyle({
                     {buyNowLabel}
                   </button>
                 )}
-                {stockStatus && (
-                  <div className="hidden md:flex items-center gap-2 text-xs md:text-sm font-medium" style={{ color: stockStatus.color }}>
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stockStatus.color }} />
-                    <span>{stockStatus.label}</span>
-                  </div>
-                )}
               </div>
+            )}
+
+            {showSocialButtons && (
+              <ProductSocialButtons
+                buttons={socialButtons || []}
+                tokens={tokens}
+              />
             )}
 
             {showHighlights && <HighlightsGrid highlights={highlights} tokens={tokens} />}
@@ -3976,6 +4143,270 @@ function ProductDetailSkeleton({ tokens }: { tokens: ProductDetailColors }) {
             <div className="h-32 w-full rounded-xl" style={{ backgroundColor: tokens.skeletonBase }} />
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+interface ProductCombosBlockProps {
+  combos: any[];
+  comboProductsMap: Map<string, any>;
+  brandColor: string;
+  tokens: ProductDetailColors;
+  comboAnimateType?: string;
+  comboBadgeColors: ReturnType<typeof resolveProductDetailElementColor>;
+}
+
+function ProductCombosBlock({
+  combos,
+  comboProductsMap,
+  brandColor,
+  tokens,
+  comboAnimateType = 'none',
+  comboBadgeColors,
+}: ProductCombosBlockProps) {
+  if (!combos || combos.length === 0) return null;
+
+  let animateClass = '';
+  if (comboAnimateType === 'luxury-sheen' || comboAnimateType === 'pulse' || comboAnimateType === 'bounce') {
+    animateClass = 'animate-combo-luxury-sheen';
+  } else if (comboAnimateType === 'text-highlight') {
+    animateClass = 'animate-combo-text-highlight';
+  } else if (comboAnimateType === 'border-rainbow') {
+    animateClass = 'animate-combo-border-rainbow';
+  }
+
+  return (
+    <div className={`relative my-5 overflow-hidden rounded-2xl border p-4 transition-all ${animateClass}`} style={{ borderColor: tokens.divider, backgroundColor: tokens.surfaceMuted }}>
+      <h3 className="mb-3 flex flex-wrap items-center gap-2 text-sm font-bold" style={{ color: tokens.headingColor }}>
+        <span
+          className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-sm"
+          style={{ backgroundColor: comboBadgeColors.bg, color: comboBadgeColors.text }}
+        >
+          <Gift size={13} />
+          Combo deal
+        </span>
+        <span>Ưu đãi Combo</span>
+      </h3>
+
+      <div className="space-y-3">
+        {combos.map((combo, index) => {
+          let discountLabel = '';
+          let giftLabel = '';
+
+          if (combo.type === 'standard') {
+            const cfg = combo.standardConfig;
+            if (cfg) {
+              if (cfg.rewardType === 'discount_percent') {
+                discountLabel = `Giảm ${cfg.rewardValue}%`;
+              } else if (cfg.rewardType === 'discount_amount') {
+                discountLabel = `Giảm ${formatPrice(cfg.rewardValue || 0)}`;
+              } else if (cfg.rewardType === 'gift_self') {
+                giftLabel = `Tặng thêm ${cfg.giftQty || 1} sản phẩm này`;
+              } else if (cfg.rewardType === 'gift_other' && cfg.giftProductId) {
+                const giftProduct = comboProductsMap.get(cfg.giftProductId);
+                giftLabel = `Tặng kèm ${cfg.giftQty || 1} ${giftProduct?.name || 'Sản phẩm khác'}`;
+              }
+            }
+          } else if (combo.type === 'mix') {
+            const cfg = combo.mixConfig;
+            if (cfg) {
+              if (cfg.rewardType === 'discount_percent') {
+                discountLabel = `Giảm ${cfg.rewardValue}%`;
+              } else if (cfg.rewardType === 'discount_amount') {
+                discountLabel = `Giảm ${formatPrice(cfg.rewardValue || 0)}`;
+              } else if (cfg.rewardType === 'gift_other' && cfg.giftProductId) {
+                const giftProduct = comboProductsMap.get(cfg.giftProductId);
+                giftLabel = `Tặng kèm ${cfg.giftQty || 1} ${giftProduct?.name || 'Sản phẩm khác'}`;
+              }
+            }
+          }
+
+          return (
+            <div
+              key={index}
+              className="group relative overflow-hidden rounded-xl border p-3 transition-all hover:-translate-y-0.5 hover:shadow-lg"
+              style={{
+                borderColor: tokens.quantityBorder,
+                backgroundColor: tokens.surface,
+              }}
+            >
+              <div className="mb-1 flex items-start justify-between gap-3">
+                <span className="font-semibold text-xs md:text-sm" style={{ color: tokens.headingColor }}>
+                  {combo.name}
+                </span>
+                <span
+                  className="shrink-0 rounded-full px-2 py-0.5 text-xs md:text-sm font-bold"
+                  style={{ backgroundColor: comboBadgeColors.bg, color: comboBadgeColors.text }}
+                >
+                  {combo.price ? formatPrice(combo.price) : 'Liên hệ'}
+                </span>
+              </div>
+
+              <div className="text-[11px] md:text-xs space-y-1" style={{ color: tokens.bodyText }}>
+                {combo.type === 'standard' ? (
+                  <div>
+                    • Mua từ <span className="font-semibold">{combo.standardConfig?.minQty || 1}</span> sản phẩm.
+                  </div>
+                ) : (
+                  <div>
+                    • Mua kèm:{' '}
+                    {combo.mixConfig?.items?.map((item: any, idx: number) => {
+                      const p = comboProductsMap.get(item.productId);
+                      return (
+                        <span key={item.productId} className="font-medium">
+                           {idx > 0 && ', '}
+                          {item.quantity}x {p?.name || 'sản phẩm đi kèm'}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                {(discountLabel || giftLabel) && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    {discountLabel && (
+                      <span
+                        className="rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+                        style={{ backgroundColor: comboBadgeColors.bg, borderColor: comboBadgeColors.border, color: comboBadgeColors.text }}
+                      >
+                        {discountLabel}
+                      </span>
+                    )}
+                    {giftLabel && (
+                      <span
+                        className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+                        style={{ backgroundColor: tokens.surface, borderColor: comboBadgeColors.border, color: comboBadgeColors.bg === tokens.surface ? comboBadgeColors.text : comboBadgeColors.bg }}
+                      >
+                        <Gift size={10} />
+                        {giftLabel}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const ZaloSvg = ({ size = 18 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor">
+    <path d="M12.49 10.2722v-.4496h1.3467v6.3218h-.7704a.576.576 0 01-.5763-.5729l-.0006.0005a3.273 3.273 0 01-1.9372.6321c-1.8138 0-3.2844-1.4697-3.2844-3.2823 0-1.8125 1.4706-3.2822 3.2844-3.2822a3.273 3.273 0 011.9372.6321l.0006.0005zM6.9188 7.7896v.205c0 .3823-.051.6944-.2995 1.0605l-.03.0343c-.0542.0615-.1815.206-.2421.2843L2.024 14.8h4.8948v.7682a.5764.5764 0 01-.5767.5761H0v-.3622c0-.4436.1102-.6414.2495-.8476L4.8582 9.23H.1922V7.7896h6.7266zm8.5513 8.3548a.4805.4805 0 01-.4803-.4798v-7.875h1.4416v8.3548H15.47zM20.6934 9.6C22.52 9.6 24 11.0807 24 12.9044c0 1.8252-1.4801 3.306-3.3066 3.306-1.8264 0-3.3066-1.4808-3.3066-3.306 0-1.8237 1.4802-3.3044 3.3066-3.3044zm-10.1412 5.253c1.0675 0 1.9324-.8645 1.9324-1.9312 0-1.065-.865-1.9295-1.9324-1.9295s-1.9324.8644-1.9324 1.9295c0 1.0667.865 1.9312 1.9324 1.9312zm10.1412-.0033c1.0737 0 1.945-.8707 1.945-1.9453 0-1.073-.8713-1.9436-1.945-1.9436-1.0753 0-1.945.8706-1.945 1.9436 0 1.0746.8697 1.9453 1.945 1.9453z" />
+  </svg>
+);
+
+const TikTokSvg = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+  </svg>
+);
+
+const XSvg = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+);
+
+const ShopeeSvg = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M15.9414 17.9633c.229-1.879-.981-3.077-4.1758-4.0969-1.548-.528-2.277-1.22-2.26-2.1719.065-1.056 1.048-1.825 2.352-1.85a5.2898 5.2898 0 0 1 2.8838.89c.116.072.197.06.263-.039.09-.145.315-.494.39-.62.051-.081.061-.187-.068-.281-.185-.1369-.704-.4149-.983-.5319a6.4697 6.4697 0 0 0-2.5118-.514c-1.909.008-3.4129 1.215-3.5389 2.826-.082 1.1629.494 2.1078 1.73 2.8278.262.152 1.6799.716 2.2438.892 1.774.552 2.695 1.5419 2.478 2.6969-.197 1.047-1.299 1.7239-2.818 1.7439-1.2039-.046-2.2878-.537-3.1278-1.19l-.141-.11c-.104-.08-.218-.075-.287.03-.05.077-.376.547-.458.67-.077.108-.035.168.045.234.35.293.817.613 1.134.775a6.7097 6.7097 0 0 0 2.8289.727 4.9048 4.9048 0 0 0 2.0759-.354c1.095-.465 1.8029-1.394 1.9449-2.554zM11.9986 1.4009c-2.068 0-3.7539 1.95-3.8329 4.3899h7.6657c-.08-2.44-1.765-4.3899-3.8328-4.3899zm7.8516 22.5981-.08.001-15.7843-.002c-1.074-.04-1.863-.91-1.971-1.991l-.01-.195L1.298 6.2858a.459.459 0 0 1 .45-.494h4.9748C6.8448 2.568 9.1607 0 11.9996 0c2.8388 0 5.1537 2.5689 5.2757 5.7898h4.9678a.459.459 0 0 1 .458.483l-.773 15.5883-.007.131c-.094 1.094-.979 1.9769-2.0709 2.0059z"/>
+  </svg>
+);
+
+const MessengerSvg = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 0C5.24 0 0 4.952 0 11.64c0 3.499 1.434 6.521 3.769 8.61a.96.96 0 0 1 .323.683l.065 2.135a.96.96 0 0 0 1.347.85l2.381-1.053a.96.96 0 0 1 .641-.046A13 13 0 0 0 12 23.28c6.76 0 12-4.952 12-11.64S18.76 0 12 0m6.806 7.44c.522-.03.971.567.63 1.094l-4.178 6.457a.707.707 0 0 1-.977.208l-3.87-2.504a.44.44 0 0 0-.49.007l-4.363 3.01c-.637.438-1.415-.317-.995-.966l4.179-6.457a.706.706 0 0 1 .977-.21l3.87 2.505c.15.097.344.094.491-.007l4.362-3.008a.7.7 0 0 1 .364-.13"/>
+  </svg>
+);
+
+interface SocialIconDef {
+  value: string;
+  label: string;
+  brandColor: string;
+  suggestedLabel: string;
+  suggestedUrl: string;
+  imageSrc?: string;
+}
+
+const SOCIAL_ICON_DEFS: SocialIconDef[] = [
+  { value: 'zalo', label: 'Zalo', brandColor: '#0084ff', suggestedLabel: 'Chat Zalo', suggestedUrl: 'https://zalo.me/yourpage' },
+  { value: 'shopee', label: 'Shopee', brandColor: '#ee4d2d', suggestedLabel: 'Shopee', suggestedUrl: 'https://shopee.vn/yourshop' },
+  { value: 'lazada', label: 'Lazada', brandColor: '#0f1689', suggestedLabel: 'Lazada', suggestedUrl: 'https://lazada.vn/shop/yourshop', imageSrc: '/icons/lazada-logo.png' },
+  { value: 'facebook', label: 'Facebook', brandColor: '#1877f2', suggestedLabel: 'Facebook', suggestedUrl: 'https://facebook.com/yourpage' },
+  { value: 'instagram', label: 'Instagram', brandColor: '#e1306c', suggestedLabel: 'Instagram', suggestedUrl: 'https://instagram.com/yourpage' },
+  { value: 'tiktok', label: 'TikTok', brandColor: '#000000', suggestedLabel: 'TikTok', suggestedUrl: 'https://tiktok.com/@yourpage' },
+  { value: 'youtube', label: 'Youtube', brandColor: '#ff0000', suggestedLabel: 'Youtube', suggestedUrl: 'https://youtube.com/@yourchannel' },
+  { value: 'phone', label: 'Điện thoại', brandColor: '#ef4444', suggestedLabel: 'Gọi ngay', suggestedUrl: 'tel:0123456789' },
+  { value: 'messenger', label: 'Messenger', brandColor: '#0084ff', suggestedLabel: 'Messenger', suggestedUrl: 'https://m.me/yourpage' },
+  { value: 'tiki', label: 'Tiki', brandColor: '#1a94ff', suggestedLabel: 'Tiki', suggestedUrl: 'https://tiki.vn/cua-hang/yourshop', imageSrc: '/icons/tiki-logo.png' },
+  { value: 'mail', label: 'Email', brandColor: '#ea580c', suggestedLabel: 'Email', suggestedUrl: 'mailto:contact@example.com' },
+];
+
+const getSocialIconDef = (value: string): SocialIconDef =>
+  SOCIAL_ICON_DEFS.find((d) => d.value === value) ?? SOCIAL_ICON_DEFS[0];
+
+const renderSocialIcon = (value: string, size = 16) => {
+  if (value === 'zalo') return <ZaloSvg size={size} />;
+  if (value === 'tiktok') return <TikTokSvg size={size} />;
+  if (value === 'x') return <XSvg size={size} />;
+  if (value === 'shopee') return <ShopeeSvg size={size} />;
+  if (value === 'messenger') return <MessengerSvg size={size} />;
+
+  const def = SOCIAL_ICON_DEFS.find((d) => d.value === value);
+  if (def?.imageSrc) {
+    return <img src={def.imageSrc} alt={def.label} width={size} height={size} className="object-contain" style={{ borderRadius: '50%' }} />;
+  }
+
+  const map: Record<string, React.ElementType> = {
+    phone: Phone,
+    facebook: Facebook,
+    instagram: Instagram,
+    youtube: Youtube,
+    telegram: Send,
+    mail: Mail,
+  };
+  const Icon = map[value] ?? Phone;
+  return <Icon size={size} />;
+};
+
+function ProductSocialButtons({
+  buttons,
+  tokens,
+}: {
+  buttons: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
+  tokens: ProductDetailColors;
+}) {
+  const activeButtons = buttons.filter(b => b.active);
+  if (activeButtons.length === 0) return null;
+
+  return (
+    <div className="mt-4 pt-4 border-t" style={{ borderColor: tokens.divider }}>
+      <p className="text-xs font-semibold mb-2" style={{ color: tokens.headingColor }}>
+        Liên hệ & Mua hàng:
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {activeButtons.map((btn) => {
+          const def = getSocialIconDef(btn.icon);
+          return (
+            <a
+              key={btn.id}
+              href={btn.url || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border shadow-sm transition-all hover:scale-105 active:scale-[0.98] text-white hover:brightness-110"
+              style={{
+                backgroundColor: def.brandColor,
+                borderColor: def.brandColor,
+              }}
+            >
+              {renderSocialIcon(btn.icon, 13)}
+              <span>{btn.label || def.label}</span>
+            </a>
+          );
+        })}
       </div>
     </div>
   );
