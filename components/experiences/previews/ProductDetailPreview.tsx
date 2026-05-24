@@ -900,16 +900,17 @@ export function ProductDetailPreview({
               )}
 
               {showHighlightBlock && renderHighlights()}
-              <div className="border-t pt-6" style={{ borderColor: tokens.divider }}>
-                <h3 className="font-semibold mb-4" style={{ color: tokens.headingColor }}>Mô tả sản phẩm</h3>
-                <ExpandablePreviewDescriptionBlock buttonStyle={{ color: tokens.primary }}>
-                  <div className="prose prose-sm max-w-none" style={{ color: tokens.bodyText }}>
-                    {PREVIEW_DESCRIPTION}
-                  </div>
-                  {renderPreviewDescriptionImages()}
-                </ExpandablePreviewDescriptionBlock>
-              </div>
             </div>
+          </div>
+
+          <div className="border-t pt-6 mt-8 md:mt-12" style={{ borderColor: tokens.divider }}>
+            <h3 className="font-semibold mb-4" style={{ color: tokens.headingColor }}>Mô tả sản phẩm</h3>
+            <ExpandablePreviewDescriptionBlock buttonStyle={{ color: tokens.primary }}>
+              <div className="prose prose-sm max-w-none" style={{ color: tokens.bodyText }}>
+                {PREVIEW_DESCRIPTION}
+              </div>
+              {renderPreviewDescriptionImages()}
+            </ExpandablePreviewDescriptionBlock>
           </div>
 
           <CommentsPreview
@@ -1176,23 +1177,25 @@ export function ProductDetailPreview({
                 )}
 
                 {showHighlightBlock && renderHighlights()}
-
-                <div className="border rounded-2xl p-4" style={{ borderColor: tokens.border }}>
-                  <ExpandablePreviewDescriptionBlock buttonStyle={{ color: tokens.primary }}>
-                    <div className="prose prose-sm max-w-none" style={{ color: tokens.bodyText }}>
-                      {PREVIEW_DESCRIPTION}
-                    </div>
-                    {renderPreviewDescriptionImages()}
-                  </ExpandablePreviewDescriptionBlock>
-                </div>
-
-                <CommentsPreview
-                  showComments={showComments}
-                  showLikes={showCommentLikes}
-                  showReplies={showCommentReplies}
-                  brandColor={brandColor}
-                />
               </div>
+            </div>
+
+            <div className="mt-8 md:mt-12 space-y-6">
+              <div className="border rounded-2xl p-6" style={{ borderColor: tokens.border }}>
+                <ExpandablePreviewDescriptionBlock buttonStyle={{ color: tokens.primary }}>
+                  <div className="prose prose-sm max-w-none" style={{ color: tokens.bodyText }}>
+                    {PREVIEW_DESCRIPTION}
+                  </div>
+                  {renderPreviewDescriptionImages()}
+                </ExpandablePreviewDescriptionBlock>
+              </div>
+
+              <CommentsPreview
+                showComments={showComments}
+                showLikes={showCommentLikes}
+                showReplies={showCommentReplies}
+                brandColor={brandColor}
+              />
             </div>
           </div>
         )}
