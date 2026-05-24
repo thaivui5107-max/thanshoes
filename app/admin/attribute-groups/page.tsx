@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { ChevronDown, Edit, ExternalLink, FolderTree, Plus, Search, Trash2 } from 'lucide-react';
+import { ChevronDown, Edit, FolderTree, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge, Button, Card, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui';
 import { BulkActionBar, ColumnToggle, generatePaginationItems, SelectCheckbox, SortableHeader, useSortableData } from '../components/TableUtilities';
@@ -194,10 +194,6 @@ function AttributeGroupsContent() {
         toast.error(error instanceof Error ? error.message : 'Không thể xóa nhóm thuộc tính');
       }
     }
-  };
-
-  const openFrontend = (slug: string) => {
-    window.open(`/group/${slug}`, '_blank');
   };
 
   return (

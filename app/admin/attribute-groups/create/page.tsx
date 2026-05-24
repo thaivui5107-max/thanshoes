@@ -15,7 +15,6 @@ const MODULE_KEY = 'attributeGroups';
 export default function AttributeGroupCreatePage() {
   const router = useRouter();
   const createGroup = useMutation(api.attributeGroups.create);
-  const fieldsData = useQuery(api.admin.modules.listEnabledModuleFields, { moduleKey: MODULE_KEY });
 
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -25,12 +24,6 @@ export default function AttributeGroupCreatePage() {
   const [isFilterable, setIsFilterable] = useState(true);
   const [order, setOrder] = useState('0');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const enabledFields = useMemo(() => {
-    const fields = new Set<string>();
-    fieldsData?.forEach(f => fields.add(f.fieldKey));
-    return fields;
-  }, [fieldsData]);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;

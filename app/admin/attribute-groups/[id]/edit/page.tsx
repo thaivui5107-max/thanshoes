@@ -19,7 +19,6 @@ export default function AttributeGroupEditPage({ params }: { params: Promise<{ i
 
   const groupData = useQuery(api.attributeGroups.getById, { id: id as Id<"attributeGroups"> });
   const updateGroup = useMutation(api.attributeGroups.update);
-  const fieldsData = useQuery(api.admin.modules.listEnabledModuleFields, { moduleKey: MODULE_KEY });
 
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -29,12 +28,6 @@ export default function AttributeGroupEditPage({ params }: { params: Promise<{ i
   const [isFilterable, setIsFilterable] = useState(true);
   const [order, setOrder] = useState('0');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const enabledFields = useMemo(() => {
-    const fields = new Set<string>();
-    fieldsData?.forEach(f => fields.add(f.fieldKey));
-    return fields;
-  }, [fieldsData]);
 
   useEffect(() => {
     if (groupData) {
@@ -208,7 +201,6 @@ export default function AttributeGroupEditPage({ params }: { params: Promise<{ i
 function AttributeTermsManager({ groupId }: { groupId: Id<"attributeGroups"> }) {
   const terms = useQuery(api.attributeTerms.listByGroup, { groupId });
   const createTerm = useMutation(api.attributeTerms.create);
-  const updateTerm = useMutation(api.attributeTerms.update);
   const removeTerm = useMutation(api.attributeTerms.remove);
 
   const [name, setName] = useState('');
@@ -233,7 +225,7 @@ function AttributeTermsManager({ groupId }: { groupId: Id<"attributeGroups"> }) 
       setOrder('0');
       toast.success('Đã thêm giá trị thuộc tính');
     } catch (error) {
-      toast.error('Lỗi khi thêm giá trị thuộc tính');
+      toast.error(getAdminMutationErrorMessage(error, 'Lỗi khi thêm giá trị thuộc tính'));
     } finally {
       setIsSubmitting(false);
     }
@@ -245,7 +237,7 @@ function AttributeTermsManager({ groupId }: { groupId: Id<"attributeGroups"> }) 
       await removeTerm({ id });
       toast.success('Đã xóa giá trị thuộc tính');
     } catch (error) {
-      toast.error('Lỗi khi xóa giá trị thuộc tính');
+      toast.error(getAdminMutationErrorMessage(error, 'Lỗi khi xóa giá trị thuộc tính'));
     }
   };
 
