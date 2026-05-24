@@ -3211,7 +3211,7 @@ function MinimalStyle({
                       visibleSlots={verticalVisibleSlots}
                       tokens={tokens}
                       thumbnailAspectRatio={imageFrame.thumbnailAspectRatio}
-                      itemClassName="w-full rounded-sm"
+                      itemClassName="w-20 rounded-sm"
                       inactiveClassName="opacity-70 hover:opacity-100"
                       fallbackSrc={productImagePlaceholder}
                     />

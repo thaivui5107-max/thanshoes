@@ -1156,7 +1156,7 @@ export function ProductDetailPreview({
                         tokens={tokens}
                         thumbnailAspectRatio={imageFrame.thumbnailAspectRatio}
                         onActiveIndexChange={setActiveImageIndex}
-                        itemClassName="w-full rounded-sm"
+                        itemClassName="w-20 rounded-sm"
                       />
                     </div>
                   )}
