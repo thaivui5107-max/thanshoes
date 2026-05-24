@@ -118,29 +118,7 @@ export const productsModule = defineModuleWithRuntime({
       default: false,
       group: 'categoryContent',
     },
-    {
-      key: 'supplementalContentAssignmentMode',
-      label: 'Phạm vi áp dụng mặc định',
-      type: 'select',
-      default: 'products',
-      group: 'supplementalContent',
-      dependsOn: 'enableProductSupplementalContent',
-      options: [
-        { value: 'products', label: 'Theo sản phẩm' },
-        { value: 'categories', label: 'Theo danh mục' },
-      ],
-    },
-    {
-      key: 'supplementalContentConflictMode',
-      label: 'Quy tắc chống trùng lặp template',
-      type: 'select',
-      default: 'strict_single_effective',
-      group: 'supplementalContent',
-      dependsOn: 'enableProductSupplementalContent',
-      options: [
-        { value: 'strict_single_effective', label: 'Mỗi sản phẩm chỉ dùng tối đa 1 template mẫu' },
-      ],
-    },
+
     { key: 'lowStockThreshold', label: 'Ngưỡng tồn kho thấp', type: 'number', default: 10 },
     {
       key: 'variantEnabled',
@@ -242,7 +220,7 @@ export const productsModule = defineModuleWithRuntime({
    settingGroups: [
      { key: 'general', label: 'Cài đặt chung' },
      { key: 'categoryContent', label: 'Nội dung riêng theo Danh mục', icon: FolderTree },
-     { key: 'supplementalContent', label: 'Mẫu nội dung dùng chung (Hàng loạt)', icon: SquareStack },
+     { key: 'supplementalContent', label: 'Nội dung mô tả dùng chung', icon: SquareStack },
      { key: 'variants', label: 'Phiên bản sản phẩm', icon: Layers },
      { key: 'digital', label: 'Sản phẩm Digital', icon: Download },
    ],

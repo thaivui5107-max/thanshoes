@@ -268,7 +268,6 @@ async function resolveMediaUsageMap(
   productSupplementalContents.forEach(record => {
     collectUsageMatches(usageMap, candidates, "productSupplementalContents", record, "preContent", record.preContent);
     collectUsageMatches(usageMap, candidates, "productSupplementalContents", record, "postContent", record.postContent);
-    collectUsageMatches(usageMap, candidates, "productSupplementalContents", record, "faqItems", record.faqItems);
   });
 
   const postCategories = fullScan ? await ctx.db.query("postCategories").collect() : trimUsageRecords(await ctx.db.query("postCategories").take(MAX_USAGE_SCAN_PER_TABLE + 1), scanState);

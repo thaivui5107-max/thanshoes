@@ -32,7 +32,7 @@ import { ArrowLeft, Award, BadgeCheck, Bell, Bolt, Calendar, Camera, CheckCircle
 import { VariantSelector, type VariantSelectorOption } from '@/components/products/VariantSelector';
 import type { Id } from '@/convex/_generated/dataModel';
 import { getPublicPriceLabel } from '@/lib/products/public-price';
-import { sortSupplementalFaqItems, toRichTextContent } from '@/lib/products/product-supplemental-content';
+import { toRichTextContent } from '@/lib/products/product-supplemental-content';
 import { buildCategoryPath, buildDetailPath, normalizeRouteMode } from '@/lib/ia/route-mode';
 import { useProductFrameConfig } from '@/components/shared/ProductImageFrameBox';
 
@@ -821,7 +821,6 @@ export default function ProductDetailPage({ params }: PageProps) {
     ? {
         preContent: supplementalTemplate.preContent,
         postContent: supplementalTemplate.postContent,
-        faqItems: supplementalTemplate.faqItems,
       }
     : null;
   const canOpenLightbox = experienceConfig.enableImageLightbox && lightboxImages.length > 0;
@@ -1071,7 +1070,6 @@ interface CommentData {
 interface ProductSupplementalContentData {
   preContent?: string;
   postContent?: string;
-  faqItems: Array<{ id: string; question: string; answer: string; order: number }>;
 }
 
 interface StyleProps {
@@ -1691,51 +1689,7 @@ const stripHtmlTags = (value?: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-function ProductSupplementalFaqAccordion({
-  faqItems,
-  tokens,
-}: {
-  faqItems: ProductSupplementalContentData['faqItems'];
-  tokens: ProductDetailColors;
-}) {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const sortedFaqItems = sortSupplementalFaqItems(faqItems ?? []).filter((item) => item.question?.trim() && item.answer?.trim());
 
-  if (sortedFaqItems.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="rounded-2xl border px-5 py-5" style={{ borderColor: tokens.border, backgroundColor: tokens.surface }}>
-      <div className="space-y-3">
-        {sortedFaqItems.map((item, index) => {
-          const isOpen = openIndex === index;
-          return (
-            <div key={item.id} className="overflow-hidden rounded-xl border" style={{ borderColor: tokens.divider, backgroundColor: tokens.surfaceMuted }}>
-              <button
-                type="button"
-                onClick={() => setOpenIndex((prev) => (prev === index ? null : index))}
-                className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition-colors hover:opacity-90"
-                style={{ color: tokens.headingColor }}
-                aria-expanded={isOpen}
-              >
-                <span className="font-medium">{item.question}</span>
-                <ChevronDown size={18} className={`shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`.trim()} />
-              </button>
-              <div className={`grid transition-all duration-200 ease-in-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`.trim()}>
-                <div className="overflow-hidden">
-                  <div className="border-t px-4 py-4 text-sm whitespace-pre-line" style={{ borderColor: tokens.divider, color: tokens.bodyText }}>
-                    {stripHtmlTags(item.answer)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 function RatingInline({ summary, tokens }: { summary: RatingSummary; tokens: ProductDetailColors }) {
   if (!summary.average || summary.count <= 0) {
@@ -2236,24 +2190,13 @@ function ClassicStyle({
               {supplementalContent?.postContent ? (
                 <RichContent
                   content={toRichTextContent(supplementalContent.postContent)}
-                  className="max-w-none"
+                  className="max-w-none mt-4 pt-4 border-t border-dashed border-slate-100 dark:border-slate-800"
                   style={{ color: tokens.bodyText }}
                 />
               ) : null}
             </ExpandableProductDescriptionBlock>
           </div>
         ) : null}
-
-        <div className="mt-6">
-          <ProductSupplementalFaqAccordion 
-            faqItems={
-              (enableCategoryProductDetailFaq && category?.productDetailFaqEnabled !== false && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
-                ? []
-                : (supplementalContent?.faqItems ?? [])
-            } 
-            tokens={tokens} 
-          />
-        </div>
 
       {commentsSection}
 
@@ -2879,7 +2822,7 @@ function ModernStyle({
                   {supplementalContent?.postContent ? (
                     <RichContent
                       content={toRichTextContent(supplementalContent.postContent)}
-                      className="max-w-none"
+                      className="max-w-none mt-4 pt-4 border-t border-dashed border-slate-100 dark:border-slate-800"
                       style={{ color: tokens.bodyText }}
                     />
                   ) : null}
@@ -2889,15 +2832,6 @@ function ModernStyle({
               <p style={{ color: tokens.metaText }}>Chưa có mô tả chi tiết.</p>
             )}
           </div>
-
-          <ProductSupplementalFaqAccordion 
-            faqItems={
-              (enableCategoryProductDetailFaq && category?.productDetailFaqEnabled !== false && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
-                ? []
-                : (supplementalContent?.faqItems ?? [])
-            } 
-            tokens={tokens} 
-          />
         </div>
 
         {commentsSection}
@@ -3430,23 +3364,13 @@ function MinimalStyle({
               {supplementalContent?.postContent ? (
                 <RichContent
                   content={toRichTextContent(supplementalContent.postContent)}
-                  className="leading-relaxed font-light text-justify"
+                  className="leading-relaxed font-light text-justify mt-4 pt-4 border-t border-dashed border-slate-100 dark:border-slate-800"
                   style={{ color: tokens.bodyText }}
                 />
               ) : null}
             </ExpandableProductDescriptionBlock>
           </section>
         ) : null}
-        <section className="mt-10">
-          <ProductSupplementalFaqAccordion
-            faqItems={
-              (enableCategoryProductDetailFaq && category?.productDetailFaqEnabled !== false && category?.productDetailFaqItems && category.productDetailFaqItems.length > 0)
-                ? []
-                : (supplementalContent?.faqItems ?? [])
-            }
-            tokens={tokens}
-          />
-        </section>
         <RelatedProductsSection
           products={relatedProducts}
           categorySlug={product.categorySlug}

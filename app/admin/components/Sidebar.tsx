@@ -563,7 +563,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileMenuOpen, setMobileMenuO
                       { href: '/admin/settings/contact', label: 'Liên hệ', moduleKey: 'settings' },
                       { href: '/admin/settings/seo', label: 'SEO', moduleKey: 'settings' },
                       { href: '/admin/settings/advanced', label: 'Nâng cao', moduleKey: 'settings' },
-                      ...(productSupplementalContentEnabled ? [{ href: '/admin/settings/product-supplemental-content', label: 'Nội dung bổ sung SP', moduleKey: 'settings' }] : []),
                     ]}
                   />
                 )}

@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { LayoutTemplate, Loader2, Palette, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMutation, useQuery } from 'convex/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { revalidateSeoPaths } from '@/app/actions/seo-revalidate';
@@ -16,10 +16,11 @@ import MapLocationPicker from '../MapLocationPicker';
 import { HomeComponentStickyFooter } from '@/app/admin/home-components/_shared/components/HomeComponentStickyFooter';
 import { AiSeoImportDialog } from './AiSeoImportDialog';
 import { SeoBuilderDialog } from './SeoBuilderDialog';
+import { ProductSupplementalContentManager } from './ProductSupplementalContentManager';
 
 type SettingsSection = 'site' | 'contact' | 'seo' | 'advanced';
 type SettingsFormValue = string | boolean;
-type AdvancedTab = 'product-placeholder' | 'product-frame' | 'watermark' | 'header';
+type AdvancedTab = 'product-placeholder' | 'product-frame' | 'watermark' | 'header' | 'product-supplemental';
 type HeaderConfig = {
   showBrandName?: boolean;
   logoSizeLevel?: number;
@@ -203,6 +204,8 @@ export default function SettingsPageShell({ section }: { section: SettingsSectio
 
 function SettingsContent({ section }: { section: SettingsSection }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
   const [form, setForm] = useState<Record<string, SettingsFormValue>>({});
   const [initialForm, setInitialForm] = useState<Record<string, SettingsFormValue>>({});
   const [mediaStorageIds, setMediaStorageIds] = useState<Record<string, Id<'_storage'> | null>>({});
@@ -221,7 +224,19 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const featuresData = useQuery(api.admin.modules.listModuleFeatures, { moduleKey: MODULE_KEY });
   const fieldsData = useQuery(api.admin.modules.listModuleFields, { moduleKey: MODULE_KEY });
   const defaultImageAspectRatio = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
+  const productsSettings = useQuery(api.admin.modules.listModuleSettings, { moduleKey: 'products' });
   const [selectedFrameAR, setSelectedFrameAR] = useState<string>('');
+
+  const enableSupplementalContent = useMemo(
+    () => productsSettings?.find(s => s.settingKey === 'enableProductSupplementalContent')?.value === true,
+    [productsSettings]
+  );
+
+  useEffect(() => {
+    if (tabParam === 'product-supplemental' && enableSupplementalContent) {
+      setAdvancedTab('product-supplemental');
+    }
+  }, [tabParam, enableSupplementalContent]);
 
   const handlePreviewPointerDown = (e: React.PointerEvent<HTMLDivElement>, type: 'image-move' | 'image-resize' | 'text-move') => {
     e.preventDefault();
@@ -1306,6 +1321,20 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                         Header
                       </button>
                     )}
+                    {enableSupplementalContent && (
+                      <button
+                        type="button"
+                        onClick={() => setAdvancedTab('product-supplemental')}
+                        className={cn(
+                          'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                          advancedTab === 'product-supplemental'
+                            ? 'border-orange-500 text-slate-900 dark:text-slate-100'
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                        )}
+                      >
+                        Nội dung mô tả SP
+                      </button>
+                    )}
                   </div>
 
                   {advancedTab === 'product-placeholder' && (
@@ -1887,6 +1916,9 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                       </div>
                     </div>
                   )}
+                  {advancedTab === 'product-supplemental' && enableSupplementalContent && (
+                    <ProductSupplementalContentManager />
+                  )}
                 </div>
               ) : (
                 currentFields.map(field => renderField(field))
@@ -1912,14 +1944,15 @@ function SettingsContent({ section }: { section: SettingsSection }) {
         </Card>
       )}
 
-      <HomeComponentStickyFooter
-        isSubmitting={isSaving}
-        submitLabel="Lưu thay đổi"
-        hasChanges={hasChanges}
-        submitType="button"
-        onClickSave={handleSave}
-        align="between"
-      >
+      {!(section === 'advanced' && advancedTab === 'product-supplemental' && enableSupplementalContent) && (
+        <HomeComponentStickyFooter
+          isSubmitting={isSaving}
+          submitLabel="Lưu thay đổi"
+          hasChanges={hasChanges}
+          submitType="button"
+          onClickSave={handleSave}
+          align="between"
+        >
         <div className="flex items-center gap-2">
           {section === 'seo' && (
             <>
@@ -1962,6 +1995,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
           </Button>
         </div>
       </HomeComponentStickyFooter>
+      )}
     </div>
   );
 }

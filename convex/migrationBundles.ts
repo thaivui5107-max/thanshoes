@@ -719,14 +719,8 @@ export const exportBundle = query({
       }));
 
       const supplementalOut = supplementalContents.map((item) => ({
-        assignmentMode: item.assignmentMode,
-        categorySlugs: (item.categoryIds ?? []).map((id) => categoryById.get(id)?.slug).filter(Boolean),
-        faqItems: item.faqItems,
-        name: item.name,
         postContent: item.postContent,
         preContent: item.preContent,
-        productSkus: (item.productIds ?? []).map((id) => productById.get(id)?.sku).filter(Boolean),
-        status: item.status,
       }));
 
       moduleData.products = {
@@ -1176,24 +1170,23 @@ export const importBundle = mutation({
 
 
 
-        for (const content of ensureArray<any>(modulePayload.supplementalContents)) {
-          const existingCandidates = await ctx.db.query("productSupplementalContents").take(5000);
-          const existing = existingCandidates.find((item) => item.name === content.name);
+        const supplementalArray = ensureArray<any>(modulePayload.supplementalContents);
+        if (supplementalArray.length > 0) {
+          const content = supplementalArray[0];
+          const existingCandidates = await ctx.db.query("productSupplementalContents").collect();
           const payloadRow = {
-            assignmentMode: content.assignmentMode,
-            categoryIds: ensureArray<string>(content.categorySlugs).map((slug) => categoryIdBySlug.get(slug)).filter(Boolean),
-            faqItems: ensureArray<any>(content.faqItems),
-            name: content.name,
-            postContent: rewriteByUrlMap(content.postContent, mediaMap),
-            preContent: rewriteByUrlMap(content.preContent, mediaMap),
-            productIds: ensureArray<string>(content.productSkus).map((sku) => productIdBySku.get(sku)).filter(Boolean),
-            status: content.status,
+            postContent: rewriteByUrlMap(content.postContent, mediaMap) as string | undefined,
+            preContent: rewriteByUrlMap(content.preContent, mediaMap) as string | undefined,
           };
-          if (existing) {
-            await ctx.db.patch(existing._id, payloadRow as any);
+          if (existingCandidates.length > 0) {
+            const first = existingCandidates[0];
+            await ctx.db.patch(first._id, payloadRow);
             updated += 1;
+            for (let i = 1; i < existingCandidates.length; i++) {
+              await ctx.db.delete(existingCandidates[i]._id);
+            }
           } else {
-            await ctx.db.insert("productSupplementalContents", payloadRow as any);
+            await ctx.db.insert("productSupplementalContents", payloadRow);
             created += 1;
           }
         }
