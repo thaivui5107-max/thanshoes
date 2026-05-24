@@ -1682,14 +1682,6 @@ const findExactVariant = (variants: ProductVariant[], selection: VariantSelectio
     variant.optionValues.every((optionValue) => selection[optionValue.optionId] === optionValue.valueId)
   ) ?? null;
 
-const stripHtmlTags = (value?: string) =>
-  (value ?? '')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-
 
 function RatingInline({ summary, tokens }: { summary: RatingSummary; tokens: ProductDetailColors }) {
   if (!summary.average || summary.count <= 0) {

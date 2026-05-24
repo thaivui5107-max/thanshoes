@@ -210,7 +210,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileMenuOpen, setMobileMenuO
   const showNotificationsSection = isModuleEnabled('notifications');
   const showPromotionsSection = isModuleEnabled('promotions');
   const variantEnabled = Boolean(productSettings?.find(setting => setting.settingKey === 'variantEnabled')?.value);
-  const productSupplementalContentEnabled = Boolean(productSettings?.find(setting => setting.settingKey === 'enableProductSupplementalContent')?.value);
 
   const analyticsSectionItemCount = showAnalyticsSection ? 1 : 0;
   const contentSectionItemCount = Number(showPostsSection) + Number(showServicesSection);
