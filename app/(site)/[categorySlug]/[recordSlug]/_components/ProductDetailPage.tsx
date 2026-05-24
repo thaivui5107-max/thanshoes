@@ -47,7 +47,7 @@ type MinimalContentWidth = 'narrow' | 'medium' | 'wide';
 type ProductsSaleMode = 'cart' | 'contact' | 'affiliate';
 type RelatedProductsMode = 'fixed' | 'infiniteScroll' | 'pagination';
 type ProductImageAspectRatioSource = 'module' | 'custom';
-type ComboAnimateType = 'none' | 'luxury-sheen' | 'typing' | 'letter-wave' | 'fire' | 'sparkle-gradient' | 'sparkle-red' | 'sparkle-primary' | 'sparkle-secondary' | 'text-highlight' | 'border-rainbow';
+type ComboAnimateType = 'none' | 'luxury-sheen' | 'typing' | 'letter-wave' | 'fire' | 'sparkle-gradient' | 'sparkle-black' | 'sparkle-gold' | 'sparkle-emerald' | 'sparkle-red' | 'sparkle-primary' | 'sparkle-secondary' | 'text-highlight' | 'border-rainbow';
 type ProductDetailAccentColorConfig = {
   categoryBadge?: ProductDetailElementColorChoice;
   discountBadge?: ProductDetailElementColorChoice;
@@ -4182,6 +4182,24 @@ function ProductCombosBlock({
   } else if (comboAnimateType === 'sparkle-gradient') {
     animateClass = 'animate-combo-sparkle';
     titleEffectClass = 'animate-combo-sparkle-text';
+  } else if (comboAnimateType === 'sparkle-black') {
+    animateClass = 'animate-combo-sparkle';
+    titleEffectClass = 'animate-combo-sparkle-text';
+    titleEffectStyle['--combo-sparkle-a' as string] = '#020617';
+    titleEffectStyle['--combo-sparkle-b' as string] = '#64748b';
+    titleEffectStyle['--combo-sparkle-c' as string] = '#f8fafc';
+  } else if (comboAnimateType === 'sparkle-gold') {
+    animateClass = 'animate-combo-sparkle';
+    titleEffectClass = 'animate-combo-sparkle-text';
+    titleEffectStyle['--combo-sparkle-a' as string] = '#92400e';
+    titleEffectStyle['--combo-sparkle-b' as string] = '#f59e0b';
+    titleEffectStyle['--combo-sparkle-c' as string] = '#fde68a';
+  } else if (comboAnimateType === 'sparkle-emerald') {
+    animateClass = 'animate-combo-sparkle';
+    titleEffectClass = 'animate-combo-sparkle-text';
+    titleEffectStyle['--combo-sparkle-a' as string] = '#065f46';
+    titleEffectStyle['--combo-sparkle-b' as string] = '#10b981';
+    titleEffectStyle['--combo-sparkle-c' as string] = '#a7f3d0';
   } else if (comboAnimateType === 'sparkle-red') {
     animateClass = 'animate-combo-sparkle';
     titleEffectClass = 'animate-combo-sparkle-text';
