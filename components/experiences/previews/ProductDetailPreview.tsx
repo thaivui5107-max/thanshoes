@@ -75,7 +75,7 @@ type ProductDetailPreviewProps = {
   relatedProductsMode?: 'fixed' | 'infiniteScroll' | 'pagination';
   relatedProductsPerPage?: number;
   enableCombos?: boolean;
-  comboAnimateType?: 'none' | 'luxury-sheen' | 'typing' | 'fire' | 'sparkle-text' | 'pulse' | 'bounce' | 'text-highlight' | 'border-rainbow';
+  comboAnimateType?: 'none' | 'luxury-sheen' | 'typing' | 'letter-wave' | 'fire' | 'sparkle-gradient' | 'sparkle-red' | 'sparkle-primary' | 'sparkle-secondary' | 'pulse' | 'bounce' | 'text-highlight' | 'border-rainbow';
   accentColors?: {
     categoryBadge?: ProductDetailElementColorChoice;
     discountBadge?: ProductDetailElementColorChoice;
@@ -1490,21 +1490,61 @@ function PreviewCombosBlock({
 }) {
   let animateClass = '';
   let titleEffectClass = '';
+  const titleEffectStyle: React.CSSProperties & Record<string, string> = {};
   if (comboAnimateType === 'luxury-sheen' || comboAnimateType === 'pulse' || comboAnimateType === 'bounce') {
     animateClass = 'animate-combo-luxury-sheen';
   } else if (comboAnimateType === 'typing') {
     titleEffectClass = 'animate-combo-typing-text';
+  } else if (comboAnimateType === 'letter-wave') {
+    titleEffectClass = 'animate-combo-letter-wave';
   } else if (comboAnimateType === 'fire') {
     animateClass = 'animate-combo-fire';
     titleEffectClass = 'animate-combo-fire-text';
-  } else if (comboAnimateType === 'sparkle-text') {
+  } else if (comboAnimateType === 'sparkle-gradient') {
     animateClass = 'animate-combo-sparkle';
     titleEffectClass = 'animate-combo-sparkle-text';
+  } else if (comboAnimateType === 'sparkle-red') {
+    animateClass = 'animate-combo-sparkle';
+    titleEffectClass = 'animate-combo-sparkle-text';
+    titleEffectStyle['--combo-sparkle-a' as string] = '#dc2626';
+    titleEffectStyle['--combo-sparkle-b' as string] = '#f97316';
+    titleEffectStyle['--combo-sparkle-c' as string] = '#991b1b';
+  } else if (comboAnimateType === 'sparkle-primary') {
+    animateClass = 'animate-combo-sparkle';
+    titleEffectClass = 'animate-combo-sparkle-text';
+    titleEffectStyle['--combo-sparkle-a' as string] = tokens.primary;
+    titleEffectStyle['--combo-sparkle-b' as string] = tokens.secondary;
+    titleEffectStyle['--combo-sparkle-c' as string] = comboBadgeColors.text;
+  } else if (comboAnimateType === 'sparkle-secondary') {
+    animateClass = 'animate-combo-sparkle';
+    titleEffectClass = 'animate-combo-sparkle-text';
+    titleEffectStyle['--combo-sparkle-a' as string] = tokens.secondary;
+    titleEffectStyle['--combo-sparkle-b' as string] = tokens.primary;
+    titleEffectStyle['--combo-sparkle-c' as string] = comboBadgeColors.text;
   } else if (comboAnimateType === 'text-highlight') {
     animateClass = 'animate-combo-text-highlight';
   } else if (comboAnimateType === 'border-rainbow') {
     animateClass = 'animate-combo-border-rainbow';
   }
+  const renderTitle = (text: string) => {
+    if (comboAnimateType !== 'letter-wave') {
+      return <span className={`combo-title-text ${titleEffectClass}`.trim()} style={titleEffectStyle}>{text}</span>;
+    }
+
+    return (
+      <span className="combo-title-text inline-flex flex-wrap" style={titleEffectStyle}>
+        {Array.from(text).map((char, index) => (
+          <span
+            key={`${char}-${index}`}
+            className="animate-combo-letter-wave"
+            style={{ animationDelay: `${index * 0.06}s` }}
+          >
+            {char === ' ' ? '\u00A0' : char}
+          </span>
+        ))}
+      </span>
+    );
+  };
 
   return (
     <div className={`relative my-5 overflow-hidden rounded-2xl border p-4 transition-all ${animateClass}`} style={{ borderColor: tokens.divider, backgroundColor: tokens.surfaceMuted }}>
@@ -1516,7 +1556,7 @@ function PreviewCombosBlock({
           <Gift size={13} />
           Combo deal
         </span>
-        <span className={`combo-title-text ${titleEffectClass}`.trim()}>Ưu đãi Combo (Preview)</span>
+        {renderTitle('Ưu đãi Combo (Preview)')}
       </h3>
 
       <div className="space-y-3">

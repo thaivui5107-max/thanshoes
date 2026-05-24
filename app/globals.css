@@ -293,6 +293,18 @@ body {
   }
 }
 
+@keyframes combo-letter-wave {
+  0%, 70%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  20% {
+    transform: translateY(-0.22em) scale(1.08);
+  }
+  38% {
+    transform: translateY(0.04em) scale(0.98);
+  }
+}
+
 @keyframes combo-fire-text {
   0%, 100% {
     filter: drop-shadow(0 0 3px rgba(249, 115, 22, 0.5));
@@ -359,6 +371,12 @@ body {
   animation: combo-fire-glow 3.4s ease-in-out infinite;
 }
 
+.animate-combo-letter-wave {
+  animation: combo-letter-wave 1.45s ease-in-out infinite;
+  display: inline-block;
+  will-change: transform;
+}
+
 .animate-combo-fire-text {
   animation: combo-fire-text 1.8s ease-in-out infinite;
   color: #f97316;
@@ -370,7 +388,13 @@ body {
 
 .animate-combo-sparkle-text {
   animation: combo-sparkle-text 2.8s linear infinite;
-  background: linear-gradient(90deg, currentColor, #fbbf24, #a855f7, currentColor);
+  background: linear-gradient(
+    90deg,
+    var(--combo-sparkle-a, currentColor),
+    var(--combo-sparkle-b, #fbbf24),
+    var(--combo-sparkle-c, #a855f7),
+    var(--combo-sparkle-a, currentColor)
+  );
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;

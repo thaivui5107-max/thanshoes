@@ -162,7 +162,7 @@ const renderSocialIcon = (value: string, size = 16) => {
 type ProductsDetailStyle = 'classic' | 'modern' | 'minimal';
 type RelatedProductsMode = 'fixed' | 'infiniteScroll' | 'pagination';
 type ProductImageAspectRatioSource = 'module' | 'custom';
-type ComboAnimateType = 'none' | 'luxury-sheen' | 'typing' | 'fire' | 'sparkle-text' | 'text-highlight' | 'border-rainbow';
+type ComboAnimateType = 'none' | 'luxury-sheen' | 'typing' | 'letter-wave' | 'fire' | 'sparkle-gradient' | 'sparkle-red' | 'sparkle-primary' | 'sparkle-secondary' | 'text-highlight' | 'border-rainbow';
 
 type ProductDetailAccentColorConfig = {
   categoryBadge?: ProductDetailElementColorChoice;
@@ -1248,8 +1248,12 @@ export default function ProductDetailExperiencePage() {
                   { value: 'none', label: 'Không có hiệu ứng' },
                   { value: 'luxury-sheen', label: 'Sang trọng (Luxury Sheen)' },
                   { value: 'typing', label: 'Đánh chữ' },
+                  { value: 'letter-wave', label: 'Chữ nhảy tuần tự' },
                   { value: 'fire', label: 'Ngọn lửa cháy' },
-                  { value: 'sparkle-text', label: 'Chữ lấp lánh' },
+                  { value: 'sparkle-gradient', label: 'Chữ lấp lánh gradient' },
+                  { value: 'sparkle-red', label: 'Chữ lấp lánh màu đỏ' },
+                  { value: 'sparkle-primary', label: 'Chữ lấp lánh màu chính' },
+                  { value: 'sparkle-secondary', label: 'Chữ lấp lánh màu phụ' },
                   { value: 'text-highlight', label: 'Chữ ánh kim nhẹ' },
                   { value: 'border-rainbow', label: 'Viền ánh sáng nhẹ' },
                 ]}
