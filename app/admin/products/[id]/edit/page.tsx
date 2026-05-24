@@ -139,6 +139,8 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     name: string;
     price: string;
     productType: 'physical' | 'digital';
+    productTypeId?: string;
+    attributeTermIds?: Id<"attributeTerms">[];
     salePrice: string;
     sku: string;
     slug: string;
@@ -182,6 +184,17 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   const multiCategoryEnabled = useMemo(() => (
     Boolean(settingsData?.find(s => s.settingKey === 'enableMultipleCategories')?.value)
   ), [settingsData]);
+
+  const enableProductTypes = useMemo(() => {
+    const setting = settingsData?.find(s => s.settingKey === 'enableProductTypes');
+    return setting?.value === true;
+  }, [settingsData]);
+
+  const productTypesData = useQuery(api.productTypes.listAll, enableProductTypes ? {} : 'skip');
+  const assignedTermIdsData = useQuery(api.attributeTerms.getAssignedTermIds, { productId: id as Id<"products"> });
+  const [productTypeId, setProductTypeId] = useState('');
+  const [attributeTermIds, setAttributeTermIds] = useState<Id<"attributeTerms">[]>([]);
+  const formConfig = useQuery(api.productTypes.getFormConfig, productTypeId ? { typeId: productTypeId as Id<"productTypes"> } : 'skip');
 
   const digitalEnabled = productTypeMode !== 'physical';
 
@@ -273,6 +286,8 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     stock: stock.trim(),
     variantSelections: normalizedVariantSelections,
     variantRows: normalizedVariantRows,
+    productTypeId,
+    attributeTermIds,
     combos,
   }), [
     affiliateLink,
@@ -300,6 +315,8 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     stock,
     normalizedVariantSelections,
     normalizedVariantRows,
+    productTypeId,
+    attributeTermIds,
     combos,
   ]);
 
@@ -353,7 +370,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   };
 
   useEffect(() => {
-    if (productData && !isDataLoaded && optionsData !== undefined && valuesData !== undefined && variantsData !== undefined) {
+    if (productData && !isDataLoaded && optionsData !== undefined && valuesData !== undefined && variantsData !== undefined && assignedTermIdsData !== undefined) {
       const variantOptionIds = (productData.optionIds?.length ?? 0) > 0
         ? productData.optionIds ?? []
         : Array.from(new Set(variantsData.flatMap((variant) => variant.optionValues.map((item) => item.optionId))));
@@ -437,6 +454,8 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
       setHasVariants(productData.hasVariants ?? false);
       setVariantSelections(nextVariantSelections);
       setVariantRows(nextVariantRows);
+      setProductTypeId(productData.productTypeId ?? '');
+      if (assignedTermIdsData) setAttributeTermIds(assignedTermIdsData);
       setProductType(productData.productType ?? 'physical');
       setDigitalDeliveryType(productData.digitalDeliveryType ?? 'account');
       setDigitalCredentialsTemplate(productData.digitalCredentialsTemplate ?? {});
@@ -469,12 +488,14 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
         stock: productData.stock.toString(),
         variantSelections: nextNormalizedVariantSelections,
         variantRows: nextNormalizedVariantRows,
+        productTypeId: productData.productTypeId ?? '',
+        attributeTermIds: assignedTermIdsData ?? [],
         combos: (productData as any).combos ?? [],
       };
       setSnapshotVersion((prev) => prev + 1);
       setIsDataLoaded(true);
     }
-  }, [productData, additionalCategoryIdsData, isDataLoaded, hasMarkdownRender, hasHtmlRender, optionsData, valuesData, variantsData]);
+  }, [productData, additionalCategoryIdsData, assignedTermIdsData, isDataLoaded, hasMarkdownRender, hasHtmlRender, optionsData, valuesData, variantsData]);
 
   useEffect(() => {
     const allowedRenderTypes = new Set<'content' | 'markdown' | 'html'>(['content']);
@@ -638,6 +659,8 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
         slug: slug.trim(),
         status,
         stock: resolvedStock,
+        productTypeId: enableProductTypes && productTypeId ? productTypeId as Id<"productTypes"> : undefined,
+        attributeTermIds: enableProductTypes ? attributeTermIds : undefined,
         productType: digitalEnabled ? productType : undefined,
         digitalDeliveryType: digitalEnabled && productType === 'digital' ? digitalDeliveryType : undefined,
         digitalCredentialsTemplate: digitalEnabled && productType === 'digital' && Object.keys(digitalCredentialsTemplate).length > 0
@@ -1562,6 +1585,60 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
             </CardContent>
           </Card>
           
+          {enableProductTypes && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">Phân loại chuyên sâu</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Kiểu sản phẩm</Label>
+                  <select
+                    value={productTypeId}
+                    onChange={(e) => {
+                      setProductTypeId(e.target.value);
+                      setAttributeTermIds([]); // Reset terms when type changes
+                    }}
+                    className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                  >
+                    <option value="">Chọn kiểu sản phẩm...</option>
+                    {productTypesData?.map((type) => (
+                      <option key={type._id} value={type._id}>{type.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {formConfig && formConfig.groups.map(group => (
+                  <div key={group._id} className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <Label>{group.name}</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      {group.terms.map(term => (
+                        <label key={term._id} className="flex items-center gap-2 cursor-pointer bg-slate-50 dark:bg-slate-900 px-2 py-1.5 rounded-md border border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                          <input
+                            type={group.inputType === 'radio' || group.filterType === 'single' ? 'radio' : 'checkbox'}
+                            name={`attr_${group._id}`}
+                            checked={attributeTermIds.includes(term._id)}
+                            onChange={(e) => {
+                              if (group.inputType === 'radio' || group.filterType === 'single') {
+                                const otherTermIds = group.terms.map(t => t._id).filter(id => id !== term._id);
+                                setAttributeTermIds(prev => [...prev.filter(id => !otherTermIds.includes(id)), term._id]);
+                              } else {
+                                if (e.target.checked) {
+                                  setAttributeTermIds(prev => [...prev, term._id]);
+                                } else {
+                                  setAttributeTermIds(prev => prev.filter(id => id !== term._id));
+                                }
+                              }
+                            }}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span className="text-xs truncate">{term.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader><CardTitle className="text-base">Ảnh sản phẩm</CardTitle></CardHeader>
             <CardContent>

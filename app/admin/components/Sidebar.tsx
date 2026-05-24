@@ -210,6 +210,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileMenuOpen, setMobileMenuO
   const showNotificationsSection = isModuleEnabled('notifications');
   const showPromotionsSection = isModuleEnabled('promotions');
   const variantEnabled = Boolean(productSettings?.find(setting => setting.settingKey === 'variantEnabled')?.value);
+  const productTypesEnabled = Boolean(productSettings?.find(setting => setting.settingKey === 'enableProductTypes')?.value);
 
   const analyticsSectionItemCount = showAnalyticsSection ? 1 : 0;
   const contentSectionItemCount = Number(showPostsSection) + Number(showServicesSection);
@@ -400,6 +401,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileMenuOpen, setMobileMenuO
                   subItems={[
                     { href: '/admin/products', label: 'Sản phẩm', moduleKey: 'products' },
                     { href: '/admin/categories', label: 'Danh mục sản phẩm', moduleKey: 'products' },
+                    ...(productTypesEnabled ? [{ href: '/admin/product-types', label: 'Loại sản phẩm', moduleKey: 'products' }] : []),
+                    ...(productTypesEnabled ? [{ href: '/admin/attribute-groups', label: 'Thuộc tính lọc', moduleKey: 'products' }] : []),
                     ...(variantEnabled ? [{ href: '/admin/product-options', label: 'Loại tùy chọn', moduleKey: 'products' }] : []),
                     { href: '/admin/orders', label: 'Đơn hàng', moduleKey: 'orders' },
                     { href: '/admin/cart', label: 'Giỏ hàng', moduleKey: 'cart' },

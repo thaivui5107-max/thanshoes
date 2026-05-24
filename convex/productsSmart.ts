@@ -98,6 +98,8 @@ const smartProductArgs = {
   images: v.optional(v.array(v.string())),
   imageStorageId: v.optional(v.union(v.id("_storage"), v.null())),
   imageStorageIds: v.optional(v.array(v.union(v.id("_storage"), v.null()))),
+  productTypeId: v.optional(v.id("productTypes")),
+  attributeTermIds: v.optional(v.array(v.id("attributeTerms"))),
   productType: v.optional(productTypeDoc),
   digitalDeliveryType: v.optional(digitalDeliveryTypeDoc),
   digitalCredentialsTemplate: v.optional(digitalCredentialsDoc),
@@ -518,6 +520,7 @@ export const createProductWithVariants = mutation({
       images: args.images,
       imageStorageId: args.imageStorageId,
       imageStorageIds: args.imageStorageIds,
+      productTypeId: args.productTypeId,
       productType,
       digitalDeliveryType: productType === "digital" ? args.digitalDeliveryType : undefined,
       digitalCredentialsTemplate: productType === "digital" ? args.digitalCredentialsTemplate : undefined,
@@ -536,6 +539,13 @@ export const createProductWithVariants = mutation({
       optionIds: hasVariants ? optionIds : undefined,
       combos: args.combos,
     });
+
+    if (args.attributeTermIds && args.attributeTermIds.length > 0) {
+      for (let i = 0; i < args.attributeTermIds.length; i++) {
+        const termId = args.attributeTermIds[i];
+        await ctx.db.insert("productAttributeTerms", { productId, termId, order: i });
+      }
+    }
 
     if (await isMultiCategoryEnabled(ctx, "products")) {
       await syncProductCategoryAssignments(ctx, productId, args.categoryId, args.additionalCategoryIds);
@@ -695,6 +705,7 @@ export const updateProductWithVariants = mutation({
       images: args.images,
       imageStorageId: args.imageStorageId,
       imageStorageIds: args.imageStorageIds,
+      productTypeId: args.productTypeId,
       productType,
       digitalDeliveryType: productType === "digital" ? args.digitalDeliveryType : undefined,
       digitalCredentialsTemplate: productType === "digital" ? args.digitalCredentialsTemplate : undefined,
@@ -712,6 +723,20 @@ export const updateProductWithVariants = mutation({
       optionIds: hasVariants ? optionIds : [],
       combos: args.combos,
     });
+
+    if (args.attributeTermIds) {
+      const existingTerms = await ctx.db
+        .query("productAttributeTerms")
+        .withIndex("by_product", (q) => q.eq("productId", args.id))
+        .collect();
+      for (const term of existingTerms) {
+        await ctx.db.delete(term._id);
+      }
+      for (let i = 0; i < args.attributeTermIds.length; i++) {
+        const termId = args.attributeTermIds[i];
+        await ctx.db.insert("productAttributeTerms", { productId: args.id, termId, order: i });
+      }
+    }
 
     if (await isMultiCategoryEnabled(ctx, "products")) {
       await syncProductCategoryAssignments(ctx, args.id, args.categoryId, args.additionalCategoryIds);

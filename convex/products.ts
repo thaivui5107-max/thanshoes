@@ -105,6 +105,7 @@ const productDoc = v.object({
   status: productStatus,
   stock: v.number(),
   combos: v.optional(v.array(comboItemDoc)),
+  productTypeId: v.optional(v.id("productTypes")),
 });
 
 const productAdminDoc = v.object({
@@ -158,6 +159,7 @@ const productAdminDoc = v.object({
   hasPricedActiveVariant: v.optional(v.boolean()),
   hasInvalidVariantComparePrice: v.optional(v.boolean()),
   combos: v.optional(v.array(comboItemDoc)),
+  productTypeId: v.optional(v.id("productTypes")),
 });
 
 const paginatedProducts = v.object({
@@ -780,6 +782,7 @@ export const listPublishedPaginated = query({
       v.literal("oldest"),
       v.literal("popular"),
     )),
+    attributeTermIds: v.optional(v.array(v.array(v.id("attributeTerms")))),
   },
   handler: async (ctx, args) => {
     const sortBy = args.sortBy ?? "newest";
@@ -814,6 +817,30 @@ export const listPublishedPaginated = query({
         .paginate(args.paginationOpts);
     }
 
+    const hasAttributeFilter = args.attributeTermIds && args.attributeTermIds.length > 0;
+    if (hasAttributeFilter && args.attributeTermIds) {
+      let matchedProductIds: Set<Id<"products">> | null = null;
+      let firstGroup = true;
+      for (const groupTerms of args.attributeTermIds) {
+        if (groupTerms.length === 0) continue;
+        const groupProductRows = await Promise.all(
+          groupTerms.map(termId => 
+            ctx.db.query("productAttributeTerms").withIndex("by_term", q => q.eq("termId", termId)).collect()
+          )
+        );
+        const groupProductIds = new Set(groupProductRows.flat().map(r => r.productId));
+        if (firstGroup) {
+          matchedProductIds = groupProductIds;
+          firstGroup = false;
+        } else {
+          matchedProductIds = new Set([...matchedProductIds!].filter(id => groupProductIds.has(id)));
+        }
+      }
+      if (matchedProductIds) {
+        result.page = result.page.filter(p => matchedProductIds!.has(p._id));
+      }
+    }
+
     const settings = await getVariantSettings(ctx);
     const page = await resolveVariantOverrides(ctx, result.page, settings);
     return { ...result, page };
@@ -836,6 +863,7 @@ export const listPublishedWithOffset = query({
       v.literal("price_desc"),
       v.literal("name")
     )),
+    attributeTermIds: v.optional(v.array(v.array(v.id("attributeTerms")))),
   },
   handler: async (ctx, args) => {
     const limit = Math.min(args.limit ?? 12, 50);
@@ -843,7 +871,8 @@ export const listPublishedWithOffset = query({
     const sortBy = args.sortBy ?? "newest";
 
     let products: Doc<"products">[] = [];
-    const fetchLimit = offset + limit + 10;
+    const hasAttributeFilter = args.attributeTermIds && args.attributeTermIds.length > 0;
+    const fetchLimit = hasAttributeFilter ? 1000 : offset + limit + 10;
 
     if (args.search?.trim()) {
       const searchLower = args.search.toLowerCase().trim();
@@ -887,6 +916,29 @@ export const listPublishedWithOffset = query({
         42,
       );
       products = ranked.map((entry) => entry.item);
+    }
+
+    if (hasAttributeFilter && args.attributeTermIds) {
+      let matchedProductIds: Set<Id<"products">> | null = null;
+      let firstGroup = true;
+      for (const groupTerms of args.attributeTermIds) {
+        if (groupTerms.length === 0) continue;
+        const groupProductRows = await Promise.all(
+          groupTerms.map(termId => 
+            ctx.db.query("productAttributeTerms").withIndex("by_term", q => q.eq("termId", termId)).collect()
+          )
+        );
+        const groupProductIds = new Set(groupProductRows.flat().map(r => r.productId));
+        if (firstGroup) {
+          matchedProductIds = groupProductIds;
+          firstGroup = false;
+        } else {
+          matchedProductIds = new Set([...matchedProductIds!].filter(id => groupProductIds.has(id)));
+        }
+      }
+      if (matchedProductIds) {
+        products = products.filter(p => matchedProductIds!.has(p._id));
+      }
     }
 
     const settings = await getVariantSettings(ctx);
@@ -1027,9 +1079,10 @@ export const countPublished = query({
   args: {
     categoryId: v.optional(v.id("productCategories")),
     search: v.optional(v.string()),
+    attributeTermIds: v.optional(v.array(v.array(v.id("attributeTerms")))),
   },
   handler: async (ctx, args) => {
-    if (!args.categoryId && !args.search?.trim()) {
+    if (!args.categoryId && !args.search?.trim() && !(args.attributeTermIds && args.attributeTermIds.length > 0)) {
       const activeStats = await ctx.db
         .query("productStats")
         .withIndex("by_key", (q) => q.eq("key", "Active"))
@@ -1062,6 +1115,30 @@ export const countPublished = query({
         product.name.toLowerCase().includes(searchLower) ||
         product.sku.toLowerCase().includes(searchLower)
       );
+    }
+
+    const hasAttributeFilter = args.attributeTermIds && args.attributeTermIds.length > 0;
+    if (hasAttributeFilter && args.attributeTermIds) {
+      let matchedProductIds: Set<Id<"products">> | null = null;
+      let firstGroup = true;
+      for (const groupTerms of args.attributeTermIds) {
+        if (groupTerms.length === 0) continue;
+        const groupProductRows = await Promise.all(
+          groupTerms.map(termId => 
+            ctx.db.query("productAttributeTerms").withIndex("by_term", q => q.eq("termId", termId)).collect()
+          )
+        );
+        const groupProductIds = new Set(groupProductRows.flat().map(r => r.productId));
+        if (firstGroup) {
+          matchedProductIds = groupProductIds;
+          firstGroup = false;
+        } else {
+          matchedProductIds = new Set([...matchedProductIds!].filter(id => groupProductIds.has(id)));
+        }
+      }
+      if (matchedProductIds) {
+        products = products.filter(p => matchedProductIds!.has(p._id));
+      }
     }
 
     return products.length;
@@ -1427,6 +1504,8 @@ export const create = mutation({
     slug: v.string(),
     status: v.optional(productStatus),
     stock: v.optional(v.number()),
+    productTypeId: v.optional(v.id("productTypes")),
+    attributeTermIds: v.optional(v.array(v.id("attributeTerms"))),
   },
   handler: async (ctx, args) => {
     // Validate unique SKU
@@ -1514,7 +1593,16 @@ export const create = mutation({
       hasVariants: args.hasVariants ?? false,
       optionIds: args.optionIds,
       salePrice: resolvedSalePrice,
+      productTypeId: args.productTypeId,
     });
+
+    if (args.attributeTermIds && args.attributeTermIds.length > 0) {
+      for (let i = 0; i < args.attributeTermIds.length; i++) {
+        const termId = args.attributeTermIds[i];
+        await ctx.db.insert("productAttributeTerms", { productId, termId, order: i });
+      }
+    }
+
     await syncOwnerFilesAndCleanup(ctx, {
       ownerField: "images",
       ownerId: productId,
@@ -1577,9 +1665,11 @@ export const update = mutation({
     slug: v.optional(v.string()),
     status: v.optional(productStatus),
     stock: v.optional(v.number()),
+    productTypeId: v.optional(v.id("productTypes")),
+    attributeTermIds: v.optional(v.array(v.id("attributeTerms"))),
   },
   handler: async (ctx, args) => {
-    const { id, salePrice, ...updates } = args;
+    const { id, salePrice, attributeTermIds, ...updates } = args;
     const hasSalePrice = Object.prototype.hasOwnProperty.call(args, "salePrice");
     const resolvedSalePrice = typeof salePrice === "number" && salePrice > 0 ? salePrice : undefined;
     const product = await ctx.db.get(id);
@@ -1712,6 +1802,23 @@ export const update = mutation({
       }, dedupeStorageIds([nextImageStorageId, ...(nextImageStorageIds ?? [])]), {
         previousStorageIds: [product.imageStorageId, ...(product.imageStorageIds ?? [])],
       });
+    }
+
+    if (attributeTermIds) {
+      const existingTerms = await ctx.db
+        .query("productAttributeTerms")
+        .withIndex("by_product", (q) => q.eq("productId", id))
+        .collect();
+      for (const term of existingTerms) {
+        await ctx.db.delete(term._id);
+      }
+      for (let i = 0; i < attributeTermIds.length; i++) {
+        await ctx.db.insert("productAttributeTerms", {
+          productId: id,
+          termId: attributeTermIds[i],
+          order: i,
+        });
+      }
     }
 
     await ctx.runMutation(api.landingPages.syncProgrammaticFromSourceChange, { source: "product" });

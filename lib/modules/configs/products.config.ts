@@ -222,6 +222,13 @@ export const productsModule = defineModuleWithRuntime({
       default: false,
       group: 'general',
     },
+    {
+      key: 'enableProductTypes',
+      label: 'Bật hệ thống Phân loại & Thuộc tính',
+      type: 'toggle',
+      default: false,
+      group: 'general',
+    },
    ],
 
    settingGroups: [

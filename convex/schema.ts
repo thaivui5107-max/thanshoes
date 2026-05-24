@@ -299,6 +299,7 @@ export default defineSchema({
     metaTitle: v.optional(v.string()),
     metaDescription: v.optional(v.string()),
     productType: v.optional(v.union(v.literal("physical"), v.literal("digital"))),
+    productTypeId: v.optional(v.id("productTypes")), // Liên kết đến Loại sản phẩm (hệ thống Phân loại mới)
     digitalDeliveryType: v.optional(
       v.union(
         v.literal("account"),
@@ -465,6 +466,70 @@ export default defineSchema({
     count: v.number(),
     lastOrder: v.number(),
   }).index("by_key", ["key"]),
+
+  // 10f. productTypes - Loại sản phẩm (Được migrate từ Wincellar)
+  productTypes: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    description: v.optional(v.string()),
+    order: v.number(),
+    active: v.boolean(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_active_order", ["active", "order"]),
+
+  // 10g. attributeGroups - Nhóm thuộc tính (Ví dụ: Quốc gia, Giống nho)
+  attributeGroups: defineTable({
+    code: v.string(),
+    slug: v.string(),
+    name: v.string(),
+    filterType: v.string(), // e.g. "checkbox", "radio", "select"
+    inputType: v.string(),
+    isFilterable: v.boolean(),
+    order: v.number(),
+    displayConfig: v.optional(v.any()),
+    iconPath: v.optional(v.string()),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_code", ["code"])
+    .index("by_isFilterable_order", ["isFilterable", "order"]),
+
+  // 10h. attributeTerms - Giá trị của thuộc tính (Ví dụ: Pháp, Cabernet Sauvignon)
+  attributeTerms: defineTable({
+    groupId: v.id("attributeGroups"),
+    name: v.string(),
+    slug: v.string(),
+    description: v.optional(v.string()),
+    iconType: v.optional(v.string()),
+    iconValue: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    active: v.boolean(),
+    order: v.number(),
+  })
+    .index("by_group", ["groupId"])
+    .index("by_slug", ["slug"])
+    .index("by_group_active_order", ["groupId", "active", "order"]),
+
+  // 10i. productTypeAttributeGroups - Liên kết ProductType và AttributeGroup
+  productTypeAttributeGroups: defineTable({
+    typeId: v.id("productTypes"),
+    groupId: v.id("attributeGroups"),
+    order: v.number(),
+  })
+    .index("by_type", ["typeId"])
+    .index("by_group", ["groupId"])
+    .index("by_type_order", ["typeId", "order"]),
+
+  // 10j. productAttributeTerms - Liên kết Sản phẩm và AttributeTerm
+  productAttributeTerms: defineTable({
+    productId: v.id("products"),
+    termId: v.id("attributeTerms"),
+    order: v.number(),
+    extra: v.optional(v.any()),
+  })
+    .index("by_product", ["productId"])
+    .index("by_term", ["termId"])
+    .index("by_product_order", ["productId", "order"]),
 
   // 11. postCategories - Danh mục bài viết (Hierarchical)
   postCategories: defineTable({

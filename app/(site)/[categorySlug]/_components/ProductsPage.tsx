@@ -281,9 +281,37 @@ function ProductsContent() {
 
   const showCategorySubtitleSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'showCategorySubtitle' });
   const enableCategoryFilterFooterContentSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableCategoryFilterFooterContent' });
+  const enableProductTypesSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableProductTypes' });
 
   const showCategorySubtitle = showCategorySubtitleSetting?.value === true;
   const enableCategoryFilterFooterContent = enableCategoryFilterFooterContentSetting?.value === true;
+  const enableProductTypes = enableProductTypesSetting?.value === true;
+
+  const filterableGroups = useQuery(api.attributeGroups.listFilterable, enableProductTypes ? {} : 'skip');
+
+  const selectedAttributes = useMemo(() => {
+    const filters: Record<string, string[]> = {};
+    if (!filterableGroups) return filters;
+    filterableGroups.forEach(group => {
+      const param = searchParams.get(`attr_${group.slug}`);
+      if (param) {
+        filters[group._id] = param.split(',');
+      }
+    });
+    return filters;
+  }, [searchParams, filterableGroups]);
+
+  const attributeTermIds = useMemo(() => {
+    const arr: Id<"attributeTerms">[][] = [];
+    Object.values(selectedAttributes).forEach(termIds => {
+      if (termIds.length > 0) {
+        arr.push(termIds as Id<"attributeTerms">[]);
+      }
+    });
+    return arr;
+  }, [selectedAttributes]);
+
+  const isFilterActive = attributeTermIds.length > 0;
 
   const activeCategoryDoc = useMemo(() => {
     if (!activeCategory || categoryOptions.length === 0) {return null;}
@@ -301,12 +329,13 @@ function ProductsContent() {
     {
       categoryId: activeCategory ?? undefined,
       sortBy: paginatedSortBy,
+      attributeTermIds,
     },
     { initialNumItems: postsPerPage }
   );
 
   const isSearchActive = Boolean(debouncedSearchQuery?.trim());
-  const isPaginationMode = listConfig.paginationType === 'pagination' || isSearchActive;
+  const isPaginationMode = listConfig.paginationType === 'pagination' || isSearchActive || isFilterActive;
 
 
 
@@ -320,6 +349,7 @@ function ProductsContent() {
           offset,
           search: debouncedSearchQuery || undefined,
           sortBy,
+          attributeTermIds,
         }
       : 'skip'
   );
@@ -343,6 +373,7 @@ function ProductsContent() {
   const totalCount = useQuery(api.products.countPublished, {
     categoryId: activeCategory ?? undefined,
     search: debouncedSearchQuery || undefined,
+    attributeTermIds,
   });
 
   const categoryMap = useMemo(() => {
@@ -392,6 +423,28 @@ function ProductsContent() {
     router.push(newUrl, { scroll: false });
   }, [searchParams, categoryOptions, router, routeMode]);
 
+  const handleAttributeChange = useCallback((groupSlug: string, termId: string, checked: boolean) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('page');
+    const paramKey = `attr_${groupSlug}`;
+    const currentParam = params.get(paramKey);
+    let termIds = currentParam ? currentParam.split(',') : [];
+
+    if (checked) {
+      if (!termIds.includes(termId)) termIds.push(termId);
+    } else {
+      termIds = termIds.filter(id => id !== termId);
+    }
+
+    if (termIds.length > 0) {
+      params.set(paramKey, termIds.join(','));
+    } else {
+      params.delete(paramKey);
+    }
+
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, pathname, router]);
+
   const handlePageSizeChange = useCallback((value: number) => {
     setPageSizeOverride(value);
     const params = new URLSearchParams(searchParams.toString());
@@ -427,7 +480,7 @@ function ProductsContent() {
   }, [categoryOptions, categorySlugFromPath, pathname, router, routeMode, searchParams]);
 
 
-  const filterKey = `${activeCategory ?? ''}|${debouncedSearchQuery}|${sortBy}|${postsPerPage}`;
+  const filterKey = `${activeCategory ?? ''}|${debouncedSearchQuery}|${sortBy}|${postsPerPage}|${JSON.stringify(attributeTermIds)}`;
   const prevFilterKeyRef = useRef(filterKey);
 
   useEffect(() => {
@@ -749,6 +802,9 @@ function ProductsContent() {
           activeCategoryDoc={activeCategoryDoc}
           showCategorySubtitle={showCategorySubtitle}
           enableCategoryFilterFooterContent={enableCategoryFilterFooterContent}
+          filterableGroups={filterableGroups}
+          selectedAttributes={selectedAttributes}
+          onAttributeChange={handleAttributeChange}
         />
         {quickAddModal}
       </>
@@ -794,6 +850,9 @@ function ProductsContent() {
           activeCategoryDoc={activeCategoryDoc}
           showCategorySubtitle={showCategorySubtitle}
           enableCategoryFilterFooterContent={enableCategoryFilterFooterContent}
+          filterableGroups={filterableGroups}
+          selectedAttributes={selectedAttributes}
+          onAttributeChange={handleAttributeChange}
         />
         {quickAddModal}
       </>
@@ -826,6 +885,9 @@ function ProductsContent() {
           sortBy={sortBy}
           onSortChange={setSortBy}
           tokens={tokens}
+          filterableGroups={filterableGroups}
+          selectedAttributes={selectedAttributes}
+          onAttributeChange={handleAttributeChange}
         />
 
         <div
@@ -1239,6 +1301,9 @@ interface LayoutProps {
   activeCategoryDoc?: { name: string; description?: string; filterFooterContent?: string } | null;
   showCategorySubtitle?: boolean;
   enableCategoryFilterFooterContent?: boolean;
+  filterableGroups?: any[];
+  selectedAttributes?: Record<string, string[]>;
+  onAttributeChange?: (groupSlug: string, termId: string, checked: boolean) => void;
 }
 
 interface MobileProductsFiltersProps {
@@ -1250,6 +1315,9 @@ interface MobileProductsFiltersProps {
   sortBy: ProductSortOption;
   onSortChange: (sort: ProductSortOption) => void;
   tokens: ProductsListColors;
+  filterableGroups?: any[];
+  selectedAttributes?: Record<string, string[]>;
+  onAttributeChange?: (groupSlug: string, termId: string, checked: boolean) => void;
 }
 
 function MobileProductsFilters({
@@ -1261,6 +1329,9 @@ function MobileProductsFilters({
   sortBy,
   onSortChange,
   tokens,
+  filterableGroups,
+  selectedAttributes,
+  onAttributeChange,
 }: MobileProductsFiltersProps) {
   const [open, setOpen] = useState(false);
   const hasActiveFilters = Boolean(selectedCategory || searchQuery) || sortBy !== 'newest';
@@ -1346,6 +1417,29 @@ function MobileProductsFilters({
             </div>
           </div>
 
+          {/* Mobile Attribute Filters */}
+          {filterableGroups?.map(group => (
+            <div key={group._id} className="space-y-3">
+              <h3 className="font-semibold" style={{ color: tokens.bodyText }}>{group.name}</h3>
+              <div className="space-y-3 pl-1">
+                {group.terms.map((term: any) => {
+                  const isChecked = selectedAttributes?.[group._id]?.includes(term._id) ?? false;
+                  return (
+                    <label key={term._id} className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type={group.filterType === 'checkbox' ? 'checkbox' : 'checkbox'}
+                        checked={isChecked}
+                        onChange={(e) => onAttributeChange?.(group.slug, term._id, e.target.checked)}
+                        className="w-5 h-5 rounded border-gray-300 text-black focus:ring-black"
+                      />
+                      <span className="text-base" style={{ color: tokens.bodyText }}>{term.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
           <div>
             <label className="mb-2 block text-xs font-medium uppercase tracking-wider" style={{ color: tokens.metaText }}>
               Sắp xếp
@@ -1373,7 +1467,7 @@ function MobileProductsFilters({
   );
 }
 
-function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap: _categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent }: LayoutProps) {
+function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap: _categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent, filterableGroups, selectedAttributes, onAttributeChange }: LayoutProps) {
   return (
     <div className="py-8 md:py-12 px-4">
       <div className="max-w-7xl mx-auto">
@@ -1397,6 +1491,9 @@ function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, 
           sortBy={sortBy}
           onSortChange={onSortChange}
           tokens={tokens}
+          filterableGroups={filterableGroups}
+          selectedAttributes={selectedAttributes}
+          onAttributeChange={onAttributeChange}
         />
 
         <div className="flex gap-6">
@@ -1450,6 +1547,31 @@ function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, 
                 ))}
               </div>
             </div>
+
+            {/* Desktop Attribute Filters */}
+            {filterableGroups?.map(group => (
+              <div key={group._id} className="rounded-xl border p-4" style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                <h3 className="font-semibold mb-3" style={{ color: tokens.bodyText }}>{group.name}</h3>
+                <div className="space-y-2">
+                  {group.terms.map((term: any) => {
+                    const isChecked = selectedAttributes?.[group._id]?.includes(term._id) ?? false;
+                    return (
+                      <label key={term._id} className="flex items-center gap-2 cursor-pointer group">
+                        <input
+                          type={group.filterType === 'checkbox' ? 'checkbox' : 'checkbox'}
+                          checked={isChecked}
+                          onChange={(e) => onAttributeChange?.(group.slug, term._id, e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+                        />
+                        <span className="text-sm transition-colors group-hover:opacity-80" style={{ color: tokens.bodyText }}>
+                          {term.name}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
 
             <div className="rounded-xl border p-4" style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
               <h3 className="font-semibold mb-3" style={{ color: tokens.bodyText }}>Sắp xếp</h3>
@@ -1570,7 +1692,7 @@ function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, 
 
 // ========== LIST LAYOUT (Full width list view) ==========
 
-function ListLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent }: LayoutProps) {
+function ListLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent, filterableGroups, selectedAttributes, onAttributeChange }: LayoutProps) {
   return (
     <div className="py-8 md:py-12 px-4">
       <div className="max-w-5xl mx-auto">
@@ -1594,6 +1716,9 @@ function ListLayout({ isLoadingProducts, postsPerPage, products, categories, cat
           sortBy={sortBy}
           onSortChange={onSortChange}
           tokens={tokens}
+          filterableGroups={filterableGroups}
+          selectedAttributes={selectedAttributes}
+          onAttributeChange={onAttributeChange}
         />
 
         <div

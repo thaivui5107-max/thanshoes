@@ -13,17 +13,17 @@ import { ModuleGuard } from '../components/ModuleGuard';
 import { DeleteConfirmDialog } from '../components/DeleteConfirmDialog';
 import { usePersistedPageSize } from '../components/usePersistedPageSize';
 
-export default function ProductTypesListPage() {
+export default function AttributeGroupsListPage() {
   return (
     <ModuleGuard moduleKey="products">
-      <ProductTypesContent />
+      <AttributeGroupsContent />
     </ModuleGuard>
   );
 }
 
-function ProductTypesContent() {
+function AttributeGroupsContent() {
   const productsData = useQuery(api.products.listAll, { limit: 1000 });
-  const deleteType = useMutation(api.productTypes.remove);
+  const deleteGroup = useMutation(api.attributeGroups.remove);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -43,11 +43,11 @@ function ProductTypesContent() {
     }
     return [];
   });
-  const [manualSelectedIds, setManualSelectedIds] = useState<Id<"productTypes">[]>([]);
+  const [manualSelectedIds, setManualSelectedIds] = useState<Id<"attributeGroups">[]>([]);
   const [selectionMode, setSelectionMode] = useState<'manual' | 'all'>('manual');
   const [currentPage, setCurrentPage] = useState(1);
   const [resolvedPageSize, setPageSizeOverride] = usePersistedPageSize('admin_product_categories_page_size', 20);
-  const [deleteTargetId, setDeleteTargetId] = useState<Id<"productTypes"> | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<Id<"attributeGroups"> | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
 
@@ -68,23 +68,23 @@ function ProductTypesContent() {
 
   const offset = (currentPage - 1) * resolvedPageSize;
 
-  const categoriesData = useQuery(api.productTypes.listAdminWithOffset, {
+  const categoriesData = useQuery(api.attributeGroups.listAdminWithOffset, {
     limit: resolvedPageSize,
     offset,
     search: debouncedSearchTerm.trim() ? debouncedSearchTerm.trim() : undefined,
   });
 
   const deleteInfo = useQuery(
-    api.productTypes.getDeleteInfo,
+    api.attributeGroups.getDeleteInfo,
     deleteTargetId ? { id: deleteTargetId } : 'skip'
   );
 
-  const totalCountData = useQuery(api.productTypes.countAdmin, {
+  const totalCountData = useQuery(api.attributeGroups.countAdmin, {
     search: debouncedSearchTerm.trim() ? debouncedSearchTerm.trim() : undefined,
   });
 
   const selectAllData = useQuery(
-    api.productTypes.listAdminIds,
+    api.attributeGroups.listAdminIds,
     isSelectAllActive
       ? { search: debouncedSearchTerm.trim() ? debouncedSearchTerm.trim() : undefined }
       : 'skip'
@@ -94,32 +94,21 @@ function ProductTypesContent() {
 
   useEffect(() => {
     if (selectAllData?.hasMore) {
-      toast.info('Đã chọn tối đa 5.000 kiểu phù hợp.');
+      toast.info('Đã chọn tối đa 5.000 nhóm thuộc tính phù hợp.');
     }
   }, [selectAllData?.hasMore]);
-
-  const productCountMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    productsData?.forEach(product => {
-      if (product.productTypeId) {
-        map[product.productTypeId] = (map[product.productTypeId] || 0) + 1;
-      }
-    });
-    return map;
-  }, [productsData]);
 
   const categories = useMemo(() => categoriesData?.map(cat => ({
       ...cat,
       id: cat._id,
-      count: productCountMap[cat._id] || 0,
-    })) ?? [], [categoriesData, productCountMap]);
+      count: 0,
+    })) ?? [], [categoriesData]);
 
   const columns = [
     { key: 'select', label: 'Chọn' },
-    { key: 'name', label: 'Tên kiểu', required: true },
+    { key: 'name', label: 'Tên nhóm thuộc tính', required: true },
     { key: 'slug', label: 'Slug' },
-    { key: 'count', label: 'Số sản phẩm' },
-    { key: 'status', label: 'Trạng thái' },
+    { key: 'code', label: 'Mã' },
     { key: 'actions', label: 'Hành động', required: true }
   ];
   const resolvedVisibleColumns = visibleColumns.length > 0 ? visibleColumns : columns.map(c => c.key);
@@ -139,7 +128,7 @@ function ProductTypesContent() {
   const selectedIds = isSelectAllActive && selectAllData ? selectAllData.ids : manualSelectedIds;
   const isSelectingAll = isSelectAllActive && selectAllData === undefined;
 
-  const applyManualSelection = (nextIds: Id<"productTypes">[]) => {
+  const applyManualSelection = (nextIds: Id<"attributeGroups">[]) => {
     setSelectionMode('manual');
     setManualSelectedIds(nextIds);
   };
@@ -152,7 +141,7 @@ function ProductTypesContent() {
     applyManualSelection([]);
   };
 
-  const selectedOnPage = paginatedData.filter(cat => selectedIds.includes(cat.id as Id<"productTypes">));
+  const selectedOnPage = paginatedData.filter(cat => selectedIds.includes(cat.id as Id<"attributeGroups">));
   const isPageSelected = paginatedData.length > 0 && selectedOnPage.length === paginatedData.length;
   const isPageIndeterminate = selectedOnPage.length > 0 && selectedOnPage.length < paginatedData.length;
 
@@ -163,17 +152,17 @@ function ProductTypesContent() {
       return;
     }
     const next = new Set(selectedIds);
-    paginatedData.forEach(cat => next.add(cat.id as Id<"productTypes">));
+    paginatedData.forEach(cat => next.add(cat.id as Id<"attributeGroups">));
     applyManualSelection(Array.from(next));
   };
-  const toggleSelectItem = (id: Id<"productTypes">) =>{  
+  const toggleSelectItem = (id: Id<"attributeGroups">) =>{  
     const next = selectedIds.includes(id)
       ? selectedIds.filter(i => i !== id)
       : [...selectedIds, id];
     applyManualSelection(next);
   };
 
-  const handleDelete = async (id: Id<"productTypes">) => {
+  const handleDelete = async (id: Id<"attributeGroups">) => {
     setDeleteTargetId(id);
     setIsDeleteOpen(true);
   };
@@ -182,54 +171,54 @@ function ProductTypesContent() {
     if (!deleteTargetId) {return;}
     setIsDeleteLoading(true);
     try {
-      await deleteType({ id: deleteTargetId });
-      toast.success('Đã xóa kiểu thành công');
+      await deleteGroup({ id: deleteTargetId });
+      toast.success('Đã xóa nhóm thuộc tính thành công');
       setIsDeleteOpen(false);
       setDeleteTargetId(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Không thể xóa kiểu');
+      toast.error(error instanceof Error ? error.message : 'Không thể xóa nhóm thuộc tính');
     } finally {
       setIsDeleteLoading(false);
     }
   };
 
   const handleBulkDelete = async () => {
-    if (confirm(`Xóa ${selectedIds.length} kiểu đã chọn? Tất cả dữ liệu liên quan sẽ bị xóa.`)) {
+    if (confirm(`Xóa ${selectedIds.length} nhóm thuộc tính đã chọn? Tất cả dữ liệu liên quan sẽ bị xóa.`)) {
       try {
         for (const id of selectedIds) {
-          await deleteType({ id });
+          await deleteGroup({ id });
         }
         applyManualSelection([]);
-        toast.success(`Đã xóa ${selectedIds.length} kiểu`);
+        toast.success(`Đã xóa ${selectedIds.length} nhóm thuộc tính`);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Không thể xóa kiểu');
+        toast.error(error instanceof Error ? error.message : 'Không thể xóa nhóm thuộc tính');
       }
     }
   };
 
   const openFrontend = (slug: string) => {
-    window.open(`/type/${slug}`, '_blank');
+    window.open(`/group/${slug}`, '_blank');
   };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Kiểu sản phẩm</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Nhóm thuộc tính</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">Quản lý phân loại sản phẩm</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/admin/product-types/create"><Button className="gap-2"><Plus size={16}/> Thêm kiểu</Button></Link>
+          <Link href="/admin/attribute-groups/create"><Button className="gap-2"><Plus size={16}/> Thêm nhóm thuộc tính</Button></Link>
         </div>
       </div>
 
       <BulkActionBar
         selectedCount={selectedIds.length}
-        entityLabel="kiểu"
+        entityLabel="nhóm thuộc tính"
         selectionScope={isSelectAllActive ? 'all_results' : isPageSelected ? 'page' : 'partial'}
         pageItemCount={paginatedData.length}
         totalMatchingCount={totalCount}
-        onSelectPage={() =>{  applyManualSelection(paginatedData.map(cat => cat.id as Id<"productTypes">)); }}
+        onSelectPage={() =>{  applyManualSelection(paginatedData.map(cat => cat.id as Id<"attributeGroups">)); }}
         onSelectAllResults={() =>{  setSelectionMode('all'); }}
         isSelectingAllResults={isSelectingAll}
         onDelete={handleBulkDelete}
@@ -241,7 +230,7 @@ function ProductTypesContent() {
           <div className="flex gap-4 flex-1">
             <div className="relative max-w-xs flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input placeholder="Tìm kiếm kiểu..." className="pl-9" value={searchTerm} onChange={(e) =>{  setSearchTerm(e.target.value); setCurrentPage(1); applyManualSelection([]); }} />
+              <Input placeholder="Tìm kiếm nhóm thuộc tính..." className="pl-9" value={searchTerm} onChange={(e) =>{  setSearchTerm(e.target.value); setCurrentPage(1); applyManualSelection([]); }} />
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={handleResetFilters}>Xóa lọc</Button>
@@ -260,10 +249,9 @@ function ProductTypesContent() {
                   <SelectCheckbox checked={isPageSelected} onChange={toggleSelectAll} indeterminate={isPageIndeterminate} />
                 </TableHead>
               )}
-              {resolvedVisibleColumns.includes('name') && <SortableHeader label="Tên kiểu" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />}
+              {resolvedVisibleColumns.includes('name') && <SortableHeader label="Tên nhóm thuộc tính" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />}
               {resolvedVisibleColumns.includes('slug') && <SortableHeader label="Slug" sortKey="slug" sortConfig={sortConfig} onSort={handleSort} />}
-              {resolvedVisibleColumns.includes('count') && <SortableHeader label="Số sản phẩm" sortKey="count" sortConfig={sortConfig} onSort={handleSort} className="text-center" />}
-              {resolvedVisibleColumns.includes('status') && <SortableHeader label="Trạng thái" sortKey="status" sortConfig={sortConfig} onSort={handleSort} />}
+              {resolvedVisibleColumns.includes('code') && <SortableHeader label="Mã" sortKey="code" sortConfig={sortConfig} onSort={handleSort} className="text-center" />}
               {resolvedVisibleColumns.includes('actions') && <TableHead className="text-right">Hành động</TableHead>}
             </TableRow>
           </TableHeader>
@@ -292,18 +280,12 @@ function ProductTypesContent() {
                   </TableCell>
                 )}
                 {resolvedVisibleColumns.includes('slug') && <TableCell className="text-slate-500 font-mono text-sm">{cat.slug}</TableCell>}
-                {resolvedVisibleColumns.includes('count') && <TableCell className="text-center"><Badge variant="secondary">{cat.count}</Badge></TableCell>}
-                {resolvedVisibleColumns.includes('status') && (
-                  <TableCell>
-                    <Badge variant={cat.active ? 'success' : 'secondary'}>{cat.active ? 'Hoạt động' : 'Ẩn'}</Badge>
-                  </TableCell>
-                )}
+                {resolvedVisibleColumns.includes('code') && <TableCell className="text-center"><Badge variant="secondary">{cat.code}</Badge></TableCell>}
                 {resolvedVisibleColumns.includes('actions') && (
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" className="text-blue-600 hover:text-blue-700" title="Xem trên web" onClick={() =>{  openFrontend(cat.slug); }}><ExternalLink size={16}/></Button>
-                      <Link href={`/admin/product-types/${cat.id}/edit`}><Button variant="ghost" size="icon"><Edit size={16}/></Button></Link>
-                      <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600" onClick={ async () => handleDelete(cat.id as Id<"productTypes">)}><Trash2 size={16}/></Button>
+                      <Link href={`/admin/attribute-groups/${cat.id}/edit`}><Button variant="ghost" size="icon"><Edit size={16}/></Button></Link>
+                      <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600" onClick={ async () => handleDelete(cat.id as Id<"attributeGroups">)}><Trash2 size={16}/></Button>
                     </div>
                   </TableCell>
                 )}
@@ -314,7 +296,7 @@ function ProductTypesContent() {
             {!isTableLoading && paginatedData.length === 0 && (
               <TableRow>
                 <TableCell colSpan={tableColumnCount} className="text-center py-8 text-slate-500">
-                  {searchTerm ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có kiểu nào.'}
+                  {searchTerm ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có nhóm thuộc tính nào.'}
                 </TableCell>
               </TableRow>
             )}
@@ -329,13 +311,13 @@ function ProductTypesContent() {
                   value={resolvedPageSize}
                   onChange={(event) =>{  setPageSizeOverride(Number(event.target.value)); setCurrentPage(1); applyManualSelection([]); }}
                   className="h-8 w-[70px] appearance-none rounded-md border border-slate-200 bg-white px-2 text-sm font-medium text-slate-900 shadow-sm focus:border-slate-300 focus:outline-none"
-                  aria-label="Số kiểu mỗi trang"
+                  aria-label="Số nhóm thuộc tính mỗi trang"
                 >
                   {[10, 20, 30, 50, 100].map((size) => (
                     <option key={size} value={size}>{size}</option>
                   ))}
                 </select>
-                <span>kiểu/trang</span>
+                <span>nhóm thuộc tính/trang</span>
               </div>
 
               <div className="text-right sm:text-left">
@@ -346,7 +328,7 @@ function ProductTypesContent() {
                 <span className="font-medium text-slate-900">
                   {totalCount}{totalCountData?.hasMore ? '+' : ''}
                 </span>
-                <span className="ml-1 text-slate-500">kiểu</span>
+                <span className="ml-1 text-slate-500">nhóm thuộc tính</span>
               </div>
             </div>
 
@@ -409,8 +391,8 @@ function ProductTypesContent() {
           setIsDeleteOpen(open);
           if (!open) {setDeleteTargetId(null);}
         }}
-        title="Xóa kiểu sản phẩm"
-        itemName={categories.find((cat) => cat.id === deleteTargetId)?.name ?? 'kiểu'}
+        title="Xóa nhóm thuộc tính"
+        itemName={categories.find((cat) => cat.id === deleteTargetId)?.name ?? 'nhóm thuộc tính'}
         dependencies={deleteInfo?.dependencies ?? []}
         onConfirm={async () => handleConfirmDelete()}
         isLoading={isDeleteLoading}
