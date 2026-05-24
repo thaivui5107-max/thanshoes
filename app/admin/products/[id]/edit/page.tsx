@@ -1,6 +1,7 @@
 'use client';
 
 import React, { use, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
@@ -1032,15 +1033,24 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
               </CardHeader>
               <CardContent className="space-y-6">
                 {combos.length === 0 ? (
-                  <div className="text-center py-6 text-slate-400 text-sm">
+                  <div className="text-center py-6 text-slate-400 text-sm border border-dashed border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/20 dark:bg-slate-900/10">
                     Chưa có cấu hình combo nào cho sản phẩm này.
                   </div>
                 ) : (
-                  <div className="space-y-6 divide-y divide-slate-100 dark:divide-slate-800">
-                    {combos.map((combo, index) => (
-                      <div key={index} className={`space-y-4 ${index > 0 ? 'pt-6' : ''}`}>
-                        <div className="flex gap-4 items-start">
-                          <div className="flex-1 space-y-2">
+                  <div className="space-y-4">
+                    <AnimatePresence initial={false}>
+                      {combos.map((combo, index) => (
+                        <motion.div
+                          key={combo.syncId || `combo-${index}`}
+                          initial={{ opacity: 0, height: 0, y: 15 }}
+                          animate={{ opacity: 1, height: 'auto', y: 0 }}
+                          exit={{ opacity: 0, height: 0, y: -15 }}
+                          transition={{ duration: 0.25, ease: 'easeInOut' }}
+                          layout
+                          className="border border-slate-100 dark:border-slate-800 rounded-lg p-4 bg-slate-50/50 dark:bg-slate-900/30 space-y-4 relative overflow-hidden"
+                        >
+                          {/* Header của Combo Card */}
+                          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                             <div className="flex items-center gap-2">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                                 combo.type === 'standard' 
@@ -1049,53 +1059,58 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
                               }`}>
                                 {combo.type === 'standard' ? 'Combo thường' : 'Combo mix'}
                               </span>
+                              {combo.type === 'mix' && combo.isSynced && (
+                                <span className="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-semibold">
+                                  Đã đồng bộ
+                                </span>
+                              )}
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                <Label className="text-xs">Tên combo (Tùy chọn)</Label>
-                                <Input
-                                  value={combo.name}
-                                  onChange={(e) => {
-                                    const next = [...combos];
-                                    next[index].name = e.target.value;
-                                    setCombos(next);
-                                  }}
-                                  placeholder="VD: Mua 5 chai nha, Set Quà Tết"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Giá combo (VND - Tùy chọn)</Label>
-                                <Input
-                                  type="number"
-                                  value={combo.price ?? ''}
-                                  onChange={(e) => {
-                                    const next = [...combos];
-                                    next[index].price = e.target.value ? Number(e.target.value) : undefined;
-                                    setCombos(next);
-                                  }}
-                                  placeholder="Liên hệ"
-                                />
-                              </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md p-0 flex items-center justify-center"
+                              onClick={() => {
+                                setCombos(prev => prev.filter((_, i) => i !== index));
+                              }}
+                              title="Xóa combo"
+                            >
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+
+                          {/* Nội dung Form tên và giá */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Tên combo (Tùy chọn)</Label>
+                              <Input
+                                value={combo.name}
+                                onChange={(e) => {
+                                  const next = [...combos];
+                                  next[index].name = e.target.value;
+                                  setCombos(next);
+                                }}
+                                placeholder="VD: Mua 5 chai nha, Set Quà Tết"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Giá combo (VND - Tùy chọn)</Label>
+                              <Input
+                                type="number"
+                                value={combo.price ?? ''}
+                                onChange={(e) => {
+                                  const next = [...combos];
+                                  next[index].price = e.target.value ? Number(e.target.value) : undefined;
+                                  setCombos(next);
+                                }}
+                                placeholder="Liên hệ"
+                              />
                             </div>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 mt-6 shrink-0"
-                            onClick={() => {
-                              setCombos(prev => prev.filter((_, i) => i !== index));
-                            }}
-                            title="Xóa combo"
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
 
-                        {/* Cấu hình chi tiết cho từng loại */}
-                        {combo.type === 'standard' && combo.standardConfig && (
-                          <div className="pl-4 border-l-2 border-slate-100 dark:border-slate-800 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                          {/* Chi tiết từng loại combo: Standard */}
+                          {combo.type === 'standard' && combo.standardConfig && (
+                            <div className="border-t border-slate-100 dark:border-slate-800 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-1">
                                 <Label className="text-xs">Số lượng mua tối thiểu <span className="text-red-500">*</span></Label>
                                 <Input
@@ -1139,70 +1154,32 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
                                   <option value="gift_other">Tặng sản phẩm khác</option>
                                 </select>
                               </div>
-                            </div>
 
-                            {/* Cấu hình reward value */}
-                            {(combo.standardConfig.rewardType === 'discount_percent' || combo.standardConfig.rewardType === 'discount_amount') && (
-                              <div className="space-y-1">
-                                <Label className="text-xs">
-                                  Mức giảm giá{' '}
-                                  {combo.standardConfig.rewardType === 'discount_percent' ? '(%)' : '(VND)'}
-                                </Label>
-                                <Input
-                                  type="number"
-                                  value={combo.standardConfig.rewardValue ?? ''}
-                                  onChange={(e) => {
-                                    const next = [...combos];
-                                    next[index].standardConfig.rewardValue = Number(e.target.value);
-                                    setCombos(next);
-                                  }}
-                                  min={1}
-                                  max={combo.standardConfig.rewardType === 'discount_percent' ? 100 : undefined}
-                                  required
-                                />
-                              </div>
-                            )}
-
-                            {/* Tặng chính sản phẩm này */}
-                            {combo.standardConfig.rewardType === 'gift_self' && (
-                              <div className="space-y-1">
-                                <Label className="text-xs">Số lượng tặng <span className="text-red-500">*</span></Label>
-                                <Input
-                                  type="number"
-                                  value={combo.standardConfig.giftQty ?? 1}
-                                  onChange={(e) => {
-                                    const next = [...combos];
-                                    next[index].standardConfig.giftQty = Math.max(1, Number(e.target.value));
-                                    setCombos(next);
-                                  }}
-                                  min={1}
-                                  required
-                                />
-                              </div>
-                            )}
-
-                            {/* Tặng sản phẩm khác */}
-                            {combo.standardConfig.rewardType === 'gift_other' && (
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Sản phẩm tặng kèm <span className="text-red-500">*</span></Label>
-                                  <select
-                                    value={combo.standardConfig.giftProductId ?? ''}
+                              {/* Mức giảm giá */}
+                              {(combo.standardConfig.rewardType === 'discount_percent' || combo.standardConfig.rewardType === 'discount_amount') && (
+                                <div className="space-y-1 md:col-span-2">
+                                  <Label className="text-xs">
+                                    Mức giảm giá{' '}
+                                    {combo.standardConfig.rewardType === 'discount_percent' ? '(%)' : '(VND)'}
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    value={combo.standardConfig.rewardValue ?? ''}
                                     onChange={(e) => {
                                       const next = [...combos];
-                                      next[index].standardConfig.giftProductId = e.target.value ? e.target.value : undefined;
+                                      next[index].standardConfig.rewardValue = Number(e.target.value);
                                       setCombos(next);
                                     }}
-                                    className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                                    min={1}
+                                    max={combo.standardConfig.rewardType === 'discount_percent' ? 100 : undefined}
                                     required
-                                  >
-                                    <option value="">-- Chọn sản phẩm tặng --</option>
-                                    {allActiveProducts.map((p: any) => (
-                                      <option key={p._id} value={p._id}>{p.name}</option>
-                                    ))}
-                                  </select>
+                                  />
                                 </div>
-                                <div className="space-y-1">
+                              )}
+
+                              {/* Tặng chính sản phẩm */}
+                              {combo.standardConfig.rewardType === 'gift_self' && (
+                                <div className="space-y-1 md:col-span-2">
                                   <Label className="text-xs">Số lượng tặng <span className="text-red-500">*</span></Label>
                                   <Input
                                     type="number"
@@ -1216,189 +1193,18 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
                                     required
                                   />
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Combo Mix */}
-                        {combo.type === 'mix' && combo.mixConfig && (
-                          <div className="pl-4 border-l-2 border-slate-100 dark:border-slate-800 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                <Label className="text-xs">Số lượng của sản phẩm này trong combo <span className="text-red-500">*</span></Label>
-                                <Input
-                                  type="number"
-                                  value={combo.mixConfig.currentProductQty ?? 1}
-                                  onChange={(e) => {
-                                    const next = [...combos];
-                                    next[index].mixConfig.currentProductQty = Math.max(1, Number(e.target.value));
-                                    setCombos(next);
-                                  }}
-                                  min={1}
-                                  required
-                                />
-                              </div>
-                              <div className="flex items-center gap-2 mt-6">
-                                <input
-                                  type="checkbox"
-                                  id={`sync-combo-${index}`}
-                                  checked={combo.isSynced ?? false}
-                                  onChange={(e) => {
-                                    const next = [...combos];
-                                    next[index].isSynced = e.target.checked;
-                                    if (e.target.checked && !next[index].syncId) {
-                                      next[index].syncId = 'sync-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-                                    }
-                                    setCombos(next);
-                                  }}
-                                  className="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
-                                />
-                                <Label htmlFor={`sync-combo-${index}`} className="text-xs font-medium cursor-pointer">
-                                  Đồng bộ Combo sang các sản phẩm kèm
-                                </Label>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center">
-                                <Label className="text-xs font-semibold">Sản phẩm mua kèm thêm (Tối đa 5 sản phẩm)</Label>
-                                {(combo.mixConfig.items?.length ?? 0) < 5 && (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 text-xs gap-1"
-                                    onClick={() => {
-                                      const next = [...combos];
-                                      const currentItems = next[index].mixConfig.items || [];
-                                      next[index].mixConfig.items = [
-                                        ...currentItems,
-                                        { productId: '', quantity: 1 }
-                                      ];
-                                      setCombos(next);
-                                    }}
-                                  >
-                                    <Plus size={12} /> Thêm sản phẩm kèm
-                                  </Button>
-                                )}
-                              </div>
-                              
-                              {(combo.mixConfig.items?.length ?? 0) === 0 ? (
-                                <p className="text-xs text-slate-400">Chưa chọn sản phẩm kèm nào. Vui lòng bấm thêm.</p>
-                              ) : (
-                                <div className="space-y-2">
-                                  {combo.mixConfig.items.map((item: any, itemIndex: number) => (
-                                    <div key={itemIndex} className="flex gap-2 items-center">
-                                      <select
-                                        value={item.productId}
-                                        onChange={(e) => {
-                                          const next = [...combos];
-                                          next[index].mixConfig.items[itemIndex].productId = e.target.value;
-                                          setCombos(next);
-                                        }}
-                                        className="flex-1 h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1 text-xs"
-                                        required
-                                      >
-                                        <option value="">-- Chọn sản phẩm --</option>
-                                        {allActiveProducts
-                                          .filter((p: any) => p._id !== id) // không chọn chính nó
-                                          .map((p: any) => (
-                                            <option key={p._id} value={p._id}>{p.name}</option>
-                                          ))}
-                                      </select>
-                                      <div className="w-20 shrink-0">
-                                        <Input
-                                          type="number"
-                                          value={item.quantity}
-                                          onChange={(e) => {
-                                            const next = [...combos];
-                                            next[index].mixConfig.items[itemIndex].quantity = Math.max(1, Number(e.target.value));
-                                            setCombos(next);
-                                          }}
-                                          min={1}
-                                          className="h-9 text-xs"
-                                          placeholder="SL"
-                                          required
-                                        />
-                                      </div>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-9 w-9 text-slate-400 hover:text-red-500 shrink-0"
-                                        onClick={() => {
-                                          const next = [...combos];
-                                          next[index].mixConfig.items = next[index].mixConfig.items.filter((_: any, i: number) => i !== itemIndex);
-                                          setCombos(next);
-                                        }}
-                                      >
-                                        <Trash size={14} />
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                <Label className="text-xs">Hình thức ưu đãi <span className="text-red-500">*</span></Label>
-                                <select
-                                  value={combo.mixConfig.rewardType}
-                                  onChange={(e) => {
-                                    const next = [...combos];
-                                    next[index].mixConfig.rewardType = e.target.value;
-                                    if (e.target.value === 'gift_other') {
-                                      next[index].mixConfig.giftQty = 1;
-                                      next[index].mixConfig.rewardValue = undefined;
-                                    } else {
-                                      next[index].mixConfig.rewardValue = 10;
-                                      next[index].mixConfig.giftProductId = undefined;
-                                      next[index].mixConfig.giftQty = undefined;
-                                    }
-                                    setCombos(next);
-                                  }}
-                                  className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
-                                >
-                                  <option value="discount_percent">Giảm giá theo %</option>
-                                  <option value="discount_amount">Giảm số tiền cụ thể</option>
-                                  <option value="gift_other">Tặng sản phẩm khác</option>
-                                </select>
-                              </div>
-
-                              {/* Cấu hình reward value */}
-                              {(combo.mixConfig.rewardType === 'discount_percent' || combo.mixConfig.rewardType === 'discount_amount') && (
-                                <div className="space-y-1">
-                                  <Label className="text-xs">
-                                    Mức giảm giá{' '}
-                                    {combo.mixConfig.rewardType === 'discount_percent' ? '(%)' : '(VND)'}
-                                  </Label>
-                                  <Input
-                                    type="number"
-                                    value={combo.mixConfig.rewardValue ?? ''}
-                                    onChange={(e) => {
-                                      const next = [...combos];
-                                      next[index].mixConfig.rewardValue = Number(e.target.value);
-                                      setCombos(next);
-                                    }}
-                                    min={1}
-                                    max={combo.mixConfig.rewardType === 'discount_percent' ? 100 : undefined}
-                                    required
-                                  />
-                                </div>
                               )}
 
                               {/* Tặng sản phẩm khác */}
-                              {combo.mixConfig.rewardType === 'gift_other' && (
-                                <div className="grid grid-cols-2 gap-4 col-span-2">
-                                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                              {combo.standardConfig.rewardType === 'gift_other' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2">
+                                  <div className="space-y-1">
                                     <Label className="text-xs">Sản phẩm tặng kèm <span className="text-red-500">*</span></Label>
                                     <select
-                                      value={combo.mixConfig.giftProductId ?? ''}
+                                      value={combo.standardConfig.giftProductId ?? ''}
                                       onChange={(e) => {
                                         const next = [...combos];
-                                        next[index].mixConfig.giftProductId = e.target.value ? e.target.value : undefined;
+                                        next[index].standardConfig.giftProductId = e.target.value ? e.target.value : undefined;
                                         setCombos(next);
                                       }}
                                       className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
@@ -1410,14 +1216,14 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
                                       ))}
                                     </select>
                                   </div>
-                                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                                  <div className="space-y-1">
                                     <Label className="text-xs">Số lượng tặng <span className="text-red-500">*</span></Label>
                                     <Input
                                       type="number"
-                                      value={combo.mixConfig.giftQty ?? 1}
+                                      value={combo.standardConfig.giftQty ?? 1}
                                       onChange={(e) => {
                                         const next = [...combos];
-                                        next[index].mixConfig.giftQty = Math.max(1, Number(e.target.value));
+                                        next[index].standardConfig.giftQty = Math.max(1, Number(e.target.value));
                                         setCombos(next);
                                       }}
                                       min={1}
@@ -1427,10 +1233,235 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
                                 </div>
                               )}
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                          )}
+
+                          {/* Chi tiết từng loại combo: Mix */}
+                          {combo.type === 'mix' && combo.mixConfig && (
+                            <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Số lượng của sản phẩm này trong combo <span className="text-red-500">*</span></Label>
+                                  <Input
+                                    type="number"
+                                    value={combo.mixConfig.currentProductQty ?? 1}
+                                    onChange={(e) => {
+                                      const next = [...combos];
+                                      next[index].mixConfig.currentProductQty = Math.max(1, Number(e.target.value));
+                                      setCombos(next);
+                                    }}
+                                    min={1}
+                                    required
+                                  />
+                                </div>
+                                
+                                {/* Checkbox đối xứng thẳng hàng */}
+                                <div className="space-y-1 flex flex-col justify-end pb-2">
+                                  <Label className="text-xs text-slate-400 dark:text-slate-500">Đồng bộ liên kết</Label>
+                                  <div className="flex items-center gap-2 h-10 border border-slate-100 dark:border-slate-800/50 rounded-md px-3 bg-white dark:bg-slate-900/50">
+                                    <input
+                                      type="checkbox"
+                                      id={`sync-combo-${index}`}
+                                      checked={combo.isSynced ?? false}
+                                      onChange={(e) => {
+                                        const next = [...combos];
+                                        next[index].isSynced = e.target.checked;
+                                        if (e.target.checked && !next[index].syncId) {
+                                          next[index].syncId = 'sync-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                                        }
+                                        setCombos(next);
+                                      }}
+                                      className="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                                    />
+                                    <Label htmlFor={`sync-combo-${index}`} className="text-xs font-medium cursor-pointer select-none">
+                                      Đồng bộ Combo sang các sản phẩm kèm
+                                    </Label>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Danh sách sản phẩm mua kèm thêm */}
+                              <div className="space-y-2 bg-white dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 p-3 rounded-lg">
+                                <div className="flex justify-between items-center pb-1">
+                                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Sản phẩm mua kèm thêm (Tối đa 5 sản phẩm)</Label>
+                                  {(combo.mixConfig.items?.length ?? 0) < 5 && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 text-[11px] gap-1 px-2"
+                                      onClick={() => {
+                                        const next = [...combos];
+                                        const currentItems = next[index].mixConfig.items || [];
+                                        next[index].mixConfig.items = [
+                                          ...currentItems,
+                                          { productId: '', quantity: 1 }
+                                        ];
+                                        setCombos(next);
+                                      }}
+                                    >
+                                      <Plus size={11} /> Thêm sản phẩm kèm
+                                    </Button>
+                                  )}
+                                </div>
+                                
+                                {(combo.mixConfig.items?.length ?? 0) === 0 ? (
+                                  <p className="text-xs text-slate-400 py-1 italic">Chưa chọn sản phẩm kèm nào. Vui lòng bấm "Thêm sản phẩm kèm".</p>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <AnimatePresence initial={false}>
+                                      {combo.mixConfig.items.map((item: any, itemIndex: number) => (
+                                        <motion.div 
+                                          key={itemIndex}
+                                          initial={{ opacity: 0, x: -10 }}
+                                          animate={{ opacity: 1, x: 0 }}
+                                          exit={{ opacity: 0, x: 10 }}
+                                          transition={{ duration: 0.15 }}
+                                          className="flex gap-2 items-center"
+                                        >
+                                          <select
+                                            value={item.productId}
+                                            onChange={(e) => {
+                                              const next = [...combos];
+                                              next[index].mixConfig.items[itemIndex].productId = e.target.value;
+                                              setCombos(next);
+                                            }}
+                                            className="flex-1 h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1 text-xs"
+                                            required
+                                          >
+                                            <option value="">-- Chọn sản phẩm --</option>
+                                            {allActiveProducts
+                                              .filter((p: any) => p._id !== id) // không chọn chính nó
+                                              .map((p: any) => (
+                                                <option key={p._id} value={p._id}>{p.name}</option>
+                                              ))}
+                                          </select>
+                                          <div className="w-20 shrink-0">
+                                            <Input
+                                              type="number"
+                                              value={item.quantity}
+                                              onChange={(e) => {
+                                                const next = [...combos];
+                                                next[index].mixConfig.items[itemIndex].quantity = Math.max(1, Number(e.target.value));
+                                                setCombos(next);
+                                              }}
+                                              min={1}
+                                              className="h-9 text-xs"
+                                              placeholder="SL"
+                                              required
+                                            />
+                                          </div>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-9 w-9 text-slate-400 hover:text-red-500 shrink-0 hover:bg-slate-100 dark:hover:bg-slate-850 rounded-md"
+                                            onClick={() => {
+                                              const next = [...combos];
+                                              next[index].mixConfig.items = next[index].mixConfig.items.filter((_: any, i: number) => i !== itemIndex);
+                                              setCombos(next);
+                                            }}
+                                          >
+                                            <Trash size={14} />
+                                          </Button>
+                                        </motion.div>
+                                      ))}
+                                    </AnimatePresence>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Hình thức ưu đãi mix */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Hình thức ưu đãi <span className="text-red-500">*</span></Label>
+                                  <select
+                                    value={combo.mixConfig.rewardType}
+                                    onChange={(e) => {
+                                      const next = [...combos];
+                                      next[index].mixConfig.rewardType = e.target.value;
+                                      if (e.target.value === 'gift_other') {
+                                        next[index].mixConfig.giftQty = 1;
+                                        next[index].mixConfig.rewardValue = undefined;
+                                      } else {
+                                        next[index].mixConfig.rewardValue = 10;
+                                        next[index].mixConfig.giftProductId = undefined;
+                                        next[index].mixConfig.giftQty = undefined;
+                                      }
+                                      setCombos(next);
+                                    }}
+                                    className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                                  >
+                                    <option value="discount_percent">Giảm giá theo %</option>
+                                    <option value="discount_amount">Giảm số tiền cụ thể</option>
+                                    <option value="gift_other">Tặng sản phẩm khác</option>
+                                  </select>
+                                </div>
+
+                                {/* Mức giảm giá mix */}
+                                {(combo.mixConfig.rewardType === 'discount_percent' || combo.mixConfig.rewardType === 'discount_amount') && (
+                                  <div className="space-y-1">
+                                    <Label className="text-xs">
+                                      Mức giảm giá{' '}
+                                      {combo.mixConfig.rewardType === 'discount_percent' ? '(%)' : '(VND)'}
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      value={combo.mixConfig.rewardValue ?? ''}
+                                      onChange={(e) => {
+                                        const next = [...combos];
+                                        next[index].mixConfig.rewardValue = Number(e.target.value);
+                                        setCombos(next);
+                                      }}
+                                      min={1}
+                                      max={combo.mixConfig.rewardType === 'discount_percent' ? 100 : undefined}
+                                      required
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Tặng sản phẩm khác mix */}
+                                {combo.mixConfig.rewardType === 'gift_other' && (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+                                    <div className="space-y-1">
+                                      <Label className="text-xs">Sản phẩm tặng kèm <span className="text-red-500">*</span></Label>
+                                      <select
+                                        value={combo.mixConfig.giftProductId ?? ''}
+                                        onChange={(e) => {
+                                          const next = [...combos];
+                                          next[index].mixConfig.giftProductId = e.target.value ? e.target.value : undefined;
+                                          setCombos(next);
+                                        }}
+                                        className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                                        required
+                                      >
+                                        <option value="">-- Chọn sản phẩm tặng --</option>
+                                        {allActiveProducts.map((p: any) => (
+                                          <option key={p._id} value={p._id}>{p.name}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs">Số lượng tặng <span className="text-red-500">*</span></Label>
+                                      <Input
+                                        type="number"
+                                        value={combo.mixConfig.giftQty ?? 1}
+                                        onChange={(e) => {
+                                          const next = [...combos];
+                                          next[index].mixConfig.giftQty = Math.max(1, Number(e.target.value));
+                                          setCombos(next);
+                                        }}
+                                        min={1}
+                                        required
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
                   </div>
                 )}
               </CardContent>
