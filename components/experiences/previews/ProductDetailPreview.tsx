@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import useEmblaCarousel from 'embla-carousel-react';
 import {
   Award,
   BadgeCheck,
@@ -1547,7 +1548,7 @@ function PreviewCombosBlock({
   } else if (comboAnimateType === 'border-rainbow') {
     animateClass = 'animate-combo-border-rainbow';
   }
-  const renderTitle = (text: string) => {
+  const renderEffectText = (text: string) => {
     if (comboAnimateType !== 'letter-wave') {
       return <span className={`combo-title-text ${titleEffectClass}`.trim()} style={titleEffectStyle}>{text}</span>;
     }
@@ -1566,106 +1567,144 @@ function PreviewCombosBlock({
       </span>
     );
   };
+  const [emblaRef, emblaApi] = useEmblaCarousel({ align: 'start', axis: 'y', loop: false });
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
 
-  return (
-    <div className={`relative my-5 overflow-hidden rounded-2xl border p-4 transition-all ${animateClass}`} style={{ borderColor: tokens.divider, backgroundColor: tokens.surfaceMuted }}>
-      <h3 className="mb-3 flex flex-wrap items-center gap-2 text-sm font-bold" style={{ color: tokens.headingColor }}>
+  useEffect(() => {
+    if (!emblaApi) return;
+
+    const onSelect = () => {
+      setCanScrollPrev(emblaApi.canScrollPrev());
+      setCanScrollNext(emblaApi.canScrollNext());
+    };
+
+    emblaApi.on('select', onSelect);
+    emblaApi.on('reInit', onSelect);
+    onSelect();
+
+    return () => {
+      emblaApi.off('select', onSelect);
+      emblaApi.off('reInit', onSelect);
+    };
+  }, [emblaApi]);
+
+  const getComboMeta = (combo: typeof MOCK_COMBOS[number]) => {
+    let conditionLabel = '';
+    let rewardLabel = '';
+
+    if (combo.type === 'standard') {
+      const cfg = combo.standardConfig;
+      conditionLabel = `Mua từ ${cfg?.minQty || 1} sản phẩm`;
+      if (cfg?.rewardType === 'gift_self') {
+        rewardLabel = `Tặng thêm ${cfg.giftQty || 1} sản phẩm này`;
+      }
+    } else if (combo.type === 'mix') {
+      const cfg = combo.mixConfig;
+      const itemsLabel = cfg?.items?.map((item: any) => {
+        const p = comboProductsMap.get(item.productId);
+        return `${item.quantity}x ${p?.name || 'sản phẩm đi kèm'}`;
+      }).join(', ');
+      conditionLabel = itemsLabel ? `Mua kèm ${itemsLabel}` : 'Mua kèm sản phẩm';
+      if (cfg?.rewardType === 'discount_amount') {
+        rewardLabel = `Giảm ${formatVND(cfg.rewardValue || 0)}`;
+      }
+    }
+
+    return {
+      conditionLabel,
+      name: typeof combo.name === 'string' ? combo.name.trim() : '',
+      priceLabel: combo.price ? formatVND(combo.price) : 'Liên hệ',
+      rewardLabel,
+    };
+  };
+
+  const renderComboCard = (combo: typeof MOCK_COMBOS[number], index: number) => {
+    const meta = getComboMeta(combo);
+    const mainText = meta.name || meta.conditionLabel || meta.rewardLabel || 'Combo ưu đãi';
+
+    return (
+      <div
+        className={`group relative flex min-h-12 items-center gap-2 overflow-hidden rounded-xl border bg-[var(--surface-color)] px-3 py-2 transition-all hover:shadow-md ${animateClass}`}
+        style={{
+          borderColor: tokens.quantityBorder,
+          '--surface-color': tokens.surface,
+        } as React.CSSProperties}
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2 text-xs md:text-sm">
+            <span className="min-w-0 truncate font-semibold" style={{ color: tokens.headingColor }}>
+              {renderEffectText(mainText)}
+            </span>
+            {meta.name && meta.conditionLabel && (
+              <span className="hidden min-w-0 truncate sm:inline" style={{ color: tokens.bodyText }}>
+                {meta.conditionLabel}
+              </span>
+            )}
+            {meta.rewardLabel && (
+              <span
+                className="hidden shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold md:inline-flex"
+                style={{ backgroundColor: tokens.surface, borderColor: comboBadgeColors.border, color: comboBadgeColors.bg === tokens.surface ? comboBadgeColors.text : comboBadgeColors.bg }}
+              >
+                <Gift size={10} />
+                {meta.rewardLabel}
+              </span>
+            )}
+          </div>
+          {meta.name && (meta.conditionLabel || meta.rewardLabel) && (
+            <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] md:hidden" style={{ color: tokens.bodyText }}>
+              {meta.conditionLabel && <span className="truncate">{meta.conditionLabel}</span>}
+              {meta.rewardLabel && <span className="shrink-0">• {meta.rewardLabel}</span>}
+            </div>
+          )}
+        </div>
         <span
-          className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-sm"
+          className="shrink-0 rounded-full px-2 py-0.5 text-xs font-bold md:text-sm"
           style={{ backgroundColor: comboBadgeColors.bg, color: comboBadgeColors.text }}
         >
-          <Gift size={13} />
-          Combo deal
+          {meta.priceLabel}
         </span>
-        {renderTitle('Ưu đãi Combo (Preview)')}
-      </h3>
+      </div>
+    );
+  };
+  const hasMultipleCombos = combos.length > 1;
 
-      <div className="space-y-3">
-        {combos.map((combo, index) => {
-          let discountLabel = '';
-          let giftLabel = '';
-
-          if (combo.type === 'standard') {
-            const cfg = combo.standardConfig;
-            if (cfg) {
-              if (cfg.rewardType === 'gift_self') {
-                giftLabel = `Tặng thêm ${cfg.giftQty || 1} sản phẩm này`;
-              }
-            }
-          } else if (combo.type === 'mix') {
-            const cfg = combo.mixConfig;
-            if (cfg) {
-              if (cfg.rewardType === 'discount_amount') {
-                discountLabel = `Giảm ${formatVND(cfg.rewardValue || 0)}`;
-              }
-            }
-          }
-
-          return (
-            <div
-              key={index}
-              className="group relative overflow-hidden rounded-xl border bg-[var(--surface-color)] p-3 transition-all hover:-translate-y-0.5 hover:shadow-lg"
-              style={{
-                borderColor: tokens.quantityBorder,
-                '--surface-color': tokens.surface,
-              } as React.CSSProperties}
+  return (
+    <div className="relative my-4 rounded-2xl border p-2.5" style={{ borderColor: tokens.divider, backgroundColor: tokens.surfaceMuted }}>
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1 overflow-hidden" ref={emblaRef}>
+          <div className="flex max-h-16 flex-col">
+            {combos.map((combo, index) => (
+              <div key={index} className="min-w-0 flex-[0_0_100%]">
+                {renderComboCard(combo, index)}
+              </div>
+            ))}
+          </div>
+        </div>
+        {hasMultipleCombos && (
+          <div className="flex shrink-0 flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => emblaApi?.scrollPrev()}
+              disabled={!canScrollPrev}
+              className="flex h-6 w-6 items-center justify-center rounded-full border text-slate-500 transition disabled:opacity-35"
+              style={{ borderColor: tokens.quantityBorder, backgroundColor: tokens.surface }}
+              aria-label="Combo trước"
             >
-              <div className="mb-1 flex items-start justify-between gap-3">
-                <span className="font-semibold text-xs md:text-sm" style={{ color: tokens.headingColor }}>
-                  {combo.name}
-                </span>
-                <span
-                  className="shrink-0 rounded-full px-2 py-0.5 text-xs md:text-sm font-bold"
-                  style={{ backgroundColor: comboBadgeColors.bg, color: comboBadgeColors.text }}
-                >
-                  {combo.price ? formatVND(combo.price) : 'Liên hệ'}
-                </span>
-              </div>
-
-              <div className="text-[11px] md:text-xs space-y-1" style={{ color: tokens.bodyText }}>
-                {combo.type === 'standard' ? (
-                  <div>
-                    • Mua từ <span className="font-semibold">{combo.standardConfig?.minQty || 1}</span> sản phẩm.
-                  </div>
-                ) : (
-                  <div>
-                    • Mua kèm:{' '}
-                    {combo.mixConfig?.items?.map((item: any, idx: number) => {
-                      const p = comboProductsMap.get(item.productId);
-                      return (
-                        <span key={item.productId} className="font-medium">
-                          {idx > 0 && ', '}
-                          {item.quantity}x {p?.name || 'sản phẩm đi kèm'}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-                {(discountLabel || giftLabel) && (
-                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                    {discountLabel && (
-                      <span
-                        className="rounded-full border px-2 py-0.5 text-[10px] font-semibold"
-                        style={{ backgroundColor: comboBadgeColors.bg, borderColor: comboBadgeColors.border, color: comboBadgeColors.text }}
-                      >
-                        {discountLabel}
-                      </span>
-                    )}
-                    {giftLabel && (
-                      <span
-                        className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
-                        style={{ backgroundColor: tokens.surface, borderColor: comboBadgeColors.border, color: comboBadgeColors.bg === tokens.surface ? comboBadgeColors.text : comboBadgeColors.bg }}
-                      >
-                        <Gift size={10} />
-                        {giftLabel}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+              <ChevronUp size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => emblaApi?.scrollNext()}
+              disabled={!canScrollNext}
+              className="flex h-6 w-6 items-center justify-center rounded-full border text-slate-500 transition disabled:opacity-35"
+              style={{ borderColor: tokens.quantityBorder, backgroundColor: tokens.surface }}
+              aria-label="Combo sau"
+            >
+              <ChevronDown size={14} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
