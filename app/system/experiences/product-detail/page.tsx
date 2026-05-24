@@ -39,14 +39,11 @@ import {
   Trash2,
   Truck,
   GripVertical,
-  Check,
-  X,
   Facebook,
   Instagram,
   Youtube,
   Send,
   Mail,
-  Pencil,
   Download,
 } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, cn } from '@/app/admin/components/ui';
@@ -277,7 +274,7 @@ const DEFAULT_CONFIG: ProductDetailExperienceConfig = {
   socialButtons: [],
 };
 
-const LEGACY_COMBO_EFFECT_MAP: Partial<Record<string, { type: ComboAnimateType; color: ComboEffectColor }>> = {
+const LEGACY_COMBO_EFFECT_MAP = {
   'sparkle-gradient': { type: 'sparkle', color: 'gradient-1' },
   'sparkle-black': { type: 'sparkle', color: 'black' },
   'sparkle-gold': { type: 'sparkle', color: 'gradient-2' },
@@ -285,7 +282,7 @@ const LEGACY_COMBO_EFFECT_MAP: Partial<Record<string, { type: ComboAnimateType; 
   'sparkle-red': { type: 'sparkle', color: 'red' },
   'sparkle-primary': { type: 'sparkle', color: 'primary' },
   'sparkle-secondary': { type: 'sparkle', color: 'secondary' },
-};
+} as const;
 
 const HINTS = [
   'Classic layout phù hợp shop truyền thống.',
@@ -607,7 +604,9 @@ export default function ProductDetailExperiencePage() {
         || isProductImageAspectRatio(raw?.layouts?.minimal?.imageAspectRatio)
         ? 'custom'
         : 'module';
-    const legacyComboEffect = raw?.comboAnimateType ? LEGACY_COMBO_EFFECT_MAP[raw.comboAnimateType] : undefined;
+    const legacyComboEffect = raw?.comboAnimateType && (raw.comboAnimateType in LEGACY_COMBO_EFFECT_MAP)
+      ? LEGACY_COMBO_EFFECT_MAP[raw.comboAnimateType as keyof typeof LEGACY_COMBO_EFFECT_MAP]
+      : undefined;
     const comboAnimateType: ComboAnimateType = raw?.comboAnimateType === 'pulse' || raw?.comboAnimateType === 'bounce'
       ? 'luxury-sheen'
       : legacyComboEffect?.type ?? (raw?.comboAnimateType as ComboAnimateType | undefined) ?? DEFAULT_CONFIG.comboAnimateType ?? 'luxury-sheen';
@@ -941,7 +940,7 @@ export default function ProductDetailExperiencePage() {
             </div>
 
             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-              {btns.map((btn, index) => {
+              {btns.map((btn) => {
                 const def = getSocialIconDef(btn.icon);
                 const isDragOver = dragOverBtnId === btn.id;
                 const isDragged = draggedBtnId === btn.id;

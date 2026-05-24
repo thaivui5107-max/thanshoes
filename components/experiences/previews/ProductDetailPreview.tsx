@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import useEmblaCarousel from 'embla-carousel-react';
 import {
   Award,
   BadgeCheck,
@@ -38,9 +37,6 @@ import {
   Youtube,
   Send,
   Mail,
-  Percent,
-  Tag,
-  Sparkles,
 } from 'lucide-react';
 import { CommentsPreview } from './DetailPreview';
 import {
@@ -1722,13 +1718,6 @@ function PreviewCombosBlock({
         {combos.map((combo, index) => {
           const details = getComboDetails(combo);
           const isExpanded = expandedCombos[index] ?? false;
-          
-          let Icon = Gift;
-          if (details.iconType === 'percent') {
-            Icon = Percent;
-          } else if (details.iconType === 'amount') {
-            Icon = Tag;
-          }
 
           return (
             <div

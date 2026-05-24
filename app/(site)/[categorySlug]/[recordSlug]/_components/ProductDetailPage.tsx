@@ -33,7 +33,7 @@ import { getFaqColors } from '@/app/admin/home-components/faq/_lib/colors';
 import { useCustomerAuth } from '@/app/(site)/auth/context';
 import { notifyAddToCart, useCart } from '@/lib/cart';
 import { useCartConfig, useCheckoutConfig } from '@/lib/experiences';
-import { ArrowLeft, Award, BadgeCheck, Bell, Bolt, Calendar, Camera, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, CreditCard, Gift, Globe, Heart, HeartHandshake, Leaf, Lock, MapPin, MessageSquare, Minus, Package, Phone, Plus, Reply, RotateCcw, Share2, Shield, ShoppingBag, ShoppingCart, Star, ThumbsUp, Truck, Facebook, Instagram, Youtube, Mail, Send, Percent, Tag, Sparkles } from 'lucide-react';
+import { ArrowLeft, Award, BadgeCheck, Bell, Bolt, Calendar, Camera, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, CreditCard, Gift, Globe, Heart, HeartHandshake, Leaf, Lock, MapPin, MessageSquare, Minus, Package, Phone, Plus, Reply, RotateCcw, Share2, Shield, ShoppingBag, ShoppingCart, Star, ThumbsUp, Truck, Facebook, Instagram, Youtube, Mail, Send } from 'lucide-react';
 import { VariantSelector, type VariantSelectorOption } from '@/components/products/VariantSelector';
 import type { Id } from '@/convex/_generated/dataModel';
 import { getPublicPriceLabel } from '@/lib/products/public-price';
@@ -56,7 +56,7 @@ type ProductDetailAccentColorConfig = {
   comboBadge?: ProductDetailElementColorChoice;
 };
 
-const LEGACY_COMBO_EFFECT_MAP: Partial<Record<string, { type: ComboAnimateType; color: ComboEffectColor }>> = {
+const LEGACY_COMBO_EFFECT_MAP = {
   'sparkle-gradient': { type: 'sparkle', color: 'gradient-1' },
   'sparkle-black': { type: 'sparkle', color: 'black' },
   'sparkle-gold': { type: 'sparkle', color: 'gradient-2' },
@@ -64,7 +64,7 @@ const LEGACY_COMBO_EFFECT_MAP: Partial<Record<string, { type: ComboAnimateType; 
   'sparkle-red': { type: 'sparkle', color: 'red' },
   'sparkle-primary': { type: 'sparkle', color: 'primary' },
   'sparkle-secondary': { type: 'sparkle', color: 'secondary' },
-};
+} as const;
 
 type BaseImageLayoutConfig = {
   showRating: boolean;
@@ -301,7 +301,9 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
     const showCommentLikes = layoutComments?.showCommentLikes ?? raw?.showCommentLikes ?? true;
     const showCommentReplies = layoutComments?.showCommentReplies ?? raw?.showCommentReplies ?? true;
     const showShare = layoutComments?.showShare ?? raw?.showShare ?? true;
-    const legacyComboEffect = raw?.comboAnimateType ? LEGACY_COMBO_EFFECT_MAP[raw.comboAnimateType] : undefined;
+    const legacyComboEffect = raw?.comboAnimateType && (raw.comboAnimateType in LEGACY_COMBO_EFFECT_MAP)
+      ? LEGACY_COMBO_EFFECT_MAP[raw.comboAnimateType as keyof typeof LEGACY_COMBO_EFFECT_MAP]
+      : undefined;
     const comboAnimateType: ComboAnimateType = raw?.comboAnimateType === 'pulse' || raw?.comboAnimateType === 'bounce'
       ? 'luxury-sheen'
       : legacyComboEffect?.type ?? (raw?.comboAnimateType as ComboAnimateType | undefined) ?? 'luxury-sheen';
@@ -4195,7 +4197,7 @@ interface ProductCombosBlockProps {
 function ProductCombosBlock({
   combos,
   comboProductsMap,
-  brandColor,
+  brandColor: _brandColor,
   tokens,
   comboAnimateType = 'none',
   comboEffectColor = 'gradient-1',
@@ -4411,13 +4413,6 @@ function ProductCombosBlock({
         {combos.map((combo, index) => {
           const details = getComboDetails(combo);
           const isExpanded = expandedCombos[index] ?? false;
-          
-          let Icon = Gift;
-          if (details.iconType === 'percent') {
-            Icon = Percent;
-          } else if (details.iconType === 'amount') {
-            Icon = Tag;
-          }
 
           return (
             <div
