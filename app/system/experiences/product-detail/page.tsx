@@ -162,7 +162,7 @@ const renderSocialIcon = (value: string, size = 16) => {
 type ProductsDetailStyle = 'classic' | 'modern' | 'minimal';
 type RelatedProductsMode = 'fixed' | 'infiniteScroll' | 'pagination';
 type ProductImageAspectRatioSource = 'module' | 'custom';
-type ComboAnimateType = 'none' | 'luxury-sheen' | 'text-highlight' | 'border-rainbow';
+type ComboAnimateType = 'none' | 'luxury-sheen' | 'typing' | 'fire' | 'sparkle-text' | 'text-highlight' | 'border-rainbow';
 
 type ProductDetailAccentColorConfig = {
   categoryBadge?: ProductDetailElementColorChoice;
@@ -1247,6 +1247,9 @@ export default function ProductDetailExperiencePage() {
                 options={[
                   { value: 'none', label: 'Không có hiệu ứng' },
                   { value: 'luxury-sheen', label: 'Sang trọng (Luxury Sheen)' },
+                  { value: 'typing', label: 'Đánh chữ' },
+                  { value: 'fire', label: 'Ngọn lửa cháy' },
+                  { value: 'sparkle-text', label: 'Chữ lấp lánh' },
                   { value: 'text-highlight', label: 'Chữ ánh kim nhẹ' },
                   { value: 'border-rainbow', label: 'Viền ánh sáng nhẹ' },
                 ]}

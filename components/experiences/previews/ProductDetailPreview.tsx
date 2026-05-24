@@ -75,7 +75,7 @@ type ProductDetailPreviewProps = {
   relatedProductsMode?: 'fixed' | 'infiniteScroll' | 'pagination';
   relatedProductsPerPage?: number;
   enableCombos?: boolean;
-  comboAnimateType?: 'none' | 'luxury-sheen' | 'pulse' | 'bounce' | 'text-highlight' | 'border-rainbow';
+  comboAnimateType?: 'none' | 'luxury-sheen' | 'typing' | 'fire' | 'sparkle-text' | 'pulse' | 'bounce' | 'text-highlight' | 'border-rainbow';
   accentColors?: {
     categoryBadge?: ProductDetailElementColorChoice;
     discountBadge?: ProductDetailElementColorChoice;
@@ -858,10 +858,10 @@ export function ProductDetailPreview({
                     <button
                       className="py-3.5 px-8 rounded-xl font-semibold flex items-center justify-center gap-2 border transition-all cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]"
                       style={{
-                        borderColor: tokens.ctaSecondaryBorder,
-                        color: tokens.ctaSecondaryText,
-                        '--cta-secondary-bg': tokens.ctaSecondaryHoverBg,
-                        '--cta-secondary-hover-bg': tokens.ctaSecondaryHoverBg,
+                        borderColor: primaryButtonColors.border,
+                        color: primaryButtonColors.text,
+                        '--cta-secondary-bg': primaryButtonColors.bg,
+                        '--cta-secondary-hover-bg': primaryButtonColors.bg,
                         '--cta-secondary-ring': tokens.inputRing,
                       } as React.CSSProperties}
                     >
@@ -1136,10 +1136,10 @@ export function ProductDetailPreview({
                       <button
                         className="w-full h-12 text-base font-semibold border transition-all cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]"
                         style={{
-                          borderColor: tokens.ctaSecondaryBorder,
-                          color: tokens.ctaSecondaryText,
-                          '--cta-secondary-bg': tokens.ctaSecondaryHoverBg,
-                          '--cta-secondary-hover-bg': tokens.ctaSecondaryHoverBg,
+                          borderColor: primaryButtonColors.border,
+                          color: primaryButtonColors.text,
+                          '--cta-secondary-bg': primaryButtonColors.bg,
+                          '--cta-secondary-hover-bg': primaryButtonColors.bg,
                           '--cta-secondary-ring': tokens.inputRing,
                         } as React.CSSProperties}
                       >
@@ -1341,10 +1341,10 @@ export function ProductDetailPreview({
                       <button
                         className="h-12 uppercase tracking-wider text-xs font-medium border transition-all cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]"
                         style={{
-                          borderColor: tokens.ctaSecondaryBorder,
-                          color: tokens.ctaSecondaryText,
-                          '--cta-secondary-bg': tokens.ctaSecondaryHoverBg,
-                          '--cta-secondary-hover-bg': tokens.ctaSecondaryHoverBg,
+                          borderColor: primaryButtonColors.border,
+                          color: primaryButtonColors.text,
+                          '--cta-secondary-bg': primaryButtonColors.bg,
+                          '--cta-secondary-hover-bg': primaryButtonColors.bg,
                           '--cta-secondary-ring': tokens.inputRing,
                         } as React.CSSProperties}
                       >
@@ -1489,8 +1489,17 @@ function PreviewCombosBlock({
   comboBadgeColors: ReturnType<typeof resolveProductDetailElementColor>;
 }) {
   let animateClass = '';
+  let titleEffectClass = '';
   if (comboAnimateType === 'luxury-sheen' || comboAnimateType === 'pulse' || comboAnimateType === 'bounce') {
     animateClass = 'animate-combo-luxury-sheen';
+  } else if (comboAnimateType === 'typing') {
+    titleEffectClass = 'animate-combo-typing-text';
+  } else if (comboAnimateType === 'fire') {
+    animateClass = 'animate-combo-fire';
+    titleEffectClass = 'animate-combo-fire-text';
+  } else if (comboAnimateType === 'sparkle-text') {
+    animateClass = 'animate-combo-sparkle';
+    titleEffectClass = 'animate-combo-sparkle-text';
   } else if (comboAnimateType === 'text-highlight') {
     animateClass = 'animate-combo-text-highlight';
   } else if (comboAnimateType === 'border-rainbow') {
@@ -1507,7 +1516,7 @@ function PreviewCombosBlock({
           <Gift size={13} />
           Combo deal
         </span>
-        <span>Ưu đãi Combo (Preview)</span>
+        <span className={`combo-title-text ${titleEffectClass}`.trim()}>Ưu đãi Combo (Preview)</span>
       </h3>
 
       <div className="space-y-3">
