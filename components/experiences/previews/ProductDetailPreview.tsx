@@ -1549,20 +1549,20 @@ function PreviewCombosBlock({
       titleEffectStyle['--combo-sparkle-c'] = comboBadgeColors.text;
       colorVal = tokens.secondary;
     } else if (comboEffectColor === 'gradient-2') {
-      titleEffectStyle['--combo-sparkle-a'] = '#92400e';
-      titleEffectStyle['--combo-sparkle-b'] = '#f59e0b';
-      titleEffectStyle['--combo-sparkle-c'] = '#fde68a';
+      titleEffectStyle['--combo-sparkle-a'] = '#bf953f';
+      titleEffectStyle['--combo-sparkle-b'] = '#fcf6ba';
+      titleEffectStyle['--combo-sparkle-c'] = '#b38728';
       isGradient = true;
     } else if (comboEffectColor === 'gradient-3') {
-      titleEffectStyle['--combo-sparkle-a'] = '#065f46';
-      titleEffectStyle['--combo-sparkle-b'] = '#10b981';
-      titleEffectStyle['--combo-sparkle-c'] = '#a7f3d0';
+      titleEffectStyle['--combo-sparkle-a'] = '#00c6ff';
+      titleEffectStyle['--combo-sparkle-b'] = '#0072ff';
+      titleEffectStyle['--combo-sparkle-c'] = '#7928ca';
       isGradient = true;
     } else {
       // gradient-1 (default)
-      titleEffectStyle['--combo-sparkle-a'] = '#6366f1';
-      titleEffectStyle['--combo-sparkle-b'] = '#ec4899';
-      titleEffectStyle['--combo-sparkle-c'] = '#f59e0b';
+      titleEffectStyle['--combo-sparkle-a'] = '#ff007a';
+      titleEffectStyle['--combo-sparkle-b'] = '#7928ca';
+      titleEffectStyle['--combo-sparkle-c'] = '#00dfd8';
       isGradient = true;
     }
 
@@ -1608,14 +1608,16 @@ function PreviewCombosBlock({
     }
 
     return (
-      <span className="combo-title-text inline-flex flex-wrap">
+      <span className="combo-title-text inline-flex flex-wrap" style={titleEffectStyle}>
         {Array.from(text).map((char, index) => (
           <span
             key={`${char}-${index}`}
             className="animate-combo-letter-wave"
             style={{
-              ...titleEffectStyle,
-              animationDelay: `${index * 0.06}s`
+              animationDelay: `${index * 0.06}s`,
+              display: 'inline-block',
+              color: 'inherit',
+              WebkitTextFillColor: 'inherit'
             }}
           >
             {char === ' ' ? '\u00A0' : char}
