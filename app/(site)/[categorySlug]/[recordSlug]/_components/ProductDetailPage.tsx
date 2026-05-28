@@ -1971,7 +1971,7 @@ function ClassicStyle({
         }
         const selected = selectedOptions[optionValue.optionId];
         return !selected || selected === optionValue.valueId;
-      })
+      }) && (!showStock || (variant.stock ?? product.stock ?? 0) > 0)
     );
 
   const showPrice = enabledFields.has('price') || enabledFields.size === 0;
@@ -2528,7 +2528,7 @@ function ModernStyle({
         }
         const selected = selectedOptions[optionValue.optionId];
         return !selected || selected === optionValue.valueId;
-      })
+      }) && (!showStock || (variant.stock ?? product.stock ?? 0) > 0)
     );
 
   const showPrice = enabledFields.has('price') || enabledFields.size === 0;
@@ -3200,7 +3200,7 @@ function MinimalStyle({
         }
         const selected = selectedOptions[optionValue.optionId];
         return !selected || selected === optionValue.valueId;
-      })
+      }) && (!showStock || (variant.stock ?? product.stock ?? 0) > 0)
     );
 
   const showPrice = enabledFields.has('price') || enabledFields.size === 0;

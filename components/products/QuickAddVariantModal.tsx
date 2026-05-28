@@ -203,7 +203,7 @@ export function QuickAddVariantModal({ isOpen, product, brandColor, actionLabel,
         }
         const selected = resolvedSelection[optionValue.optionId];
         return !selected || selected === optionValue.valueId;
-      })
+      }) && (!showStock || (variant.stock ?? product.stock ?? 0) > 0)
     ) ?? false;
 
   const canSubmit = Boolean(selectedVariant && inStock && quantity > 0);
