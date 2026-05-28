@@ -71,6 +71,7 @@ export const ProductCategoriesPreview = ({
   }, [categoriesConfig]);
 
   const targetProductsData = useQuery(api.products.listByIds, { ids: productIdsForImages as any });
+  const categoriesWithStats = useQuery(api.productCategories.listActiveWithStats, { productLimit: 5000 });
 
   const categoryMap = React.useMemo(() => {
     const map: Record<string, CategoryData> = {};
@@ -94,15 +95,16 @@ export const ProductCategoriesPreview = ({
     }
     return map;
   }, [productsData, targetProductsData]);
+
   const productCountMap = React.useMemo(() => {
     const map: Record<string, number> = {};
-    if (productsData) {
-      for (const product of productsData) {
-        map[product.categoryId] = (map[product.categoryId] || 0) + 1;
+    if (categoriesWithStats?.stats) {
+      for (const stat of categoriesWithStats.stats) {
+        map[stat.categoryId] = stat.productCount;
       }
     }
     return map;
-  }, [productsData]);
+  }, [categoriesWithStats]);
 
   const uniqueCategories = React.useMemo(() => (
     categoriesConfig.filter((item, index, arr) => {

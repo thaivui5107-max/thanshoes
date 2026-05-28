@@ -3569,6 +3569,7 @@ function ProductCategoriesSection({ config, brandColor, secondary, mode, title }
   
   const categoriesData = useQuery(api.productCategories.listActive);
   const productsData = useQuery(api.products.listPublicResolved, {});
+  const categoriesWithStats = useQuery(api.productCategories.listActiveWithStats, { productLimit: 5000 });
   
   const categoryMap = React.useMemo(() => {
     const map: Record<string, { name: string; slug: string; image?: string; description?: string }> = {};
@@ -3582,13 +3583,13 @@ function ProductCategoriesSection({ config, brandColor, secondary, mode, title }
   
   const productCountMap = React.useMemo(() => {
     const map: Record<string, number> = {};
-    if (productsData) {
-      for (const p of productsData) {
-        map[p.categoryId] = (map[p.categoryId] || 0) + 1;
+    if (categoriesWithStats?.stats) {
+      for (const stat of categoriesWithStats.stats) {
+        map[stat.categoryId] = stat.productCount;
       }
     }
     return map;
-  }, [productsData]);
+  }, [categoriesWithStats]);
   const productIdsForImages = React.useMemo(() => {
     const ids: string[] = [];
     for (const item of categoriesConfig) {
