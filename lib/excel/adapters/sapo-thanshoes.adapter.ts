@@ -165,6 +165,7 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
           sku: parentSku,
           name: currentProductName || parentSku,
           categoryId: categoryId,
+          categoryName: currentType || undefined,
           productType: "physical",
           imageUrl: getCellText(row.getCell(imageCol)) || undefined,
           images: [],

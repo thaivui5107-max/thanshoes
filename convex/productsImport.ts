@@ -17,6 +17,7 @@ const bulkProductDoc = v.object({
   sku: v.string(),
   name: v.optional(v.string()),
   categoryId: v.optional(v.string()),
+  categoryName: v.optional(v.string()),
   productType: v.optional(v.union(v.literal("physical"), v.literal("digital"))),
   price: v.optional(v.number()),
   salePrice: v.optional(v.number()),
@@ -47,6 +48,7 @@ export const upsertBulk = mutation({
     // TỐI ƯU BANDWIDTH 2: Load danh mục 1 lần
     const categories = await ctx.db.query("productCategories").collect();
     const categoryMap = new Map(categories.map(c => [c._id.toString(), c._id]));
+    const categoryByNameMap = new Map(categories.map(c => [c.name.toLowerCase().trim(), c._id]));
 
     let defaultCategoryId: Id<"productCategories"> | undefined = undefined;
     if (categories.length > 0) {
@@ -60,6 +62,7 @@ export const upsertBulk = mutation({
       });
       defaultCategoryId = defaultId;
       categoryMap.set(defaultId.toString(), defaultId);
+      categoryByNameMap.set("chưa phân loại", defaultId);
     }
 
     // TỐI ƯU BANDWIDTH 3: Load toàn bộ Options & Values (số lượng thường rất ít < 1000, 
@@ -120,6 +123,33 @@ export const upsertBulk = mutation({
     for (const p of args.products) {
       const existing = existingProductsMap.get(p.sku);
       let categoryId = p.categoryId ? categoryMap.get(p.categoryId) : undefined;
+      
+      // Nếu không khớp categoryId nhưng có categoryName từ Excel, thử map theo tên hoặc tự tạo mới
+      if (!categoryId && p.categoryName?.trim()) {
+        const cleanName = p.categoryName.trim();
+        const cleanKey = cleanName.toLowerCase();
+        const matchedId = categoryByNameMap.get(cleanKey);
+        
+        if (matchedId) {
+          categoryId = matchedId;
+        } else {
+          // Tạo danh mục mới tự động
+          const rawSlug = cleanKey
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, '-')
+            .replace(/[^\w-]/g, '');
+          const newCatId = await ctx.db.insert("productCategories", {
+            name: cleanName,
+            slug: rawSlug || `danh-muc-${Date.now()}`,
+            active: true,
+            order: 0,
+          });
+          categoryId = newCatId;
+          categoryMap.set(newCatId.toString(), newCatId);
+          categoryByNameMap.set(cleanKey, newCatId);
+        }
+      }
       
       if (!categoryId) {
         categoryId = defaultCategoryId;

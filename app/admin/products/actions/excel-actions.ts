@@ -272,6 +272,7 @@ export interface ParsedProductRecord {
   sku: string;
   name?: string;
   categoryId?: string;
+  categoryName?: string;
   productType?: "physical" | "digital";
   price?: number;
   salePrice?: number;
