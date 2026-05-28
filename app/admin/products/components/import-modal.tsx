@@ -146,8 +146,9 @@ export function ImportExportModal() {
 
       console.log("Parsed Data:", result.data);
       const optionNames = result.optionNames || excelOptions.map((opt) => opt.name);
+      const cleanProducts = result.data?.map(({ detectedOptionNames, ...rest }: any) => rest) || [];
       const importResult = await upsertBulk({ 
-        products: result.data as any,
+        products: cleanProducts as any,
         optionNames: optionNames.length > 0 ? optionNames : undefined,
       });
       
