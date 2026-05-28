@@ -270,10 +270,15 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
   }, [categorySlugMap, routeMode]);
   const { frameConfig, watermarkConfig } = useProductImageOverlayConfigs(imageAspectRatio);
   
-  // Query products based on selection mode (skip for demo mode)
+  // Query products based on selection mode (skip for demo mode and manual mode)
   const productsData = useQuery(
     api.products.listPublicResolved,
-    selectionMode === 'demo' ? 'skip' : (selectionMode === 'auto' ? { limit: Math.min(itemCount, 20) } : { limit: 100 })
+    selectionMode === 'demo' || selectionMode === 'manual' ? 'skip' : { limit: Math.min(itemCount, 20) }
+  );
+
+  const manualProductsData = useQuery(
+    api.products.listByIds,
+    selectionMode === 'manual' && selectedProductIds.length > 0 ? { ids: selectedProductIds as Id<'products'>[] } : 'skip'
   );
   
   // Get products to display based on selection mode
@@ -316,22 +321,28 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
         status: 'Active' as const,
       }));
     }
-    if (!productsData) {return [];}
-    
-    if (selectionMode === 'manual' && selectedProductIds.length > 0) {
-      const productMap = new Map(productsData.map(p => [p._id, p]));
+    if (selectionMode === 'manual') {
+      if (!manualProductsData) {return [];}
+      const productMap = new Map(manualProductsData.map(p => [p._id, p]));
       return selectedProductIds
         .map(id => productMap.get(id as Id<"products">))
         .filter((p): p is NonNullable<typeof p> => p !== undefined && p.status === 'Active');
     }
+
+    if (!productsData) {return [];}
     
     return productsData.filter(p => p.status === 'Active').slice(0, itemCount);
-  }, [productsData, selectionMode, selectedProductIds, itemCount, snapshotData, demoProducts]);
+  }, [productsData, manualProductsData, selectionMode, selectedProductIds, itemCount, snapshotData, demoProducts]);
 
   const showViewAll = products.length >= 3;
 
   // Loading state (skip for demo mode)
-  if (selectionMode !== 'demo' && !snapshotData && productsData === undefined) {
+  const isLoading = selectionMode !== 'demo' && !snapshotData && (
+    (selectionMode === 'manual' && manualProductsData === undefined) ||
+    (selectionMode === 'auto' && productsData === undefined)
+  );
+
+  if (isLoading) {
     return (
       <section className={cn(sectionSpacingClassName, 'px-4')}>
         <div className="max-w-6xl mx-auto flex items-center justify-center min-h-[200px]">
@@ -1057,7 +1068,7 @@ export function ProductListSection({ config, brandColor, secondary, title, snaps
                             </div>
                           )}
                         </ProductImageWithOverlay>
-                        <div className={cn("absolute inset-0 z-30 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent opacity-70 transition duration-500 group-hover:opacity-0", isActive && "opacity-0")} />
+                        <div className={cn("absolute inset-0 z-10 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent opacity-70 transition duration-500 group-hover:opacity-0", isActive && "opacity-0")} />
                         <div className={cn("absolute inset-0 z-10 bg-white opacity-0 transition duration-500 group-hover:opacity-100", isActive && "opacity-100")} />
                         {discount && (
                           <div className="absolute right-3 top-3 z-20">

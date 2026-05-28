@@ -113,9 +113,13 @@ export function ProductImageWithOverlay({
   const hasFrame = Boolean(frameConfig?.overlayUrl);
   const hasWatermark = Boolean(watermarkConfig?.enabled && (watermarkConfig.image || watermarkConfig.text));
 
+  const isAbsolute = className?.includes('absolute');
+  const baseClass = isAbsolute ? 'overflow-hidden' : 'relative overflow-hidden';
+  const combinedClass = className ? `${baseClass} ${className}` : baseClass;
+
   return (
     <div
-      className={className ? `relative overflow-hidden ${className}` : 'relative overflow-hidden'}
+      className={combinedClass}
       style={{
         ...style,
         // container-type: inline-size — cqw bên trong tính theo chiều rộng của div này
