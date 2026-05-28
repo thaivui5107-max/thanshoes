@@ -43,7 +43,7 @@ export default function CustomerRegisterPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-140px)] md:min-h-[calc(100vh-420px)] min-h-[550px] bg-slate-50 flex items-center justify-center px-4 py-10">
+    <div className="flex-1 bg-slate-50 flex flex-col items-center justify-center px-4 py-12 md:py-20">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-slate-900">Tạo tài khoản</h1>

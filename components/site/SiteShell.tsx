@@ -20,7 +20,7 @@ export function SiteShell({
       <div className="min-h-screen flex flex-col">
         <Header initialData={initialHeaderData} />
         <CartDrawer />
-        <main className="flex-1 overflow-x-hidden">
+        <main className="flex-1 overflow-x-hidden flex flex-col">
           {children}
         </main>
         <DynamicFooter />
