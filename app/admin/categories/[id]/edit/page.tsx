@@ -26,7 +26,7 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
 
   const categoryData = useQuery(api.productCategories.getById, { id: id as Id<"productCategories"> });
   const categoriesData = useQuery(api.productCategories.listAll, {});
-  const productsData = useQuery(api.products.listAll, {});
+  const relatedProducts = useQuery(api.products.listProductsByCategoryForAdmin, { categoryId: id as Id<"productCategories"> }) ?? [];
   const updateCategory = useMutation(api.productCategories.update);
   const fieldsData = useQuery(api.admin.modules.listEnabledModuleFields, { moduleKey: MODULE_KEY });
   const hierarchyFeature = useQuery(api.admin.modules.getModuleFeature, {
@@ -232,8 +232,6 @@ export default function CategoryEditPage({ params }: { params: Promise<{ id: str
       setSnapshotVersion(prev => prev + 1);
     }
   }, [assignedProductTypesData]);
-
-  const relatedProducts = useMemo(() => productsData?.filter(p => p.categoryId === id) ?? [], [productsData, id]);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;

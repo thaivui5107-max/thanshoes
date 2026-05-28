@@ -310,38 +310,114 @@ function buildAdminQuery(ctx: QueryCtx, args: AdminSearchArgs) {
   return ctx.db.query("products").withIndex("by_order");
 }
 
-async function searchAdminProducts(ctx: QueryCtx, args: AdminSearchArgs, limit?: number) {
-  const searchLower = args.search?.toLowerCase().trim();
-  if (!searchLower) {
+function parseSearchQuery(search: string) {
+  const excludes: string[] = [];
+  const exacts: string[] = [];
+  const normals: string[] = [];
+
+  const regex = /(-)?(?:"([^"]+)"|([^\s"]+))/g;
+  let match;
+  while ((match = regex.exec(search)) !== null) {
+    const isExclude = !!match[1];
+    const phrase = match[2] || match[3];
+    if (!phrase) continue;
+
+    const cleanPhrase = phrase.toLowerCase().trim();
+    if (isExclude) {
+      excludes.push(cleanPhrase);
+    } else if (match[2]) {
+      exacts.push(cleanPhrase);
+    } else {
+      normals.push(cleanPhrase);
+    }
+  }
+
+  return { excludes, exacts, normals };
+}
+
+function matchProduct(
+  product: { name: string; sku?: string },
+  parsed: { excludes: string[]; exacts: string[]; normals: string[] },
+  exactMode: boolean
+): boolean {
+  const nameLower = product.name.toLowerCase();
+  const skuLower = (product.sku ?? "").toLowerCase();
+
+  for (const exclude of parsed.excludes) {
+    if (nameLower.includes(exclude) || skuLower.includes(exclude)) {
+      return false;
+    }
+  }
+
+  for (const exact of parsed.exacts) {
+    if (!nameLower.includes(exact) && !skuLower.includes(exact)) {
+      return false;
+    }
+  }
+
+  if (exactMode) {
+    for (const normal of parsed.normals) {
+      if (!nameLower.includes(normal) && !skuLower.includes(normal)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+async function searchAdminProducts(
+  ctx: QueryCtx,
+  args: AdminSearchArgs & { exactMode?: boolean }
+) {
+  const search = args.search?.trim();
+  if (!search) {
     return [] as Doc<"products">[];
   }
 
-  const buildSearchQuery = (indexName: "search_name" | "search_sku", field: "name" | "sku") =>
-    ctx.db.query("products").withSearchIndex(indexName, (q) => {
-      let builder = q.search(field, searchLower);
-      if (args.status) {
-        builder = builder.eq("status", args.status);
-      }
-      if (args.categoryId) {
-        builder = builder.eq("categoryId", args.categoryId);
-      }
-      return builder;
+  const parsed = parseSearchQuery(search);
+  const exactMode = !!args.exactMode;
+
+  let rawProducts: Doc<"products">[] = [];
+  const hasPositiveSearch = parsed.normals.length > 0 || parsed.exacts.length > 0;
+
+  if (!hasPositiveSearch) {
+    rawProducts = await buildAdminQuery(ctx, args).collect();
+  } else {
+    const searchTerms = [...parsed.normals, ...parsed.exacts].join(" ");
+    const buildSearchQuery = (indexName: "search_name" | "search_sku", field: "name" | "sku") =>
+      ctx.db.query("products").withSearchIndex(indexName, (q) => {
+        let builder = q.search(field, searchTerms);
+        if (args.status) {
+          builder = builder.eq("status", args.status);
+        }
+        if (args.categoryId) {
+          builder = builder.eq("categoryId", args.categoryId);
+        }
+        return builder;
+      });
+
+    const nameQuery = buildSearchQuery("search_name", "name");
+    const skuQuery = buildSearchQuery("search_sku", "sku");
+
+    const [nameResults, skuResults] = await Promise.all([
+      nameQuery.take(5000),
+      skuQuery.take(5000),
+    ]);
+
+    const combined = new Map<Id<"products">, Doc<"products">>();
+    [...nameResults, ...skuResults].forEach((product) => {
+      combined.set(product._id, product);
     });
 
-  const nameQuery = buildSearchQuery("search_name", "name");
-  const skuQuery = buildSearchQuery("search_sku", "sku");
+    rawProducts = Array.from(combined.values());
+  }
 
-  const [nameResults, skuResults] = await Promise.all([
-    limit ? nameQuery.take(limit) : nameQuery.collect(),
-    limit ? skuQuery.take(limit) : skuQuery.collect(),
-  ]);
+  const filtered = rawProducts.filter((product) =>
+    matchProduct(product, parsed, exactMode)
+  );
 
-  const combined = new Map<Id<"products">, Doc<"products">>();
-  [...nameResults, ...skuResults].forEach((product) => {
-    combined.set(product._id, product);
-  });
-
-  return Array.from(combined.values());
+  return filtered;
 }
 
 function resolveVariantPrice(variant: Doc<"productVariants">): number | null {
@@ -479,17 +555,18 @@ export const listAdminWithOffset = query({
     offset: v.optional(v.number()),
     search: v.optional(v.string()),
     status: v.optional(productStatus),
+    exactMode: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const limit = Math.min(args.limit ?? 20, 100);
     const offset = args.offset ?? 0;
-    const fetchLimit = Math.min(offset + limit + 50, 5000);
     const settings = await getVariantSettings(ctx);
 
     let products: Doc<"products">[] = [];
     if (args.search?.trim()) {
-      products = await searchAdminProducts(ctx, args, fetchLimit);
+      products = await searchAdminProducts(ctx, args);
     } else {
+      const fetchLimit = Math.min(offset + limit + 50, 5000);
       products = await buildAdminQuery(ctx, args).order("desc").take(fetchLimit);
     }
 
@@ -522,6 +599,7 @@ export const countAdmin = query({
     categoryId: v.optional(v.id("productCategories")),
     search: v.optional(v.string()),
     status: v.optional(productStatus),
+    exactMode: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     let products: Doc<"products">[] = [];
@@ -542,15 +620,16 @@ export const listAdminIds = query({
     limit: v.optional(v.number()),
     search: v.optional(v.string()),
     status: v.optional(productStatus),
+    exactMode: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const limit = Math.min(args.limit ?? 5000, 5000);
-    const fetchLimit = limit + 1;
 
     let products: Doc<"products">[] = [];
     if (args.search?.trim()) {
-      products = await searchAdminProducts(ctx, args, fetchLimit);
+      products = await searchAdminProducts(ctx, args);
     } else {
+      const fetchLimit = limit + 1;
       products = await buildAdminQuery(ctx, args).order("desc").take(fetchLimit);
     }
 
@@ -582,10 +661,10 @@ export const listAdminExport = query({
     limit: v.optional(v.number()),
     search: v.optional(v.string()),
     status: v.optional(productStatus),
+    exactMode: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const limit = Math.min(args.limit ?? 5000, 5000);
-    const fetchLimit = Math.min(limit + 200, 5000);
 
     if (args.ids?.length) {
       const ids = args.ids.slice(0, limit);
@@ -609,8 +688,9 @@ export const listAdminExport = query({
 
     let products: Doc<"products">[] = [];
     if (args.search?.trim()) {
-      products = await searchAdminProducts(ctx, args, fetchLimit);
+      products = await searchAdminProducts(ctx, args);
     } else {
+      const fetchLimit = Math.min(limit + 200, 5000);
       products = await buildAdminQuery(ctx, args).order("desc").take(fetchLimit);
     }
 
@@ -2414,4 +2494,104 @@ export const getActiveTermsForProducts = query({
     return Array.from(new Set(termIds));
   },
   returns: v.array(v.id("attributeTerms")),
+});
+
+export const listProductsByCategoryForAdmin = query({
+  args: {
+    categoryId: v.id("productCategories"),
+  },
+  handler: async (ctx, args) => {
+    // 1. Lấy sản phẩm gán chính
+    let products = await ctx.db
+      .query("products")
+      .withIndex("by_category_status", (q) => q.eq("categoryId", args.categoryId))
+      .collect();
+
+    // 2. Lấy sản phẩm gán phụ qua assignments
+    const assignments = await ctx.db
+      .query("productCategoryAssignments")
+      .withIndex("by_category", (q) => q.eq("categoryId", args.categoryId))
+      .collect();
+
+    if (assignments.length > 0) {
+      const assignedProducts = await Promise.all(
+        assignments.map((item) => ctx.db.get(item.productId))
+      );
+      const validAssignedProducts = assignedProducts.filter(
+        (p): p is Doc<"products"> => Boolean(p)
+      );
+
+      const map = new Map<Id<"products">, Doc<"products">>();
+      // Cho sản phẩm gán chính vào trước
+      products.forEach((p) => map.set(p._id, p));
+      // Cho sản phẩm gán phụ vào sau
+      validAssignedProducts.forEach((p) => map.set(p._id, p));
+      products = Array.from(map.values());
+    }
+
+    // Sắp xếp các sản phẩm ảo này theo order giảm dần
+    products.sort((a, b) => b.order - a.order);
+
+    return products;
+  },
+  returns: v.array(productDoc),
+});
+
+export const listProductsForCategories = query({
+  args: {
+    categoryIds: v.array(v.id("productCategories")),
+  },
+  handler: async (ctx, args) => {
+    if (args.categoryIds.length === 0) {
+      return [];
+    }
+
+    const settings = await getVariantSettings(ctx);
+    const results: Doc<"products">[] = [];
+    const seenKeys = new Set<string>(); // Tránh trùng lặp cho cặp (productId, categoryId)
+
+    for (const catId of args.categoryIds) {
+      // 1. Lấy sản phẩm có categoryId chính trùng với catId
+      const primaryProducts = await ctx.db
+        .query("products")
+        .withIndex("by_category_status", (q) => q.eq("categoryId", catId).eq("status", "Active"))
+        .collect();
+
+      for (const p of primaryProducts) {
+        const key = `${p._id}-${catId}`;
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          results.push({ ...p, categoryId: catId });
+        }
+      }
+
+      // 2. Lấy sản phẩm gán phụ qua assignments
+      const assignments = await ctx.db
+        .query("productCategoryAssignments")
+        .withIndex("by_category", (q) => q.eq("categoryId", catId))
+        .collect();
+
+      if (assignments.length > 0) {
+        const assignedProducts = await Promise.all(
+          assignments.map((item) => ctx.db.get(item.productId))
+        );
+        for (const p of assignedProducts) {
+          if (p && p.status === "Active") {
+            const key = `${p._id}-${catId}`;
+            if (!seenKeys.has(key)) {
+              seenKeys.add(key);
+              results.push({ ...p, categoryId: catId });
+            }
+          }
+        }
+      }
+    }
+
+    // Sắp xếp theo order giảm dần
+    results.sort((a, b) => b.order - a.order);
+
+    const resolved = await resolveVariantOverrides(ctx, results, settings);
+    return resolved;
+  },
+  returns: v.array(productDoc),
 });

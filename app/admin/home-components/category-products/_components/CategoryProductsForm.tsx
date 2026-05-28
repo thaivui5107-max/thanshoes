@@ -25,7 +25,7 @@ interface CategoryProductsFormProps {
   setColumnsDesktop: (value: 3 | 4) => void;
   showViewAll: boolean;
   setShowViewAll: (value: boolean) => void;
-  categoriesData: { _id: string; name: string }[];
+  categoriesData: { _id: string; name: string; _creationTime?: number; productCount?: number }[];
   selectionMode: CategoryProductsSelectionMode;
   setSelectionMode: (value: CategoryProductsSelectionMode) => void;
   demoSections: DemoCategoryProductsSection[];
@@ -61,6 +61,31 @@ export const CategoryProductsForm = ({
 }: CategoryProductsFormProps) => {
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
+
+  const handleQuickGenerate = (type: 'largest' | 'newest' | 'non-empty' | 'all') => {
+    let selected: typeof categoriesData = [];
+    if (type === 'largest') {
+      selected = [...categoriesData]
+        .filter(c => (c.productCount ?? 0) > 0)
+        .sort((a, b) => (b.productCount ?? 0) - (a.productCount ?? 0))
+        .slice(0, 4);
+    } else if (type === 'newest') {
+      selected = [...categoriesData]
+        .sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0))
+        .slice(0, 4);
+    } else if (type === 'non-empty') {
+      selected = categoriesData.filter(c => (c.productCount ?? 0) > 0);
+    } else if (type === 'all') {
+      selected = categoriesData;
+    }
+
+    const items = selected.map((cat, index) => ({
+      categoryId: cat._id,
+      id: index + 1,
+      itemCount: 4,
+    }));
+    setSections(items);
+  };
 
   const activeSections = React.useMemo(() => ['settings', 'sections'], []);
   const { openSections, toggleSection, hasClosedSection, handleToggleAll } = useFormSectionsState(activeSections, defaultExpanded);
@@ -289,6 +314,53 @@ export const CategoryProductsForm = ({
 
           {selectionMode === 'real' ? (
             <>
+              {categoriesData.length > 0 && (
+                <div className="space-y-2 p-3 bg-slate-50/50 dark:bg-slate-900/30 rounded-lg border border-slate-100 dark:border-slate-800">
+                  <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Sinh nhanh danh mục</Label>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickGenerate('largest')}
+                      disabled={categoriesData.length === 0}
+                      className="text-xs h-8"
+                    >
+                      🔥 4 danh mục nhiều SP nhất
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickGenerate('newest')}
+                      disabled={categoriesData.length === 0}
+                      className="text-xs h-8"
+                    >
+                      ✨ 4 danh mục mới nhất
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickGenerate('non-empty')}
+                      disabled={categoriesData.length === 0}
+                      className="text-xs h-8"
+                    >
+                      📦 Danh mục có SP &gt; 0
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickGenerate('all')}
+                      disabled={categoriesData.length === 0}
+                      className="text-xs h-8"
+                    >
+                      🌐 Tất cả mọi danh mục
+                    </Button>
+                  </div>
+                </div>
+              )}
               {categoriesData.length === 0 ? (
                 <p className="text-sm text-slate-500 text-center py-4">
                   Chưa có danh mục sản phẩm. Vui lòng tạo danh mục trước.

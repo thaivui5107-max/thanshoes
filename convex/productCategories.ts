@@ -721,3 +721,79 @@ export const reorder = mutation({
   },
   returns: v.null(),
 });
+
+export const listActiveCategoriesWithProductCounts = query({
+  args: {},
+  handler: async (ctx) => {
+    // 1. Lấy tất cả danh mục active
+    const categories = await ctx.db
+      .query("productCategories")
+      .withIndex("by_active", (q) => q.eq("active", true))
+      .collect();
+
+    if (categories.length === 0) {
+      return [];
+    }
+
+    // 2. Lấy toàn bộ sản phẩm Active
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_status_order", (q) => q.eq("status", "Active"))
+      .collect();
+
+    // 3. Lấy toàn bộ assignments
+    const assignments = await ctx.db
+      .query("productCategoryAssignments")
+      .collect();
+
+    // Tạo tập hợp các productId có status Active để lọc assignments nhanh O(1)
+    const activeProductIds = new Set(products.map((p) => p._id as string));
+
+    // Đếm số lượng sản phẩm cho từng danh mục (gồm cả chính và phụ)
+    const countsMap = new Map<Id<"productCategories">, number>();
+
+    // Khởi tạo count = 0 cho tất cả danh mục active
+    categories.forEach((cat) => countsMap.set(cat._id, 0));
+
+    // Đếm sản phẩm gán chính
+    products.forEach((prod) => {
+      if (countsMap.has(prod.categoryId)) {
+        countsMap.set(prod.categoryId, countsMap.get(prod.categoryId)! + 1);
+      }
+    });
+
+    // Đếm sản phẩm gán phụ (tránh đếm trùng nếu sản phẩm đã gán chính vào cùng danh mục đó)
+    const seenAssignments = new Set<string>();
+    products.forEach((prod) => {
+      seenAssignments.add(`${prod._id}-${prod.categoryId}`);
+    });
+
+    assignments.forEach((assign) => {
+      // Chỉ tính nếu sản phẩm đó đang Active
+      if (activeProductIds.has(assign.productId as string)) {
+        const key = `${assign.productId}-${assign.categoryId}`;
+        if (!seenAssignments.has(key)) {
+          seenAssignments.add(key);
+          if (countsMap.has(assign.categoryId)) {
+            countsMap.set(assign.categoryId, countsMap.get(assign.categoryId)! + 1);
+          }
+        }
+      }
+    });
+
+    return categories.map((cat) => ({
+      _id: cat._id,
+      name: cat.name,
+      _creationTime: cat._creationTime,
+      productCount: countsMap.get(cat._id) ?? 0,
+    }));
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("productCategories"),
+      name: v.string(),
+      _creationTime: v.number(),
+      productCount: v.number(),
+    })
+  ),
+});

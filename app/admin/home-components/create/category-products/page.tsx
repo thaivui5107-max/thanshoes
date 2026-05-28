@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { ComponentFormWrapper, useComponentForm } from '../shared';
@@ -20,6 +20,7 @@ import type {
 } from '../../category-products/_types';
 import { DEFAULT_CATEGORY_PRODUCTS_CORNER_RADIUS, getCategoryProductsResponsiveColumns } from '../../category-products/_types';
 import { resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
+import type { Id } from '@/convex/_generated/dataModel';
 
 export default function CategoryProductsCreatePage() {
   const COMPONENT_TYPE = 'CategoryProducts';
@@ -30,10 +31,6 @@ export default function CategoryProductsCreatePage() {
   const fontStyle = { '--font-active': `var(${effectiveFont.fontVariable})` } as React.CSSProperties;
   const brandMode: CategoryProductsBrandMode = mode === 'single' ? 'single' : 'dual';
   
-  const categoriesData = useQuery(api.productCategories.listActive);
-  const productsData = useQuery(api.products.listPublicResolved, { limit: 100 });
-  const aspectRatioSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
-  
   const [sections, setSections] = useState<CategoryProductsSection[]>([]);
   const [selectionMode, setSelectionMode] = useState<CategoryProductsSelectionMode>('demo');
   const [demoSections, setDemoSections] = useState<DemoCategoryProductsSection[]>(DEFAULT_DEMO_CATEGORY_PRODUCTS_SECTIONS);
@@ -42,6 +39,19 @@ export default function CategoryProductsCreatePage() {
   const [columnsDesktop, setColumnsDesktop] = useState<3 | 4>(4);
   const [spacing, setSpacing] = useState<SectionSpacing>(DEFAULT_SECTION_SPACING);
   const [cornerRadius, setCornerRadius] = useState<CategoryProductsCornerRadius>(DEFAULT_CATEGORY_PRODUCTS_CORNER_RADIUS);
+
+  const categoriesData = useQuery(api.productCategories.listActiveCategoriesWithProductCounts);
+  
+  const categoryIdsForQuery = useMemo(() => {
+    return sections.map(s => s.categoryId).filter(Boolean) as Id<"productCategories">[];
+  }, [sections]);
+
+  const productsData = useQuery(
+    api.products.listProductsForCategories,
+    categoryIdsForQuery.length > 0 ? { categoryIds: categoryIdsForQuery } : 'skip'
+  );
+  
+  const aspectRatioSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
   const columnsMobile = getCategoryProductsResponsiveColumns(columnsDesktop).mobile;
   const productImageCropAspectRatio = style === 'wine-grid' ? 'square' : resolveProductImageAspectRatio(aspectRatioSetting?.value);
 

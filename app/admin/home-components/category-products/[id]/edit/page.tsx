@@ -4,7 +4,7 @@ import { useUndoRedo } from '../../../_shared/hooks/useUndoRedo';
 
 import { useUnsavedGuard } from '../../../_shared/hooks/useUnsavedGuard';
 
-import React, { use, useEffect, useState } from 'react';
+import React, { use, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
@@ -80,8 +80,6 @@ export default function CategoryProductsEditPage({
   const liveComponent = useQuery(api.homeComponents.getById, snapshotComponent ? 'skip' : { id: id as Id<'homeComponents'> });
   const component = snapshotComponent ?? liveComponent;
   const updateMutation = useMutation(api.homeComponents.update);
-  const categoriesData = useQuery(api.productCategories.listActive);
-  const productsData = useQuery(api.products.listPublicResolved, { limit: 100 });
   const aspectRatioSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
 
   const [title, setTitle] = useState('');
@@ -107,6 +105,17 @@ export default function CategoryProductsEditPage({
   const [hasChanges, setHasChanges] = useState(false);
   const columnsMobile = getCategoryProductsResponsiveColumns(columnsDesktop).mobile;
   const productImageCropAspectRatio = style === 'wine-grid' ? 'square' : resolveProductImageAspectRatio(aspectRatioSetting?.value);
+
+  const categoriesData = useQuery(api.productCategories.listActiveCategoriesWithProductCounts);
+
+  const categoryIdsForQuery = useMemo(() => {
+    return sections.map(s => s.categoryId).filter(Boolean) as Id<"productCategories">[];
+  }, [sections]);
+
+  const productsData = useQuery(
+    api.products.listProductsForCategories,
+    categoryIdsForQuery.length > 0 ? { categoryIds: categoryIdsForQuery } : 'skip'
+  );
 
   useEffect(() => {
     if (component) {
