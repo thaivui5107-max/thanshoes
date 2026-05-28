@@ -574,8 +574,30 @@ export const searchPublished = query({
 });
 
 export const countPublished = query({
-  args: { categoryId: v.optional(v.id("serviceCategories")) },
+  args: {
+    categoryId: v.optional(v.id("serviceCategories")),
+    search: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
+    if (args.search?.trim()) {
+      const searchLower = args.search.toLowerCase().trim();
+      const searchQuery = ctx.db
+        .query("services")
+        .withSearchIndex("search_title", (q) => {
+          const builder = q.search("title", searchLower).eq("status", "Published");
+          return args.categoryId ? builder.eq("categoryId", args.categoryId) : builder;
+        });
+      const services = await searchQuery.take(1000);
+      
+      const ranked = rankByFuzzyMatches(
+        services,
+        args.search,
+        (s) => [s.title ?? "", s.excerpt ?? ""],
+        42,
+      );
+      return ranked.length;
+    }
+
     if (await isServicesAggregateReady(ctx)) {
       return countPublishedServices(ctx, { categoryId: args.categoryId });
     }

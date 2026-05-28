@@ -463,9 +463,33 @@ export const listFeatured = query({
 
 // Count published posts (for result display)
 export const countPublished = query({
-  args: { categoryId: v.optional(v.id("postCategories")) },
+  args: {
+    categoryId: v.optional(v.id("postCategories")),
+    search: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const now = Date.now();
+    
+    if (args.search?.trim()) {
+      const searchLower = args.search.toLowerCase().trim();
+      const searchQuery = ctx.db
+        .query("posts")
+        .withSearchIndex("search_title", (q) => {
+          const builder = q.search("title", searchLower).eq("status", "Published");
+          return args.categoryId ? builder.eq("categoryId", args.categoryId) : builder;
+        });
+      let posts = await searchQuery.take(1000);
+      posts = posts.filter((post) => !post.publishedAt || post.publishedAt <= now);
+      
+      const ranked = rankByFuzzyMatches(
+        posts,
+        args.search,
+        (post) => [post.title ?? "", post.excerpt ?? ""],
+        42,
+      );
+      return ranked.length;
+    }
+
     if (await isPostsAggregateReady(ctx)) {
       return countPublishedPosts(ctx, { categoryId: args.categoryId, now });
     }

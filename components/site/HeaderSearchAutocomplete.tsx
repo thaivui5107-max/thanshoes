@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PublicImage as Image } from '@/components/shared/PublicImage';
 import { useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
-import { Briefcase, FileText, Package, Search } from 'lucide-react';
+import { Briefcase, FileText, Package, Search, X } from 'lucide-react';
 import { api } from '@/convex/_generated/api';
 import type { MenuColors } from './header/colors';
 
@@ -159,6 +159,25 @@ export function HeaderSearchAutocomplete({
         className={cn('w-full', inputClassName)}
         style={inputStyle}
       />
+      {!disabled && query.trim().length > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            setQuery('');
+            setDebouncedQuery('');
+            setIsOpen(false);
+            inputRef.current?.focus();
+          }}
+          className={cn(
+            "absolute top-1/2 -translate-y-1/2 p-1 rounded-full transition-colors flex items-center justify-center hover:bg-slate-100/80 dark:hover:bg-slate-800/80 z-10",
+            showButton ? "right-8" : "right-3"
+          )}
+          style={{ color: tokens.textSubtle }}
+          aria-label="Xóa tìm kiếm"
+        >
+          <X size={12} />
+        </button>
+      )}
       {showButton && (
         <button
           type="button"

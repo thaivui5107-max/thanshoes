@@ -39,6 +39,7 @@ function ProductsContent() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [exactMode, setExactMode] = useState(false);
   const [filterCategory, setFilterCategory] = useState<Id<"productCategories"> | ''>('');
   const [filterStatus, setFilterStatus] = useState<'' | 'Active' | 'Archived' | 'Draft'>('');
   const [sortConfig, setSortConfig] = useState<{ key: string | null; direction: 'asc' | 'desc' }>({ direction: 'asc', key: null });
@@ -122,6 +123,7 @@ function ProductsContent() {
     search: resolvedSearch,
     categoryId: filterCategory || undefined,
     status: filterStatus || undefined,
+    exactMode,
   });
 
   const deleteInfo = useQuery(
@@ -133,6 +135,7 @@ function ProductsContent() {
     search: resolvedSearch,
     categoryId: filterCategory || undefined,
     status: filterStatus || undefined,
+    exactMode,
   });
 
   const selectAllData = useQuery(
@@ -142,6 +145,7 @@ function ProductsContent() {
           search: resolvedSearch,
           categoryId: filterCategory || undefined,
           status: filterStatus || undefined,
+          exactMode,
         }
       : 'skip'
   );
@@ -243,6 +247,7 @@ function ProductsContent() {
     setDebouncedSearchTerm('');
     setFilterCategory('');
     setFilterStatus('');
+    setExactMode(false);
     setCurrentPage(1);
     setPageSizeOverride(null);
     applyManualSelection([]);
@@ -431,14 +436,37 @@ function ProductsContent() {
       <Card>
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 justify-between">
           <div className="flex flex-wrap gap-3 flex-1">
-            <div className="relative max-w-xs">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input 
-                placeholder={enabledFields.has('sku') ? "Tìm tên, SKU..." : "Tìm tên sản phẩm..."} 
-                className="pl-9 w-48" 
-                value={searchTerm} 
-                onChange={(e) =>{  setSearchTerm(e.target.value); setCurrentPage(1); applyManualSelection([]); }} 
-              />
+            <div className="relative flex items-center gap-2">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input 
+                  placeholder={enabledFields.has('sku') ? "Tìm tên, SKU..." : "Tìm tên sản phẩm..."} 
+                  className="pl-9 w-60 text-sm" 
+                  value={searchTerm} 
+                  onChange={(e) =>{  setSearchTerm(e.target.value); setCurrentPage(1); applyManualSelection([]); }} 
+                  title="Gợi ý: Dùng dấu - ở trước từ để loại trừ (ví dụ: -[B])."
+                />
+              </div>
+              <label 
+                className={`flex items-center gap-1.5 cursor-pointer select-none text-xs border rounded-md px-2.5 h-10 transition-colors ${
+                  exactMode 
+                    ? 'border-orange-500 bg-orange-500/5 text-orange-600 dark:text-orange-400' 
+                    : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
+                title="Khớp chính xác từng ký tự (không dùng fuzzy)"
+              >
+                <input 
+                  type="checkbox" 
+                  checked={exactMode} 
+                  onChange={(e) => { 
+                    setExactMode(e.target.checked); 
+                    setCurrentPage(1); 
+                    applyManualSelection([]); 
+                  }} 
+                  className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 h-3.5 w-3.5 cursor-pointer"
+                />
+                <span className="font-medium">Tìm chính xác</span>
+              </label>
             </div>
             <select className="h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm" value={filterCategory} onChange={(e) =>{  handleFilterChange('category', e.target.value); }}>
               <option value="">Tất cả danh mục</option>

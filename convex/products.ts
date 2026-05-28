@@ -543,7 +543,9 @@ export const listAll = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const maxLimit = args.limit ?? 100; // Default max 100, configurable
-    return  ctx.db.query("products").take(maxLimit);
+    const products = await ctx.db.query("products").take(maxLimit);
+    const settings = await getVariantSettings(ctx);
+    return resolveVariantOverrides(ctx, products, settings);
   },
   returns: v.array(productDoc),
 });
@@ -765,7 +767,9 @@ export const listByIds = query({
       return [];
     }
     const products = await Promise.all(args.ids.map((id) => ctx.db.get(id)));
-    return products.filter((product): product is Doc<"products"> => Boolean(product));
+    const filtered = products.filter((product): product is Doc<"products"> => Boolean(product));
+    const settings = await getVariantSettings(ctx);
+    return resolveVariantOverrides(ctx, filtered, settings);
   },
   returns: v.array(productDoc),
 });
