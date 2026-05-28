@@ -45,7 +45,6 @@ export default function CustomerLoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-slate-900">Đăng nhập</h1>
-          <p className="text-sm text-slate-500 mt-2">Đăng nhập để lưu sản phẩm yêu thích</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
