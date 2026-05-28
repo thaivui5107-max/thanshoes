@@ -212,7 +212,9 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
       parentRecord.variants.push({
         sku: skuVal,
         variantOption1: getCellText(row.getCell(opt1ValueCol)) || undefined,
+        variantOption1Name: currentOpt1Name || undefined,
         variantOption2: getCellText(row.getCell(opt2ValueCol)) || undefined,
+        variantOption2Name: currentOpt2Name || undefined,
         price: priceVal,
         salePrice: undefined,
         stock: stockVal,

@@ -5,7 +5,9 @@ import type { Id } from "./_generated/dataModel";
 const bulkVariantDoc = v.object({
   sku: v.optional(v.string()),
   variantOption1: v.optional(v.string()),
+  variantOption1Name: v.optional(v.string()),
   variantOption2: v.optional(v.string()),
+  variantOption2Name: v.optional(v.string()),
   price: v.optional(v.number()),
   salePrice: v.optional(v.number()),
   stock: v.optional(v.number()),
@@ -170,14 +172,16 @@ export const upsertBulk = mutation({
           const optionValuesData = [];
           
           if (vData.variantOption1) {
-            const vDoc = await getOrCreateOptionValue(opt1Name, vData.variantOption1);
+            const optName = vData.variantOption1Name || opt1Name;
+            const vDoc = await getOrCreateOptionValue(optName, vData.variantOption1);
             if (vDoc) {
               optionValuesData.push({ optionId: vDoc.optionId, valueId: vDoc._id });
               if (!optionIdsToLink.includes(vDoc.optionId)) optionIdsToLink.push(vDoc.optionId);
             }
           }
           if (vData.variantOption2) {
-            const vDoc = await getOrCreateOptionValue(opt2Name, vData.variantOption2);
+            const optName = vData.variantOption2Name || opt2Name;
+            const vDoc = await getOrCreateOptionValue(optName, vData.variantOption2);
             if (vDoc) {
               optionValuesData.push({ optionId: vDoc.optionId, valueId: vDoc._id });
               if (!optionIdsToLink.includes(vDoc.optionId)) optionIdsToLink.push(vDoc.optionId);

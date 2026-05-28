@@ -285,7 +285,9 @@ export interface ParsedProductRecord {
   variants: {
     sku?: string;
     variantOption1?: string;
+    variantOption1Name?: string;
     variantOption2?: string;
+    variantOption2Name?: string;
     price?: number;
     salePrice?: number;
     stock?: number;
