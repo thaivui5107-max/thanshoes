@@ -61,9 +61,41 @@ const SOCIAL_PLATFORMS = [
   { icon: 'youtube', key: 'youtube', label: 'Youtube' },
   { icon: 'tiktok', key: 'tiktok', label: 'TikTok' },
   { icon: 'zalo', key: 'zalo', label: 'Zalo' },
+  { icon: 'messenger', key: 'messenger', label: 'Messenger' },
   { icon: 'x', key: 'x', label: 'X (Twitter)' },
+  { icon: 'telegram', key: 'telegram', label: 'Telegram' },
+  { icon: 'shopee', key: 'shopee', label: 'Shopee' },
+  { icon: 'lazada', key: 'lazada', label: 'Lazada' },
+  { icon: 'tiki', key: 'tiki', label: 'Tiki' },
   { icon: 'pinterest', key: 'pinterest', label: 'Pinterest' },
+  { icon: 'linkedin', key: 'linkedin', label: 'LinkedIn' },
+  { icon: 'github', key: 'github', label: 'GitHub' },
+  { icon: 'phone', key: 'phone', label: 'Điện thoại' },
+  { icon: 'mail', key: 'mail', label: 'Email' },
+  { icon: 'map-pin', key: 'map-pin', label: 'Địa chỉ' },
 ];
+
+const normalizePhoneUrl = (value: string) => value.startsWith('tel:') ? value : `tel:${value.replace(/\s+/g, '')}`;
+const normalizeEmailUrl = (value: string) => value.startsWith('mailto:') ? value : `mailto:${value}`;
+const normalizeMapUrl = (value: string) =>
+  /^https?:\/\//.test(value) ? value : `https://maps.google.com/?q=${encodeURIComponent(value)}`;
+const normalizeZaloUrl = (value: string) => {
+  if (/^https?:\/\//.test(value)) return value;
+  return `https://zalo.me/${value.replace(/\s+/g, '')}`;
+};
+const getSocialPlaceholder = (platform: string) => {
+  switch (platform) {
+    case 'phone': return 'tel:0123456789';
+    case 'mail': return 'mailto:contact@example.com';
+    case 'zalo': return 'https://zalo.me/...';
+    case 'messenger': return 'https://m.me/...';
+    case 'map-pin': return 'https://maps.google.com/...';
+    case 'shopee': return 'https://shopee.vn/...';
+    case 'lazada': return 'https://lazada.vn/...';
+    case 'tiki': return 'https://tiki.vn/...';
+    default: return 'https://...';
+  }
+};
 
 const MAX_WIDTH_OPTIONS = [
   { value: '6xl', label: '6xl' },
@@ -158,7 +190,21 @@ const activeSections = ['settings', 'basicInfo', 'bct', 'columns', 'socials'];
 export function FooterForm({ value, onChange, primary, secondary, mode, defaultExpanded = true }: FooterFormProps) {
   const { openSections, toggleSection, hasClosedSection, handleToggleAll } = useFormSectionsState(activeSections, defaultExpanded);
   const footerSettings = useQuery(api.settings.getMultiple, {
-    keys: [...IA_SETTINGS_KEYS, 'contact_zalo', 'site_logo', 'site_name', 'site_tagline', 'social_facebook', 'social_instagram', 'social_tiktok', 'social_youtube'],
+    keys: [
+      ...IA_SETTINGS_KEYS,
+      'contact_zalo',
+      'site_logo',
+      'site_name',
+      'site_tagline',
+      'social_facebook',
+      'social_instagram',
+      'social_tiktok',
+      'social_youtube',
+      'contact_phone',
+      'contact_email',
+      'contact_address',
+      'contact_messenger',
+    ],
   });
   const enabledModules = useQuery(api.admin.modules.listEnabledModules);
   const trustPagesFeature = useQuery(api.admin.modules.getModuleFeature, { moduleKey: 'settings', featureKey: 'enableTrustPages' });
@@ -296,19 +342,31 @@ export function FooterForm({ value, onChange, primary, secondary, mode, defaultE
     let idCounter = 1;
 
     if (typeof footerSettings?.social_facebook === 'string' && footerSettings.social_facebook) {
-      newSocialLinks.push({ icon: 'facebook', id: idCounter++, platform: 'facebook', url: footerSettings.social_facebook });
+      newSocialLinks.push({ icon: 'facebook', id: idCounter++, platform: 'facebook', url: footerSettings.social_facebook.trim() });
     }
     if (typeof footerSettings?.social_instagram === 'string' && footerSettings.social_instagram) {
-      newSocialLinks.push({ icon: 'instagram', id: idCounter++, platform: 'instagram', url: footerSettings.social_instagram });
+      newSocialLinks.push({ icon: 'instagram', id: idCounter++, platform: 'instagram', url: footerSettings.social_instagram.trim() });
     }
     if (typeof footerSettings?.social_youtube === 'string' && footerSettings.social_youtube) {
-      newSocialLinks.push({ icon: 'youtube', id: idCounter++, platform: 'youtube', url: footerSettings.social_youtube });
+      newSocialLinks.push({ icon: 'youtube', id: idCounter++, platform: 'youtube', url: footerSettings.social_youtube.trim() });
     }
     if (typeof footerSettings?.social_tiktok === 'string' && footerSettings.social_tiktok) {
-      newSocialLinks.push({ icon: 'tiktok', id: idCounter++, platform: 'tiktok', url: footerSettings.social_tiktok });
+      newSocialLinks.push({ icon: 'tiktok', id: idCounter++, platform: 'tiktok', url: footerSettings.social_tiktok.trim() });
     }
     if (typeof footerSettings?.contact_zalo === 'string' && footerSettings.contact_zalo) {
-      newSocialLinks.push({ icon: 'zalo', id: idCounter++, platform: 'zalo', url: footerSettings.contact_zalo });
+      newSocialLinks.push({ icon: 'zalo', id: idCounter++, platform: 'zalo', url: normalizeZaloUrl(footerSettings.contact_zalo) });
+    }
+    if (typeof footerSettings?.contact_messenger === 'string' && footerSettings.contact_messenger) {
+      newSocialLinks.push({ icon: 'messenger', id: idCounter++, platform: 'messenger', url: footerSettings.contact_messenger.trim() });
+    }
+    if (typeof footerSettings?.contact_phone === 'string' && footerSettings.contact_phone) {
+      newSocialLinks.push({ icon: 'phone', id: idCounter++, platform: 'phone', url: normalizePhoneUrl(footerSettings.contact_phone) });
+    }
+    if (typeof footerSettings?.contact_email === 'string' && footerSettings.contact_email) {
+      newSocialLinks.push({ icon: 'mail', id: idCounter++, platform: 'mail', url: normalizeEmailUrl(footerSettings.contact_email) });
+    }
+    if (typeof footerSettings?.contact_address === 'string' && footerSettings.contact_address) {
+      newSocialLinks.push({ icon: 'map-pin', id: idCounter++, platform: 'map-pin', url: normalizeMapUrl(footerSettings.contact_address) });
     }
 
     updateConfig({
@@ -998,7 +1056,7 @@ export function FooterForm({ value, onChange, primary, secondary, mode, defaultE
                     <InputWithClear
                       value={social.url}
                       onChange={(v) =>{  updateSocialLink(social.id ?? 0, 'url', v); }}
-                      placeholder="https://facebook.com/yourpage"
+                      placeholder={getSocialPlaceholder(social.platform)}
                       className="flex-1"
                     />
                     <Button

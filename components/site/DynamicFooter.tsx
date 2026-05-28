@@ -11,7 +11,7 @@ import { getFooterCornerRadiusClassName, getFooterLogoBackgroundClassName, getFo
 import type { FooterBrandMode, FooterCornerRadius, FooterLogoBackgroundStyle, FooterStyle } from '@/app/admin/home-components/footer/_types';
 import { resolveTypeOverrideColors } from '@/app/admin/home-components/_shared/lib/typeColorOverride';
 import { resolveTypeOverrideFont } from '@/app/admin/home-components/_shared/lib/typeFontOverride';
-import { Facebook, Github, Globe, Instagram, Linkedin, Twitter, X, Youtube } from 'lucide-react';
+import { Facebook, Github, Globe, Instagram, Linkedin, Mail, MapPin, Phone, Send, Twitter, X, Youtube } from 'lucide-react';
 import { useSnapshotDemoContext } from '@/components/modules/homepage/SnapshotDemoProvider';
 
 interface SocialLinkItem { id: number; platform: string; url: string; icon: string }
@@ -58,6 +58,24 @@ const PinterestIcon = ({ size = 18 }: { size?: number }) => (
   </svg>
 );
 
+const ShopeeIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M15.9414 17.9633c.229-1.879-.981-3.077-4.1758-4.0969-1.548-.528-2.277-1.22-2.26-2.1719.065-1.056 1.048-1.825 2.352-1.85a5.2898 5.2898 0 0 1 2.8838.89c.116.072.197.06.263-.039.09-.145.315-.494.39-.62.051-.081.061-.187-.068-.281-.185-.1369-.704-.4149-.983-.5319a6.4697 6.4697 0 0 0-2.5118-.514c-1.909.008-3.4129 1.215-3.5389 2.826-.082 1.1629.494 2.1078 1.73 2.8278.262.152 1.6799.716 2.2438.892 1.774.552 2.695 1.5419 2.478 2.6969-.197 1.047-1.299 1.7239-2.818 1.7439-1.2039-.046-2.2878-.537-3.1278-1.19l-.141-.11c-.104-.08-.218-.075-.287.03-.05.077-.376.547-.458.67-.077.108-.035.168.045.234.35.293.817.613 1.134.775a6.7097 6.7097 0 0 0 2.8289.727 4.9048 4.9048 0 0 0 2.0759-.354c1.095-.465 1.8029-1.394 1.9449-2.554zM11.9986 1.4009c-2.068 0-3.7539 1.95-3.8329 4.3899h7.6657c-.08-2.44-1.765-4.3899-3.8328-4.3899zm7.8516 22.5981-.08.001-15.7843-.002c-1.074-.04-1.863-.91-1.971-1.991l-.01-.195L1.298 6.2858a.459.459 0 0 1 .45-.494h4.9748C6.8448 2.568 9.1607 0 11.9996 0c2.8388 0 5.1537 2.5689 5.2757 5.7898h4.9678a.459.459 0 0 1 .458.483l-.773 15.5883-.007.131c-.094 1.094-.979 1.9769-2.0709 2.0059z"/>
+  </svg>
+);
+
+const MessengerIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 0C5.24 0 0 4.952 0 11.64c0 3.499 1.434 6.521 3.769 8.61a.96.96 0 0 1 .323.683l.065 2.135a.96.96 0 0 0 1.347.85l2.381-1.053a.96.96 0 0 1 .641-.046A13 13 0 0 0 12 23.28c6.76 0 12-4.952 12-11.64S18.76 0 12 0m6.806 7.44c.522-.03.971.567.63 1.094l-4.178 6.457a.707.707 0 0 1-.977.208l-3.87-2.504a.44.44 0 0 0-.49.007l-4.363 3.01c-.637.438-1.415-.317-.995-.966l4.179-6.457a.706.706 0 0 1 .977-.21l3.87 2.505c.15.097.344.094.491-.007l4.362-3.008a.7.7 0 0 1 .364-.13"/>
+  </svg>
+);
+
+const XSvg = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+);
+
 // Social icons based on platform
 const SocialIcon = ({ platform, size = 18 }: { platform: string; size?: number }) => {
   switch (platform) {
@@ -71,15 +89,31 @@ const SocialIcon = ({ platform, size = 18 }: { platform: string; size?: number }
     }
     case 'zalo': { return <ZaloIcon size={size} />;
     }
+    case 'messenger': { return <MessengerIcon size={size} />;
+    }
+    case 'telegram': { return <Send size={size} />;
+    }
+    case 'shopee': { return <ShopeeIcon size={size} />;
+    }
+    case 'lazada': { return <img src="/icons/lazada-logo.png" alt="Lazada" width={size} height={size} className="object-contain rounded-full bg-white p-0.5" />;
+    }
+    case 'tiki': { return <img src="/icons/tiki-logo.png" alt="Tiki" width={size} height={size} className="object-contain rounded-full bg-white p-0.5" />;
+    }
     case 'twitter': { return <Twitter size={size} />;
     }
-    case 'x': { return <X size={size} />;
+    case 'x': { return <XSvg size={size} />;
     }
     case 'pinterest': { return <PinterestIcon size={size} />;
     }
     case 'linkedin': { return <Linkedin size={size} />;
     }
     case 'github': { return <Github size={size} />;
+    }
+    case 'phone': { return <Phone size={size} />;
+    }
+    case 'mail': { return <Mail size={size} />;
+    }
+    case 'map-pin': { return <MapPin size={size} />;
     }
     default: { return <Globe size={size} />;
     }
@@ -92,11 +126,19 @@ const SOCIAL_ORIGINAL_COLORS: Record<string, { bg: string; icon: string }> = {
   youtube: { bg: '#ff0000', icon: '#ffffff' },
   tiktok: { bg: '#000000', icon: '#ffffff' },
   zalo: { bg: '#0084ff', icon: '#ffffff' },
+  messenger: { bg: '#0084ff', icon: '#ffffff' },
+  telegram: { bg: '#26a5e4', icon: '#ffffff' },
+  shopee: { bg: '#ee4d2d', icon: '#ffffff' },
+  lazada: { bg: '#0f1689', icon: '#ffffff' },
+  tiki: { bg: '#1a94ff', icon: '#ffffff' },
   twitter: { bg: '#1da1f2', icon: '#ffffff' },
   x: { bg: '#000000', icon: '#ffffff' },
   pinterest: { bg: '#E60023', icon: '#ffffff' },
   linkedin: { bg: '#0a66c2', icon: '#ffffff' },
   github: { bg: '#0f172a', icon: '#ffffff' },
+  phone: { bg: '#ef4444', icon: '#ffffff' },
+  mail: { bg: '#ea580c', icon: '#ffffff' },
+  'map-pin': { bg: '#f97316', icon: '#ffffff' },
 };
 
 export function DynamicFooter() {
