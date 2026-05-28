@@ -3589,6 +3589,19 @@ function ProductCategoriesSection({ config, brandColor, secondary, mode, title }
     }
     return map;
   }, [productsData]);
+  const productIdsForImages = React.useMemo(() => {
+    const ids: string[] = [];
+    for (const item of categoriesConfig) {
+      if (item.imageMode === 'product-image' && item.customImage?.startsWith('product:')) {
+        const id = item.customImage.replace('product:', '');
+        if (id) ids.push(id);
+      }
+    }
+    return ids;
+  }, [categoriesConfig]);
+
+  const targetProductsData = useQuery(api.products.listByIds, { ids: productIdsForImages as any });
+
   const productImageMap = React.useMemo(() => {
     const map: Record<string, string | undefined> = {};
     if (productsData) {
@@ -3596,8 +3609,13 @@ function ProductCategoriesSection({ config, brandColor, secondary, mode, title }
         map[product._id] = product.image;
       }
     }
+    if (targetProductsData) {
+      for (const product of targetProductsData) {
+        map[product._id] = product.image;
+      }
+    }
     return map;
-  }, [productsData]);
+  }, [productsData, targetProductsData]);
 
   React.useEffect(() => {
     const updateDevice = () => {

@@ -65,6 +65,16 @@ export default function ProductCategoriesCreatePage() {
     }
   };
 
+  const handleAutoGenerateAllActive = () => {
+    const items = availableCategories.map((cat, index) => ({
+      id: index + 1,
+      categoryId: cat._id,
+      customImage: cat.image || '',
+      imageMode: cat.image ? ('upload' as const) : ('default' as const),
+    }));
+    setSelectedCategories(items);
+  };
+
   const onSubmit = (e: React.FormEvent) => {
     void handleSubmit(e, {
       selectionMode,
@@ -152,6 +162,7 @@ export default function ProductCategoriesCreatePage() {
         productCategoriesShowCount={showProductCount}
         setProductCategoriesShowCount={setShowProductCount}
         onAutoGenerate={handleAutoGenerate}
+        onAutoGenerateAllActive={handleAutoGenerateAllActive}
         autoGenerateReady={isAutoGenerateReady}
         autoGenerateLoading={isAutoGenerateLoading}
         productCategoriesData={availableCategories}

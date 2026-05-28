@@ -412,6 +412,16 @@ export default function ProductCategoriesEditPage({
     }
   };
 
+  const handleAutoGenerateAllActive = () => {
+    const items = (productCategoriesData ?? []).map((cat, index) => ({
+      id: index + 1,
+      categoryId: cat._id,
+      customImage: cat.image || '',
+      imageMode: cat.image ? ('upload' as const) : ('default' as const),
+    }));
+    setProductCategoriesItems(items);
+  };
+
   if (component === undefined) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -471,6 +481,7 @@ export default function ProductCategoriesEditPage({
           productCategoriesShowCount={productCategoriesShowCount}
           setProductCategoriesShowCount={setProductCategoriesShowCount}
           onAutoGenerate={handleAutoGenerate}
+          onAutoGenerateAllActive={handleAutoGenerateAllActive}
           autoGenerateReady={isAutoGenerateReady}
           autoGenerateLoading={isAutoGenerateLoading}
           productCategoriesData={productCategoriesData ?? []}
