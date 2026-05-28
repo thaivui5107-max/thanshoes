@@ -24,68 +24,48 @@ Khi có lỗi tương thích cấu hình, hệ thống sẽ sinh ra một đoạ
 *   **Tinh giản UI/UX:**
     *   Bỏ đường dẫn URL cấu hình hệ thống khỏi tin nhắn copy.
     *   Rút gọn ngôn từ tin nhắn, đi thẳng vào cấu hình kỹ thuật để Dev dễ xử lý.
+*   **Các Gap kỹ thuật cần xử lý để cả Import lẫn Update hoạt động hoàn hảo:**
+    1.  **CategoryId bắt buộc:** Convex yêu cầu `categoryId` khi tạo mới sản phẩm. Ta cần map tên danh mục (cột C của Sapo) sang ID danh mục tương ứng của Convex.
+    2.  **SKU biến thể:** Convex tự sinh SKU dạng `SKUCHA-1`, `SKUCHA-2`... Ta cần nhận SKU biến thể từ Excel (dạng `SKUCHA-SIZE`) để đồng bộ kho chính xác với Sapo.
+    3.  **Đồng bộ tồn kho về 0:** Các size cũ có trong database nhưng không xuất hiện trong file Excel Sapo cần được cập nhật tồn kho về 0 thay vì xóa hoàn toàn (giúp giữ lịch sử đơn hàng cũ).
+    4.  **Mảng ảnh:** Đồng bộ tất cả các URL ảnh từ biến thể (cột R) vào mảng ảnh `images` của sản phẩm cha.
 
 ---
 
 # IV. Proposal (Đề xuất)
 
 ## 1. Nâng cấp UI Import Modal (import-modal.tsx)
-
+Truyền danh sách `categories` từ client-side vào Server Action `parseProductExcelBase64` để thực hiện ánh xạ danh mục:
 ```tsx
-// Trong import-modal.tsx
-const generateSupportMessage = () => {
-  if (compatibilityIssues.length === 0) return "";
-  
-  const issuesList = compatibilityIssues.map((issue) => {
-    // Lấy config key và giá trị mong muốn
-    let keyName = issue.key;
-    let expectedVal = issue.expected === "VARIANT_LEVEL" ? "variant" : String(issue.expected);
-    return `- ${issue.label} (${keyName} = ${expectedVal})`;
-  }).join("\n");
-
-  return `Nhờ kỹ thuật cấu hình lại module Sản phẩm (Products) để import file Excel Sapo:\n${issuesList}`;
-};
-
-const handleCopyMessage = () => {
-  const message = generateSupportMessage();
-  if (message) {
-    navigator.clipboard.writeText(message);
-    setIsCopied(true);
-    toast.success("Đã sao chép yêu cầu cấu hình gửi Dev!");
-    setTimeout(() => setIsCopied(false), 2000);
-  }
-};
+const categoryList = categories.map(c => ({ id: c._id, name: c.name }));
+const result = await parseProductExcelBase64(base64String, configData, excelOptions, categoryList);
 ```
 
-### Thiết kế UI Smart Panel tối giản trong Dialog:
-```tsx
-{compatibilityIssues.length > 0 && (
-  <div className="flex flex-col gap-2 p-3.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900 my-2">
-    <div className="flex items-center gap-2 font-semibold text-amber-700">
-      <AlertTriangle className="h-4 w-4 shrink-0" />
-      <span>Cấu hình hệ thống chưa tương thích (Cần báo Dev)</span>
-    </div>
-    <div className="bg-white/80 p-2 rounded border border-amber-100 text-xs font-mono text-amber-800 whitespace-pre-wrap select-all">
-      {generateSupportMessage()}
-    </div>
-    <Button 
-      variant="outline" 
-      size="sm" 
-      className="mt-1 w-full gap-2 border-amber-300 hover:bg-amber-100 text-amber-900"
-      onClick={handleCopyMessage}
-    >
-      {isCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-      {isCopied ? "Đã sao chép!" : "Sao chép tin nhắn gửi Dev"}
-    </Button>
-  </div>
-)}
-```
+## 2. Ánh xạ Danh mục và SKU biến thể trong Adapter (sapo-thanshoes.adapter.ts)
+*   Nhận `categories` trong hàm `parse` để tìm danh mục khớp với tên loại sản phẩm (Cột C).
+*   Gom toàn bộ ảnh của các biến thể vào mảng `images` của sản phẩm cha.
+*   Gán trường `sku` cho từng biến thể: `sku: skuVal` (cột N từ Excel).
+
+## 3. Tối ưu hóa Convex mutation (convex/productsImport.ts)
+*   Mở rộng schema `bulkVariantDoc` hỗ trợ trường `sku: v.optional(v.string())`.
+*   Sửa logic cập nhật biến thể sản phẩm: Sử dụng đối khớp theo SKU. Nếu SKU biến thể đã tồn tại thì thực hiện cập nhật (`patch`), nếu chưa thì tạo mới (`insert`).
+*   Các biến thể cũ trong database không xuất hiện trong file Excel sẽ bị set `stock: 0` thay vì bị delete hoàn toàn để đảm bảo an toàn dữ liệu lịch sử đơn hàng.
 
 ---
 
 # VIII. Todo
-- `[ ]` Thêm phương thức `checkCompatibility` vào interface `ExcelImportAdapter`.
-- `[ ]` Cài đặt kiểm tra tính tương thích cấu hình trong `sapo-thanshoes.adapter.ts`.
-- `[ ]` Thêm hàm sinh tin nhắn tối giản `generateSupportMessage` và `handleCopyMessage` trong `import-modal.tsx`.
-- `[ ]` Hiển thị Smart Panel cảnh báo tối giản kèm nút Copy to Clipboard trong giao diện Modal Import.
-- `[ ]` Vô hiệu hóa nút **"Tiến hành Import"** khi phát hiện lỗi không tương thích.
+- `[x]` Thêm phương thức `checkCompatibility` vào interface `ExcelImportAdapter`.
+- `[x]` Cài đặt kiểm tra tính tương thích cấu hình trong `sapo-thanshoes.adapter.ts`.
+- `[x]` Thêm hàm sinh tin nhắn tối giản `generateSupportMessage` và `handleCopyMessage` trong `import-modal.tsx`.
+- `[x]` Hiển thị Smart Panel cảnh báo tối giản kèm nút Copy to Clipboard trong giao diện Modal Import.
+- `[x]` Vô hiệu hóa nút **"Tiến hành Import"** khi phát hiện lỗi không tương thích.
+- `[x]` Cập nhật Convex mutation `upsertBulk` hỗ trợ nhận SKU biến thể và tối ưu hóa quản lý biến thể (đối khớp SKU, cập nhật tồn kho về 0 thay vì xóa biến thể cũ).
+- `[x]` Chuyển danh sách `categories` từ client vào Server Action để tự động map danh mục.
+- `[x]` Chạy compile check TypeScript và commit toàn bộ thay đổi.
+
+---
+
+# IX. Acceptance Criteria (Tiêu chí chấp nhận)
+*   **Đúng dữ liệu (Import & Update):** Khi import hoặc cập nhật dữ liệu, sản phẩm cha và các biến thể con (Size, Giá bán, Tồn kho, Ảnh đại diện) phải được cập nhật/thêm mới chính xác vào database Convex dựa trên SKU biến thể thực tế (dạng `SKUCHA-SIZE`).
+*   **Đồng bộ tồn kho:** Các biến thể không xuất hiện trong file Excel nhập kho phải được set `stock: 0` để cập nhật tồn kho thực tế, nhưng không bị xóa khỏi database.
+*   **Tính an toàn:** Nút **"Tiến hành Import"** bị vô hiệu hóa khi cấu hình hệ thống bị lệch, ngăn chặn việc người dùng cố tình gửi dữ liệu lỗi.

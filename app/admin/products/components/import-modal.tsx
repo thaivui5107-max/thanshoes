@@ -136,7 +136,8 @@ export function ImportExportModal() {
       setIsLoading(true);
       
       const base64String = await toBase64(file);
-      const result = await parseProductExcelBase64(base64String, configData, excelOptions);
+      const categoryList = categories.map(c => ({ id: c._id, name: c.name }));
+      const result = await parseProductExcelBase64(base64String, configData, excelOptions, categoryList);
       
       if (!result.success) {
         toast.error(result.error);

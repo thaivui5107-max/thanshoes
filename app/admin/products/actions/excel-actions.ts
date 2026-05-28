@@ -281,6 +281,7 @@ export interface ParsedProductRecord {
   imageUrl?: string;
   images?: string[];
   variants: {
+    sku?: string;
     variantOption1?: string;
     variantOption2?: string;
     price?: number;
@@ -293,7 +294,8 @@ export interface ParsedProductRecord {
 export async function parseProductExcelBase64(
   base64String: string,
   config: ProductModuleConfig,
-  options?: ExcelOptionDef[]
+  options?: ExcelOptionDef[],
+  categories?: { id: string; name: string }[]
 ): Promise<{ success: boolean; data?: ParsedProductRecord[]; error?: string }> {
   try {
     const buffer = Buffer.from(base64String, "base64");
@@ -313,7 +315,7 @@ export async function parseProductExcelBase64(
         };
       }
       console.log(`[Excel Import] Sử dụng bộ chuyển đổi: ${customAdapter.name}`);
-      const data = await customAdapter.parse(wb, config, options);
+      const data = await customAdapter.parse(wb, config, options, categories);
       return { success: true, data };
     }
 

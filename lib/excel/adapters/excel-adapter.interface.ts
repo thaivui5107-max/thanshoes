@@ -25,6 +25,7 @@ export interface ExcelImportAdapter {
   parse(
     workbook: ExcelJS.Workbook,
     config: ProductModuleConfig,
-    options?: ExcelOptionDef[]
+    options?: ExcelOptionDef[],
+    categories?: { id: string; name: string }[]
   ): Promise<ParsedProductRecord[]>;
 }

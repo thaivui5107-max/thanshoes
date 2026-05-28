@@ -83,7 +83,8 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
   async parse(
     workbook: ExcelJS.Workbook,
     config: ProductModuleConfig,
-    options?: ExcelOptionDef[]
+    options?: ExcelOptionDef[],
+    categories?: { id: string; name: string }[]
   ): Promise<ParsedProductRecord[]> {
     const worksheet = workbook.getWorksheet(1);
     if (!worksheet) throw new Error("Không tìm thấy worksheet hợp lệ");
@@ -143,13 +144,30 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
       const skuParts = skuVal.split("-");
       const parentSku = skuParts[0];
 
+      // Tìm categoryId tương ứng từ tên loại sản phẩm
+      let categoryId: string | undefined = undefined;
+      if (categories && categories.length > 0 && currentType) {
+        const cleanType = currentType.toLowerCase().trim();
+        const matched = categories.find(c => {
+          const catName = c.name.toLowerCase().trim();
+          return catName === cleanType || catName.includes(cleanType) || cleanType.includes(catName);
+        });
+        if (matched) {
+          categoryId = matched.id;
+        } else {
+          categoryId = categories[0].id; // Fallback gán danh mục đầu tiên nếu không khớp
+        }
+      }
+
       let parentRecord = recordsMap.get(parentSku);
       if (!parentRecord) {
         parentRecord = {
           sku: parentSku,
           name: currentProductName || parentSku,
+          categoryId: categoryId,
           productType: "physical",
           imageUrl: getCellText(row.getCell(imageCol)) || undefined,
+          images: [],
           variants: []
         };
         recordsMap.set(parentSku, parentRecord);
@@ -165,14 +183,21 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
 
       const priceVal = parseNumber(row.getCell(priceCol).value);
       const stockVal = parseNumber(row.getCell(stockCol).value);
+      const imgVal = getCellText(row.getCell(imageCol));
+
+      // Đồng bộ ảnh biến thể vào danh sách ảnh sản phẩm cha nếu chưa có
+      if (imgVal && parentRecord.images && !parentRecord.images.includes(imgVal)) {
+        parentRecord.images.push(imgVal);
+      }
 
       // Thêm biến thể
       parentRecord.variants.push({
+        sku: skuVal,
         variantOption1: getCellText(row.getCell(sizeCol)) || undefined,
         price: priceVal,
         salePrice: priceVal,
         stock: stockVal,
-        imageUrl: getCellText(row.getCell(imageCol)) || undefined,
+        imageUrl: imgVal || undefined,
       });
     }
 

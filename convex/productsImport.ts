@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 
 const bulkVariantDoc = v.object({
+  sku: v.optional(v.string()),
   variantOption1: v.optional(v.string()),
   variantOption2: v.optional(v.string()),
   price: v.optional(v.number()),
@@ -187,32 +188,52 @@ export const upsertBulk = mutation({
         totalProductsCreated++;
       }
 
-      // Xử lý ghi đè Variants (Để tránh rác, ta xóa variants cũ và tạo mới, hoặc patch)
-      // Tối ưu nhất là query existing variants cho SP này
+      // Xử lý ghi đè/cập nhật Variants sử dụng đối khớp SKU
       if (hasVariants) {
         const existingVariants = await ctx.db
           .query("productVariants")
           .withIndex("by_product", q => q.eq("productId", targetProductId))
           .collect();
         
-        // Vì số lượng biến thể ít (3-10), delete insert lại là nhanh nhất và ít rác nhất
-        for (const ev of existingVariants) {
-          await ctx.db.delete(ev._id);
-        }
-
+        const existingVariantsMap = new Map(existingVariants.map(ev => [ev.sku, ev]));
+        const newVariantSkus = new Set<string>();
+        
         for (let i = 0; i < resolvedVariants.length; i++) {
           const rv = resolvedVariants[i];
-          await ctx.db.insert("productVariants", {
-            productId: targetProductId,
-            sku: `${p.sku}-${i + 1}`,
-            optionValues: rv.optionValuesData,
-            price: rv.vData.price,
-            salePrice: rv.vData.salePrice,
-            stock: rv.vData.stock ?? 0,
-            status: "Active",
-            order: i,
-            image: rv.vData.imageUrl,
-          });
+          const variantSku = rv.vData.sku || `${p.sku}-${i + 1}`;
+          newVariantSkus.add(variantSku);
+
+          const existingVariant = existingVariantsMap.get(variantSku);
+          if (existingVariant) {
+            // Cập nhật biến thể cũ
+            await ctx.db.patch(existingVariant._id, {
+              optionValues: rv.optionValuesData,
+              price: rv.vData.price ?? existingVariant.price,
+              salePrice: rv.vData.salePrice ?? existingVariant.salePrice,
+              stock: rv.vData.stock ?? 0,
+              image: rv.vData.imageUrl ?? existingVariant.image,
+            });
+          } else {
+            // Chèn biến thể mới
+            await ctx.db.insert("productVariants", {
+              productId: targetProductId,
+              sku: variantSku,
+              optionValues: rv.optionValuesData,
+              price: rv.vData.price,
+              salePrice: rv.vData.salePrice,
+              stock: rv.vData.stock ?? 0,
+              status: "Active",
+              order: i,
+              image: rv.vData.imageUrl,
+            });
+          }
+        }
+
+        // Cập nhật tồn kho về 0 cho các biến thể cũ không xuất hiện trong file Excel Sapo
+        for (const ev of existingVariants) {
+          if (!newVariantSkus.has(ev.sku)) {
+            await ctx.db.patch(ev._id, { stock: 0 });
+          }
         }
       }
     }
