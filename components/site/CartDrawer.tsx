@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { PublicImage as Image } from '@/components/shared/PublicImage';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Clock, Minus, Plus, ShoppingCart, Trash2, X } from 'lucide-react';
 import { useCart, useCartExpiry } from '@/lib/cart';
 import { useCartConfig } from '@/lib/experiences';
@@ -24,6 +25,11 @@ export function CartDrawer() {
   const { cart, items, itemsCount, totalAmount, isDrawerOpen, closeDrawer, updateQuantity, removeItem, updateNote } = useCart();
   const { layoutStyle, showExpiry, showNote } = useCartConfig();
   const { isAuthenticated, openLoginModal } = useCustomerAuth();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    closeDrawer();
+  }, [pathname, closeDrawer]);
 
   const handleUpdateQuantity = async (itemId: (typeof items)[number]['_id'], quantity: number) => {
     await updateQuantity(itemId, quantity);
@@ -75,7 +81,10 @@ export function CartDrawer() {
             </div>
             <button
               type="button"
-              onClick={openLoginModal}
+              onClick={() => {
+                closeDrawer();
+                openLoginModal();
+              }}
               className="mt-3 w-full py-2.5 rounded-lg font-semibold text-sm"
               style={{ backgroundColor: tokens.primaryButtonBg, color: tokens.primaryButtonText }}
             >
