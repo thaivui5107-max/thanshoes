@@ -196,7 +196,7 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
         sku: skuVal,
         variantOption1: getCellText(row.getCell(sizeCol)) || undefined,
         price: priceVal,
-        salePrice: priceVal,
+        salePrice: undefined,
         stock: stockVal,
         imageUrl: imgVal || undefined,
       });

@@ -47,7 +47,10 @@ Nếu database trống rỗng hoặc chưa có danh mục tương ứng với t�
      * Nếu không có `categoryId` nhưng có `categoryName` -> Thử map với danh mục trùng tên trong database.
      * Nếu chưa có danh mục trùng tên -> Tự động chèn danh mục mới vào bảng `productCategories` (slug được sinh tự động không dấu) rồi gán ID của danh mục này cho sản phẩm.
      * Nếu sản phẩm rỗng cả danh mục, fallback về danh mục mặc định (hoặc tự tạo danh mục "Chưa phân loại").
-3. **Sửa hiển thị thông báo UI:**
+3. **Khắc phục lỗi Giá so sánh không hợp lệ:**
+   * Sửa adapter `sapo-thanshoes.adapter.ts` gán `salePrice: undefined` cho các biến thể (do file Excel Sapo chỉ có giá bán lẻ, không có giá so sánh/giá khuyến mãi).
+   * Trong mutation `upsertBulk` của Convex, khi cập nhật sản phẩm cha và biến thể, gỡ bỏ toán tử `??` đối với trường `salePrice` (đổi thành `salePrice: p.salePrice` và `salePrice: rv.vData.salePrice`) để hỗ trợ patch `undefined` nhằm dọn dẹp các giá trị so sánh lỗi đã import ở phiên bản trước đó.
+4. **Sửa hiển thị thông báo UI:**
    * Trong `app/admin/products/components/import-modal.tsx`, đọc kết quả trả về của `upsertBulk` chứa `{ createdCount, updatedCount }` để hiển thị toast chính xác: `"Đã thêm mới ${res.createdCount} và cập nhật ${res.updatedCount} sản phẩm."`
 
 ---
@@ -56,7 +59,7 @@ Nếu database trống rỗng hoặc chưa có danh mục tương ứng với t�
 
 ### Sửa: [sapo-thanshoes.adapter.ts](file:///e:/NextJS/job/job_from_system_vietadmin/system_thanshoes/lib/excel/adapters/sapo-thanshoes.adapter.ts)
 * *Vai trò:* Adapter chuyển đổi Excel Sapo sang record chuẩn.
-* *Thay đổi:* Đọc cột loại sản phẩm gán vào `categoryName` của sản phẩm cha.
+* *Thay đổi:* Đọc cột loại sản phẩm gán vào `categoryName` của sản phẩm cha. Không gán `salePrice` bằng `price` cho biến thể nữa (gán `undefined`).
 
 ### Sửa: [excel-actions.ts](file:///e:/NextJS/job/job_from_system_vietadmin/system_thanshoes/app/admin/products/actions/excel-actions.ts)
 * *Vai trò:* Định nghĩa interface dữ liệu trao đổi `ParsedProductRecord`.
@@ -64,7 +67,7 @@ Nếu database trống rỗng hoặc chưa có danh mục tương ứng với t�
 
 ### Sửa: [productsImport.ts](file:///e:/NextJS/job/job_from_system_vietadmin/system_thanshoes/convex/productsImport.ts)
 * *Vai trò:* Mutation xử lý ghi đè và thêm mới sản phẩm hàng loạt vào database Convex.
-* *Thay đổi:* Thêm logic tự tạo danh mục tự động dựa vào tên danh mục.
+* *Thay đổi:* Thêm logic tự tạo danh mục tự động dựa vào tên danh mục. Cập nhật logic patch `salePrice` cho phép ghi đè giá trị `undefined` để dọn dẹp giá trị lỗi cũ.
 
 ### Sửa: [import-modal.tsx](file:///e:/NextJS/job/job_from_system_vietadmin/system_thanshoes/app/admin/products/components/import-modal.tsx)
 * *Vai trò:* Giao diện Modal Import sản phẩm của Admin.

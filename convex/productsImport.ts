@@ -200,7 +200,7 @@ export const upsertBulk = mutation({
         await ctx.db.patch(targetProductId, {
           name: p.name ?? existing.name,
           price: p.price ?? existing.price,
-          salePrice: p.salePrice ?? existing.salePrice,
+          salePrice: p.salePrice,
           stock: p.stock ?? existing.stock,
           categoryId: categoryId ?? existing.categoryId,
           image: p.imageUrl ?? existing.image,
@@ -257,7 +257,7 @@ export const upsertBulk = mutation({
             await ctx.db.patch(existingVariant._id, {
               optionValues: rv.optionValuesData,
               price: rv.vData.price ?? existingVariant.price,
-              salePrice: rv.vData.salePrice ?? existingVariant.salePrice,
+              salePrice: rv.vData.salePrice,
               stock: rv.vData.stock ?? 0,
               image: rv.vData.imageUrl ?? existingVariant.image,
             });
