@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { LoginPromptModal } from '@/components/site/auth/LoginPromptModal';
+import { useRouter } from 'next/navigation';
 
 type Customer = {
   id: string;
@@ -50,7 +50,7 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     if (typeof window === 'undefined') {return null;}
     return localStorage.getItem(CUSTOMER_TOKEN_KEY) ?? getCookieValue(CUSTOMER_COOKIE_KEY);
   });
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
 
   const loginMutation = useMutation(api.auth.verifyCustomerLogin);
   const registerMutation = useMutation(api.auth.registerCustomer);
@@ -120,13 +120,12 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
   }, [token, logoutMutation]);
 
   const openLoginModal = useCallback(() => {
-    setIsModalOpen(true);
-  }, []);
+    router.push('/account/login');
+  }, [router]);
 
   return (
     <CustomerAuthContext.Provider value={{ customer, isAuthenticated, isLoading, isSessionVerified, login, logout, openLoginModal, register }}>
       {children}
-      <LoginPromptModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </CustomerAuthContext.Provider>
   );
 }
