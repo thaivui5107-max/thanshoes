@@ -28,6 +28,9 @@ export interface ProductListConfig {
   spacing?: 'normal' | 'compact' | 'none';
   desktopColumns?: ProductListDesktopColumns;
   lookbookDesktopColumns?: 3 | 4;
+  showAddToCartButton?: boolean;
+  showBuyNowButton?: boolean;
+  cartButtonsLayout?: 'stack' | 'grid-2';
 }
 
 export interface ProductListTextConfig {

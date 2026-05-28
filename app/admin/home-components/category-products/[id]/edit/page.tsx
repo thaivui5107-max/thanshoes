@@ -103,6 +103,11 @@ export default function CategoryProductsEditPage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialSnapshot, setInitialSnapshot] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Cart buttons settings
+  const [showAddToCartButton, setShowAddToCartButton] = useState(true);
+  const [showBuyNowButton, setShowBuyNowButton] = useState(true);
+  const [cartButtonsLayout, setCartButtonsLayout] = useState<'stack' | 'grid-2'>('stack');
   const columnsMobile = getCategoryProductsResponsiveColumns(columnsDesktop).mobile;
   const productImageCropAspectRatio = style === 'wine-grid' ? 'square' : resolveProductImageAspectRatio(aspectRatioSetting?.value);
 
@@ -141,6 +146,9 @@ export default function CategoryProductsEditPage({
       const loadedDemoSections = (config.demoSections as DemoCategoryProductsSection[] | undefined) ?? DEFAULT_DEMO_CATEGORY_PRODUCTS_SECTIONS;
       const loadedSpacing = normalizeSectionSpacing(config.spacing);
       const loadedCornerRadius = normalizeCategoryProductsCornerRadius(config.cornerRadius);
+      const loadedShowAddToCartButton = config.showAddToCartButton !== false;
+      const loadedShowBuyNowButton = config.showBuyNowButton !== false;
+      const loadedCartButtonsLayout = config.cartButtonsLayout ?? 'stack';
 
       resetsections(loadedSections);
       setSelectionMode(loadedSelectionMode);
@@ -150,6 +158,9 @@ export default function CategoryProductsEditPage({
       setColumnsDesktop(loadedColumnsDesktop);
       setSpacing(loadedSpacing);
       setCornerRadius(loadedCornerRadius);
+      setShowAddToCartButton(loadedShowAddToCartButton);
+      setShowBuyNowButton(loadedShowBuyNowButton);
+      setCartButtonsLayout(loadedCartButtonsLayout);
 
       setInitialSnapshot(JSON.stringify({
         title: component.title,
@@ -164,6 +175,9 @@ export default function CategoryProductsEditPage({
         spacing: loadedSpacing,
         cornerRadius: loadedCornerRadius,
         type: component.type,
+        showAddToCartButton: loadedShowAddToCartButton,
+        showBuyNowButton: loadedShowBuyNowButton,
+        cartButtonsLayout: loadedCartButtonsLayout,
       }));
       setHasChanges(false);
     }
@@ -185,6 +199,9 @@ export default function CategoryProductsEditPage({
       spacing,
       cornerRadius,
       type: component.type,
+      showAddToCartButton,
+      showBuyNowButton,
+      cartButtonsLayout,
     });
     const resolvedCustomSecondary = resolveSecondaryByMode(customState.mode, customState.primary, customState.secondary);
     const customChanged = enableTypeOverrides && showCustomBlock
@@ -218,6 +235,9 @@ export default function CategoryProductsEditPage({
     customFontState,
     initialFontCustom,
     showFontCustomBlock,
+    showAddToCartButton,
+    showBuyNowButton,
+    cartButtonsLayout,
   ]);
 
   useEffect(() => {
@@ -256,6 +276,9 @@ export default function CategoryProductsEditPage({
         selectionMode,
         showViewAll,
         style,
+        showAddToCartButton,
+        showBuyNowButton,
+        cartButtonsLayout,
       };
       if (onSnapshotSave) {
         await onSnapshotSave({ active, config: nextConfig, title });
@@ -308,6 +331,9 @@ export default function CategoryProductsEditPage({
         spacing,
         cornerRadius,
         type: component?.type,
+        showAddToCartButton,
+        showBuyNowButton,
+        cartButtonsLayout,
       }));
       setHasChanges(false);
     } catch (error) {
@@ -379,6 +405,12 @@ export default function CategoryProductsEditPage({
           setCornerRadius={setCornerRadius}
           productImageCropAspectRatio={productImageCropAspectRatio}
           defaultExpanded={false}
+          showAddToCartButton={showAddToCartButton}
+          setShowAddToCartButton={setShowAddToCartButton}
+          showBuyNowButton={showBuyNowButton}
+          setShowBuyNowButton={setShowBuyNowButton}
+          cartButtonsLayout={cartButtonsLayout}
+          setCartButtonsLayout={setCartButtonsLayout}
           className="mb-3"
         />
 

@@ -22,6 +22,9 @@ export interface CategoryProductsConfig {
   cornerRadius?: CategoryProductsCornerRadius;
   selectionMode?: CategoryProductsSelectionMode;
   demoSections?: DemoCategoryProductsSection[];
+  showAddToCartButton?: boolean;
+  showBuyNowButton?: boolean;
+  cartButtonsLayout?: 'stack' | 'grid-2';
 }
 
 export interface CategoryProductsProduct {

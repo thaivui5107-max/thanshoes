@@ -99,6 +99,11 @@ export default function ProductGridEditPage({
   // Desktop columns
   const [desktopColumns, setDesktopColumns] = useState<3 | 4 | 5 | 6>(4);
 
+  // Cart buttons settings
+  const [showAddToCartButton, setShowAddToCartButton] = useState(true);
+  const [showBuyNowButton, setShowBuyNowButton] = useState(true);
+  const [cartButtonsLayout, setCartButtonsLayout] = useState<'stack' | 'grid-2'>('stack');
+
   // Header config state
   const [hideHeader, setHideHeader] = useState(false);
   const [showTitleHeader, setShowTitleHeader] = useState(true);
@@ -158,6 +163,15 @@ export default function ProductGridEditPage({
     // Category tabs
     setCategoryTabIds(Array.isArray(config.categoryTabIds) ? (config.categoryTabIds as string[]) : []);
     setDesktopColumns((config.desktopColumns === 3 || config.desktopColumns === 5 || config.desktopColumns === 6) ? config.desktopColumns : 4);
+
+    const nextShowAddToCartButton = config.showAddToCartButton !== false;
+    const nextShowBuyNowButton = config.showBuyNowButton !== false;
+    const nextCartButtonsLayout = config.cartButtonsLayout ?? 'stack';
+
+    setShowAddToCartButton(nextShowAddToCartButton);
+    setShowBuyNowButton(nextShowBuyNowButton);
+    setCartButtonsLayout(nextCartButtonsLayout);
+
     setInitialSnapshot(JSON.stringify({
       title: component.title,
       active: component.active,
@@ -184,6 +198,9 @@ export default function ProductGridEditPage({
       cardRadius: nextCardRadius,
       noBorderRadius: nextCardRadius === 'none',
       desktopColumns: (config.desktopColumns === 3 || config.desktopColumns === 5 || config.desktopColumns === 6) ? config.desktopColumns : 4,
+      showAddToCartButton: nextShowAddToCartButton,
+      showBuyNowButton: nextShowBuyNowButton,
+      cartButtonsLayout: nextCartButtonsLayout,
     }));
     setIsInitialized(true);
   }, [component, id, isInitialized, router, snapshotComponent]);
@@ -283,6 +300,9 @@ export default function ProductGridEditPage({
     cardRadius,
     noBorderRadius: cardRadius === 'none',
     desktopColumns,
+    showAddToCartButton,
+    showBuyNowButton,
+    cartButtonsLayout,
   });
   const customChanged = enableTypeOverrides && showCustomBlock
     ? customState.enabled !== initialCustom.enabled
@@ -334,6 +354,10 @@ export default function ProductGridEditPage({
           showCategoryTabs: true,
           categoryTabIds,
           desktopColumns,
+          // Cart button settings
+          showAddToCartButton,
+          showBuyNowButton,
+          cartButtonsLayout,
         };
 
       if (onSnapshotSave) {
@@ -389,6 +413,9 @@ export default function ProductGridEditPage({
         cardRadius,
         noBorderRadius: cardRadius === 'none',
         desktopColumns,
+        showAddToCartButton,
+        showBuyNowButton,
+        cartButtonsLayout,
       }));
       if (enableTypeOverrides && showCustomBlock) {
         setInitialCustom({
@@ -491,6 +518,12 @@ export default function ProductGridEditPage({
           cardRadius={cardRadius}
           setCardRadius={setCardRadius}
           defaultExpanded={false}
+          showAddToCartButton={showAddToCartButton}
+          setShowAddToCartButton={setShowAddToCartButton}
+          showBuyNowButton={showBuyNowButton}
+          setShowBuyNowButton={setShowBuyNowButton}
+          cartButtonsLayout={cartButtonsLayout}
+          setCartButtonsLayout={setCartButtonsLayout}
           className="mb-3"
         />
 

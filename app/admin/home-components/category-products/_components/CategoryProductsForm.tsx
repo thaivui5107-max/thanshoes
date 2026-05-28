@@ -37,6 +37,12 @@ interface CategoryProductsFormProps {
   productImageCropAspectRatio: ImageAspectRatioInput;
   defaultExpanded?: boolean;
   className?: string;
+  showAddToCartButton?: boolean;
+  setShowAddToCartButton?: (value: boolean) => void;
+  showBuyNowButton?: boolean;
+  setShowBuyNowButton?: (value: boolean) => void;
+  cartButtonsLayout?: 'stack' | 'grid-2';
+  setCartButtonsLayout?: (value: 'stack' | 'grid-2') => void;
 }
 
 export const CategoryProductsForm = ({
@@ -58,6 +64,12 @@ export const CategoryProductsForm = ({
   productImageCropAspectRatio,
   defaultExpanded = true,
   className,
+  showAddToCartButton,
+  setShowAddToCartButton,
+  showBuyNowButton,
+  setShowBuyNowButton,
+  cartButtonsLayout,
+  setCartButtonsLayout,
 }: CategoryProductsFormProps) => {
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
@@ -257,6 +269,51 @@ export const CategoryProductsForm = ({
               />
               <Label htmlFor="showViewAll" className="cursor-pointer">Hiển thị nút “Xem danh mục”</Label>
             </div>
+
+            {/* Cấu hình hiển thị nút mua hàng & giỏ hàng */}
+            {setShowAddToCartButton && setShowBuyNowButton && setCartButtonsLayout && (
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Hiển thị nút Thêm vào giỏ</Label>
+                    <p className="text-xs text-slate-500">Cho phép khách hàng thêm nhanh sản phẩm vào giỏ</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={showAddToCartButton ?? true}
+                    onChange={(e) => setShowAddToCartButton(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Hiển thị nút Mua ngay</Label>
+                    <p className="text-xs text-slate-500">Khách hàng có thể nhấn mua và đi thẳng tới trang checkout</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={showBuyNowButton ?? true}
+                    onChange={(e) => setShowBuyNowButton(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </div>
+
+                {(showAddToCartButton ?? true) && (showBuyNowButton ?? true) && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Bố cục nút hiển thị</Label>
+                    <select
+                      className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                      value={cartButtonsLayout ?? 'stack'}
+                      onChange={(e) => setCartButtonsLayout(e.target.value as 'stack' | 'grid-2')}
+                    >
+                      <option value="stack">Xếp dọc (Stack)</option>
+                      <option value="grid-2">Xếp ngang (Grid 2)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </SubSection>
 

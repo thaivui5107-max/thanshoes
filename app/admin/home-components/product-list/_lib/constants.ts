@@ -52,6 +52,9 @@ export const DEFAULT_PRODUCT_LIST_CONFIG: ProductListConfig = {
   itemCount: 8,
   lookbookDesktopColumns: DEFAULT_PRODUCT_LIST_DESKTOP_COLUMNS,
   sortBy: 'newest',
+  showAddToCartButton: true,
+  showBuyNowButton: true,
+  cartButtonsLayout: 'stack',
 };
 
 export const DEFAULT_PRODUCT_LIST_TEXT: ProductListTextConfig = {

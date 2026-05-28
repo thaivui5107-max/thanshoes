@@ -144,6 +144,9 @@ export default function ProductListEditPage({
         itemCount: config.itemCount ?? DEFAULT_PRODUCT_LIST_CONFIG.itemCount,
         lookbookDesktopColumns: normalizeProductListDesktopColumns(config.desktopColumns ?? config.lookbookDesktopColumns),
         sortBy: config.sortBy ?? DEFAULT_PRODUCT_LIST_CONFIG.sortBy,
+        showAddToCartButton: config.showAddToCartButton ?? true,
+        showBuyNowButton: config.showBuyNowButton ?? true,
+        cartButtonsLayout: config.cartButtonsLayout ?? 'stack',
       });
       setProductListStyle(normalizeProductListStyle(config.style));
       setProductSelectionMode((config.selectionMode as ProductSelectionMode) || 'auto');
@@ -205,6 +208,9 @@ export default function ProductListEditPage({
       badgeText: (config.subTitle as string) ?? headerConfig.badgeText ?? DEFAULT_PRODUCT_LIST_TEXT.subTitle,
       spacing: normalizedSpacing,
       cornerRadius: normalizedCornerRadius,
+      showAddToCartButton: config.showAddToCartButton ?? true,
+      showBuyNowButton: config.showBuyNowButton ?? true,
+      cartButtonsLayout: config.cartButtonsLayout ?? 'stack',
     }));
   }, [component]);
 
@@ -232,6 +238,9 @@ export default function ProductListEditPage({
     badgeText,
     spacing,
     cornerRadius: cardRadius,
+    showAddToCartButton: productListConfig.showAddToCartButton ?? true,
+    showBuyNowButton: productListConfig.showBuyNowButton ?? true,
+    cartButtonsLayout: productListConfig.cartButtonsLayout ?? 'stack',
   });
 
   const resolvedCustomSecondary = resolveSecondaryByMode(customState.mode, customState.primary, customState.secondary);
@@ -332,6 +341,9 @@ export default function ProductListEditPage({
         badgeText,
         spacing,
         cornerRadius: cardRadius,
+        showAddToCartButton: nextConfig.showAddToCartButton,
+        showBuyNowButton: nextConfig.showBuyNowButton,
+        cartButtonsLayout: nextConfig.cartButtonsLayout,
       }));
       if (enableTypeOverrides && showCustomBlock) {
         setInitialCustom({

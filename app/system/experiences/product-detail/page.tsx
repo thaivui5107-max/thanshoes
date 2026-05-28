@@ -237,6 +237,7 @@ type ProductDetailExperienceConfig = {
   accentColors?: ProductDetailAccentColorConfig;
   showSocialButtons?: boolean;
   socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
+  cartButtonsLayout?: 'stack' | 'grid-2';
 };
 
 type BaseImageLayoutConfig = {
@@ -360,6 +361,7 @@ const DEFAULT_CONFIG: ProductDetailExperienceConfig = {
   },
   showSocialButtons: false,
   socialButtons: [],
+  cartButtonsLayout: 'stack',
 };
 
 const LEGACY_COMBO_EFFECT_MAP = {
@@ -676,6 +678,7 @@ export default function ProductDetailExperiencePage() {
       accentColors?: ProductDetailAccentColorConfig;
       showSocialButtons?: boolean;
       socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
+      cartButtonsLayout?: 'stack' | 'grid-2';
       layouts?: Partial<Record<ProductsDetailStyle, Partial<ClassicLayoutConfig & ModernLayoutConfig & MinimalLayoutConfig & PremiumLayoutConfig & BaseImageLayoutConfig & {
         imageAspectRatio?: ProductImageAspectRatio;
       }>>>;
@@ -763,6 +766,7 @@ export default function ProductDetailExperiencePage() {
       },
       showSocialButtons: raw?.showSocialButtons ?? false,
       socialButtons: raw?.socialButtons ?? [],
+      cartButtonsLayout: raw?.cartButtonsLayout ?? 'stack',
     };
   }, [experienceSetting?.value, legacyStyle, legacyHighlights]);
 
@@ -1338,6 +1342,17 @@ export default function ProductDetailExperiencePage() {
               accentColor={brandColor}
               disabled={!canUseOrders}
             />
+            {currentLayoutConfig.showAddToCart && (
+              <SelectRow
+                label="Bố cục nút"
+                value={config.cartButtonsLayout ?? 'stack'}
+                options={[
+                  { value: 'stack', label: 'Xếp dọc (Stack)' },
+                  { value: 'grid-2', label: 'Xếp ngang (Grid 2)' },
+                ]}
+                onChange={(v) => setConfig(prev => ({ ...prev, cartButtonsLayout: v as 'stack' | 'grid-2' }))}
+              />
+            )}
             <ToggleRow
               label="Section toàn bộ ảnh"
               description="Hiển thị toàn bộ ảnh sản phẩm dưới mô tả"

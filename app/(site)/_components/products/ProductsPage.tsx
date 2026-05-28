@@ -1263,6 +1263,7 @@ function ProductsContent(props: ProductsPageProps) {
           onClearFilters={handleClearAllFilters}
           radiusClass={radiusClass}
           productAttributesMap={productAttributesMap}
+          cartButtonsLayout={listConfig.cartButtonsLayout}
         />
         {quickAddModal}
       </>
@@ -1322,6 +1323,7 @@ function ProductsContent(props: ProductsPageProps) {
           onClearFilters={handleClearAllFilters}
           radiusClass={radiusClass}
           productAttributesMap={productAttributesMap}
+          cartButtonsLayout={listConfig.cartButtonsLayout}
         />
         {quickAddModal}
       </>
@@ -1535,6 +1537,7 @@ function ProductsContent(props: ProductsPageProps) {
             productAttributesMap={productAttributesMap}
             onAttributeChange={handleAttributeChange}
             selectedAttributes={selectedAttributes}
+            cartButtonsLayout={listConfig.cartButtonsLayout}
           />
         )}
 
@@ -1575,17 +1578,19 @@ interface ProductCardProps {
   showStock: boolean;
 }
 
-function ProductCardActions({ product, tokens, showStock, showAddToCartButton, showBuyNowButton, buyNowLabel, onAddToCart, onBuyNow }: { product: ProductCardProps['product']; tokens: ProductsListColors; showStock: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void }) {
+function ProductCardActions({ product, tokens, showStock, showAddToCartButton, showBuyNowButton, buyNowLabel, onAddToCart, onBuyNow, cartButtonsLayout }: { product: ProductCardProps['product']; tokens: ProductsListColors; showStock: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; cartButtonsLayout?: 'stack' | 'grid-2' }) {
   if (!showAddToCartButton && !showBuyNowButton) {
     return null;
   }
 
   const isOutOfStock = showStock && product.stock <= 0;
   const secondaryLabel = isOutOfStock ? 'Hết hàng' : buyNowLabel;
-  const actionHeightClass = showAddToCartButton && showBuyNowButton ? 'min-h-[76px]' : 'min-h-[36px]';
+  const isGrid2 = cartButtonsLayout === 'grid-2' && showAddToCartButton && showBuyNowButton;
+  const actionHeightClass = showAddToCartButton && showBuyNowButton && !isGrid2 ? 'min-h-[76px]' : 'min-h-[36px]';
+  const gridColsClass = isGrid2 ? 'grid-cols-2' : 'grid-cols-1';
 
   return (
-    <div className={`mt-3 grid grid-cols-1 gap-2 ${actionHeightClass}`}>
+    <div className={`mt-3 grid ${gridColsClass} gap-2 ${actionHeightClass}`}>
       {showAddToCartButton && (
         <button
           className="w-full rounded-lg py-2 text-sm font-medium transition-all duration-300 flex items-center justify-center gap-1.5 disabled:opacity-55 disabled:cursor-not-allowed hover:brightness-95 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md"
@@ -1776,7 +1781,7 @@ export function ProductAttributesBadges({
   );
 }
 
-function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, radiusClass, productAttributesMap, onAttributeChange, selectedAttributes }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; frameConfig?: ProductFrameConfig | null; watermarkConfig?: WatermarkConfig | null; getDetailHref: (product: ProductCardProps['product']) => string; radiusClass: string; productAttributesMap?: Map<string, any[]>; onAttributeChange?: (groupSlug: string, termSlug: any, checked: boolean) => void; selectedAttributes?: Record<string, string[]> }) {
+function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, radiusClass, productAttributesMap, onAttributeChange, selectedAttributes, cartButtonsLayout }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; frameConfig?: ProductFrameConfig | null; watermarkConfig?: WatermarkConfig | null; getDetailHref: (product: ProductCardProps['product']) => string; radiusClass: string; productAttributesMap?: Map<string, any[]>; onAttributeChange?: (groupSlug: string, termSlug: any, checked: boolean) => void; selectedAttributes?: Record<string, string[]>; cartButtonsLayout?: 'stack' | 'grid-2' }) {
   const productImagePlaceholder = useProductImagePlaceholder();
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
@@ -1880,6 +1885,7 @@ function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, 
                 buyNowLabel={buyNowLabel}
                 onAddToCart={onAddToCart}
                 onBuyNow={onBuyNow}
+                cartButtonsLayout={cartButtonsLayout}
               />
             </div>
           </div>
@@ -1891,7 +1897,7 @@ function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, 
   );
 }
 
-function ProductList({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge: _showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, radiusClass, productAttributesMap, onAttributeChange, selectedAttributes }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; frameConfig?: ProductFrameConfig | null; watermarkConfig?: WatermarkConfig | null; getDetailHref: (product: ProductCardProps['product']) => string; radiusClass: string; productAttributesMap?: Map<string, any[]>; onAttributeChange?: (groupSlug: string, termSlug: any, checked: boolean) => void; selectedAttributes?: Record<string, string[]> }) {
+function ProductList({ products, categoryMap, tokens, showPrice, showSalePrice, showStock, saleMode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge: _showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, radiusClass, productAttributesMap, onAttributeChange, selectedAttributes, cartButtonsLayout }: { products: ProductCardProps['product'][]; categoryMap: Map<string, string>; tokens: ProductsListColors; showPrice: boolean; showSalePrice: boolean; showStock: boolean; saleMode: ProductsSaleMode; showWishlistButton: boolean; showAddToCartButton: boolean; showBuyNowButton: boolean; buyNowLabel: string; showPromotionBadge: boolean; wishlistIdSet: Set<Id<'products'>>; onToggleWishlist: (id: Id<'products'>) => void; onAddToCart: (product: ProductCardProps['product']) => void; onBuyNow: (product: ProductCardProps['product']) => void; canUseWishlist: boolean; imageAspectRatioStyle: React.CSSProperties; frameConfig?: ProductFrameConfig | null; watermarkConfig?: WatermarkConfig | null; getDetailHref: (product: ProductCardProps['product']) => string; radiusClass: string; productAttributesMap?: Map<string, any[]>; onAttributeChange?: (groupSlug: string, termSlug: any, checked: boolean) => void; selectedAttributes?: Record<string, string[]>; cartButtonsLayout?: 'stack' | 'grid-2' }) {
   const productImagePlaceholder = useProductImagePlaceholder();
   return (
     <div className="space-y-4">
@@ -2419,6 +2425,7 @@ interface LayoutProps {
   onClearFilters?: () => void;
   radiusClass: string;
   productAttributesMap?: Map<string, any[]>;
+  cartButtonsLayout?: 'stack' | 'grid-2';
 }
 
 interface MobileProductsFiltersProps {
@@ -2677,7 +2684,7 @@ function MobileProductsFilters({
   );
 }
 
-function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap: _categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent, filterableGroups, selectedAttributes, onAttributeChange, productType, selectedPriceRange, onPriceRangeChange, enableProductTypes, productTypes, onProductTypeChange, attributeFilter, hasActiveFilters, onClearFilters, radiusClass, productAttributesMap }: LayoutProps) {
+function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap: _categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent, filterableGroups, selectedAttributes, onAttributeChange, productType, selectedPriceRange, onPriceRangeChange, enableProductTypes, productTypes, onProductTypeChange, attributeFilter, hasActiveFilters, onClearFilters, radiusClass, productAttributesMap, cartButtonsLayout }: LayoutProps) {
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const productImagePlaceholder = useProductImagePlaceholder();
 
@@ -3045,6 +3052,7 @@ function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, 
                           buyNowLabel={buyNowLabel}
                           onAddToCart={onAddToCart}
                           onBuyNow={onBuyNow}
+                          cartButtonsLayout={cartButtonsLayout}
                         />
                       </div>
                     </div>
@@ -3071,7 +3079,7 @@ function CatalogLayout({ isLoadingProducts, postsPerPage, products, categories, 
 
 // ========== LIST LAYOUT (Full width list view) ==========
 
-function ListLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent, filterableGroups, selectedAttributes, onAttributeChange, productType, selectedPriceRange, onPriceRangeChange, enableProductTypes, productTypes, onProductTypeChange, hasActiveFilters, onClearFilters, radiusClass }: LayoutProps) {
+function ListLayout({ isLoadingProducts, postsPerPage, products, categories, categoryMap, selectedCategory, onCategoryChange, searchQuery, onSearchChange, sortBy, onSortChange, tokens, showPrice, showSalePrice, showStock, saleMode, totalCount, paginationNode, showWishlistButton, showAddToCartButton, showBuyNowButton, buyNowLabel, showPromotionBadge, wishlistIdSet, onToggleWishlist, onAddToCart, onBuyNow, canUseWishlist, imageAspectRatioStyle, frameConfig, watermarkConfig, getDetailHref, activeCategoryDoc, showCategorySubtitle, enableCategoryFilterFooterContent, filterableGroups, selectedAttributes, onAttributeChange, productType, selectedPriceRange, onPriceRangeChange, enableProductTypes, productTypes, onProductTypeChange, hasActiveFilters, onClearFilters, radiusClass, cartButtonsLayout }: LayoutProps) {
   return (
     <div className="py-8 md:py-12 px-4">
       <div className="max-w-5xl mx-auto">
@@ -3251,6 +3259,7 @@ function ListLayout({ isLoadingProducts, postsPerPage, products, categories, cat
             radiusClass={radiusClass}
             onAttributeChange={onAttributeChange}
             selectedAttributes={selectedAttributes}
+            cartButtonsLayout={cartButtonsLayout}
           />
         )}
 

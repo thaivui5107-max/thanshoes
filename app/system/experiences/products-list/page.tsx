@@ -47,6 +47,7 @@ type ProductsListExperienceConfig = {
   enableQuickAddVariant: boolean;
   hideEmptyCategories: boolean;
   cornerRadius: ProductListCornerRadius;
+  cartButtonsLayout?: 'stack' | 'grid-2';
 };
 
 type LayoutConfig = {
@@ -85,6 +86,7 @@ const DEFAULT_CONFIG: ProductsListExperienceConfig = {
   enableQuickAddVariant: true,
   hideEmptyCategories: true,
   cornerRadius: 'lg',
+  cartButtonsLayout: 'stack',
 };
 
 const HINTS = [
@@ -155,6 +157,7 @@ export default function ProductsListExperiencePage() {
       enableQuickAddVariant?: boolean;
       hideEmptyCategories?: boolean;
       cornerRadius?: ProductListCornerRadius;
+      cartButtonsLayout?: 'stack' | 'grid-2';
     } | undefined;
     
     const normalizePaginationType = (value?: string | boolean): PaginationType => {
@@ -188,6 +191,7 @@ export default function ProductsListExperiencePage() {
       enableQuickAddVariant: raw?.enableQuickAddVariant ?? true,
       hideEmptyCategories: raw?.hideEmptyCategories ?? true,
       cornerRadius: raw?.cornerRadius ?? 'lg',
+      cartButtonsLayout: raw?.cartButtonsLayout ?? 'stack',
     };
   }, [experienceSetting?.value]);
 
@@ -398,6 +402,17 @@ export default function ProductsListExperiencePage() {
               accentColor={brandColor}
               disabled={!canUsePromotions}
             />
+            {config.showAddToCartButton && (
+              <SelectRow
+                label="Bố cục nút"
+                value={config.cartButtonsLayout ?? 'stack'}
+                options={[
+                  { value: 'stack', label: 'Xếp dọc (Stack)' },
+                  { value: 'grid-2', label: 'Xếp ngang (Grid 2)' },
+                ]}
+                onChange={(v) => setConfig(prev => ({ ...prev, cartButtonsLayout: v as 'stack' | 'grid-2' }))}
+              />
+            )}
           </ControlCard>
 
           <ControlCard title="Bảo trì hệ thống">

@@ -552,6 +552,48 @@ export const ProductListForm = ({
               )}
             </div>
           )}
+
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Hiển thị nút Thêm vào giỏ</Label>
+                <p className="text-xs text-slate-500">Cho phép khách hàng thêm nhanh sản phẩm vào giỏ</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={productListConfig.showAddToCartButton ?? true}
+                onChange={(e) => setProductListConfig({ ...productListConfig, showAddToCartButton: e.target.checked })}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Hiển thị nút Mua ngay</Label>
+                <p className="text-xs text-slate-500">Khách hàng có thể nhấn mua và đi thẳng tới trang checkout</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={productListConfig.showBuyNowButton ?? true}
+                onChange={(e) => setProductListConfig({ ...productListConfig, showBuyNowButton: e.target.checked })}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+            </div>
+
+            {(productListConfig.showAddToCartButton ?? true) && (productListConfig.showBuyNowButton ?? true) && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Bố cục nút hiển thị</Label>
+                <select
+                  className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                  value={productListConfig.cartButtonsLayout ?? 'stack'}
+                  onChange={(e) => setProductListConfig({ ...productListConfig, cartButtonsLayout: e.target.value as 'stack' | 'grid-2' })}
+                >
+                  <option value="stack">Xếp dọc (Stack)</option>
+                  <option value="grid-2">Xếp ngang (Grid 2)</option>
+                </select>
+              </div>
+            )}
+          </div>
         </SubSection>
     </div>
   );

@@ -4,6 +4,14 @@ import React from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import { PublicImage as Image } from '@/components/shared/PublicImage';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
+import { useCustomerAuth } from '@/app/(site)/auth/context';
+import { notifyAddToCart, useCart } from '@/lib/cart';
+import { useCartConfig } from '@/lib/experiences';
+import { ProductCardActions } from '@/components/site/shared/ProductCardActions';
+import { QuickAddVariantModal } from '@/components/products/QuickAddVariantModal';
+import { getProductsListColors } from '@/components/site/products/colors';
+import type { Id } from '@/convex/_generated/dataModel';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useBrandColors } from './hooks';
@@ -3870,49 +3878,148 @@ function CategoryProductsSection({
   }), [categorySlugMap, resolveProductHref]);
 
   // Product Card Component with Equal Height (line-clamp + min-height)
-  const ProductCard = ({ product, categoryId }: { product: { _id: string; name: string; image?: string; price?: number; salePrice?: number; slug?: string; hasVariants?: boolean }; categoryId: string }) => (
-    <a href={resolveProductHrefByCategory({ categoryId, product })} aria-label={`${sectionTitle}: ${product.name}`} className="group cursor-pointer flex flex-col h-full">
-      <ProductImageWithOverlay
-        frameConfig={frameConfig}
-        watermarkConfig={watermarkConfig}
-        className={cn('overflow-hidden mb-2', imageRadiusClassName)}
-        style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}
-      >
-        {product.image ? (
-          <SiteImage 
-            src={product.image} 
-            alt={product.name} 
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Package size={24} style={{ color: colors.emptyStateIcon }} />
-          </div>
-        )}
-      </ProductImageWithOverlay>
-      <h4 className="font-medium text-sm line-clamp-2 min-h-[2.5rem]" style={{ color: colors.bodyText }}>{product.name || 'Tên sản phẩm'}</h4>
-      <div className="flex flex-col mt-auto">
-        {(() => {
-          const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
-          if (priceDisplay.comparePrice) {
-            return (
+  const showAddToCartButton = config.showAddToCartButton !== false;
+  const showBuyNowButton = config.showBuyNowButton !== false;
+  const cartButtonsLayout = (config.cartButtonsLayout as 'stack' | 'grid-2') || 'stack';
+  const showStock = config.showStock !== false;
+
+  const router = useRouter();
+  const { isAuthenticated, openLoginModal } = useCustomerAuth();
+  const { addItem, openDrawer } = useCart();
+  const cartConfig = useCartConfig();
+  const [quickAddTarget, setQuickAddTarget] = React.useState<{ product: any; action: 'addToCart' | 'buyNow' } | null>(null);
+
+  const tokens = React.useMemo(
+    () => getProductsListColors(brandColor, secondary, mode || 'single'),
+    [brandColor, secondary, mode]
+  );
+
+  const handleAddToCart = async (product: any) => {
+    if (showStock && (product.stock ?? 0) <= 0) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      openLoginModal();
+      return;
+    }
+
+    if (product.hasVariants) {
+      setQuickAddTarget({ product, action: 'addToCart' });
+      return;
+    }
+
+    await addItem(product._id, 1);
+    notifyAddToCart();
+    if (cartConfig.layoutStyle === 'drawer') {
+      openDrawer();
+    } else {
+      router.push('/cart');
+    }
+  };
+
+  const handleBuyNow = (product: any) => {
+    if (showStock && (product.stock ?? 0) <= 0) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      openLoginModal();
+      return;
+    }
+
+    if (product.hasVariants) {
+      setQuickAddTarget({ product, action: 'buyNow' });
+      return;
+    }
+
+    router.push(`/checkout?productId=${product._id}&quantity=1`);
+  };
+
+  const handleQuickAddConfirm = async (variantId: Id<'productVariants'>, quantity: number) => {
+    if (!quickAddTarget) return;
+    const { product, action } = quickAddTarget;
+
+    if (action === 'addToCart') {
+      await addItem(product._id, quantity, variantId);
+      notifyAddToCart();
+      if (cartConfig.layoutStyle === 'drawer') {
+        openDrawer();
+      } else {
+        router.push('/cart');
+      }
+    } else {
+      router.push(`/checkout?productId=${product._id}&quantity=${quantity}&variantId=${variantId}`);
+    }
+    setQuickAddTarget(null);
+  };
+
+  const ProductCard = ({ product, categoryId }: { product: { _id: string; name: string; image?: string; price?: number; salePrice?: number; slug?: string; hasVariants?: boolean }; categoryId: string }) => {
+    const href = resolveProductHrefByCategory({ categoryId, product });
+    const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
+    return (
+      <div className={cn("group bg-white border border-slate-200 overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col h-full p-3", cardRadiusClassName)}>
+        <a href={href} aria-label={`${sectionTitle}: ${product.name}`} className="block relative bg-slate-100 overflow-hidden mb-2" style={imageAspectRatioStyle}>
+          <ProductImageWithOverlay
+            frameConfig={frameConfig}
+            watermarkConfig={watermarkConfig}
+            className={cn('w-full h-full', imageRadiusClassName)}
+          >
+            {product.image ? (
+              <SiteImage 
+                src={product.image} 
+                alt={product.name} 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Package size={24} style={{ color: colors.emptyStateIcon }} />
+              </div>
+            )}
+          </ProductImageWithOverlay>
+        </a>
+        <a href={href} className="block flex-1 flex flex-col mb-3">
+          <h4 className="font-medium text-sm line-clamp-2 min-h-[2.5rem]" style={{ color: colors.bodyText }}>{product.name || 'Tên sản phẩm'}</h4>
+          <div className="flex flex-col mt-auto">
+            {priceDisplay.comparePrice ? (
               <>
                 <span className="font-bold text-sm" style={{ color: colors.priceText }}>
                   {priceDisplay.label}
                 </span>
                 <span className="text-xs line-through" style={{ color: colors.mutedText }}>{formatComparePrice(priceDisplay.comparePrice)}</span>
               </>
-            );
-          }
-          return (
-            <span className="font-bold text-sm" style={{ color: colors.priceText }}>
-              {priceDisplay.label}
-            </span>
-          );
-        })()}
+            ) : (
+              <span className="font-bold text-sm" style={{ color: colors.priceText }}>
+                {priceDisplay.label}
+              </span>
+            )}
+          </div>
+        </a>
+
+        {showAddToCartButton || showBuyNowButton ? (
+          <ProductCardActions
+            product={product as any}
+            tokens={tokens}
+            showStock={showStock}
+            showAddToCartButton={showAddToCartButton}
+            showBuyNowButton={showBuyNowButton}
+            buyNowLabel="Mua ngay"
+            onAddToCart={handleAddToCart}
+            onBuyNow={handleBuyNow}
+            cartButtonsLayout={cartButtonsLayout}
+          />
+        ) : (
+          <a
+            href={href}
+            className="w-full gap-1 border-2 py-1.5 px-2 rounded-lg font-medium flex items-center justify-center transition-colors whitespace-nowrap text-xs hover:bg-opacity-10"
+            style={{ borderColor: `${brandColor}20`, color: brandColor }}
+          >
+            Xem chi tiết <ArrowRight className="w-3 h-3 flex-shrink-0" />
+          </a>
+        )}
       </div>
-    </a>
-  );
+    );
+  };
 
   // Empty State Component with brandColor
   const EmptyProductsState = ({ message }: { message: string }) => (
@@ -4051,38 +4158,60 @@ function CategoryProductsSection({
             {section.products.length > 0 ? (
               <div className="overflow-hidden px-4" ref={emblaRef}>
                 <div className="flex gap-4 backface-hidden touch-pan-y">
-                  {section.products.map((product) => (
-                    <a
-                      key={product._id}
-                      href={resolveProductHrefByCategory({ categoryId: section.category._id, product })}
-                      className="flex-none w-36 md:w-48 group cursor-grab active:cursor-grabbing select-none"
-                      draggable={false}
-                    >
-                      <ProductImageWithOverlay
-                        frameConfig={frameConfig}
-                        watermarkConfig={watermarkConfig}
-                        className={cn('overflow-hidden mb-2', imageRadiusClassName)}
-                        style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}
+                  {section.products.map((product) => {
+                    const href = resolveProductHrefByCategory({ categoryId: section.category._id, product });
+                    const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
+                    return (
+                      <div
+                        key={product._id}
+                        className="flex-none w-36 md:w-48 group flex flex-col justify-between"
                       >
-                        {product.image ? (
-                          <SiteImage
-                            src={product.image}
-                            alt={product.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            draggable={false}
+                        <a
+                          href={href}
+                          className="block cursor-grab active:cursor-grabbing select-none mb-3 flex-1"
+                          draggable={false}
+                        >
+                          <ProductImageWithOverlay
+                            frameConfig={frameConfig}
+                            watermarkConfig={watermarkConfig}
+                            className={cn('overflow-hidden mb-2', imageRadiusClassName)}
+                            style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}
+                          >
+                            {product.image ? (
+                              <SiteImage
+                                src={product.image}
+                                alt={product.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                draggable={false}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package size={24} style={{ color: colors.emptyStateIcon }} />
+                              </div>
+                            )}
+                          </ProductImageWithOverlay>
+                          <h4 className="font-medium text-sm line-clamp-2 mb-1" style={{ color: colors.bodyText }}>{product.name}</h4>
+                          <span className="font-bold text-base" style={{ color: colors.buttonText }}>
+                            {priceDisplay.label}
+                          </span>
+                        </a>
+
+                        {showAddToCartButton || showBuyNowButton ? (
+                          <ProductCardActions
+                            product={product as any}
+                            tokens={tokens}
+                            showStock={showStock}
+                            showAddToCartButton={showAddToCartButton}
+                            showBuyNowButton={showBuyNowButton}
+                            buyNowLabel="Mua ngay"
+                            onAddToCart={handleAddToCart}
+                            onBuyNow={handleBuyNow}
+                            cartButtonsLayout={cartButtonsLayout}
                           />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package size={24} style={{ color: colors.emptyStateIcon }} />
-                          </div>
-                        )}
-                      </ProductImageWithOverlay>
-                      <h4 className="font-medium text-sm line-clamp-2 mb-1" style={{ color: colors.bodyText }}>{product.name}</h4>
-                      <span className="font-bold text-base" style={{ color: colors.buttonText }}>
-                        {getPriceDisplay(product.price, product.salePrice, product.hasVariants).label}
-                      </span>
-                    </a>
-                  ))}
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
@@ -4743,6 +4872,15 @@ function CategoryProductsSection({
           </div>
         </section>
       ))}
+      
+      <QuickAddVariantModal
+        isOpen={quickAddTarget !== null}
+        product={quickAddTarget?.product ?? null}
+        brandColor={brandColor}
+        actionLabel={quickAddTarget?.action === 'addToCart' ? 'Thêm vào giỏ' : 'Mua ngay'}
+        onClose={() => setQuickAddTarget(null)}
+        onConfirm={handleQuickAddConfirm}
+      />
     </div>
   );
 }

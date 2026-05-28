@@ -113,6 +113,7 @@ type ProductDetailExperienceConfig = {
   accentColors?: ProductDetailAccentColorConfig;
   showSocialButtons?: boolean;
   socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
+  cartButtonsLayout?: 'stack' | 'grid-2';
 };
 
 type ProductVariantOptionValue = {
@@ -258,6 +259,7 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
       accentColors?: ProductDetailAccentColorConfig;
       showSocialButtons?: boolean;
       socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
+      cartButtonsLayout?: 'stack' | 'grid-2';
     }> | undefined;
     const layoutStyle = raw?.layoutStyle ?? legacyStyle;
     const layoutConfig = raw?.layouts?.[layoutStyle];
@@ -342,6 +344,7 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
       },
       showSocialButtons: raw?.showSocialButtons ?? false,
       socialButtons: raw?.socialButtons ?? [],
+      cartButtonsLayout: raw?.cartButtonsLayout ?? 'stack',
     };
   }, [experienceSetting?.value, legacyHighlightsEnabled, legacyStyle, cartAvailable, canUseComments, canUseCommentLikes, canUseCommentReplies, canUseWishlist, ordersEnabled, moduleDefaultAspectRatio]);
 }
@@ -992,6 +995,7 @@ export default function ProductDetailPage({ params }: PageProps) {
           onShare={handleShare}
           onAddToCart={handleAddToCart}
           onBuyNow={handlePrimaryAction}
+          cartButtonsLayout={experienceConfig.cartButtonsLayout}
           commentsSection={commentsSection}
           supplementalContent={supplementalContent}
           relatedProductsMode={relatedProductsMode}
@@ -1047,6 +1051,7 @@ export default function ProductDetailPage({ params }: PageProps) {
           onShare={handleShare}
           onAddToCart={handleAddToCart}
           onBuyNow={handlePrimaryAction}
+          cartButtonsLayout={experienceConfig.cartButtonsLayout}
           commentsSection={commentsSection}
           supplementalContent={supplementalContent}
           relatedProductsMode={relatedProductsMode}
@@ -1102,6 +1107,7 @@ export default function ProductDetailPage({ params }: PageProps) {
           onShare={handleShare}
           onAddToCart={handleAddToCart}
           onBuyNow={handlePrimaryAction}
+          cartButtonsLayout={experienceConfig.cartButtonsLayout}
           commentsSection={commentsSection}
           supplementalContent={supplementalContent}
           relatedProductsMode={relatedProductsMode}
@@ -1240,6 +1246,7 @@ interface ExperienceBlocksProps {
   onShare: () => void;
   onAddToCart: (quantity: number, variantId?: Id<'productVariants'>) => void;
   onBuyNow: (quantity: number, variantId?: Id<'productVariants'>) => void;
+  cartButtonsLayout?: 'stack' | 'grid-2';
 }
 
 interface HighlightBlockProps {
@@ -1899,6 +1906,7 @@ function ClassicStyle({
   accentColors,
   showSocialButtons,
   socialButtons,
+  cartButtonsLayout,
 }: ClassicStyleProps) {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -2225,21 +2233,21 @@ function ClassicStyle({
                 </button>
               </div>
 
-              <div className="flex flex-1 flex-col gap-2">
+              <div className={cartButtonsLayout === 'grid-2' && showAddToCart && showBuyNow ? 'grid grid-cols-2 gap-3 flex-1' : 'flex flex-1 flex-col gap-2'}>
                 {showAddToCart && (
                   <button
-                    className={`py-3.5 px-8 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${inStock ? 'hover:shadow-lg hover:scale-[1.02]' : 'opacity-50 cursor-not-allowed'}`}
+                    className={`py-3.5 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${inStock ? 'hover:shadow-lg hover:scale-[1.02]' : 'opacity-50 cursor-not-allowed'}`}
                     style={{ backgroundColor: primaryButtonColors.bg, color: primaryButtonColors.text }}
                     disabled={!inStock}
                     onClick={() => { if (inStock) { onAddToCart(quantity, selectedVariant?._id); } }}
                   >
-                    <ShoppingCart size={20} />
-                    {inStock ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
+                    <ShoppingCart size={20} className="shrink-0" />
+                    <span className="truncate">{inStock ? (cartButtonsLayout === 'grid-2' && showBuyNow ? 'Thêm vào giỏ' : 'Thêm vào giỏ hàng') : 'Hết hàng'}</span>
                   </button>
                 )}
                 {showBuyNow && (
                   <button
-                    className={`py-3.5 px-8 rounded-xl font-semibold flex items-center justify-center gap-2 border transition-all ${buyNowDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]'}`}
+                    className={`py-3.5 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 border transition-all ${buyNowDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]'}`}
                     style={{
                       borderColor: primaryButtonColors.border,
                       color: primaryButtonColors.text,
@@ -2250,7 +2258,7 @@ function ClassicStyle({
                     disabled={buyNowDisabled}
                     onClick={() => { if (!buyNowDisabled) { onBuyNow(quantity, selectedVariant?._id); } }}
                   >
-                    {buyNowLabel}
+                    <span className="truncate">{buyNowLabel}</span>
                   </button>
                 )}
               </div>
@@ -2458,6 +2466,7 @@ function ModernStyle({
   accentColors,
   showSocialButtons,
   socialButtons,
+  cartButtonsLayout,
 }: StyleProps & ExperienceBlocksProps & HighlightBlockProps & { heroStyle: ModernHeroStyle }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -2903,32 +2912,66 @@ function ModernStyle({
 
             {(showAddToCart || showBuyNow || showWishlist) && (
               <div className="space-y-2 md:space-y-2.5">
-                {showAddToCart && (
-                  <button
-                    className={`w-full h-12 text-base font-semibold transition-all ${inStock ? 'hover:shadow-lg hover:scale-[1.01]' : 'opacity-50 cursor-not-allowed'}`}
-                    style={{ backgroundColor: primaryButtonColors.bg, color: primaryButtonColors.text }}
-                    disabled={!inStock}
-                    onClick={() => { if (inStock) { onAddToCart(quantity, selectedVariant?._id); } }}
-                  >
-                    <ShoppingBag className="w-5 h-5 mr-2 inline-block" />
-                    {inStock ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
-                  </button>
-                )}
-                {showBuyNow && (
-                  <button
-                    className={`w-full h-12 text-base font-semibold border transition-all ${buyNowDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]'}`}
-                    style={{
-                      borderColor: primaryButtonColors.border,
-                      color: primaryButtonColors.text,
-                      '--cta-secondary-bg': primaryButtonColors.bg,
-                      '--cta-secondary-hover-bg': primaryButtonColors.bg,
-                      '--cta-secondary-ring': tokens.inputRing,
-                    } as React.CSSProperties}
-                    disabled={buyNowDisabled}
-                    onClick={() => { if (!buyNowDisabled) { onBuyNow(quantity, selectedVariant?._id); } }}
-                  >
-                    {buyNowLabel}
-                  </button>
+                {cartButtonsLayout === 'grid-2' && showAddToCart && showBuyNow ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {showAddToCart && (
+                      <button
+                        className={`w-full h-12 text-base font-semibold transition-all px-2 flex items-center justify-center ${inStock ? 'hover:shadow-lg hover:scale-[1.01]' : 'opacity-50 cursor-not-allowed'}`}
+                        style={{ backgroundColor: primaryButtonColors.bg, color: primaryButtonColors.text }}
+                        disabled={!inStock}
+                        onClick={() => { if (inStock) { onAddToCart(quantity, selectedVariant?._id); } }}
+                      >
+                        <ShoppingBag className="w-5 h-5 mr-1.5 shrink-0 inline-block" />
+                        <span className="truncate">{inStock ? 'Thêm vào giỏ' : 'Hết hàng'}</span>
+                      </button>
+                    )}
+                    {showBuyNow && (
+                      <button
+                        className={`w-full h-12 text-base font-semibold border transition-all px-2 flex items-center justify-center ${buyNowDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]'}`}
+                        style={{
+                          borderColor: primaryButtonColors.border,
+                          color: primaryButtonColors.text,
+                          '--cta-secondary-bg': primaryButtonColors.bg,
+                          '--cta-secondary-hover-bg': primaryButtonColors.bg,
+                          '--cta-secondary-ring': tokens.inputRing,
+                        } as React.CSSProperties}
+                        disabled={buyNowDisabled}
+                        onClick={() => { if (!buyNowDisabled) { onBuyNow(quantity, selectedVariant?._id); } }}
+                      >
+                        <span className="truncate">{buyNowLabel}</span>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {showAddToCart && (
+                      <button
+                        className={`w-full h-12 text-base font-semibold transition-all ${inStock ? 'hover:shadow-lg hover:scale-[1.01]' : 'opacity-50 cursor-not-allowed'}`}
+                        style={{ backgroundColor: primaryButtonColors.bg, color: primaryButtonColors.text }}
+                        disabled={!inStock}
+                        onClick={() => { if (inStock) { onAddToCart(quantity, selectedVariant?._id); } }}
+                      >
+                        <ShoppingBag className="w-5 h-5 mr-2 inline-block" />
+                        {inStock ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
+                      </button>
+                    )}
+                    {showBuyNow && (
+                      <button
+                        className={`w-full h-12 text-base font-semibold border transition-all ${buyNowDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]'}`}
+                        style={{
+                          borderColor: primaryButtonColors.border,
+                          color: primaryButtonColors.text,
+                          '--cta-secondary-bg': primaryButtonColors.bg,
+                          '--cta-secondary-hover-bg': primaryButtonColors.bg,
+                          '--cta-secondary-ring': tokens.inputRing,
+                        } as React.CSSProperties}
+                        disabled={buyNowDisabled}
+                        onClick={() => { if (!buyNowDisabled) { onBuyNow(quantity, selectedVariant?._id); } }}
+                      >
+                        {buyNowLabel}
+                      </button>
+                    )}
+                  </>
                 )}
                 {showWishlist && (
                   <button
@@ -3111,6 +3154,7 @@ function MinimalStyle({
   accentColors,
   showSocialButtons,
   socialButtons,
+  cartButtonsLayout,
 }: StyleProps & ExperienceBlocksProps & HighlightBlockProps & { contentWidth: MinimalContentWidth }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<VariantSelectionMap>({});
@@ -3476,10 +3520,26 @@ function MinimalStyle({
                       {inStock ? 'Thêm vào giỏ' : 'Hết hàng'}
                     </button>
                   )}
+                  {cartButtonsLayout === 'grid-2' && showAddToCart && showBuyNow && (
+                    <button
+                      className={`flex-1 h-14 uppercase tracking-wider text-sm font-medium border transition-all ${buyNowDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]'}`}
+                      style={{
+                        borderColor: primaryButtonColors.border,
+                        color: primaryButtonColors.text,
+                        '--cta-secondary-bg': primaryButtonColors.bg,
+                        '--cta-secondary-hover-bg': primaryButtonColors.bg,
+                        '--cta-secondary-ring': tokens.inputRing,
+                      } as React.CSSProperties}
+                      disabled={buyNowDisabled}
+                      onClick={() => { if (!buyNowDisabled) { onBuyNow(1, selectedVariant?._id); } }}
+                    >
+                      <span className="truncate">{buyNowLabel}</span>
+                    </button>
+                  )}
                   {showWishlist && (
                     <button
                       onClick={onToggleWishlist}
-                      className="w-14 h-14 border flex items-center justify-center transition-colors"
+                      className="w-14 h-14 border flex items-center justify-center transition-colors shrink-0"
                       style={isWishlisted
                         ? { borderColor: tokens.stockDangerText, color: tokens.stockDangerText }
                         : { borderColor: tokens.wishlistBorder, color: tokens.wishlistIcon, backgroundColor: tokens.wishlistBg }}
@@ -3489,7 +3549,7 @@ function MinimalStyle({
                     </button>
                   )}
                 </div>
-                {showBuyNow && (
+                {showBuyNow && !(cartButtonsLayout === 'grid-2' && showAddToCart) && (
                   <button
                     className={`h-12 uppercase tracking-wider text-xs font-medium border transition-all ${buyNowDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]'}`}
                     style={{

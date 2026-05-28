@@ -26,4 +26,7 @@ export interface ProductGridConfig {
   cardRadius?: import('../../product-list/_types').ProductListCardRadius;
   noBorderRadius?: boolean;
   noVerticalMargin?: boolean;
+  showAddToCartButton?: boolean;
+  showBuyNowButton?: boolean;
+  cartButtonsLayout?: 'stack' | 'grid-2';
 }
