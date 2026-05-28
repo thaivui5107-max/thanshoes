@@ -35,7 +35,7 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
     let hasProductName = false;
     
     row1.eachCell({ includeEmpty: true }, (cell) => {
-      const val = getCellText(cell).toLowerCase();
+      const val = getCellText(cell).toLowerCase().replace(/[*]/g, "").trim();
       if (val === "mã sku" || val === "sku") hasSku = true;
       if (val === "tên sản phẩm") hasProductName = true;
     });
@@ -92,18 +92,18 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
     const recordsMap = new Map<string, ParsedProductRecord>();
     const rowCount = worksheet.rowCount;
 
-    // Map cột động dựa trên tên header ở dòng 1
+    // Map cột động dựa trên tên header ở dòng 1 (loại bỏ dấu * ở cuối)
     const headerRow = worksheet.getRow(1);
     const colMap: Record<string, number> = {};
     
     headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-      const val = getCellText(cell).toLowerCase();
+      const val = getCellText(cell).toLowerCase().replace(/[*]/g, "").trim();
       if (val) colMap[val] = colNumber;
     });
 
     const getColIndex = (names: string[], defaultCol: number): number => {
       for (const name of names) {
-        const lowerName = name.toLowerCase();
+        const lowerName = name.toLowerCase().replace(/[*]/g, "").trim();
         if (colMap[lowerName]) return colMap[lowerName];
       }
       return defaultCol;
@@ -115,9 +115,9 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
     const typeCol = getColIndex(["loại sản phẩm", "loại"], 3); // C
     const brandCol = getColIndex(["nhãn hiệu", "thương hiệu"], 5); // E
     const descCol = getColIndex(["mô tả", "mô tả sản phẩm"], 4); // D
-    const sizeCol = getColIndex(["thuộc tính 1", "size", "kích cỡ"], 8); // H
-    const priceCol = getColIndex(["giá bán lẻ", "giá bán"], 32); // AF
-    const stockCol = getColIndex(["tồn kho", "tồn kho thực tế"], 27); // AA
+    const sizeCol = getColIndex(["giá trị thuộc tính 1", "thuộc tính 1", "size", "kích cỡ"], 8); // H
+    const priceCol = getColIndex(["giá bán lẻ", "giá bán", "pl_giá bán lẻ"], 32); // AF
+    const stockCol = getColIndex(["tồn kho", "tồn kho thực tế", "lc_cn1_tồn kho ban đầu"], 27); // AA
     const imageCol = getColIndex(["ảnh đại diện", "đường dẫn ảnh", "ảnh biến thể"], 18); // R
 
     let currentProductName = "";
