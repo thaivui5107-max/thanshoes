@@ -53,6 +53,7 @@ const normalizeTeamMember = (raw: unknown): TeamMember => {
   const avatarType = (['upload', 'url', 'icon'].includes(member.avatarType as string)
     ? member.avatarType as TeamAvatarType
     : 'upload');
+  const avatarStorageId = member.avatarStorageId === null ? null : (member.avatarStorageId ? toText(member.avatarStorageId) : undefined);
 
   return {
     name: toText(member.name),
@@ -60,6 +61,7 @@ const normalizeTeamMember = (raw: unknown): TeamMember => {
     avatar: toText(member.avatar),
     avatarType,
     avatarIcon: toText(member.avatarIcon) || undefined,
+    avatarStorageId,
     bio: toText(member.bio),
     facebook: toText(member.facebook),
     linkedin: toText(member.linkedin),
@@ -117,6 +119,7 @@ export const toTeamPersistMembers = (members: TeamEditorMember[]): TeamMember[] 
     avatar: member.avatar,
     avatarType: member.avatarType,
     avatarIcon: member.avatarIcon,
+    avatarStorageId: member.avatarStorageId,
     bio: member.bio,
     facebook: member.facebook,
     linkedin: member.linkedin,

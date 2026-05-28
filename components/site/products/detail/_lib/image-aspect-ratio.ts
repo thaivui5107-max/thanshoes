@@ -9,7 +9,7 @@ import {
 export type { ProductImageAspectRatio };
 export { DEFAULT_PRODUCT_IMAGE_ASPECT_RATIO, PRODUCT_IMAGE_ASPECT_RATIO_OPTIONS, isProductImageAspectRatio };
 
-export type ProductDetailLayoutStyle = 'classic' | 'modern' | 'minimal';
+export type ProductDetailLayoutStyle = 'classic' | 'modern' | 'minimal' | 'premium';
 
 const ASPECT_RATIO_MAP: Record<ProductImageAspectRatio, string> = PRODUCT_IMAGE_ASPECT_RATIO_CSS;
 
@@ -22,6 +22,9 @@ const THUMBNAIL_ASPECT_RATIO_MAP: Partial<Record<ProductDetailLayoutStyle, Parti
   },
   minimal: {
     landscape43: '1 / 1',
+    wide169: '1 / 1',
+  },
+  premium: {
     wide169: '1 / 1',
   },
 };
@@ -39,6 +42,10 @@ const FRAME_MAX_WIDTH_MAP: Partial<Record<ProductDetailLayoutStyle, Partial<Reco
     portrait916: 'w-full mx-auto max-w-[23rem] lg:max-w-[25rem]',
     portrait34: 'w-full mx-auto max-w-[29rem] lg:max-w-[31rem]',
     wide169: 'w-full mx-auto max-w-[42rem]',
+  },
+  premium: {
+    portrait916: 'w-full mx-auto max-w-[24rem] lg:max-w-[26rem]',
+    portrait34: 'w-full mx-auto max-w-[31rem] lg:max-w-[34rem]',
   },
 };
 

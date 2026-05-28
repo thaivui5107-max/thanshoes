@@ -58,7 +58,7 @@ export default function PartnersCreatePage() {
       logoSize,
       showBorder,
       spacing,
-      items: partnersItems.map((item) => ({ link: item.link, name: item.name, url: item.url })),
+      items: partnersItems.map((item) => ({ link: item.link, name: item.name, url: item.url, storageId: item.storageId })),
       style: partnersStyle,
       // Header fields
       hideHeader: headerState.hideHeader,

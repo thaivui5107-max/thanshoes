@@ -11,6 +11,7 @@ const attributeGroupDoc = v.object({
   filterType: v.string(),
   inputType: v.string(),
   isFilterable: v.boolean(),
+  isSpecialFilter: v.optional(v.boolean()),
   order: v.number(),
   displayConfig: v.optional(v.any()),
   iconPath: v.optional(v.string()),
@@ -85,12 +86,17 @@ export const create = mutation({
     filterType: v.string(),
     inputType: v.string(),
     isFilterable: v.boolean(),
+    isSpecialFilter: v.optional(v.boolean()),
     order: v.optional(v.number()),
     displayConfig: v.optional(v.any()),
     iconPath: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const resolvedSlug = await resolveUniqueSlug(ctx, { scope: "category", slug: args.slug });
+    
+    if (args.isSpecialFilter && (args.filterType === 'range' || args.inputType === 'range')) {
+      throw new Error("Bộ lọc đặc biệt không được phép sử dụng kiểu range");
+    }
     
     let nextOrder = args.order;
     if (nextOrder === undefined) {
@@ -116,6 +122,7 @@ export const update = mutation({
     filterType: v.optional(v.string()),
     inputType: v.optional(v.string()),
     isFilterable: v.optional(v.boolean()),
+    isSpecialFilter: v.optional(v.boolean()),
     order: v.optional(v.number()),
     displayConfig: v.optional(v.any()),
     iconPath: v.optional(v.string()),
@@ -124,6 +131,14 @@ export const update = mutation({
     const { id, ...updates } = args;
     const group = await ctx.db.get(id);
     if (!group) throw new Error("Attribute Group not found");
+
+    const finalIsSpecialFilter = args.isSpecialFilter !== undefined ? args.isSpecialFilter : group.isSpecialFilter;
+    const finalFilterType = args.filterType !== undefined ? args.filterType : group.filterType;
+    const finalInputType = args.inputType !== undefined ? args.inputType : group.inputType;
+
+    if (finalIsSpecialFilter && (finalFilterType === 'range' || finalInputType === 'range')) {
+      throw new Error("Bộ lọc đặc biệt không được phép sử dụng kiểu range");
+    }
 
     if (args.slug && args.slug !== group.slug) {
       const resolvedSlug = await resolveUniqueSlug(ctx, {
@@ -250,6 +265,7 @@ export const listFilterable = query({
       filterType: v.string(),
       inputType: v.string(),
       isFilterable: v.boolean(),
+      isSpecialFilter: v.optional(v.boolean()),
       order: v.number(),
       displayConfig: v.optional(v.any()),
       iconPath: v.optional(v.string()),
@@ -267,4 +283,106 @@ export const listFilterable = query({
       })),
     })
   ),
+});
+
+export const getFirstAssignedProductType = query({
+  args: { groupId: v.id("attributeGroups") },
+  handler: async (ctx, args) => {
+    const mapping = await ctx.db
+      .query("productTypeAttributeGroups")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .first();
+    if (!mapping) return null;
+    const type = await ctx.db.get(mapping.typeId);
+    return type ? { slug: type.slug, name: type.name } : null;
+  },
+  returns: v.union(
+    v.object({
+      slug: v.string(),
+      name: v.string(),
+    }),
+    v.null()
+  ),
+});
+
+const assignedProductTypeDoc = v.object({
+  _id: v.id("productTypes"),
+  active: v.boolean(),
+  name: v.string(),
+  slug: v.string(),
+});
+
+export const listAssignedProductTypes = query({
+  args: { groupId: v.id("attributeGroups") },
+  handler: async (ctx, args) => {
+    const mappings = await ctx.db
+      .query("productTypeAttributeGroups")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .collect();
+
+    const types = await Promise.all(mappings.map((mapping) => ctx.db.get(mapping.typeId)));
+    return types
+      .filter((type): type is NonNullable<typeof type> => Boolean(type))
+      .map((type) => ({
+        _id: type._id,
+        active: type.active,
+        name: type.name,
+        slug: type.slug,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  },
+  returns: v.array(assignedProductTypeDoc),
+});
+
+export const listAssignedProductTypesForGroups = query({
+  args: { groupIds: v.array(v.id("attributeGroups")) },
+  handler: async (ctx, args) => {
+    const groupIdSet = new Set(args.groupIds);
+    const rows = await Promise.all(
+      args.groupIds.map(async (groupId) => {
+        const mappings = await ctx.db
+          .query("productTypeAttributeGroups")
+          .withIndex("by_group", (q) => q.eq("groupId", groupId))
+          .collect();
+        const types = await Promise.all(mappings.map((mapping) => ctx.db.get(mapping.typeId)));
+        return {
+          groupId,
+          productTypes: types
+            .filter((type): type is NonNullable<typeof type> => Boolean(type))
+            .map((type) => ({
+              _id: type._id,
+              active: type.active,
+              name: type.name,
+              slug: type.slug,
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        };
+      })
+    );
+    return rows.filter((row) => groupIdSet.has(row.groupId));
+  },
+  returns: v.array(v.object({
+    groupId: v.id("attributeGroups"),
+    productTypes: v.array(assignedProductTypeDoc),
+  })),
+});
+
+export const listTermCountsForGroups = query({
+  args: { groupIds: v.array(v.id("attributeGroups")) },
+  handler: async (ctx, args) => {
+    const rows = await Promise.all(
+      args.groupIds.map(async (groupId) => {
+        const terms = await ctx.db
+          .query("attributeTerms")
+          .withIndex("by_group", (q) => q.eq("groupId", groupId))
+          .collect();
+        return { groupId, count: terms.length };
+      })
+    );
+    return rows;
+  },
+  returns: v.array(v.object({
+    groupId: v.id("attributeGroups"),
+    count: v.number(),
+  })),
 });

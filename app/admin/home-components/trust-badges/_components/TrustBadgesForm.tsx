@@ -165,6 +165,7 @@ export function TrustBadgesForm({
           enableCrop
           cropOnUpload={false}
           cropAspectRatio={TRUST_BADGES_A4_ASPECT_RATIO}
+          deleteMode="defer"
           imageFit="contain"
         />
       </SubSection>

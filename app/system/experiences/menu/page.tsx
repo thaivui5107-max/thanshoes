@@ -258,6 +258,18 @@ export default function HeaderMenuExperiencePage() {
     setConfig(prev => ({ ...prev, logoBackgroundStyle: value }));
   };
 
+  const updateFlatSubMenus = (value: boolean) => {
+    setConfig(prev => ({ ...prev, flatSubMenus: value }));
+  };
+
+  const updateBorderRadiusStyle = (value: NonNullable<HeaderMenuConfig['borderRadiusStyle']>) => {
+    setConfig(prev => ({ ...prev, borderRadiusStyle: value }));
+  };
+
+  const updateMegaLevel1Color = (value: NonNullable<HeaderMenuConfig['megaLevel1Color']>) => {
+    setConfig(prev => ({ ...prev, megaLevel1Color: value }));
+  };
+
   const updateLayerColor = (layer: 'topnav' | 'navbar' | 'menu', value: MenuLayerColorChoice) => {
     setConfig(prev => ({
       ...prev,
@@ -594,6 +606,60 @@ export default function HeaderMenuExperiencePage() {
               <p className="text-[11px] leading-5 text-slate-500">
                 Outline/Hairline cho cảm giác flat rất nhẹ; Inset/Pill mềm hơn nhưng vẫn tinh tế. Border/Shadow/Soft/Solid giữ phong cách nổi bật hơn khi cần.
               </p>
+            </div>
+            <div className="space-y-2 pt-1">
+              <Label className="text-xs">Độ bo góc menu (Radius)</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { id: 'none', label: 'Vuông (None)' },
+                  { id: 'small', label: 'Ít (Small)' },
+                  { id: 'large', label: 'Nhiều (Large)' },
+                ] as const).map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => updateBorderRadiusStyle(option.id)}
+                    className={cn(
+                      'h-8 rounded-md border text-xs font-medium transition-colors',
+                      (config.borderRadiusStyle ?? 'large') === option.id
+                        ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <ToggleRow
+              label="Mega menu phẳng (SaaS layout)"
+              checked={config.flatSubMenus ?? false}
+              onChange={updateFlatSubMenus}
+              accentColor={resolvedBrandColor}
+            />
+            <div className="space-y-2 pt-1">
+              <Label className="text-xs">Màu tiêu đề cấp 1 Mega Menu</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { id: 'default', label: 'Mặc định' },
+                  { id: 'primary', label: 'Màu chính' },
+                  { id: 'secondary', label: 'Màu phụ' },
+                ] as const).map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => updateMegaLevel1Color(option.id)}
+                    className={cn(
+                      'h-8 rounded-md border text-xs font-medium transition-colors',
+                      (config.megaLevel1Color ?? 'default') === option.id
+                        ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <ToggleRow
               label="CTA"

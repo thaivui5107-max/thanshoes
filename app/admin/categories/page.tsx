@@ -26,6 +26,7 @@ function CategoriesContent() {
   const productsData = useQuery(api.products.listAll, { limit: 1000 });
   const categoriesAllData = useQuery(api.productCategories.listAll, { limit: 1000 });
   const featuresData = useQuery(api.admin.modules.listModuleFeatures, { moduleKey: 'products' });
+  const enableProductTypesSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableProductTypes' });
   const deleteCategory = useMutation(api.productCategories.remove);
   const routeModeSetting = useQuery(api.settings.getValue, { key: 'ia_route_mode', defaultValue: 'unified' });
   const routeMode = useMemo(() => normalizeRouteMode(routeModeSetting), [routeModeSetting]);
@@ -88,6 +89,8 @@ function CategoriesContent() {
     search: debouncedSearchTerm.trim() ? debouncedSearchTerm.trim() : undefined,
   });
 
+  const enableProductTypes = enableProductTypesSetting?.value === true;
+
   const selectAllData = useQuery(
     api.productCategories.listAdminIds,
     isSelectAllActive
@@ -95,11 +98,19 @@ function CategoriesContent() {
       : 'skip'
   );
 
+  const categoryIds = useMemo(() => categoriesData?.map(category => category._id) ?? [], [categoriesData]);
+  const assignedProductTypesData = useQuery(
+    api.productTypes.listAssignedTypesForCategories,
+    enableProductTypes && categoryIds.length > 0 ? { categoryIds } : 'skip'
+  );
+
   const isTableLoading = categoriesData === undefined
     || totalCountData === undefined
     || productsData === undefined
     || categoriesAllData === undefined
-    || featuresData === undefined;
+    || featuresData === undefined
+    || enableProductTypesSetting === undefined
+    || (enableProductTypes && categoryIds.length > 0 && assignedProductTypesData === undefined);
 
   useEffect(() => {
     if (selectAllData?.hasMore) {
@@ -107,15 +118,36 @@ function CategoriesContent() {
     }
   }, [selectAllData?.hasMore]);
 
-  const columns = [
+  const columns = useMemo(() => [
     { key: 'select', label: 'Chọn' },
     { key: 'name', label: 'Tên danh mục', required: true },
     { key: 'slug', label: 'Slug' },
+    ...(enableProductTypes ? [{ key: 'productTypes', label: 'Product Type' }] : []),
     { key: 'count', label: 'Số sản phẩm' },
     { key: 'status', label: 'Trạng thái' },
     { key: 'actions', label: 'Hành động', required: true }
-  ];
-  const resolvedVisibleColumns = visibleColumns.length > 0 ? visibleColumns : columns.map(c => c.key);
+  ], [enableProductTypes]);
+  const columnKeys = useMemo(() => columns.map(c => c.key), [columns]);
+  const resolvedVisibleColumns = (visibleColumns.length > 0 ? visibleColumns : columnKeys)
+    .filter(key => columnKeys.includes(key));
+
+  useEffect(() => {
+    if (!enableProductTypes || visibleColumns.length === 0 || visibleColumns.includes('productTypes') || typeof window === 'undefined') {
+      return;
+    }
+    const migrationKey = 'admin_categories_product_types_column_seen';
+    if (window.localStorage.getItem(migrationKey) === 'true') {
+      return;
+    }
+    setVisibleColumns(prev => {
+      const base = prev.length > 0 ? prev : columnKeys;
+      const statusIndex = base.indexOf('status');
+      const next = [...base];
+      next.splice(statusIndex >= 0 ? statusIndex : next.length, 0, 'productTypes');
+      return next;
+    });
+    window.localStorage.setItem(migrationKey, 'true');
+  }, [columnKeys, enableProductTypes, visibleColumns]);
 
   const productCountMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -132,6 +164,14 @@ function CategoriesContent() {
     });
     return map;
   }, [categoriesAllData]);
+
+  const categoryProductTypesMap = useMemo(() => {
+    const map: Record<string, { _id: Id<"productTypes">; name: string }[]> = {};
+    assignedProductTypesData?.forEach(row => {
+      map[row.categoryId] = row.types.map(type => ({ _id: type._id, name: type.name }));
+    });
+    return map;
+  }, [assignedProductTypesData]);
 
   const hierarchyEnabled = featuresData
     ?.find(feature => feature.featureKey === 'enableCategoryHierarchy')
@@ -311,6 +351,7 @@ function CategoriesContent() {
               {resolvedVisibleColumns.includes('select') && <TableHead className="w-[40px]"><SelectCheckbox checked={isPageSelected} onChange={toggleSelectAll} indeterminate={isPageIndeterminate} /></TableHead>}
               {resolvedVisibleColumns.includes('name') && <SortableHeader label="Tên danh mục" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />}
               {resolvedVisibleColumns.includes('slug') && <SortableHeader label="Slug" sortKey="slug" sortConfig={sortConfig} onSort={handleSort} />}
+              {resolvedVisibleColumns.includes('productTypes') && <TableHead>Product Type</TableHead>}
               {resolvedVisibleColumns.includes('count') && <SortableHeader label="Số sản phẩm" sortKey="count" sortConfig={sortConfig} onSort={handleSort} className="text-center" />}
               {resolvedVisibleColumns.includes('status') && <SortableHeader label="Trạng thái" sortKey="active" sortConfig={sortConfig} onSort={handleSort} />}
               {resolvedVisibleColumns.includes('actions') && <TableHead className="text-right">Hành động</TableHead>}
@@ -349,6 +390,21 @@ function CategoriesContent() {
                   </TableCell>
                 )}
                 {resolvedVisibleColumns.includes('slug') && <TableCell className="text-slate-500 font-mono text-sm">{cat.slug}</TableCell>}
+                {resolvedVisibleColumns.includes('productTypes') && (
+                  <TableCell>
+                    <div className="flex max-w-[260px] flex-wrap gap-1">
+                      {(categoryProductTypesMap[cat.id] ?? []).length > 0 ? (
+                        categoryProductTypesMap[cat.id].map(type => (
+                          <Badge key={type._id} variant="outline" className="text-xs font-normal">
+                            {type.name}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-sm text-slate-400">—</span>
+                      )}
+                    </div>
+                  </TableCell>
+                )}
                 {resolvedVisibleColumns.includes('count') && <TableCell className="text-center"><Badge variant="secondary">{cat.count}</Badge></TableCell>}
                 {resolvedVisibleColumns.includes('status') && (
                   <TableCell>

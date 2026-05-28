@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { getExtensionFromMime } from "../lib/image/uploadNaming";
-import { listFileUsagesByStorageId, removeFileReferencesForStorage } from "./lib/fileService";
+import { extractStorageUrlKey, listFileUsagesByStorageId, removeFileReferencesForStorage } from "./lib/fileService";
 
 // ============ VALIDATORS ============
 const mediaUsage = v.object({
@@ -28,6 +28,7 @@ const mediaDoc = v.object({
   uploadedBy: v.optional(v.id("users")),
   usageCheckedAt: v.optional(v.number()),
   usageCount: v.optional(v.number()),
+  urlStorageKey: v.optional(v.string()),
   usages: v.optional(v.array(mediaUsage)),
   width: v.optional(v.number()),
 });
@@ -48,6 +49,7 @@ const mediaWithUrl = v.object({
   url: v.union(v.string(), v.null()),
   usageCheckedAt: v.optional(v.number()),
   usageCount: v.optional(v.number()),
+  urlStorageKey: v.optional(v.string()),
   usages: v.optional(v.array(mediaUsage)),
   width: v.optional(v.number()),
 });
@@ -667,8 +669,13 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const extension = resolveExtension(args.filename, args.mimeType);
-    const id = await ctx.db.insert("images", { ...args, extension });
     const url = await ctx.storage.getUrl(args.storageId);
+    const urlStorageKey = extractStorageUrlKey(url);
+    const id = await ctx.db.insert("images", {
+      ...args,
+      extension,
+      ...(urlStorageKey ? { urlStorageKey } : {}),
+    });
 
     // Update counters
     const typeKey = getMediaTypeKey(args.mimeType);

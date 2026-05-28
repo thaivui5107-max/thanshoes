@@ -67,7 +67,7 @@ export default function GalleryCreatePage() {
   const onSubmit = (e: React.FormEvent) => {
     void handleSubmit(e, {
       harmony,
-      items: galleryItems.map((item) => ({ link: item.link, name: item.name, url: item.url })),
+      items: galleryItems.map((item) => ({ link: item.link, name: item.name, url: item.url, storageId: item.storageId })),
       style: galleryStyle,
       hideHeader: headerState.hideHeader,
       showTitle: headerState.showTitle,

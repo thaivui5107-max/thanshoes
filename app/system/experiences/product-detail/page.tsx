@@ -65,7 +65,9 @@ import {
   type DeviceType,
   type LayoutOption,
 } from '@/components/experiences/editor';
-import { useExperienceConfig, useExampleProductSlug, EXPERIENCE_GROUP, EXPERIENCE_NAMES, MESSAGES } from '@/lib/experiences';
+import { IconPopoverPicker } from '@/app/admin/home-components/_shared/components/IconPopoverPicker';
+
+import { useExperienceConfig, useExampleProduct, useExampleProductSlug, EXPERIENCE_GROUP, EXPERIENCE_NAMES, MESSAGES } from '@/lib/experiences';
 import { useBrandColors } from '@/components/site/hooks';
 import {
   DEFAULT_PRODUCT_IMAGE_ASPECT_RATIO,
@@ -75,6 +77,52 @@ import {
 } from '@/components/site/products/detail/_lib/image-aspect-ratio';
 import type { ProductDetailElementColorChoice } from '@/components/site/products/detail/_lib/colors';
 import { resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
+
+import * as LucideIcons from 'lucide-react';
+
+const POPULAR_ICON_NAMES = [
+  // CTA & Phổ biến hàng đầu
+  'Send', 'Phone', 'PhoneCall', 'MessageCircle', 'MessageSquare', 'Mail', 'Globe', 'Sparkles', 'Star', 'Award', 
+  'Heart', 'Gift', 'ShoppingCart', 'ShoppingBag', 'Truck', 'MapPin', 'Shield', 'CheckCircle2', 'BadgeCheck', 'ThumbsUp',
+  // Nhóm Bán hàng & Ưu đãi
+  'Store', 'Tag', 'Compass', 'CreditCard', 'Badge', 'Banknote', 'Landmark', 'Percent', 'Zap', 'Wallet', 
+  'HandCoins', 'Receipt', 'PiggyBank', 'Trophy', 'Crown', 'Gem', 'Diamond', 'Medal', 'Verified', 'ShieldCheck',
+  'HeartHandshake', 'Leaf', 'Flame', 'Activity', 'Clock', 'Calendar', 'Bell', 'Bolt', 'Settings', 'Package', 
+  // Giao nhận & Du lịch
+  'Map', 'Navigation', 'Navigation2', 'Anchor', 'Flag', 'Plane', 'Train', 'Bus', 'Bike', 'Car',
+  // Giao tiếp & Thông tin
+  'HelpCircle', 'AlertCircle', 'Info', 'Share2', 'Eye', 'EyeOff', 'Search', 'User', 'Users', 'UserCheck', 
+  'UserPlus', 'Lock', 'Unlock', 'Key', 'KeyRound', 'Fingerprint', 'FileText', 'FileCheck2', 'Clipboard', 'List', 
+  // Biểu tượng & Phong cách sống
+  'Coffee', 'GlassWater', 'Wine', 'Beer', 'Utensils', 'ChefHat', 'Pizza', 'Cake', 'Cookie', 'Apple', 
+  'Banana', 'Citrus', 'Strawberry', 'TreePine', 'Trees', 'Flower2', 'Sprout', 'Sun', 'Moon', 'Cloud', 
+  'CloudRain', 'Wind', 'Umbrella', 'Smile', 'Laugh', 'Music', 'Volume2', 'Video', 'Tv', 'Laptop', 
+  // Công nghệ & Kinh doanh
+  'Smartphone', 'Tablet', 'Monitor', 'Cpu', 'Server', 'Database', 'HardDrive', 'Network', 'Wifi', 'Battery', 
+  'Briefcase', 'Folder', 'FolderOpen', 'Archive', 'Book', 'BookOpen', 'GraduationCap', 'Bookmark', 'Scissors', 'Wrench', 
+  'Hammer', 'Nut', 'Screwdriver', 'Paintbrush', 'Palette', 'PenTool', 'Pencil', 'Eraser', 'Ruler', 'StickyNote', 
+  // Mở rộng thêm cho đủ 200+ icon
+  'AlertTriangle', 'BookmarkCheck', 'Boxes', 'CalendarClock', 'CalendarDays', 'Camera', 'CircleDollarSign', 'CirclePercent', 'Coins', 'ConciergeBell',
+  'DollarSign', 'Download', 'Euro', 'ExternalLink', 'FileCode2', 'FileHeart', 'FileImage', 'FileSpreadsheet', 'FolderHeart', 'GiftCard',
+  'HammerIcon', 'HandHeart', 'History', 'Home', 'Hourglass', 'Inbox', 'Languages', 'Layers', 'LifeBuoy', 'Lightbulb',
+  'Link2', 'Link', 'Megaphone', 'Menu', 'MessagesSquare', 'Mic', 'MonitorCheck', 'MonitorPlay', 'MonitorSmartphone', 'Newspaper',
+  'Package2', 'PackageCheck', 'PackagePlus', 'PackageSearch', 'PackageX', 'PartyPopper', 'PhoneForwarded', 'PhoneIncoming', 'PhoneMissed', 'PhoneOutgoing',
+  'Plug', 'Power', 'QrCode', 'Radio', 'ReceiptCent', 'ReceiptText', 'RefreshCw', 'RotateCcw', 'Scale', 'Scan',
+  'ScanFace', 'ScanLine', 'SearchCode', 'SendHorizontal', 'ServerCog', 'ShoppingBag2', 'ShoppingCart2', 'Shuffle', 'Sigma', 'Signpost',
+  'Siren', 'Sliders', 'Sparkle', 'Speaker', 'Speech', 'SquareAsterisk', 'SquareDollarSign', 'SquarePercent', 'Stamp', 'StarHalf',
+  'Subscription', 'Tag2', 'Tags', 'Target', 'Telescope', 'Ticket', 'TrendingDown', 'TrendingUp', 'Truck2', 'Tv2',
+  'Undo2', 'Upload', 'User2', 'UserCog', 'VideoOff', 'Voicemail', 'VolumeX', 'Warehouse', 'Watch', 'Webcam',
+  'Wrench2', 'Youtube', 'ZapOff', 'CircleDot', 'Check', 'Plus', 'Minus', 'Trash2', 'ChevronRight', 'ChevronLeft'
+];
+
+const PREMIUM_ICON_OPTIONS = POPULAR_ICON_NAMES.map((name) => {
+  const IconComp = (LucideIcons as any)[name];
+  return {
+    value: name,
+    label: name,
+    Icon: IconComp || LucideIcons.Star
+  };
+});
 
 const ZaloSvg = ({ size = 18 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor">
@@ -156,7 +204,7 @@ const renderSocialIcon = (value: string, size = 16) => {
   return <Icon size={size} />;
 };
 
-type ProductsDetailStyle = 'classic' | 'modern' | 'minimal';
+type ProductsDetailStyle = 'classic' | 'modern' | 'minimal' | 'premium';
 type RelatedProductsMode = 'fixed' | 'infiniteScroll' | 'pagination';
 type ProductImageAspectRatioSource = 'module' | 'custom';
 type ComboAnimateType = 'none' | 'luxury-sheen' | 'typing' | 'letter-wave' | 'fire' | 'sparkle' | 'text-highlight' | 'border-rainbow';
@@ -179,6 +227,7 @@ type ProductDetailExperienceConfig = {
     classic: ClassicLayoutConfig;
     modern: ModernLayoutConfig;
     minimal: MinimalLayoutConfig;
+    premium: PremiumLayoutConfig;
   };
   showBuyNow: boolean;
   relatedProductsMode: RelatedProductsMode;
@@ -210,6 +259,26 @@ type ModernLayoutConfig = BaseImageLayoutConfig & {
 
 type MinimalLayoutConfig = BaseImageLayoutConfig & {
   contentWidth: 'narrow' | 'medium' | 'wide';
+};
+
+type PremiumBannerItem = { title: string; subtitle: string };
+
+type PremiumLayoutConfig = BaseImageLayoutConfig & {
+  premiumBannerItems: PremiumBannerItem[];
+  premiumBannerBg: ProductDetailElementColorChoice;
+  premiumBannerText: ProductDetailElementColorChoice;
+  showPremiumBanner: boolean;
+  zaloText?: string;
+  zaloIcon?: string;
+  zaloUrl?: string;
+  phoneText?: string;
+  phoneIcon?: string;
+  phoneUrl?: string;
+  mobileFontSize?: 'xs' | 'sm' | 'base';
+  priceLeftIcon?: string;
+  priceRightIcon?: string;
+  showPriceLeftIcon?: boolean;
+  showPriceRightIcon?: boolean;
 };
 
 type ClassicHighlightIcon =
@@ -246,6 +315,7 @@ const LAYOUT_STYLES: LayoutOption<ProductsDetailStyle>[] = [
   { description: 'Layout 2 cột với gallery và info', id: 'classic', label: 'Classic' },
   { description: 'Full-width hero, landing page style', id: 'modern', label: 'Modern' },
   { description: 'Tối giản, tập trung sản phẩm', id: 'minimal', label: 'Minimal' },
+  { description: 'Đẳng cấp, sang trọng, tối ưu Combo & Attributes', id: 'premium', label: 'Premium' },
 ];
 
 const DEFAULT_CONFIG: ProductDetailExperienceConfig = {
@@ -258,6 +328,24 @@ const DEFAULT_CONFIG: ProductDetailExperienceConfig = {
     classic: { showRating: true, showComments: true, showCommentLikes: true, showCommentReplies: true, showWishlist: true, showShare: true, showAddToCart: true, showClassicHighlights: true },
     modern: { showRating: true, showComments: true, showCommentLikes: true, showCommentReplies: true, showWishlist: true, showShare: true, showAddToCart: true, heroStyle: 'full' },
     minimal: { showRating: true, showComments: true, showCommentLikes: true, showCommentReplies: true, showWishlist: true, showShare: true, showAddToCart: true, contentWidth: 'medium' },
+    premium: { showRating: true, showComments: true, showCommentLikes: true, showCommentReplies: true, showWishlist: true, showShare: true, showAddToCart: true, premiumBannerBg: 'primary' as ProductDetailElementColorChoice, premiumBannerText: 'white' as ProductDetailElementColorChoice, showPremiumBanner: true, premiumBannerItems: [
+      { title: 'FREESHIP TOÀN QUỐC', subtitle: 'Đơn từ 1.000.000đ' },
+      { title: 'ĐÓNG GÓI AN TOÀN', subtitle: 'Chống sốc 100%' },
+      { title: 'GIAO HÀNG NHANH', subtitle: 'Chỉ từ 2 - 3 ngày' },
+      { title: 'QUÀ TẶNG HẤP DẪN', subtitle: 'Khi mua combo' },
+    ],
+    zaloText: 'MUA QUA ZALO',
+    zaloIcon: 'Send',
+    zaloUrl: '',
+    phoneText: 'GỌI TƯ VẤN',
+    phoneIcon: 'Phone',
+    phoneUrl: '',
+    mobileFontSize: 'xs',
+    priceLeftIcon: 'Award',
+    priceRightIcon: 'Gift',
+    showPriceLeftIcon: true,
+    showPriceRightIcon: true,
+    },
   },
   showBuyNow: true,
   relatedProductsMode: 'fixed',
@@ -421,6 +509,14 @@ export default function ProductDetailExperiencePage() {
   const enableCombosSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableCombos' });
   const isCombosEnabled = enableCombosSetting?.value === true;
   const exampleProductSlug = useExampleProductSlug();
+  const exampleProduct = useExampleProduct();
+  const enableProductTypesSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableProductTypes' });
+  const enableProductTypes = enableProductTypesSetting?.value === true;
+  const productTermsSource = useQuery(
+    api.attributeTerms.getTermsForProducts,
+    enableProductTypes && exampleProduct?._id ? { productIds: [exampleProduct._id] } : 'skip'
+  );
+  const demoAttributes = productTermsSource?.[0]?.terms ?? [];
   const setMultipleSettings = useMutation(api.settings.setMultiple);
   const [previewDevice, setPreviewDevice] = useState<DeviceType>('desktop');
   const [isSaving, setIsSaving] = useState(false);
@@ -580,7 +676,7 @@ export default function ProductDetailExperiencePage() {
       accentColors?: ProductDetailAccentColorConfig;
       showSocialButtons?: boolean;
       socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
-      layouts?: Partial<Record<ProductsDetailStyle, Partial<ClassicLayoutConfig & ModernLayoutConfig & MinimalLayoutConfig & {
+      layouts?: Partial<Record<ProductsDetailStyle, Partial<ClassicLayoutConfig & ModernLayoutConfig & MinimalLayoutConfig & PremiumLayoutConfig & BaseImageLayoutConfig & {
         imageAspectRatio?: ProductImageAspectRatio;
       }>>>;
     }> | undefined;
@@ -622,15 +718,36 @@ export default function ProductDetailExperiencePage() {
           showClassicHighlights: classicHighlightsSetting,
           ...raw?.layouts?.classic,
         },
-        modern: {
-          ...DEFAULT_CONFIG.layouts.modern,
-          ...raw?.layouts?.modern,
-        },
-        minimal: {
-          ...DEFAULT_CONFIG.layouts.minimal,
-          ...raw?.layouts?.minimal,
-        },
-      },
+         modern: {
+           ...DEFAULT_CONFIG.layouts.modern,
+           ...raw?.layouts?.modern,
+         },
+         minimal: {
+           ...DEFAULT_CONFIG.layouts.minimal,
+           ...raw?.layouts?.minimal,
+         },
+         premium: {
+           ...DEFAULT_CONFIG.layouts.premium,
+           ...raw?.layouts?.premium,
+           showPremiumBanner: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.showPremiumBanner ?? DEFAULT_CONFIG.layouts.premium.showPremiumBanner,
+           premiumBannerBg: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.premiumBannerBg ?? DEFAULT_CONFIG.layouts.premium.premiumBannerBg,
+           premiumBannerText: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.premiumBannerText ?? DEFAULT_CONFIG.layouts.premium.premiumBannerText,
+           premiumBannerItems: Array.isArray((raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.premiumBannerItems)
+             ? ((raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.premiumBannerItems as PremiumBannerItem[])
+             : DEFAULT_CONFIG.layouts.premium.premiumBannerItems,
+           zaloText: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.zaloText ?? DEFAULT_CONFIG.layouts.premium.zaloText,
+           zaloIcon: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.zaloIcon ?? DEFAULT_CONFIG.layouts.premium.zaloIcon,
+           zaloUrl: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.zaloUrl ?? DEFAULT_CONFIG.layouts.premium.zaloUrl,
+           phoneText: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.phoneText ?? DEFAULT_CONFIG.layouts.premium.phoneText,
+           phoneIcon: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.phoneIcon ?? DEFAULT_CONFIG.layouts.premium.phoneIcon,
+           phoneUrl: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.phoneUrl ?? DEFAULT_CONFIG.layouts.premium.phoneUrl,
+           mobileFontSize: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.mobileFontSize ?? DEFAULT_CONFIG.layouts.premium.mobileFontSize,
+           priceLeftIcon: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.priceLeftIcon ?? DEFAULT_CONFIG.layouts.premium.priceLeftIcon,
+           priceRightIcon: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.priceRightIcon ?? DEFAULT_CONFIG.layouts.premium.priceRightIcon,
+           showPriceLeftIcon: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.showPriceLeftIcon ?? DEFAULT_CONFIG.layouts.premium.showPriceLeftIcon,
+           showPriceRightIcon: (raw?.layouts?.premium as Partial<PremiumLayoutConfig>)?.showPriceRightIcon ?? DEFAULT_CONFIG.layouts.premium.showPriceRightIcon,
+         },
+       },
       showBuyNow: raw?.showBuyNow ?? true,
       relatedProductsMode: raw?.relatedProductsMode === 'infiniteScroll' || raw?.relatedProductsMode === 'pagination'
         ? raw.relatedProductsMode
@@ -720,35 +837,44 @@ export default function ProductDetailExperiencePage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const normalizedLayouts = {
-        classic: {
-          ...config.layouts.classic,
-          showRating: canUseComments ? config.layouts.classic.showRating : false,
-          showComments: canUseComments ? config.layouts.classic.showComments : false,
-          showCommentLikes: canUseCommentLikes ? config.layouts.classic.showCommentLikes : false,
-          showCommentReplies: canUseCommentReplies ? config.layouts.classic.showCommentReplies : false,
-          showWishlist: canUseWishlist ? config.layouts.classic.showWishlist : false,
-          showAddToCart: canUseCart ? config.layouts.classic.showAddToCart : false,
-        },
-        modern: {
-          ...config.layouts.modern,
-          showRating: canUseComments ? config.layouts.modern.showRating : false,
-          showComments: canUseComments ? config.layouts.modern.showComments : false,
-          showCommentLikes: canUseCommentLikes ? config.layouts.modern.showCommentLikes : false,
-          showCommentReplies: canUseCommentReplies ? config.layouts.modern.showCommentReplies : false,
-          showWishlist: canUseWishlist ? config.layouts.modern.showWishlist : false,
-          showAddToCart: canUseCart ? config.layouts.modern.showAddToCart : false,
-        },
-        minimal: {
-          ...config.layouts.minimal,
-          showRating: canUseComments ? config.layouts.minimal.showRating : false,
-          showComments: canUseComments ? config.layouts.minimal.showComments : false,
-          showCommentLikes: canUseCommentLikes ? config.layouts.minimal.showCommentLikes : false,
-          showCommentReplies: canUseCommentReplies ? config.layouts.minimal.showCommentReplies : false,
-          showWishlist: canUseWishlist ? config.layouts.minimal.showWishlist : false,
-          showAddToCart: canUseCart ? config.layouts.minimal.showAddToCart : false,
-        },
-      };
+       const normalizedLayouts = {
+         classic: {
+           ...config.layouts.classic,
+           showRating: canUseComments ? config.layouts.classic.showRating : false,
+           showComments: canUseComments ? config.layouts.classic.showComments : false,
+           showCommentLikes: canUseCommentLikes ? config.layouts.classic.showCommentLikes : false,
+           showCommentReplies: canUseCommentReplies ? config.layouts.classic.showCommentReplies : false,
+           showWishlist: canUseWishlist ? config.layouts.classic.showWishlist : false,
+           showAddToCart: canUseCart ? config.layouts.classic.showAddToCart : false,
+         },
+         modern: {
+           ...config.layouts.modern,
+           showRating: canUseComments ? config.layouts.modern.showRating : false,
+           showComments: canUseComments ? config.layouts.modern.showComments : false,
+           showCommentLikes: canUseCommentLikes ? config.layouts.modern.showCommentLikes : false,
+           showCommentReplies: canUseCommentReplies ? config.layouts.modern.showCommentReplies : false,
+           showWishlist: canUseWishlist ? config.layouts.modern.showWishlist : false,
+           showAddToCart: canUseCart ? config.layouts.modern.showAddToCart : false,
+         },
+         minimal: {
+           ...config.layouts.minimal,
+           showRating: canUseComments ? config.layouts.minimal.showRating : false,
+           showComments: canUseComments ? config.layouts.minimal.showComments : false,
+           showCommentLikes: canUseCommentLikes ? config.layouts.minimal.showCommentLikes : false,
+           showCommentReplies: canUseCommentReplies ? config.layouts.minimal.showCommentReplies : false,
+           showWishlist: canUseWishlist ? config.layouts.minimal.showWishlist : false,
+           showAddToCart: canUseCart ? config.layouts.minimal.showAddToCart : false,
+         },
+         premium: {
+           ...config.layouts.premium,
+           showRating: canUseComments ? config.layouts.premium.showRating : false,
+           showComments: canUseComments ? config.layouts.premium.showComments : false,
+           showCommentLikes: canUseCommentLikes ? config.layouts.premium.showCommentLikes : false,
+           showCommentReplies: canUseCommentReplies ? config.layouts.premium.showCommentReplies : false,
+           showWishlist: canUseWishlist ? config.layouts.premium.showWishlist : false,
+           showAddToCart: canUseCart ? config.layouts.premium.showAddToCart : false,
+         },
+       };
 
       const normalizedConfig = {
         ...config,
@@ -771,6 +897,11 @@ export default function ProductDetailExperiencePage() {
   };
 
   const getPreviewProps = () => {
+    const premiumLayoutConfig = config.layouts.premium as PremiumLayoutConfig;
+    const premiumBannerItems = premiumLayoutConfig.premiumBannerItems ?? DEFAULT_CONFIG.layouts.premium.premiumBannerItems;
+    const premiumBannerBg = premiumLayoutConfig.premiumBannerBg ?? DEFAULT_CONFIG.layouts.premium.premiumBannerBg;
+    const premiumBannerText = premiumLayoutConfig.premiumBannerText ?? DEFAULT_CONFIG.layouts.premium.premiumBannerText;
+    const showPremiumBanner = premiumLayoutConfig.showPremiumBanner ?? DEFAULT_CONFIG.layouts.premium.showPremiumBanner;
     const base = {
       layoutStyle: config.layoutStyle,
       showRating: currentLayoutConfig.showRating && canUseComments,
@@ -793,6 +924,10 @@ export default function ProductDetailExperiencePage() {
       enableImageLightbox: config.enableImageLightbox,
       showHighlights: config.layouts.classic.showClassicHighlights,
       classicHighlights,
+      premiumBannerItems,
+      premiumBannerBg,
+      premiumBannerText,
+      showPremiumBanner,
       device: previewDevice,
       brandColor,
       secondaryColor,
@@ -804,6 +939,19 @@ export default function ProductDetailExperiencePage() {
       accentColors: config.accentColors,
       showSocialButtons: config.showSocialButtons,
       socialButtons: config.socialButtons,
+      demoAttributes,
+      productTypeId: exampleProduct?.productTypeId,
+      zaloText: premiumLayoutConfig.zaloText,
+      zaloIcon: premiumLayoutConfig.zaloIcon,
+      zaloUrl: premiumLayoutConfig.zaloUrl,
+      phoneText: premiumLayoutConfig.phoneText,
+      phoneIcon: premiumLayoutConfig.phoneIcon,
+      phoneUrl: premiumLayoutConfig.phoneUrl,
+      mobileFontSize: premiumLayoutConfig.mobileFontSize,
+      priceLeftIcon: premiumLayoutConfig.priceLeftIcon,
+      priceRightIcon: premiumLayoutConfig.priceRightIcon,
+      showPriceLeftIcon: premiumLayoutConfig.showPriceLeftIcon,
+      showPriceRightIcon: premiumLayoutConfig.showPriceRightIcon,
     };
 
     return base;
@@ -1056,6 +1204,9 @@ export default function ProductDetailExperiencePage() {
         />
       );
     }
+    if (config.layoutStyle === 'premium') {
+      return null;
+    }
     return null;
   };
 
@@ -1257,6 +1408,257 @@ export default function ProductDetailExperiencePage() {
             </div>
           </ControlCard>
 
+          {config.layoutStyle === 'premium' && (() => {
+            const premiumLayoutConfig = currentLayoutConfig as PremiumLayoutConfig;
+            const bannerBg = premiumLayoutConfig.premiumBannerBg ?? DEFAULT_CONFIG.layouts.premium.premiumBannerBg;
+            const bannerText = premiumLayoutConfig.premiumBannerText ?? DEFAULT_CONFIG.layouts.premium.premiumBannerText;
+            const bannerItems = premiumLayoutConfig.premiumBannerItems ?? DEFAULT_CONFIG.layouts.premium.premiumBannerItems;
+            const showBanner = premiumLayoutConfig.showPremiumBanner ?? DEFAULT_CONFIG.layouts.premium.showPremiumBanner;
+            const colorChoices = [
+              { value: 'primary', label: 'Màu chính' },
+              { value: 'secondary', label: 'Màu phụ' },
+              { value: 'black', label: 'Đen' },
+              { value: 'white', label: 'Trắng' },
+            ];
+            return (
+              <>
+                <ControlCard title="Dải cam kết (Premium)">
+                  <ToggleRow
+                    label="Hiện dải cam kết"
+                    checked={showBanner}
+                    onChange={(v) => updateLayoutConfig('showPremiumBanner' as keyof typeof currentLayoutConfig, v as never)}
+                    accentColor={brandColor}
+                  />
+                  {showBanner && (
+                    <>
+                      <div className="pt-2 pb-3 mb-1 border-b border-slate-200 dark:border-slate-700 space-y-1">
+                        <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-1">Phối màu dải cam kết</p>
+                        <SelectRow
+                          label="Màu nền"
+                          value={bannerBg}
+                          options={colorChoices}
+                          onChange={(v) => updateLayoutConfig('premiumBannerBg' as keyof typeof currentLayoutConfig, v as never)}
+                        />
+                        <SelectRow
+                          label="Màu chữ"
+                          value={bannerText}
+                          options={colorChoices}
+                          onChange={(v) => updateLayoutConfig('premiumBannerText' as keyof typeof currentLayoutConfig, v as never)}
+                        />
+                      </div>
+                      <div className="space-y-3 mt-3">
+                        {bannerItems.map((item, idx) => (
+                          <div key={idx} className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] text-slate-400">Tiêu đề #{idx + 1}</label>
+                              <Input
+                                value={item.title}
+                                onChange={(e) => {
+                                  const next = bannerItems.map((b, i) => i === idx ? { ...b, title: e.target.value } : b);
+                                  updateLayoutConfig('premiumBannerItems' as keyof typeof currentLayoutConfig, next as never);
+                                }}
+                                className="h-7 text-xs px-2"
+                                placeholder="VD: FREESHIP TOÀN QUỐC"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-400">Mô tả ngắn #{idx + 1}</label>
+                              <Input
+                                value={item.subtitle}
+                                onChange={(e) => {
+                                  const next = bannerItems.map((b, i) => i === idx ? { ...b, subtitle: e.target.value } : b);
+                                  updateLayoutConfig('premiumBannerItems' as keyof typeof currentLayoutConfig, next as never);
+                                }}
+                                className="h-7 text-xs px-2"
+                                placeholder="VD: Đơn từ 1.000.000đ"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </ControlCard>
+
+                <ControlCard title="Dải nút CTA & Icon (Premium)">
+                  <div className="space-y-4">
+                    {/* Zalo Button Settings */}
+                    <div className="space-y-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+                      <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Cấu hình nút Zalo</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-slate-400">Chữ trên nút</label>
+                          <Input
+                            value={premiumLayoutConfig.zaloText ?? 'MUA QUA ZALO'}
+                            onChange={(e) => updateLayoutConfig('zaloText' as keyof typeof currentLayoutConfig, e.target.value as never)}
+                            className="h-8 text-xs px-2"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-1">Chọn Icon</label>
+                          <IconPopoverPicker
+                            value={premiumLayoutConfig.zaloIcon ?? 'Send'}
+                            onChange={(v) => updateLayoutConfig('zaloIcon' as keyof typeof currentLayoutConfig, v as never)}
+                            options={PREMIUM_ICON_OPTIONS}
+                            brandColor={brandColor}
+                            compact
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] text-slate-400">Link Zalo (Để trống để tự động lấy từ Settings hệ thống)</label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 text-[10px] text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded px-1.5 flex items-center gap-1"
+                          onClick={() => {
+                            if (!systemSettingsForSocial) {
+                              toast.error('Cấu hình hệ thống chưa tải xong.');
+                              return;
+                            }
+                            const val = (systemSettingsForSocial as any)?.contact_zalo?.trim() || '';
+                            if (!val) {
+                              toast.warning('Zalo hệ thống trống.');
+                              return;
+                            }
+                            updateLayoutConfig('zaloUrl' as keyof typeof currentLayoutConfig, val as never);
+                            toast.success('Đã tải Zalo cấu hình chung');
+                          }}
+                        >
+                          Tải từ cấu hình chung
+                        </Button>
+                      </div>
+                      <Input
+                        value={premiumLayoutConfig.zaloUrl ?? ''}
+                        onChange={(e) => updateLayoutConfig('zaloUrl' as keyof typeof currentLayoutConfig, e.target.value as never)}
+                        placeholder="VD: 0912345678 hoặc link Zalo"
+                        className="h-8 text-xs px-2"
+                      />
+                    </div>
+
+                    {/* Phone Button Settings */}
+                    <div className="space-y-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+                      <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Cấu hình nút Gọi tư vấn</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-slate-400">Chữ trên nút</label>
+                          <Input
+                            value={premiumLayoutConfig.phoneText ?? 'GỌI TƯ VẤN'}
+                            onChange={(e) => updateLayoutConfig('phoneText' as keyof typeof currentLayoutConfig, e.target.value as never)}
+                            className="h-8 text-xs px-2"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-1">Chọn Icon</label>
+                          <IconPopoverPicker
+                            value={premiumLayoutConfig.phoneIcon ?? 'Phone'}
+                            onChange={(v) => updateLayoutConfig('phoneIcon' as keyof typeof currentLayoutConfig, v as never)}
+                            options={PREMIUM_ICON_OPTIONS}
+                            brandColor={brandColor}
+                            compact
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] text-slate-400">Số điện thoại (Để trống để lấy từ Settings hệ thống)</label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 text-[10px] text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded px-1.5 flex items-center gap-1"
+                          onClick={() => {
+                            if (!systemSettingsForSocial) {
+                              toast.error('Cấu hình hệ thống chưa tải xong.');
+                              return;
+                            }
+                            const val = (systemSettingsForSocial as any)?.contact_phone?.trim() || '';
+                            if (!val) {
+                              toast.warning('Số điện thoại hệ thống trống.');
+                              return;
+                            }
+                            updateLayoutConfig('phoneUrl' as keyof typeof currentLayoutConfig, val as never);
+                            toast.success('Đã tải SĐT cấu hình chung');
+                          }}
+                        >
+                          Tải từ cấu hình chung
+                        </Button>
+                      </div>
+                      <Input
+                        value={premiumLayoutConfig.phoneUrl ?? ''}
+                        onChange={(e) => updateLayoutConfig('phoneUrl' as keyof typeof currentLayoutConfig, e.target.value as never)}
+                        placeholder="VD: 0912345678"
+                        className="h-8 text-xs px-2"
+                      />
+                    </div>
+
+                    {/* Font Size & Price Box Icons Settings */}
+                    <div className="space-y-2 pt-1">
+                      <SelectRow
+                        label="Cỡ chữ nút trên mobile"
+                        value={premiumLayoutConfig.mobileFontSize ?? 'xs'}
+                        options={[
+                          { value: 'xs', label: 'Cực nhỏ (xs)' },
+                          { value: 'sm', label: 'Nhỏ (sm)' },
+                          { value: 'base', label: 'Mặc định (base)' },
+                        ]}
+                        onChange={(v) => updateLayoutConfig('mobileFontSize' as keyof typeof currentLayoutConfig, v as never)}
+                      />
+
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-2">
+                        <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Cấu hình Icon nền giá</p>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <ToggleRow
+                            label="Hiện Icon Trái"
+                            checked={premiumLayoutConfig.showPriceLeftIcon ?? true}
+                            onChange={(v) => updateLayoutConfig('showPriceLeftIcon' as keyof typeof currentLayoutConfig, v as never)}
+                            accentColor={brandColor}
+                          />
+                          {premiumLayoutConfig.showPriceLeftIcon !== false && (
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Icon Trái (Mặc định Ribbon)</label>
+                              <IconPopoverPicker
+                                value={premiumLayoutConfig.priceLeftIcon ?? 'Award'}
+                                onChange={(v) => updateLayoutConfig('priceLeftIcon' as keyof typeof currentLayoutConfig, v as never)}
+                                options={PREMIUM_ICON_OPTIONS}
+                                brandColor={brandColor}
+                                compact
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <ToggleRow
+                            label="Hiện Icon Phải"
+                            checked={premiumLayoutConfig.showPriceRightIcon ?? true}
+                            onChange={(v) => updateLayoutConfig('showPriceRightIcon' as keyof typeof currentLayoutConfig, v as never)}
+                            accentColor={brandColor}
+                          />
+                          {premiumLayoutConfig.showPriceRightIcon !== false && (
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Icon Phải (Mặc định Hộp quà)</label>
+                              <IconPopoverPicker
+                                value={premiumLayoutConfig.priceRightIcon ?? 'Gift'}
+                                onChange={(v) => updateLayoutConfig('priceRightIcon' as keyof typeof currentLayoutConfig, v as never)}
+                                options={PREMIUM_ICON_OPTIONS}
+                                brandColor={brandColor}
+                                compact
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </ControlCard>
+              </>
+            );
+          })()}
+
+
+
           {isCombosEnabled && (
             <ControlCard title="Hiệu ứng Combo">
               <SelectRow
@@ -1417,3 +1819,6 @@ export default function ProductDetailExperiencePage() {
     </div>
   );
 }
+
+
+

@@ -184,6 +184,30 @@ export function PopupForm({ config, onChange, defaultExpanded = true }: PopupFor
                 className="h-1.5 w-full cursor-pointer accent-blue-500"
               />
             </div>
+
+            {config.style === 'centered-advertisement' && (
+              <div className="space-y-2 md:col-span-2">
+                <Label className="text-sm">Kiểu nền (Background Mode)</Label>
+                <select
+                  value={config.backgroundMode ?? 'solid'}
+                  onChange={(event) => updateConfig(config, onChange, 'backgroundMode', event.target.value as any)}
+                  className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  <option value="solid">Mặc định (Nền trắng)</option>
+                  <option value="brand">Màu chính thương hiệu</option>
+                  <option value="secondary-solid">Màu phụ thương hiệu</option>
+                  <option value="gradient-brand-to-secondary">Gradient Màu chính → Màu phụ</option>
+                  <option value="gradient-secondary-to-brand">Gradient Màu phụ → Màu chính</option>
+                  <option value="gradient-brand-dark">Gradient Màu chính → Đen huyền bí</option>
+                  <option value="gradient-secondary-dark">Gradient Màu phụ → Đen huyền bí</option>
+                  <option value="pattern-sunburst">Màu chính + Quạt mặt trời</option>
+                  <option value="pattern-sunburst-secondary">Màu phụ + Quạt mặt trời</option>
+                  <option value="pattern-sunburst-gradient">Gradient + Quạt mặt trời</option>
+                  <option value="glassmorphism">Glassmorphism (Kính mờ thời thượng)</option>
+                  <option value="dark-aesthetic">Dark Aesthetic (Tối sang trọng)</option>
+                </select>
+              </div>
+            )}
         </HomeComponentDisplaySettingsSection>
 
         <SubSection
@@ -286,7 +310,7 @@ export function PopupForm({ config, onChange, defaultExpanded = true }: PopupFor
           <SettingsImageUploader
             label="Ảnh popup"
             value={config.imageUrl}
-            onChange={(url) => updateConfig(config, onChange, 'imageUrl', url ?? '')}
+            onChange={(url, storageId) => onChange({ ...config, imageUrl: url ?? '', storageId: storageId ?? null })}
             folder="home-components/popup"
             naming={{ entityName: config.heading || 'popup', field: 'image', index: 1 }}
             previewSize="md"

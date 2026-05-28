@@ -147,8 +147,9 @@ export function useSocialLinks() {
   const skipContact = Boolean(snapshotContact);
   const settings = useQuery(api.settings.listByGroup, skipSocial ? 'skip' : { group: 'social' });
   const contactSettings = useQuery(api.settings.listByGroup, skipContact ? 'skip' : { group: 'contact' });
+  const enabledFields = useQuery(api.admin.modules.listEnabledModuleFields, skipSocial && skipContact ? 'skip' : { moduleKey: 'settings' });
   
-  if (!snapshotSocial && (settings === undefined || contactSettings === undefined)) {
+  if (!snapshotSocial && (settings === undefined || contactSettings === undefined || enabledFields === undefined)) {
     return { isLoading: true };
   }
   
@@ -173,15 +174,21 @@ export function useSocialLinks() {
       contactMap[s.key] = s.value as string;
     });
   }
+
+  const enabledKeys = new Set(
+    skipSocial && skipContact
+      ? ['social_facebook', 'social_instagram', 'social_linkedin', 'social_tiktok', 'social_twitter', 'social_youtube', 'contact_zalo']
+      : (enabledFields?.map(f => f.fieldKey) ?? [])
+  );
   
   return {
-    facebook: settingsMap.social_facebook || '',
-    instagram: settingsMap.social_instagram || '',
+    facebook: enabledKeys.has('social_facebook') ? (settingsMap.social_facebook || '') : '',
+    instagram: enabledKeys.has('social_instagram') ? (settingsMap.social_instagram || '') : '',
     isLoading: false,
-    linkedin: settingsMap.social_linkedin || '',
-    tiktok: settingsMap.social_tiktok || '',
-    twitter: settingsMap.social_twitter || '',
-    youtube: settingsMap.social_youtube || '',
-    zalo: contactMap.contact_zalo || '',
+    linkedin: enabledKeys.has('social_linkedin') ? (settingsMap.social_linkedin || '') : '',
+    tiktok: enabledKeys.has('social_tiktok') ? (settingsMap.social_tiktok || '') : '',
+    twitter: enabledKeys.has('social_twitter') ? (settingsMap.social_twitter || '') : '',
+    youtube: enabledKeys.has('social_youtube') ? (settingsMap.social_youtube || '') : '',
+    zalo: enabledKeys.has('contact_zalo') ? (contactMap.contact_zalo || '') : '',
   };
 }

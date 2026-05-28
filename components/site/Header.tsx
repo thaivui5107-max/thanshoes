@@ -83,6 +83,9 @@ interface HeaderConfig {
   headerStickyMobile?: boolean;
   layerColors?: MenuLayerColorConfig;
   showBrandAccent?: boolean;
+  flatSubMenus?: boolean;
+  borderRadiusStyle?: 'none' | 'small' | 'large';
+  megaLevel1Color?: 'default' | 'primary' | 'secondary';
   cta?: { show?: boolean; text?: string; url?: string };
   topbar?: TopbarConfig;
   search?: SearchConfig;
@@ -103,6 +106,9 @@ const DEFAULT_CONFIG: HeaderConfig = {
   headerStickyDesktop: true,
   headerStickyMobile: true,
   showBrandAccent: false,
+  flatSubMenus: false,
+  borderRadiusStyle: 'large',
+  megaLevel1Color: 'default',
   cart: { show: true },
   cta: { show: true, text: 'Liên hệ', url: '/contact' },
   login: { show: true, text: 'Đăng nhập' },
@@ -555,7 +561,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
     };
     return new Map<Id<'menuItems'>, number>(rootItems.map((root) => [root._id, getNodeMaxLevel(root, 1)]));
   }, [rootItems]);
-  const isDeepMenuForItem = useCallback((itemId: Id<'menuItems'>) => (maxLevelByRootId.get(itemId) ?? 1) >= 4, [maxLevelByRootId]);
+  const isDeepMenuForItem = useCallback((itemId: Id<'menuItems'>) => (maxLevelByRootId.get(itemId) ?? 1) >= 3, [maxLevelByRootId]);
 
   useLayoutEffect(() => {
     if (measureItemRefs.current.length !== rootItems.length) {
@@ -772,6 +778,22 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
     return 'md:grid-cols-2 xl:grid-cols-5';
   };
 
+  // Bo góc động theo config
+  const radiusLevel = config.borderRadiusStyle ?? 'large';
+  const r = {
+    btn: radiusLevel === 'none' ? 'rounded-none' : radiusLevel === 'small' ? 'rounded' : 'rounded-lg',
+    dropdown: radiusLevel === 'none' ? 'rounded-none' : radiusLevel === 'small' ? 'rounded-md' : 'rounded-xl',
+    popup: radiusLevel === 'none' ? 'rounded-none' : radiusLevel === 'small' ? 'rounded-md' : 'rounded-2xl',
+    item: radiusLevel === 'none' ? 'rounded-none' : radiusLevel === 'small' ? 'rounded' : 'rounded-lg',
+  };
+
+  // Màu tiêu đề cấp 1 Mega Menu
+  const level1ColorMode = config.megaLevel1Color ?? 'default';
+  const level1Color =
+    level1ColorMode === 'primary' ? tokens.primary
+    : level1ColorMode === 'secondary' ? tokens.secondary
+    : tokens.textPrimary;
+
   const renderDesktopFlyoutNodes = (nodes: MenuItemWithChildren[], deepMode: boolean): React.ReactNode => nodes.map((node) => {
     if (!deepMode) {
       const flyoutKey = `flyout-${node._id}`;
@@ -790,15 +812,26 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
             href={node.url}
             target={node.openInNewTab ? '_blank' : undefined}
             rel={node.openInNewTab ? 'noreferrer' : undefined}
-            className="flex min-w-0 items-start justify-between gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]"
+            className={cn('flex min-w-0 items-start justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]', r.item)}
             style={{ color: tokens.dropdownItemText, ...menuVars }}
           >
             <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug">{node.label}</span>
-            {node.children.length > 0 && <ChevronRight size={14} />}
+            {node.children.length > 0 && <ChevronRight size={10} className="transition-transform duration-200 group-hover/menu-node:rotate-90" />}
           </Link>
           {node.children.length > 0 && (
             <div className={cn('absolute top-0 z-50 hidden', flyoutPositionClass)}>
-              <div className="rounded-lg border py-2 min-w-[220px] max-w-[min(320px,calc(100vw-2rem))] shadow-lg group-hover/menu-node:block" style={{ backgroundColor: tokens.dropdownBg, borderColor: tokens.dropdownBorder }}>
+              <div
+                className={cn(
+                  r.dropdown,
+                  'border py-2 min-w-[220px] max-w-[min(300px,calc(100vw-2rem))] shadow-xl group-hover/menu-node:block',
+                  !node.children.some((child) => child.children && child.children.length > 0) && "overflow-y-auto scrollbar-menu-thin"
+                )}
+                style={{
+                  backgroundColor: tokens.dropdownBg,
+                  borderColor: tokens.dropdownBorder,
+                  maxHeight: !node.children.some((child) => child.children && child.children.length > 0) ? 'min(60vh, 290px)' : undefined,
+                }}
+              >
                 {renderDesktopFlyoutNodes(node.children, deepMode)}
               </div>
             </div>
@@ -823,25 +856,36 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
           href={node.url}
           target={node.openInNewTab ? '_blank' : undefined}
           rel={node.openInNewTab ? 'noreferrer' : undefined}
-          className="flex min-w-0 items-start justify-between gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]"
+          className={cn('flex min-w-0 items-start justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]', r.item)}
           style={{
             ...(isLevel4Open ? { backgroundColor: tokens.dropdownItemHoverBg, color: tokens.dropdownItemHoverText } : { color: tokens.dropdownItemText }),
             ...menuVars,
           }}
         >
           <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug">{node.label}</span>
-          {node.children.length > 0 && <ChevronRight size={14} />}
+          {node.children.length > 0 && <ChevronRight size={10} className={cn('transition-transform duration-200', isLevel4Open && 'rotate-90')} />}
         </Link>
         {node.children.length > 0 && isLevel4Open && (
-          <div className="absolute left-0 top-full pt-1 z-50">
-            <div className="rounded-lg border py-2 min-w-[220px] max-w-[min(320px,calc(100vw-2rem))]" style={{ backgroundColor: tokens.dropdownBg, borderColor: tokens.dropdownBorder }}>
+          <div className="absolute left-full top-0 ml-1 z-50">
+            <div
+              className={cn(
+                r.dropdown,
+                'border py-2 min-w-[220px] max-w-[min(300px,calc(100vw-2rem))] shadow-xl',
+                !node.children.some((child) => child.children && child.children.length > 0) && "overflow-y-auto scrollbar-menu-thin"
+              )}
+              style={{
+                backgroundColor: tokens.dropdownBg,
+                borderColor: tokens.dropdownBorder,
+                maxHeight: !node.children.some((child) => child.children && child.children.length > 0) ? 'min(60vh, 290px)' : undefined,
+              }}
+            >
               {node.children.map((child) => (
                 <Link
                   key={child._id}
                   href={child.url}
                   target={child.openInNewTab ? '_blank' : undefined}
                   rel={child.openInNewTab ? 'noreferrer' : undefined}
-                  className="block rounded-lg px-3 py-2 text-sm whitespace-normal break-words leading-snug transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]"
+                  className={cn('block px-3 py-2 text-sm whitespace-normal break-words leading-snug transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]', r.item)}
                   style={{ color: tokens.dropdownItemText, ...menuVars }}
                 >
                   {child.label}
@@ -1032,7 +1076,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                     >
                       {isDeepMenuForItem(item._id) ? (
                         <div
-                          className={cn('rounded-2xl border p-5 shadow-xl', getMegaMenuWidthClass(Math.min(Math.max(item.children.length, 1), 5)))}
+                          className={cn(r.popup, 'border p-5 shadow-xl', getMegaMenuWidthClass(Math.min(Math.max(item.children.length, 1), 5)))}
                           style={{
                             backgroundColor: tokens.dropdownBg,
                             borderColor: tokens.dropdownBorder,
@@ -1046,13 +1090,39 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                                   href={child.url}
                                   target={child.openInNewTab ? '_blank' : undefined}
                                   className="block text-sm font-semibold whitespace-normal break-words leading-snug"
-                                  style={{ color: tokens.textPrimary }}
+                                  style={{ color: level1Color }}
                                 >
                                   {child.label}
                                 </Link>
                                 <div className="space-y-1">
                                   {child.children.length > 0 && child.children.map((sub) => {
                                     const isLevel3Active = activeLevel3Id === sub._id;
+
+                                    if (config.flatSubMenus && sub.children.length > 0) {
+                                      return (
+                                        <div key={sub._id} className="mt-4 mb-2 first:mt-0">
+                                          <div
+                                            className="mb-1.5 font-bold uppercase tracking-wider text-[11px] border-l-2 pl-2"
+                                            style={{ color: tokens.brandBadgeBg || tokens.textPrimary, borderColor: tokens.brandBadgeBg || tokens.borderStrong }}
+                                          >
+                                            {sub.label}
+                                          </div>
+                                          <div className="space-y-0.5 pl-2 max-h-[220px] overflow-y-auto scrollbar-menu-thin">
+                                            {sub.children.map(leaf => (
+                                              <Link
+                                                key={leaf._id}
+                                                href={leaf.url}
+                                                target={leaf.openInNewTab ? '_blank' : undefined}
+                                                className={cn('block py-1.5 text-[13px] transition-colors hover:text-[var(--menu-dropdown-hover-text)]', r.item)}
+                                                style={{ color: tokens.textSubtle, ...menuVars }}
+                                              >
+                                                {leaf.label}
+                                              </Link>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      );
+                                    }
 
                                     return (
                                       <div
@@ -1073,22 +1143,33 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                                           href={sub.url}
                                           target={sub.openInNewTab ? '_blank' : undefined}
                                           rel={sub.openInNewTab ? 'noreferrer' : undefined}
-                                          className="flex min-w-0 items-start justify-between gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]"
+                                          className={cn('flex min-w-0 items-start justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]', r.item)}
                                           style={{
                                             ...(isLevel3Active ? { backgroundColor: tokens.dropdownItemHoverBg, color: tokens.dropdownItemHoverText } : { color: tokens.dropdownItemText }),
                                             ...menuVars,
                                           }}
                                         >
                                           <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug">{sub.label}</span>
-                                          {sub.children.length > 0 && <ChevronRight size={14} />}
+                                          {sub.children.length > 0 && <ChevronRight size={10} className={cn('transition-transform duration-200', isLevel3Active && 'rotate-90')} />}
                                         </Link>
                                         {sub.children.length > 0 && isLevel3Active && (
                                           <div
-                                            className="absolute left-0 top-full pt-1 z-50"
+                                            className="absolute left-full top-0 ml-1 z-50"
                                             onMouseEnter={clearDeepMenuCloseIntent}
                                             onMouseLeave={scheduleDeepMenuClose}
                                           >
-                                            <div className="rounded-xl border py-2 min-w-[220px] max-w-[min(320px,calc(100vw-2rem))] shadow-lg" style={{ backgroundColor: tokens.dropdownBg, borderColor: tokens.dropdownBorder }}>
+                                            <div
+                                              className={cn(
+                                                r.dropdown,
+                                                'border py-2 min-w-[220px] max-w-[min(300px,calc(100vw-2rem))] shadow-xl',
+                                                !sub.children.some((child) => child.children && child.children.length > 0) && "overflow-y-auto scrollbar-menu-thin"
+                                              )}
+                                              style={{
+                                                backgroundColor: tokens.dropdownBg,
+                                                borderColor: tokens.dropdownBorder,
+                                                maxHeight: !sub.children.some((child) => child.children && child.children.length > 0) ? 'min(60vh, 290px)' : undefined,
+                                              }}
+                                            >
                                               {renderDesktopFlyoutNodes(sub.children, true)}
                                             </div>
                                           </div>
@@ -1103,11 +1184,15 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                         </div>
                       ) : (
                         <div
-                          className="rounded-lg border py-2 min-w-[200px]"
+                          className={cn(
+                            "rounded-lg border py-2 min-w-[200px]",
+                            !item.children.some((child) => child.children && child.children.length > 0) && "overflow-y-auto scrollbar-menu-thin"
+                          )}
                           style={{
                             backgroundColor: tokens.dropdownBg,
                             borderColor: tokens.dropdownBorder,
                             maxWidth: getViewportSafeMaxWidth(),
+                            maxHeight: !item.children.some((child) => child.children && child.children.length > 0) ? 'min(70vh, 290px)' : undefined,
                           }}
                         >
                           {item.children.map((child) => (
@@ -1126,7 +1211,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                                 style={{ color: tokens.dropdownItemText, ...menuVars }}
                               >
                                 <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug">{child.label}</span>
-                                {child.children.length > 0 && <ChevronRight size={14} />}
+                                {child.children.length > 0 && <ChevronRight size={10} className="transition-transform duration-200 group-hover/child:rotate-90" />}
                               </Link>
                               {child.children.length > 0 && (
                                 <div
@@ -1136,8 +1221,12 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                                   )}
                                 >
                                   <div
-                                    className="rounded-lg border py-2 min-w-[180px]"
-                                    style={{ backgroundColor: tokens.dropdownBg, borderColor: tokens.dropdownBorder }}
+                                    className="rounded-lg border py-2 min-w-[180px] overflow-y-auto scrollbar-menu-thin"
+                                    style={{ 
+                                      backgroundColor: tokens.dropdownBg, 
+                                      borderColor: tokens.dropdownBorder,
+                                      maxHeight: 'min(70vh, 290px)',
+                                    }}
                                   >
                                     {child.children.map((sub) => (
                                     <Link
@@ -1214,7 +1303,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                               style={{ color: tokens.dropdownItemText, ...menuVars }}
                             >
                               {root.label}
-                              {root.children.length > 0 && <ChevronRight size={14} />}
+                              {root.children.length > 0 && <ChevronRight size={10} className="rotate-90" />}
                             </Link>
 
                             {root.children.length > 0 && (
@@ -1575,7 +1664,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                   >
                     {isDeepMenuForItem(item._id) ? (
                       <div
-                        className={cn('rounded-2xl border p-5 shadow-xl', getMegaMenuWidthClass(Math.min(Math.max(item.children.length, 1), 5)))}
+                        className={cn(r.popup, 'border p-5 shadow-xl', getMegaMenuWidthClass(Math.min(Math.max(item.children.length, 1), 5)))}
                         style={{
                           backgroundColor: tokens.dropdownBg,
                           borderColor: tokens.dropdownBorder,
@@ -1589,13 +1678,39 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                                 href={child.url}
                                 target={child.openInNewTab ? '_blank' : undefined}
                                 className="block text-sm font-semibold"
-                                style={{ color: tokens.textPrimary }}
+                                style={{ color: level1Color }}
                               >
                                 {child.label}
                               </Link>
                               <div className="space-y-1">
                                 {child.children.length > 0 && child.children.map((sub) => {
                                   const isLevel3Active = activeLevel3Id === sub._id;
+
+                                  if (config.flatSubMenus && sub.children.length > 0) {
+                                    return (
+                                      <div key={sub._id} className="mt-4 mb-2 first:mt-0">
+                                        <div
+                                          className="mb-1.5 font-bold uppercase tracking-wider text-[11px] border-l-2 pl-2"
+                                          style={{ color: tokens.brandBadgeBg || tokens.textPrimary, borderColor: tokens.brandBadgeBg || tokens.borderStrong }}
+                                        >
+                                          {sub.label}
+                                        </div>
+                                        <div className="space-y-0.5 pl-2 max-h-[220px] overflow-y-auto scrollbar-menu-thin">
+                                          {sub.children.map(leaf => (
+                                            <Link
+                                              key={leaf._id}
+                                              href={leaf.url}
+                                              target={leaf.openInNewTab ? '_blank' : undefined}
+                                              className={cn('block py-1.5 text-[13px] transition-colors hover:text-[var(--menu-dropdown-hover-text)]', r.item)}
+                                              style={{ color: tokens.textSubtle, ...menuVars }}
+                                            >
+                                              {leaf.label}
+                                            </Link>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
 
                                   return (
                                     <div
@@ -1616,23 +1731,34 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                                         href={sub.url}
                                         target={sub.openInNewTab ? '_blank' : undefined}
                                         rel={sub.openInNewTab ? 'noreferrer' : undefined}
-                                        className="flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]"
+                                        className={cn('flex items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]', r.item)}
                                         style={{
                                           ...(isLevel3Active ? { backgroundColor: tokens.dropdownItemHoverBg, color: tokens.dropdownItemHoverText } : { color: tokens.dropdownItemText }),
                                           ...menuVars,
                                         }}
                                       >
                                         <span>{sub.label}</span>
-                                        {sub.children.length > 0 && <ChevronRight size={14} />}
+                                        {sub.children.length > 0 && <ChevronRight size={10} className={cn('transition-transform duration-200', isLevel3Active && 'rotate-90')} />}
                                       </Link>
                                       {sub.children.length > 0 && isLevel3Active && (
                                         <div
-                                          className="absolute left-0 top-full pt-1 z-50"
+                                          className="absolute left-full top-0 ml-1 z-50"
                                           onMouseEnter={clearDeepMenuCloseIntent}
                                           onMouseLeave={scheduleDeepMenuClose}
                                         >
-                                            <div className="rounded-xl border py-2 min-w-[220px] max-w-[min(320px,calc(100vw-2rem))] shadow-lg" style={{ backgroundColor: tokens.dropdownBg, borderColor: tokens.dropdownBorder }}>
-                                              {renderDesktopFlyoutNodes(sub.children, true)}
+                                          <div 
+                                             className={cn(
+                                               r.dropdown,
+                                               'border py-2 min-w-[220px] max-w-[min(320px,calc(100vw-2rem))] shadow-lg',
+                                               !sub.children.some((child) => child.children && child.children.length > 0) && "overflow-y-auto scrollbar-menu-thin"
+                                             )} 
+                                             style={{ 
+                                               backgroundColor: tokens.dropdownBg, 
+                                               borderColor: tokens.dropdownBorder, 
+                                               maxHeight: !sub.children.some((child) => child.children && child.children.length > 0) ? 'min(70vh, 290px)' : undefined 
+                                             }}
+                                           >
+                                            {renderDesktopFlyoutNodes(sub.children, true)}
                                           </div>
                                         </div>
                                       )}
@@ -1646,11 +1772,15 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                       </div>
                     ) : (
                       <div
-                        className="rounded-lg border py-2 min-w-[200px]"
+                        className={cn(
+                          "rounded-lg border py-2 min-w-[200px]",
+                          !item.children.some((child) => child.children && child.children.length > 0) && "overflow-y-auto scrollbar-menu-thin"
+                        )}
                         style={{
                           backgroundColor: tokens.dropdownBg,
                           borderColor: tokens.dropdownBorder,
                           maxWidth: getViewportSafeMaxWidth(),
+                          maxHeight: !item.children.some((child) => child.children && child.children.length > 0) ? 'min(70vh, 290px)' : undefined,
                         }}
                       >
                         {item.children.map((child) => (
@@ -1811,7 +1941,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                       >
                         {isDeepMenuForItem(item._id) ? (
                           <div
-                            className={cn('rounded-2xl border p-6', dropdownWidth)}
+                            className={cn(r.popup, 'border p-6', dropdownWidth)}
                             style={{
                               backgroundColor: tokens.dropdownBg,
                               borderColor: tokens.dropdownBorder,
@@ -1825,13 +1955,39 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                                     href={child.url}
                                     target={child.openInNewTab ? '_blank' : undefined}
                                     className="text-sm font-semibold"
-                                    style={{ color: tokens.textPrimary }}
+                                    style={{ color: level1Color }}
                                   >
                                     {child.label}
                                   </Link>
                                   <div className="space-y-2">
                                     {child.children.length > 0 && child.children.map((sub) => {
                                       const isLevel3Active = activeLevel3Id === sub._id;
+
+                                      if (config.flatSubMenus && sub.children.length > 0) {
+                                        return (
+                                          <div key={sub._id} className="mt-4 mb-2 first:mt-0">
+                                            <div
+                                              className="mb-1.5 font-bold uppercase tracking-wider text-[11px] border-l-2 pl-2"
+                                              style={{ color: tokens.brandBadgeBg || tokens.textPrimary, borderColor: tokens.brandBadgeBg || tokens.borderStrong }}
+                                            >
+                                              {sub.label}
+                                            </div>
+                                            <div className="space-y-0.5 pl-2 max-h-[220px] overflow-y-auto scrollbar-menu-thin">
+                                              {sub.children.map(leaf => (
+                                                <Link
+                                                  key={leaf._id}
+                                                  href={leaf.url}
+                                                  target={leaf.openInNewTab ? '_blank' : undefined}
+                                                  className={cn('block py-1.5 text-[13px] transition-colors hover:text-[var(--menu-dropdown-hover-text)]', r.item)}
+                                                  style={{ color: tokens.textSubtle, ...menuVars }}
+                                                >
+                                                  {leaf.label}
+                                                </Link>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        );
+                                      }
 
                                       return (
                                         <div
@@ -1852,22 +2008,33 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                                             href={sub.url}
                                             target={sub.openInNewTab ? '_blank' : undefined}
                                             rel={sub.openInNewTab ? 'noreferrer' : undefined}
-                                            className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:text-[var(--menu-dropdown-sub-hover-text)]"
+                                            className={cn('flex items-center justify-between px-2 py-1.5 text-sm hover:text-[var(--menu-dropdown-sub-hover-text)]', r.item)}
                                             style={{
                                               ...(isLevel3Active ? { backgroundColor: tokens.dropdownItemHoverBg, color: tokens.dropdownItemHoverText } : { color: tokens.dropdownSubItemText }),
                                               ...menuVars,
                                             }}
                                           >
                                             <span>{sub.label}</span>
-                                            {sub.children.length > 0 && <ChevronRight size={14} />}
+                                            {sub.children.length > 0 && <ChevronRight size={10} className={cn('transition-transform duration-200', isLevel3Active && 'rotate-90')} />}
                                           </Link>
                                           {sub.children.length > 0 && isLevel3Active && (
                                             <div
-                                              className="absolute left-0 top-full pt-1 z-50"
+                                              className="absolute left-full top-0 ml-1 z-50"
                                               onMouseEnter={clearDeepMenuCloseIntent}
                                               onMouseLeave={scheduleDeepMenuClose}
                                             >
-                                              <div className="rounded-xl border py-2 min-w-[220px] max-w-[min(320px,calc(100vw-2rem))] shadow-lg" style={{ backgroundColor: tokens.dropdownBg, borderColor: tokens.dropdownBorder }}>
+                                               <div 
+                                                 className={cn(
+                                                   r.dropdown,
+                                                   'border py-2 min-w-[220px] max-w-[min(320px,calc(100vw-2rem))] shadow-lg',
+                                                   !sub.children.some((child) => child.children && child.children.length > 0) && "overflow-y-auto scrollbar-menu-thin"
+                                                 )} 
+                                                 style={{ 
+                                                   backgroundColor: tokens.dropdownBg, 
+                                                   borderColor: tokens.dropdownBorder,
+                                                   maxHeight: !sub.children.some((child) => child.children && child.children.length > 0) ? 'min(70vh, 290px)' : undefined,
+                                                 }}
+                                               >
                                                 {renderDesktopFlyoutNodes(sub.children, true)}
                                               </div>
                                             </div>
@@ -1882,11 +2049,16 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                           </div>
                         ) : (
                           <div
-                            className="rounded-lg border py-2 min-w-[240px]"
+                            className={cn(
+                              r.dropdown,
+                              'border py-2 min-w-[240px]',
+                              !item.children.some((child) => child.children && child.children.length > 0) && "overflow-y-auto scrollbar-menu-thin"
+                            )}
                             style={{
                               backgroundColor: tokens.dropdownBg,
                               borderColor: tokens.dropdownBorder,
                               maxWidth: getViewportSafeMaxWidth(),
+                              maxHeight: !item.children.some((child) => child.children && child.children.length > 0) ? 'min(70vh, 290px)' : undefined,
                             }}
                           >
                             {item.children.map((child) => (

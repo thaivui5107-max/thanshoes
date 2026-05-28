@@ -105,7 +105,7 @@ function useDragReorder<T extends { id: number }>(items: T[], setItems: (items: 
   return { draggedId, dragOverId, dragProps };
 }
 
-function AvatarUpload({ value, onChange, index, onUrlMode }: { value: string; onChange: (url: string) => void; index: number; onUrlMode: () => void }) {
+function AvatarUpload({ value, onChange, index, onUrlMode }: { value: string; onChange: (url: string, storageId?: string | null) => void; index: number; onUrlMode: () => void }) {
   const [isUploading, setIsUploading] = React.useState(false);
   const [isEditorOpen, setIsEditorOpen] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -126,7 +126,7 @@ function AvatarUpload({ value, onChange, index, onUrlMode }: { value: string; on
       const { storageId } = await res.json();
       const result = await saveImage({ storageId: storageId as Id<'_storage'>, filename: prepared.filename, folder: 'team-avatars', mimeType: prepared.mimeType, size: prepared.size, width: prepared.width, height: prepared.height });
       await trackDraftUpload(storageId as Id<'_storage'>, 'team-avatars');
-      onChange(result.url ?? '');
+      onChange(result.url ?? '', storageId);
       toast.success('Tải ảnh thành công');
     } catch { toast.error('Lỗi tải ảnh'); } finally { setIsUploading(false); }
   }, [generateUploadUrl, index, onChange, saveImage, trackDraftUpload]);
@@ -172,7 +172,7 @@ function AvatarUpload({ value, onChange, index, onUrlMode }: { value: string; on
         </div>
         {value && (
           <button type="button" className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center"
-            onClick={(e) => { e.stopPropagation(); onChange(''); }}>×</button>
+            onClick={(e) => { e.stopPropagation(); onChange('', null); }}>×</button>
         )}
       </div>
       <ImageSourceActions
@@ -338,10 +338,10 @@ export const TeamForm = ({ members, onChange, secondary, defaultExpanded = true 
                   className="h-7 w-7 overflow-hidden rounded-full border-2 border-transparent hover:border-blue-400 transition-all"
                   onClick={() => {
                     if (members[i]) {
-                      updateMember(members[i].id, { avatar: url, avatarType: 'url' });
+                      updateMember(members[i].id, { avatar: url, avatarType: 'url', avatarStorageId: null });
                     } else {
                       const maxId = members.reduce((max, m) => Math.max(max, m.id), 0);
-                      onChange([...members, { ...createEmptyMember(maxId + 1), avatar: url, avatarType: 'url', name: `Thành viên ${i + 1}` }]);
+                      onChange([...members, { ...createEmptyMember(maxId + 1), avatar: url, avatarType: 'url', avatarStorageId: null, name: `Thành viên ${i + 1}` }]);
                     }
                   }}>
                   <Image src={url} alt="" width={28} height={28} className="h-full w-full object-cover" unoptimized />
@@ -438,7 +438,7 @@ export const TeamForm = ({ members, onChange, secondary, defaultExpanded = true 
                 {/* Avatar input (URL hoặc Upload) */}
                 {avatarType === 'upload' && (
                   <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 px-2.5 py-1.5">
-                    <AvatarUpload value={member.avatar} onChange={(url) => updateMember(member.id, { avatar: url })}
+                    <AvatarUpload value={member.avatar} onChange={(url, storageId) => updateMember(member.id, { avatar: url, avatarStorageId: storageId })}
                       onUrlMode={() => updateMember(member.id, { avatarType: 'url' })}
                       index={members.findIndex((m) => m.id === member.id) + 1} />
                     {member.avatar && (
@@ -451,7 +451,7 @@ export const TeamForm = ({ members, onChange, secondary, defaultExpanded = true 
                   <div className="border-t border-slate-100 dark:border-slate-800 px-2.5 py-1.5">
                     <Input placeholder="https://example.com/avatar.jpg" className="h-7 text-xs"
                       value={member.avatar}
-                      onChange={(e) => updateMember(member.id, { avatar: e.target.value })} />
+                      onChange={(e) => updateMember(member.id, { avatar: e.target.value, avatarStorageId: null })} />
                   </div>
                 )}
 

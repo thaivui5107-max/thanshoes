@@ -15,7 +15,7 @@ export function useProductWatermarkConfig() {
   });
 
   const moduleEnabled = moduleEnabledSetting?.value === true || moduleEnabledSetting?.value === 'true';
-  const globalEnabled = globalEnabledSetting === true;
+  const globalEnabled = globalEnabledSetting === true || globalEnabledSetting === 'true';
   const enabled = moduleEnabled || globalEnabled;
 
   // Image watermark query

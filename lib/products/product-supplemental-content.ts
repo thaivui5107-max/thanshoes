@@ -14,3 +14,9 @@ export const toRichTextContent = (html?: string) => {
   }
   return withFormatMarker('richtext', raw);
 };
+
+export const sortSupplementalFaqItems = (
+  items?: Array<{ id?: string | number; question: string; answer: string; order: number }>
+) => {
+  return [...(items ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+};

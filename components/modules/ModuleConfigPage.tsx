@@ -4,25 +4,25 @@ import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Settings, Palette, Loader2, FolderTree } from 'lucide-react';
+import { Settings, Palette, Loader2, FolderTree, BookOpen, Sparkles, CheckCircle2, ArrowRight, Layers, AlertTriangle } from 'lucide-react';
 import type { ModuleDefinition } from '@/lib/modules/define-module';
 import type { FieldConfig } from '@/types/module-config';
- import { useModuleConfig } from '@/lib/modules/hooks/useModuleConfig';
+import { useModuleConfig } from '@/lib/modules/hooks/useModuleConfig';
 import { hasModuleRuntimeDefinition } from '@/lib/modules/runtime-config';
- import { 
-   ModuleHeader, 
-   ModuleStatus, 
-   ConventionNote,
-   SettingsCard, 
-   SettingInput, 
-   SettingSelect,
+import { 
+  ModuleHeader, 
+  ModuleStatus, 
+  ConventionNote,
+  SettingsCard, 
+  SettingInput, 
+  SettingSelect,
   SettingToggle,
   SettingTextarea,
-   FeaturesCard,
-   FieldsCard,
- } from '@/components/modules/shared';
+  FeaturesCard,
+  FieldsCard,
+} from '@/components/modules/shared';
 import { VariantSettingsSection } from '@/components/modules/products/VariantSettingsSection';
-import { Card, cn } from '@/app/admin/components/ui';
+import { Card, cn, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Button } from '@/app/admin/components/ui';
  
 type TabType = 'config' | 'appearance';
 
@@ -296,6 +296,7 @@ export function ConfigTab({ config, moduleData, isReadOnly, localFeatures, local
    onToggleCategoryField: (key: string) => void;
    onSettingChange: (key: string, value: string | number | boolean) => void;
  }) {
+  const [showTaxonomyHelp, setShowTaxonomyHelp] = useState(false);
   const settings = config.settings ?? [];
   const normalizedSettings = settings.map((setting) => ({
     ...setting,
@@ -376,6 +377,7 @@ export function ConfigTab({ config, moduleData, isReadOnly, localFeatures, local
                         label={setting.label}
                         value={Boolean(localSettings[setting.key])}
                         onChange={() => onSettingChange(setting.key, !localSettings[setting.key])}
+                        onHelpClick={setting.key === 'enableProductTypes' ? () => setShowTaxonomyHelp(true) : undefined}
                       />
                     );
                   }
@@ -471,6 +473,146 @@ export function ConfigTab({ config, moduleData, isReadOnly, localFeatures, local
            <strong>Convention:</strong> {config.conventionNote}
          </ConventionNote>
        )}
+
+       <Dialog open={showTaxonomyHelp} onOpenChange={setShowTaxonomyHelp}>
+         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto p-0 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-xl shadow-2xl">
+           <div className="p-6 space-y-6">
+             <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+               <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-slate-100">
+                 <Sparkles className="w-5 h-5 text-amber-500 animate-pulse" />
+                 Quy tắc Hệ thống Phân loại & Thuộc tính (IA Option B)
+               </DialogTitle>
+               <DialogDescription className="text-slate-500 dark:text-slate-400 mt-1">
+                 Hướng dẫn chi tiết dành cho Nhà phát triển & AI Agent về cơ chế Routing, URL và lọc dữ liệu sản phẩm khi bật tính năng.
+               </DialogDescription>
+             </DialogHeader>
+
+             <div className="space-y-6 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+               {/* Block 1: TL;DR kiểu Feynman */}
+               <div className="bg-gradient-to-r from-blue-500/5 to-cyan-500/5 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4.5 space-y-2">
+                 <h4 className="font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-1.5 animate-pulse">
+                   <BookOpen className="w-4 h-4" />
+                   TL;DR kiểu Feynman (Tóm tắt nhanh)
+                 </h4>
+                 <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-650 dark:text-slate-350">
+                   <li><strong>Loại sản phẩm (Product Type)</strong> là &ldquo;ngôi nhà chính&rdquo; (trục cha) của catalog.</li>
+                   <li>URL đẹp luôn bắt đầu bằng <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-blue-600 font-mono">/`{`productTypeSlug`}`</code> nếu đang ở ngữ cảnh phân loại mới.</li>
+                   <li><strong>Quy tắc Primary Path:</strong> Người dùng click filter nào thì filter đó trở thành phần chính trên URL path; các filter còn lại nằm trong URL query.</li>
+                   <li><strong>Lọc AND tuyệt đối:</strong> Product list và count phải được lọc kết hợp (AND) đầy đủ, không được bỏ qua <code className="font-mono text-xs">productTypeId</code> khi có filter khác.</li>
+                   <li><strong>Bảo vệ an toàn:</strong> Tự động trả về 404 cho các slug rác, inactive, hoặc chưa được gán vào Product Type hiện tại.</li>
+                 </ul>
+               </div>
+
+               {/* Block 2: Cấu trúc URL (Canonical Routes) */}
+               <div className="space-y-3">
+                 <h4 className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                   <Layers className="w-4 h-4 text-violet-500" />
+                   Cấu trúc URL chính (Canonical Routes)
+                 </h4>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                   <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3 bg-white dark:bg-slate-950">
+                     <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 mb-1">1. Trang loại sản phẩm (Root Type)</p>
+                     <code className="text-xs text-emerald-600 dark:text-emerald-400 block bg-slate-50 dark:bg-slate-900 p-1.5 rounded mb-1 border border-slate-100 dark:border-slate-850 font-mono">/`{`productTypeSlug`}`</code>
+                     <span className="text-[11px] text-slate-500">Ví dụ: <code className="text-slate-600 dark:text-slate-400 font-mono">/ruou-vang-sam-panh</code></span>
+                   </div>
+
+                   <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3 bg-white dark:bg-slate-950">
+                     <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 mb-1">2. Loại sản phẩm + Danh mục</p>
+                     <code className="text-xs text-emerald-600 dark:text-emerald-400 block bg-slate-50 dark:bg-slate-900 p-1.5 rounded mb-1 border border-slate-100 dark:border-slate-850 font-mono">/`{`productTypeSlug`}`/`{`categorySlug`}`</code>
+                     <span className="text-[11px] text-slate-500">Ví dụ: <code className="text-slate-600 dark:text-slate-400 font-mono">/ruou-vang-sam-panh/ruou-vang-do</code></span>
+                   </div>
+
+                   <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3 bg-white dark:bg-slate-950">
+                     <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 mb-1">3. Loại sản phẩm + Nấc giá</p>
+                     <code className="text-xs text-emerald-600 dark:text-emerald-400 block bg-slate-50 dark:bg-slate-900 p-1.5 rounded mb-1 border border-slate-100 dark:border-slate-850 font-mono">/`{`productTypeSlug`}`/`{`priceRangeSlug`}`</code>
+                     <span className="text-[11px] text-slate-500">Ví dụ: <code className="text-slate-600 dark:text-slate-400 font-mono">/ruou-vang-sam-panh/duoi-500k</code></span>
+                   </div>
+
+                   <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3 bg-white dark:bg-slate-950">
+                     <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 mb-1">4. Loại sản phẩm + Thuộc tính (Single/Multi)</p>
+                     <code className="text-xs text-emerald-600 dark:text-emerald-400 block bg-slate-50 dark:bg-slate-900 p-1.5 rounded mb-1 border border-slate-100 dark:border-slate-850 font-mono">/`{`productTypeSlug`}`/`{`groupSlug`}`/`{`termSlug-a,termSlug-b`}`</code>
+                     <span className="text-[11px] text-slate-500">Ví dụ: <code className="text-slate-600 dark:text-slate-400 font-mono">/ruou-vang-sam-panh/giong-nho/pinot-noir,chardonnay</code></span>
+                   </div>
+                 </div>
+               </div>
+
+               {/* Block 3: Quy tắc điều hướng khi click (Routing) */}
+               <div className="space-y-3">
+                 <h4 className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                   <ArrowRight className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                   Quy tắc điều hướng (Click Routing Rules)
+                 </h4>
+                 <div className="space-y-2 border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-white dark:bg-slate-950 text-xs">
+                   <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-850">
+                     <span className="font-bold text-slate-950 dark:text-slate-100 w-28 shrink-0">Bấm Product Type:</span>
+                     <span>Về thẳng <code className="text-slate-600 dark:text-slate-400 font-mono">/`{`typeSlug`}`</code>. Tự động clear các filter khác (category, price, attributes, page).</span>
+                   </div>
+                   <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5 border-b border-slate-100 dark:border-slate-850">
+                     <span className="font-bold text-slate-950 dark:text-slate-100 w-28 shrink-0">Bấm Category:</span>
+                     <span>Có Product Type: chuyển sang <code className="text-slate-600 dark:text-slate-400 font-mono">/`{`typeSlug`}`/`{`categorySlug`}`</code>. Không có Product Type: chuyển sang <code className="text-slate-600 dark:text-slate-400 font-mono">/products?category=`{`categorySlug`}`</code>. Các filter phụ giữ bằng query param.</span>
+                   </div>
+                   <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5 border-b border-slate-100 dark:border-slate-850">
+                     <span className="font-bold text-slate-950 dark:text-slate-100 w-28 shrink-0">Bấm Attribute Term:</span>
+                     <span>Có Product Type: chuyển sang <code className="text-slate-600 dark:text-slate-400 font-mono">/`{`typeSlug`}`/`{`groupSlug`}`/`{`termSlug`}`</code>. Nhấp thêm term cùng group sẽ ghép chuỗi comma (<code className="text-slate-600 dark:text-slate-400 font-mono">term-a,term-b</code>).</span>
+                   </div>
+                   <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 pt-2.5">
+                     <span className="font-bold text-slate-950 dark:text-slate-100 w-28 shrink-0">Xóa Bộ Lọc:</span>
+                     <span>Nếu xóa filter đang là <strong>Path chính</strong>, hệ thống đôn filter còn lại lên làm path chính theo thứ tự ưu tiên: <code className="text-slate-600 dark:text-slate-400 font-mono">Category &rarr; PriceRange &rarr; First Attribute Group &rarr; Type Root</code>. Xóa filter phụ chỉ xóa query param.</span>
+                   </div>
+                 </div>
+               </div>
+
+               {/* Block 4: Ma trận Case nguy hiểm & validate */}
+               <div className="space-y-3">
+                 <h4 className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                   <AlertTriangle className="w-4 h-4 text-amber-500" />
+                   Ma trận Validate & Xử lý lỗi (Crucial Safeguards)
+                 </h4>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                   <div className="border border-amber-100 dark:border-amber-900/20 rounded-lg p-3 bg-amber-500/5">
+                     <p className="font-semibold text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1">
+                       <CheckCircle2 className="w-3.5 h-3.5" /> Group / Term chưa gán vào Type
+                     </p>
+                     <p className="text-slate-600 dark:text-slate-400 text-[11px]">Ẩn hoàn toàn khỏi bộ lọc trang Loại sản phẩm. Truy cập trực tiếp qua URL sẽ bị trả về <strong>404 Not Found</strong>.</p>
+                   </div>
+
+                   <div className="border border-amber-100 dark:border-amber-900/20 rounded-lg p-3 bg-amber-500/5">
+                     <p className="font-semibold text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1">
+                       <CheckCircle2 className="w-3.5 h-3.5" /> Trùng/Xung đột Slugs (Collision)
+                     </p>
+                     <p className="text-slate-600 dark:text-slate-400 text-[11px]">Chặn ở trang Admin. Không cho phép trùng danh mục slug, nấc giá slug, hoặc nhóm thuộc tính slug trong cùng một Loại sản phẩm.</p>
+                   </div>
+
+                   <div className="border border-amber-100 dark:border-amber-900/20 rounded-lg p-3 bg-amber-500/5">
+                     <p className="font-semibold text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1">
+                       <CheckCircle2 className="w-3.5 h-3.5" /> Comma list có term không hợp lệ
+                     </p>
+                     <p className="text-slate-600 dark:text-slate-400 text-[11px]">Khi truy cập <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-rose-500 font-mono font-semibold">/type/group/valid,invalid</code>, trả về <strong>404</strong> hoặc <strong>301 Redirect</strong> về URL sạch (không bỏ qua âm thầm).</p>
+                   </div>
+
+                   <div className="border border-amber-100 dark:border-amber-900/20 rounded-lg p-3 bg-amber-500/5">
+                     <p className="font-semibold text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1">
+                       <CheckCircle2 className="w-3.5 h-3.5" /> Lọc AND ở database
+                     </p>
+                     <p className="text-slate-600 dark:text-slate-400 text-[11px]">Mọi query listing và count sản phẩm phải thực hiện AND đầy đủ mọi điều kiện lọc, tránh lỗi chỉ lọc Category mà bỏ qua Type.</p>
+                   </div>
+                 </div>
+               </div>
+             </div>
+
+             <div className="border-t border-slate-100 dark:border-slate-800 pt-4 flex justify-end">
+               <Button 
+                 type="button" 
+                 variant="outline" 
+                 onClick={() => setShowTaxonomyHelp(false)}
+                 className="px-5 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800"
+               >
+                 Đã rõ quy tắc
+               </Button>
+             </div>
+           </div>
+         </DialogContent>
+       </Dialog>
      </>
    );
  }

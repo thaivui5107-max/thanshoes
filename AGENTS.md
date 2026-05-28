@@ -136,8 +136,8 @@
 - Khi user đưa URL localhost, đọc route Next.js tương ứng, không hỏi lại.
 - Mọi thay đổi code khi hoàn thành đều phải commit, không push.
 - Khi commit luôn add kèm `.factory/docs` (nếu có).
-- Trước commit chỉ chạy `bunx tsc --noEmit` khi có thay đổi code/TS; không chạy khi chỉ sửa docs/cấu hình không liên quan.
-- Khi chạy `bunx tsc --noEmit`, luôn pipe output qua `2>&1 | Select-Object -First 10` để giới hạn context (tsc luôn scan toàn bộ project bất kể pipe; pipe chỉ cắt hiển thị, không tăng tốc).
+- Trước khi commit KHÔNG cần chạy `bunx tsc --noEmit` thủ công nếu chuẩn bị thực hiện lệnh commit ngay, vì hệ thống Git Hook (Harness Engine) đã tự động tích hợp chạy `oxlint` trên các file staged (qua `lint-staged`) và chạy `tsc --noEmit` toàn dự án trước khi commit. Tuy nhiên, khuyến khích chạy thủ công trong quá trình coding nếu muốn kiểm tra nhanh lỗi và sửa lỗi type sớm.
+- Khi chạy `bunx tsc --noEmit` thủ công, luôn pipe output qua `2>&1 | Select-Object -First 10` để giới hạn context (tsc luôn scan toàn bộ project bất kể pipe; pipe chỉ cắt hiển thị, không tăng tốc).
 
 # Task Completion Notification (Âm báo hoàn thành Task)
 - Khi hoàn thành xong task và chuẩn bị phản hồi kết quả cuối cùng cho người dùng, Agent BẮT BUỘC phải chạy lệnh sau qua công cụ `run_command` với `WaitMsBeforeAsync: 5000`:

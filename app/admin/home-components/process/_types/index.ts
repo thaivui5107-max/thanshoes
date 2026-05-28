@@ -10,6 +10,7 @@ export interface ProcessStep {
   icon: string;
   title: string;
   description: string;
+  iconStorageId?: string | null;
 }
 
 export type ProcessStyle = 'horizontal' | 'stepper' | 'cards' | 'accordion' | 'minimal' | 'compactMinimal' | 'grid' | 'alternating';

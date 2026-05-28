@@ -1,4 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { cn } from '@/app/admin/components/ui';
+import * as LucideReact from 'lucide-react';
 import {
   Award,
   BadgeCheck,
@@ -38,6 +40,15 @@ import {
   Send,
   Mail,
 } from 'lucide-react';
+import useEmblaCarousel from 'embla-carousel-react';
+import { getAttributeIconComponent } from '@/app/admin/attribute-groups/_lib/iconRegistry';
+
+const renderPremiumIcon = (iconName: string | undefined, size = 16, className = '', style = {}) => {
+  if (!iconName) return null;
+  const IconComponent = (LucideReact as any)[iconName];
+  if (!IconComponent) return null;
+  return <IconComponent size={size} className={className} style={style} />;
+};
 import { CommentsPreview } from './DetailPreview';
 import {
   getProductDetailColors,
@@ -52,7 +63,7 @@ import {
 import { ProductImageLightbox } from '@/components/site/products/detail/_components/ProductImageLightbox';
 
 type ProductDetailPreviewProps = {
-  layoutStyle: 'classic' | 'modern' | 'minimal';
+  layoutStyle: 'classic' | 'modern' | 'minimal' | 'premium';
   showRating: boolean;
   showComments?: boolean;
   showCommentLikes?: boolean;
@@ -66,6 +77,10 @@ type ProductDetailPreviewProps = {
   enableImageLightbox?: boolean;
   showHighlights: boolean;
   classicHighlights?: { icon: string; text: string }[];
+  premiumBannerItems?: { title: string; subtitle: string }[];
+  premiumBannerBg?: ProductDetailElementColorChoice;
+  premiumBannerText?: ProductDetailElementColorChoice;
+  showPremiumBanner?: boolean;
   heroStyle?: 'full' | 'split' | 'minimal';
   contentWidth?: 'narrow' | 'medium' | 'wide';
   imageAspectRatio: ProductImageAspectRatio;
@@ -86,6 +101,19 @@ type ProductDetailPreviewProps = {
   };
   showSocialButtons?: boolean;
   socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
+  demoAttributes?: any[];
+  productTypeId?: string;
+  zaloText?: string;
+  zaloIcon?: string;
+  zaloUrl?: string;
+  phoneText?: string;
+  phoneIcon?: string;
+  phoneUrl?: string;
+  mobileFontSize?: 'xs' | 'sm' | 'base';
+  priceLeftIcon?: string;
+  priceRightIcon?: string;
+  showPriceLeftIcon?: boolean;
+  showPriceRightIcon?: boolean;
 };
 
 const formatVND = (price: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -517,6 +545,71 @@ function VariantPreview({ tokens }: { tokens: ReturnType<typeof getProductDetail
   );
 }
 
+function PreviewAttributesBadges({
+  attributes,
+  tokens,
+  className = "grid grid-cols-2 gap-2 md:grid-cols-3 w-full mt-2 mb-2"
+}: {
+  attributes?: any[];
+  tokens: any;
+  className?: string;
+}) {
+  if (!attributes || attributes.length === 0) return null;
+
+  // 1. Nhóm các term theo groupId
+  const groupMap = new Map<string, { group: any; terms: Array<{ _id: string; name: string; slug: string }> }>();
+  for (const term of attributes) {
+    if (!term.group) continue;
+    const groupId = term.group._id;
+    if (!groupMap.has(groupId)) {
+      groupMap.set(groupId, {
+        group: term.group,
+        terms: []
+      });
+    }
+    const groupData = groupMap.get(groupId)!;
+    groupData.terms.push({ _id: term._id, name: term.name, slug: term.slug });
+  }
+
+  const mergedGroups = Array.from(groupMap.values()).map(g => ({
+    _id: g.terms.map(t => t._id).join('-'),
+    group: g.group,
+    terms: g.terms,
+  }));
+
+  const sortedGroups = mergedGroups.sort((a, b) => (a.group.order ?? 9999) - (b.group.order ?? 9999));
+
+  return (
+    <div className={className}>
+      {sortedGroups.map((groupItem) => {
+        const IconComponent = getAttributeIconComponent(groupItem.group.iconPath);
+        const valuesStr = groupItem.terms.map(t => t.name).join(', ');
+
+        return (
+          <div
+            key={groupItem._id}
+            className="flex items-center gap-1.5 text-xs font-medium py-1 px-2 rounded-lg border min-w-0"
+            style={{
+              borderColor: tokens.border || '#e2e8f0',
+              backgroundColor: tokens.surface || '#ffffff',
+              color: tokens.bodyText || '#334155'
+            }}
+          >
+            <span style={{ color: tokens.primary }} className="flex shrink-0 items-center justify-center">
+              <IconComponent size={14} />
+            </span>
+            <span className="truncate" title={`${groupItem.group.name}: ${valuesStr}`}>
+              <span className="opacity-60 font-normal uppercase text-[10px] mr-1">{groupItem.group.name}:</span>
+              <span className="font-semibold">{valuesStr}</span>
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
 export function ProductDetailPreview({
   layoutStyle,
   showRating,
@@ -532,6 +625,10 @@ export function ProductDetailPreview({
   enableImageLightbox = false,
   showHighlights,
   classicHighlights = [],
+  premiumBannerItems,
+  premiumBannerBg = 'primary',
+  premiumBannerText = 'white',
+  showPremiumBanner = true,
   heroStyle = 'full',
   contentWidth = 'medium',
   imageAspectRatio,
@@ -547,6 +644,16 @@ export function ProductDetailPreview({
   accentColors,
   showSocialButtons = false,
   socialButtons = [],
+  demoAttributes = [],
+  zaloText = 'MUA QUA ZALO',
+  zaloIcon = 'Send',
+  phoneText = 'GỌI TƯ VẤN',
+  phoneIcon = 'Phone',
+  mobileFontSize = 'xs',
+  priceLeftIcon = 'Award',
+  priceRightIcon = 'Gift',
+  showPriceLeftIcon = true,
+  showPriceRightIcon = true,
 }: ProductDetailPreviewProps) {
   const tokens = getProductDetailColors(brandColor, secondaryColor, colorMode);
   const categoryBadgeColors = resolveProductDetailElementColor(accentColors?.categoryBadge ?? 'secondary', tokens);
@@ -559,6 +666,25 @@ export function ProductDetailPreview({
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [mainImageHeight, setMainImageHeight] = useState<number | null>(null);
+  const [premiumAttrRef, premiumAttrApi] = useEmblaCarousel({
+    align: 'start',
+    containScroll: 'trimSnaps',
+    loop: false
+  });
+  const [canScrollAttrPrev, setCanScrollAttrPrev] = useState(false);
+  const [canScrollAttrNext, setCanScrollAttrNext] = useState(false);
+  const [activeAttrModal, setActiveAttrModal] = useState<{ title: string; value: string } | null>(null);
+
+  useEffect(() => {
+    if (!premiumAttrApi) return;
+    const onSelect = () => {
+      setCanScrollAttrPrev(premiumAttrApi.canScrollPrev());
+      setCanScrollAttrNext(premiumAttrApi.canScrollNext());
+    };
+    premiumAttrApi.on('select', onSelect);
+    premiumAttrApi.on('reInit', onSelect);
+    onSelect();
+  }, [premiumAttrApi]);
   const mainImageRef = useRef<HTMLDivElement>(null);
   const mainImageHeightRef = useRef<number | null>(null);
   const productName = 'iPhone 15 Pro Max 256GB';
@@ -822,12 +948,19 @@ export function ProductDetailPreview({
                   </div>
                 )}
               </div>
-              <div className="flex items-baseline gap-3">
+              <div className="flex flex-col md:flex-row md:items-end gap-1 md:gap-3">
                 <span className="text-xl font-bold" style={{ color: tokens.priceColor }}>{formatVND(price)}</span>
-                <span className="text-lg line-through" style={{ color: tokens.priceOriginalText }}>{formatVND(originalPrice)}</span>
-                <span className="px-2 py-0.5 text-sm font-medium rounded" style={{ backgroundColor: discountBadgeColors.bg, color: discountBadgeColors.text }}>-{Math.round((1 - price / originalPrice) * 100)}%</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm md:text-lg line-through italic" style={{ color: tokens.priceOriginalText }}>{formatVND(originalPrice)}</span>
+                  <span className="px-2 py-0.5 text-xs md:text-sm font-medium rounded" style={{ backgroundColor: discountBadgeColors.bg, color: discountBadgeColors.text }}>-{Math.round((1 - price / originalPrice) * 100)}%</span>
+                </div>
               </div>
               {showVariants && <VariantPreview tokens={tokens} />}
+              {demoAttributes && demoAttributes.length > 0 && (
+                <div className="mt-2 mb-2">
+                  <PreviewAttributesBadges attributes={demoAttributes} tokens={tokens} />
+                </div>
+              )}
 
               {enableCombos && (
                 <PreviewCombosBlock
@@ -1103,6 +1236,11 @@ export function ProductDetailPreview({
                 </div>
 
                 {showVariants && <VariantPreview tokens={tokens} />}
+                {demoAttributes && demoAttributes.length > 0 && (
+                  <div className="mt-2 mb-2">
+                    <PreviewAttributesBadges attributes={demoAttributes} tokens={tokens} />
+                  </div>
+                )}
 
                 <div className="h-px w-full" style={{ backgroundColor: tokens.divider }} />
 
@@ -1322,6 +1460,11 @@ export function ProductDetailPreview({
                   </div>
                   <div className="mt-3 md:mt-4">
                     {showVariants && <VariantPreview tokens={tokens} />}
+                    {demoAttributes && demoAttributes.length > 0 && (
+                      <div className="mt-2 mb-2">
+                        <PreviewAttributesBadges attributes={demoAttributes} tokens={tokens} />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1445,6 +1588,524 @@ export function ProductDetailPreview({
                 </div>
               )}
             </section>
+          </div>
+        )}
+
+        {layoutStyle === 'premium' && (
+          <div className="space-y-6">
+            <div className={`${isMobile ? 'space-y-4' : 'grid grid-cols-2 gap-8'}`}>
+              {/* Cột trái: Gallery Ảnh */}
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  {/* Thumbnail dạng dọc bên trái trên Desktop */}
+                  {PREVIEW_IMAGES.length > 1 && isDesktop && (
+                    <div className="hidden md:block w-20 shrink-0">
+                      <PreviewThumbnailRail
+                        images={PREVIEW_IMAGES}
+                        activeIndex={activeImageIndex}
+                        orientation="vertical"
+                        visibleSlots={4}
+                        tokens={tokens}
+                        thumbnailAspectRatio={imageFrame.thumbnailAspectRatio}
+                        onActiveIndexChange={setActiveImageIndex}
+                        itemClassName="w-full rounded-lg"
+                      />
+                    </div>
+                  )}
+
+                  {/* Ảnh chính */}
+                  <div className="flex-1">
+                    <div
+                      className={`relative rounded-2xl overflow-hidden ${canOpenLightbox ? 'cursor-zoom-in' : ''}`.trim()}
+                      style={{ ...mainImageFrameStyle, backgroundColor: tokens.surfaceMuted }}
+                      onClick={canOpenLightbox ? () => openLightboxAt(activeImageIndex) : undefined}
+                      onKeyDown={handleLightboxKeyDown}
+                      role={canOpenLightbox ? 'button' : undefined}
+                      tabIndex={canOpenLightbox ? 0 : -1}
+                    >
+                      {PREVIEW_IMAGES.length > 0 ? (
+                        <>
+                          {isMobile ? (
+                            <PreviewMobileCarousel
+                              images={PREVIEW_IMAGES}
+                              alt={productName}
+                              activeIndex={activeImageIndex}
+                              onActiveIndexChange={setActiveImageIndex}
+                            />
+                          ) : (
+                            <BlurredPreviewImage src={PREVIEW_IMAGES[activeImageIndex]} alt={productName} />
+                          )}
+                          {discountPercent > 0 && (
+                            <span
+                              className="absolute top-3 left-3 px-2.5 py-1 text-xs font-semibold rounded-lg z-30"
+                              style={{ backgroundColor: discountBadgeColors.bg, color: discountBadgeColors.text }}
+                            >
+                              -{discountPercent}%
+                            </span>
+                          )}
+                          {isMobile && PREVIEW_IMAGES.length > 1 && (
+                            <span className="absolute bottom-3 right-3 px-2 py-0.5 text-[11px] font-semibold rounded-full backdrop-blur-sm" style={{ backgroundColor: tokens.surface, color: tokens.headingColor }}>
+                              {activeImageIndex + 1}/{PREVIEW_IMAGES.length}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="w-32 h-32 rounded-lg" style={{ backgroundColor: tokens.surfaceSoft }} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Thumbnail ngang cho Tablet/Mobile */}
+                {PREVIEW_IMAGES.length > 1 && !isDesktop && (
+                  <div className="grid grid-cols-4 gap-2">
+                    {PREVIEW_IMAGES.slice(0, 4).map((img, index) => (
+                      <div
+                        key={img}
+                        onClick={() => setActiveImageIndex(index)}
+                        className="rounded-lg border-2 overflow-hidden cursor-pointer"
+                        style={{
+                          ...thumbnailFrameStyle,
+                          borderColor: index === activeImageIndex ? tokens.thumbnailBorderActive : tokens.thumbnailBorder,
+                          backgroundColor: tokens.surfaceMuted,
+                        }}
+                      >
+                        <img src={img} alt="" className="h-full w-full object-contain" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Highlights cài đặt dưới ảnh */}
+                {showHighlightBlock && (
+                  <div className="grid grid-cols-3 gap-2 border-t pt-4" style={{ borderColor: tokens.divider }}>
+                    {highlightItems.map((item, index) => {
+                      const Icon = CLASSIC_HIGHLIGHT_ICON_MAP[item.icon] || Star;
+                      return (
+                        <div key={`${item.icon}-${index}`} className="flex flex-col items-center text-center p-2 rounded-xl" style={{ backgroundColor: tokens.surfaceMuted }}>
+                          <Icon size={18} style={{ color: tokens.primary }} />
+                          <span className="text-[10px] md:text-xs font-medium mt-1 line-clamp-1" style={{ color: tokens.bodyText }}>{item.text}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Cột phải: Thông tin & Giá */}
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span
+                        className="inline-block px-2.5 py-0.5 text-[10px] md:text-xs font-semibold rounded-full border"
+                        style={{
+                          backgroundColor: categoryBadgeColors.bg,
+                          color: categoryBadgeColors.text,
+                          borderColor: categoryBadgeColors.border,
+                        }}
+                      >
+                        {categoryName}
+                      </span>
+                      {stockBadge}
+                    </div>
+                    <h1 className="text-xl md:text-3xl font-bold" style={{ color: tokens.headingColor }}>{productName}</h1>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    {showWishlist && (
+                      <button className="p-2.5 rounded-full border transition-colors" style={{ borderColor: tokens.wishlistBorder, backgroundColor: tokens.wishlistBg }}>
+                        <Heart size={16} style={{ color: tokens.wishlistIcon }} />
+                      </button>
+                    )}
+                    {showShare && (
+                      <button className="p-2.5 rounded-full border transition-colors" style={{ borderColor: tokens.shareBorder, backgroundColor: tokens.shareBg }}>
+                        <Share2 size={16} style={{ color: tokens.shareIcon }} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {showRating && hasRatingData && (
+                  <div className="flex items-center gap-1.5 text-xs" style={{ color: tokens.ratingText }}>
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          size={14}
+                          style={i < Math.floor(rating)
+                            ? { color: RATING_STAR_ACTIVE_COLOR, fill: RATING_STAR_ACTIVE_COLOR }
+                            : { color: tokens.ratingStarInactive }}
+                        />
+                      ))}
+                    </div>
+                    <span>{rating} ({reviews} đánh giá)</span>
+                  </div>
+                )}
+
+                {/* Box Giá Premium sử dụng Dynamic Color từ Tokens */}
+                <div
+                  className="rounded-2xl border p-4 relative overflow-hidden"
+                  style={{
+                    backgroundColor: tokens.surfaceMuted,
+                    borderColor: tokens.border,
+                  }}
+                >
+                  {showPriceRightIcon !== false && (
+                    <div className="absolute -right-6 -bottom-6 opacity-5 pointer-events-none" style={{ color: tokens.primary }}>
+                      {renderPremiumIcon(priceRightIcon, 120) || <Gift size={120} />}
+                    </div>
+                  )}
+                  <div className="flex items-start gap-3">
+                    {showPriceLeftIcon !== false && (
+                      <div className="p-2 rounded-lg" style={{ backgroundColor: tokens.surface, color: tokens.primary }}>
+                        {renderPremiumIcon(priceLeftIcon, 18) || <Award size={18} />}
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: tokens.metaText }}>GIÁ ƯU ĐÃI HÔM NAY</p>
+                      <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-3">
+                        <span className="text-2xl md:text-3xl font-extrabold" style={{ color: tokens.priceColor }}>{formatVND(price)}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm line-through italic" style={{ color: tokens.priceOriginalText }}>{formatVND(originalPrice)}</span>
+                          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded" style={{ backgroundColor: discountBadgeColors.bg, color: discountBadgeColors.text }}>-{discountPercent}%</span>
+                        </div>
+                      </div>
+                      <p className="text-xs font-semibold" style={{ color: tokens.priceColor }}>
+                        Tiết kiệm {formatVND(originalPrice - price)} so với giá gốc
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {showVariants && <VariantPreview tokens={tokens} />}
+
+                {/* Box Combo dạng so sánh song song chuyên nghiệp */}
+                {enableCombos && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color: tokens.metaText }}>ƯU ĐÃI COMBO – MUA NHIỀU, TIẾT KIỆM HƠN</p>
+                    <div className="grid grid-cols-2 gap-3 pt-3">
+                      {/* Combo 6 Chai */}
+                      <div
+                        className="rounded-xl border p-4 flex flex-col justify-between transition-all cursor-pointer relative"
+                        style={{
+                          backgroundColor: tokens.surface,
+                          borderColor: tokens.border,
+                        }}
+                      >
+                        <div>
+                          <div className="inline-block px-2 py-0.5 text-[11px] font-bold rounded-md text-white" style={{ backgroundColor: brandColor }}>
+                            COMBO 6 CHAI
+                          </div>
+                          <p className="text-[10px] mt-1.5" style={{ color: tokens.metaText }}>Phù hợp dùng thử / biếu tặng</p>
+                          <p className="text-sm font-bold mt-2" style={{ color: tokens.headingColor }}>{formatVND(1450000)}</p>
+                          <p className="text-[10px] font-semibold" style={{ color: tokens.priceColor }}>Chi ~241.000đ / chai</p>
+                        </div>
+                        <div className="border-t pt-2 mt-3 flex items-center gap-1 text-[9px] font-medium" style={{ borderColor: tokens.divider, color: tokens.priceColor }}>
+                          <Gift size={10} />
+                          <span>Tiết kiệm 340.000đ</span>
+                        </div>
+                        <div className="absolute right-2 top-2 h-4 w-4 rounded-full border flex items-center justify-center" style={{ borderColor: tokens.border }}>
+                          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'transparent' }} />
+                        </div>
+                      </div>
+
+                      {/* Combo 12 Chai - Best Seller */}
+                      <div
+                        className="rounded-xl border-2 p-4 flex flex-col justify-between transition-all cursor-pointer relative shadow-sm"
+                        style={{
+                          backgroundColor: tokens.surface,
+                          borderColor: brandColor,
+                        }}
+                      >
+                        <div className="absolute -top-2.5 right-2 px-1.5 py-0.5 rounded text-[8px] font-bold text-white flex items-center gap-0.5 z-10" style={{ backgroundColor: '#eab308' }}>
+                          ★ BÁN CHẠY
+                        </div>
+                        <div>
+                          <div className="inline-block px-2 py-0.5 text-[11px] font-bold rounded-md text-white" style={{ backgroundColor: '#eab308' }}>
+                            COMBO 12 CHAI
+                          </div>
+                          <p className="text-[10px] mt-1.5" style={{ color: tokens.metaText }}>Lời nhất – Tiết kiệm nhiều nhất</p>
+                          <p className="text-sm font-bold mt-2" style={{ color: tokens.headingColor }}>{formatVND(2800000)}</p>
+                          <p className="text-[10px] font-semibold" style={{ color: tokens.priceColor }}>Chi ~233.000đ / chai</p>
+                        </div>
+                        <div className="border-t pt-2 mt-3 flex items-center gap-1 text-[9px] font-medium" style={{ borderColor: tokens.divider, color: tokens.priceColor }}>
+                          <Gift size={10} />
+                          <span>Tiết kiệm 680.000đ</span>
+                        </div>
+                        <div className="absolute right-2 top-2 h-4 w-4 rounded-full border-2 flex items-center justify-center" style={{ borderColor: brandColor }}>
+                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: brandColor }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Bộ nút CTA */}
+                <div className="space-y-2 pt-2">
+                  <div className="flex gap-2">
+                    <button className={cn(
+                      "flex-1 font-bold rounded-xl flex items-center justify-center gap-1.5 text-white transition-transform hover:scale-[1.01]",
+                      isMobile ? "h-9 px-2.5" : "h-11 px-4",
+                      isMobile && (mobileFontSize === 'xs' ? 'text-[10px]' : mobileFontSize === 'sm' ? 'text-xs' : 'text-sm') || 'text-xs'
+                    )} style={{ backgroundColor: brandColor }}>
+                      {renderPremiumIcon(zaloIcon, 14, "-mt-0.5") || <Send size={14} className="-mt-0.5" />}
+                      {zaloText}
+                    </button>
+                    <button className={cn(
+                      "flex-1 font-bold rounded-xl border flex items-center justify-center gap-1.5 transition-transform hover:scale-[1.01]",
+                      isMobile ? "h-9 px-2.5" : "h-11 px-4",
+                      isMobile && (mobileFontSize === 'xs' ? 'text-[10px]' : mobileFontSize === 'sm' ? 'text-xs' : 'text-sm') || 'text-xs'
+                    )} style={{ borderColor: brandColor, color: brandColor, backgroundColor: tokens.surface }}>
+                      {renderPremiumIcon(phoneIcon, 14) || <Phone size={14} />}
+                      {phoneText}
+                    </button>
+                  </div>
+                  {showAddToCart && (
+                    <button className="w-full h-11 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 transition-transform hover:scale-[1.01]" style={{ borderColor: brandColor, color: brandColor, backgroundColor: tokens.surface }}>
+                      <ShoppingCart size={14} />
+                      THÊM VÀO GIỎ HÀNG
+                    </button>
+                  )}
+                </div>
+
+                {showSocialButtons && (
+                  <PreviewSocialButtons
+                    buttons={socialButtons}
+                    tokens={tokens}
+                  />
+                )}
+
+
+              </div>
+            </div>
+
+            {/* Khối Attributes hàng ngang tinh tế ở chân trang */}
+            {(() => {
+              const attributesToRender = demoAttributes && demoAttributes.length > 0 ? demoAttributes : [
+                { _id: '1', group: { _id: 'g1', name: 'THƯƠNG HIỆU', iconPath: 'Wine', order: 1 }, name: 'Vinicola Vedovato', slug: 'vedovato' },
+                { _id: '2', group: { _id: 'g2', name: 'XUẤT XỨ', iconPath: 'Globe', order: 2 }, name: 'Ý (Italia)', slug: 'y' },
+                { _id: '3', group: { _id: 'g3', name: 'DUNG TÍCH', iconPath: 'GlassWater', order: 3 }, name: '750ml', slug: '750ml' },
+                { _id: '4', group: { _id: 'g4', name: 'NỒNG ĐỘ', iconPath: 'Flame', order: 4 }, name: '16% ABV', slug: '16' },
+                { _id: '5', group: { _id: 'g5', name: 'HƯƠNG VỊ', iconPath: 'Utensils', order: 5 }, name: 'Gỗ sồi, Tiêu đen, Vani, Trái chín', slug: 'go-soi' },
+                { _id: '6', group: { _id: 'g6', name: 'GIỐNG NHO', iconPath: 'Grape', order: 6 }, name: 'Primitivo', slug: 'primitivo' }
+              ];
+
+              // 1. Nhóm các term theo groupId
+              const groupMap = new Map<string, { group: any; terms: Array<{ _id: string; name: string; slug: string }> }>();
+              for (const term of attributesToRender) {
+                if (!term.group) continue;
+                const groupId = term.group._id || term.group.name;
+                if (!groupMap.has(groupId)) {
+                  groupMap.set(groupId, {
+                    group: term.group,
+                    terms: []
+                  });
+                }
+                const groupData = groupMap.get(groupId)!;
+                groupData.terms.push({ _id: term._id, name: term.name, slug: term.slug });
+              }
+
+              const mergedGroups = Array.from(groupMap.values()).map(g => ({
+                _id: g.terms.map(t => t._id).join('-'),
+                group: g.group,
+                terms: g.terms,
+              }));
+
+              const sortedGroups = mergedGroups.sort((a, b) => (a.group.order ?? 9999) - (b.group.order ?? 9999));
+              if (sortedGroups.length === 0) return null;
+
+              const limit = device === 'mobile' ? 3 : device === 'tablet' ? 3 : 4;
+              const hasOverflow = sortedGroups.length > limit;
+
+              return (
+                <div className="border-t pt-6 mt-8" style={{ borderColor: tokens.divider }}>
+                  <div 
+                    className="rounded-2xl py-3 px-2 md:p-5 relative border"
+                    style={{ 
+                      backgroundColor: tokens.surfaceMuted || '#f8fafc',
+                      borderColor: tokens.border || '#e2e8f0'
+                    }}
+                  >
+                    <div className="relative">
+                      {/* Nút Prev/Next */}
+                      {hasOverflow && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => premiumAttrApi?.scrollPrev()}
+                            disabled={!canScrollAttrPrev}
+                            className="absolute left-1 md:left-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full flex items-center justify-center transition-all opacity-70 hover:opacity-100 disabled:opacity-10 hover:scale-105 active:scale-95 z-20"
+                            style={{ color: tokens.headingColor, backgroundColor: `${tokens.surface}aa` }}
+                            aria-label="Thuộc tính trước"
+                          >
+                            <ChevronLeft size={14} strokeWidth={3} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => premiumAttrApi?.scrollNext()}
+                            disabled={!canScrollAttrNext}
+                            className="absolute right-1 md:right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full flex items-center justify-center transition-all opacity-70 hover:opacity-100 disabled:opacity-10 hover:scale-105 active:scale-95 z-20"
+                            style={{ color: tokens.headingColor, backgroundColor: `${tokens.surface}aa` }}
+                            aria-label="Thuộc tính tiếp theo"
+                          >
+                            <ChevronRight size={14} strokeWidth={3} />
+                          </button>
+                        </>
+                      )}
+
+                      {/* Carousel or Grid */}
+                      {hasOverflow ? (
+                        <div className="overflow-hidden mx-6 md:mx-10" ref={premiumAttrRef}>
+                          <div className="flex gap-0">
+                            {sortedGroups.map((groupItem, index) => {
+                              const IconComponent = getAttributeIconComponent(groupItem.group.iconPath);
+                              const valuesStr = groupItem.terms.map(t => t.name).join(', ');
+                              const isMobile = device === 'mobile';
+                              const isTablet = device === 'tablet';
+
+                              return (
+                                <div
+                                  key={groupItem._id}
+                                  onClick={() => setActiveAttrModal({ title: groupItem.group.name, value: valuesStr })}
+                                  className={`flex-shrink-0 select-none min-w-0 px-2.5 md:px-6 flex items-center gap-2 md:gap-3.5 cursor-pointer hover:opacity-80 active:opacity-60 transition-all ${
+                                    index < sortedGroups.length - 1 ? 'border-r' : ''
+                                  }`}
+                                  style={{
+                                    borderColor: tokens.divider || '#e2e8f0',
+                                    flexBasis: isMobile
+                                      ? 'calc(100% / 3)'
+                                      : isTablet
+                                        ? 'calc(100% / 3)'
+                                        : 'calc(100% / 4)',
+                                  }}
+                                >
+                                  <span style={{ color: tokens.primary }} className="flex shrink-0 items-center justify-center">
+                                    <IconComponent size={18} className="md:w-[26px] md:h-[26px] md:size-auto" />
+                                  </span>
+                                  <div className="flex flex-col text-left min-w-0 flex-1">
+                                    <span className="text-[9px] font-bold block uppercase tracking-wider leading-none mb-1 break-words" style={{ color: tokens.metaText }}>
+                                      {groupItem.group.name}
+                                    </span>
+                                    <p className="text-[11px] md:text-sm font-bold break-words line-clamp-2 leading-tight" style={{ color: tokens.headingColor }}>
+                                      {valuesStr}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div 
+                          className="grid gap-0 divide-x"
+                          style={{ 
+                            borderColor: tokens.divider || '#e2e8f0',
+                            gridTemplateColumns: `repeat(${sortedGroups.length}, minmax(0, 1fr))` 
+                          }}
+                        >
+                          {sortedGroups.map((groupItem) => {
+                            const IconComponent = getAttributeIconComponent(groupItem.group.iconPath);
+                            const valuesStr = groupItem.terms.map(t => t.name).join(', ');
+
+                            return (
+                              <div
+                                key={groupItem._id}
+                                onClick={() => setActiveAttrModal({ title: groupItem.group.name, value: valuesStr })}
+                                className="px-2.5 md:px-6 flex items-center gap-2 md:gap-3.5 min-w-0 first:pl-0 last:pr-0 cursor-pointer hover:opacity-80 active:opacity-60 transition-all"
+                              >
+                                <span style={{ color: tokens.primary }} className="flex shrink-0 items-center justify-center">
+                                  <IconComponent size={18} className="md:w-[26px] md:h-[26px] md:size-auto" />
+                                </span>
+                                <div className="flex flex-col text-left min-w-0 flex-1">
+                                  <span className="text-[9px] font-bold block uppercase tracking-wider leading-none mb-1 break-words" style={{ color: tokens.metaText }}>
+                                    {groupItem.group.name}
+                                  </span>
+                                  <p className="text-[11px] md:text-sm font-bold break-words line-clamp-2 leading-tight" style={{ color: tokens.headingColor }}>
+                                    {valuesStr}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Glassmorphism Modal xem full thuộc tính */}
+                  {activeAttrModal && (
+                    <div 
+                      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] flex items-center justify-center p-4"
+                      onClick={() => setActiveAttrModal(null)}
+                    >
+                      <div 
+                        className="rounded-2xl p-6 max-w-sm w-full border text-center relative shadow-2xl"
+                        style={{ 
+                          backgroundColor: tokens.surface || '#ffffff',
+                          borderColor: tokens.border || '#e2e8f0'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button 
+                          className="absolute top-3 right-3 opacity-60 hover:opacity-100 transition-all text-sm font-bold"
+                          style={{ color: tokens.bodyText }}
+                          onClick={() => setActiveAttrModal(null)}
+                        >
+                          ✕
+                        </button>
+                        <h3 className="text-xs font-extrabold uppercase tracking-wider mb-2" style={{ color: tokens.metaText }}>
+                          {activeAttrModal.title}
+                        </h3>
+                        <p className="text-sm font-bold break-words leading-relaxed" style={{ color: tokens.headingColor }}>
+                          {activeAttrModal.value}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Dải banner cam kết động từ cài đặt - chân trang Premium */}
+            {showPremiumBanner && premiumBannerItems && premiumBannerItems.length > 0 && (() => {
+              const BANNER_COLOR_MAP: Record<string, string> = {
+                primary: tokens.primary,
+                secondary: tokens.secondary,
+                black: '#111111',
+                white: '#ffffff',
+              };
+              const bgColor = BANNER_COLOR_MAP[premiumBannerBg] ?? tokens.primary;
+              const textColor = BANNER_COLOR_MAP[premiumBannerText] ?? '#ffffff';
+              return (
+                <div className="rounded-2xl p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-center" style={{ backgroundColor: bgColor, color: textColor }}>
+                  {premiumBannerItems.map((item, idx) => (
+                    <div key={idx} className={`space-y-0.5${idx > 0 ? ' border-l' : ''}`} style={{ borderColor: `${textColor}33` }}>
+                      <p className="text-xs font-extrabold uppercase tracking-wide">{item.title}</p>
+                      <p className="text-[10px] opacity-80">{item.subtitle}</p>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            <div className="border-t pt-6 mt-8" style={{ borderColor: tokens.divider }}>
+              <h3 className="font-semibold mb-4" style={{ color: tokens.headingColor }}>Mô tả sản phẩm</h3>
+              <ExpandablePreviewDescriptionBlock buttonStyle={{ color: tokens.primary }}>
+                <div className="prose prose-sm max-w-none" style={{ color: tokens.bodyText }}>
+                  {PREVIEW_DESCRIPTION}
+                </div>
+                {renderPreviewDescriptionImages()}
+              </ExpandablePreviewDescriptionBlock>
+            </div>
+
+            <CommentsPreview
+              showComments={showComments}
+              showLikes={showCommentLikes}
+              showReplies={showCommentReplies}
+              brandColor={brandColor}
+            />
           </div>
         )}
       </div>

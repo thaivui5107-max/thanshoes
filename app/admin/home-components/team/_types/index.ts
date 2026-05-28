@@ -7,6 +7,7 @@ export interface TeamMember {
   avatar: string;
   avatarType?: TeamAvatarType; // 'upload' | 'url' | 'icon'
   avatarIcon?: string; // lucide icon name when avatarType === 'icon'
+  avatarStorageId?: string | null;
   bio: string;
   facebook: string;
   linkedin: string;

@@ -106,6 +106,8 @@ export function HeroEditor({
   onAfterSave,
   onSave,
   showSnapshotLabel,
+  colorOverride,
+  fontOverride,
 }: {
   backHref: string;
   draftOwnerKey: string;
@@ -115,11 +117,34 @@ export function HeroEditor({
   onAfterSave?: () => void;
   onSave: (input: HeroEditorSaveInput) => Promise<void>;
   showSnapshotLabel?: string;
+  colorOverride?: ReturnType<typeof useTypeColorOverrideState>;
+  fontOverride?: ReturnType<typeof useTypeFontOverrideState>;
 }) {
   const router = useRouter();
   const { commitUploads, trackUpload } = useDraftFileCleanup(draftOwnerKey);
-  const { customState, effectiveColors, showCustomBlock, setCustomState, initialCustom, setInitialCustom } = useTypeColorOverrideState(COMPONENT_TYPE);
-  const { customState: customFontState, effectiveFont, showCustomBlock: showFontCustomBlock, setCustomState: setCustomFontState, initialCustom: initialFontCustom, setInitialCustom: setInitialFontCustom } = useTypeFontOverrideState(COMPONENT_TYPE);
+
+  const localColorOverride = useTypeColorOverrideState(COMPONENT_TYPE);
+  const localFontOverride = useTypeFontOverrideState(COMPONENT_TYPE);
+
+  const activeColorOverride = colorOverride ?? localColorOverride;
+  const activeFontOverride = fontOverride ?? localFontOverride;
+  
+  const {
+    customState,
+    effectiveColors,
+    showCustomBlock,
+    setCustomState,
+    initialCustom,
+  } = activeColorOverride;
+
+  const {
+    customState: customFontState,
+    effectiveFont,
+    showCustomBlock: showFontCustomBlock,
+    setCustomState: setCustomFontState,
+    initialCustom: initialFontCustom,
+  } = activeFontOverride;
+
   const [title, setTitle] = useState(initial.title);
   const [active, setActive] = useState(initial.active);
   const {
@@ -220,20 +245,6 @@ export function HeroEditor({
       await commitUploads(storageIds);
       toast.success('Đã cập nhật Hero Banner');
       setInitialData({ active, content: heroContent, cornerRadius, slides: heroSlides, spacing, style: heroStyle, title });
-      if (enableTypeOverrides && showCustomBlock) {
-        setInitialCustom({
-          enabled: customState.enabled,
-          mode: customState.mode,
-          primary: customState.primary,
-          secondary: resolvedCustomSecondary,
-        });
-      }
-      if (enableTypeOverrides && showFontCustomBlock) {
-        setInitialFontCustom({
-          enabled: customFontState.enabled,
-          fontKey: customFontState.fontKey,
-        });
-      }
       onAfterSave?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Lỗi khi cập nhật');

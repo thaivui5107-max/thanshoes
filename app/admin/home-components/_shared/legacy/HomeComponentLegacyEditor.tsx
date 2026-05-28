@@ -847,6 +847,7 @@ export default function HomeComponentEditPage({
                   aspectRatio="banner"
                   columns={1}
                   showReorder={true}
+                  deleteMode="defer"
                   addButtonText="Thêm Banner"
                 />
               </CardContent>
@@ -2320,6 +2321,7 @@ export default function HomeComponentEditPage({
                   addButtonText="Thêm logo"
                   emptyText="Chưa có logo nào (tối thiểu 3)"
                   layout="vertical"
+                  deleteMode="defer"
                 />
               </CardContent>
             </Card>

@@ -155,8 +155,8 @@ export default function TrustBadgesEditPage({
     setActive(component.active);
 
     const config = component.config ?? {};
-    const items = (config.items as { url: string; link: string; name?: string }[] | undefined) ?? DEFAULT_GALLERY_ITEMS;
-    const normalizedItems = items.map((item, idx) => ({ id: `item-${idx + 1}`, link: item.link || '', name: item.name ?? '', url: item.url }));
+    const items = (config.items as { url: string; link: string; name?: string; storageId?: string }[] | undefined) ?? DEFAULT_GALLERY_ITEMS;
+    const normalizedItems = items.map((item, idx) => ({ id: `item-${idx + 1}`, link: item.link || '', name: item.name ?? '', url: item.url, storageId: item.storageId as Id<'_storage'> | undefined }));
     resetgalleryItems(normalizedItems);
 
     const nextStyle = normalizeTrustBadgesStyle(config.style);
@@ -272,7 +272,7 @@ export default function TrustBadgesEditPage({
     setIsSubmitting(true);
     try {
       const nextConfig = {
-        items: galleryItems.map((item) => ({ link: item.link, name: item.name, url: item.url })),
+        items: galleryItems.map((item) => ({ link: item.link, name: item.name, url: item.url, storageId: item.storageId })),
         style: trustBadgesStyle,
         desktopColumns,
         cornerRadius,

@@ -109,7 +109,7 @@ export default function ProcessEditPage({
   const [spacing, setSpacing] = useState<SectionSpacing>(DEFAULT_SECTION_SPACING);
   const { openSections, toggleSection } = useFormSectionsState(['header', 'display'], false);
 
-  const [initialSnapshot, setInitialSnapshot] = useState('');
+  const [initialSnapshot, setInitialSnapshot] = useState<string | null>(null);
 
   useEffect(() => {
     if (component) {
@@ -232,7 +232,7 @@ export default function ProcessEditPage({
       || customFontState.fontKey !== initialFontCustom.fontKey
     : false;
 
-  const hasChanges = currentSnapshot !== initialSnapshot || customChanged || customFontChanged;
+  const hasChanges = initialSnapshot !== null && (currentSnapshot !== initialSnapshot || customChanged || customFontChanged);
 
   useUnsavedGuard(hasChanges);
 

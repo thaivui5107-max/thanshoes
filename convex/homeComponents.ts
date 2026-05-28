@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
 import { v } from "convex/values";
-import { removeOwnerFileReferences, syncOwnerFileReferences } from "./lib/fileService";
+import { removeOwnerFileReferences, resolveStorageIdsFromLegacyUrls, syncOwnerFilesAndCleanup } from "./lib/fileService";
 
 const homeComponentDoc = v.object({
   _creationTime: v.number(),
@@ -32,7 +32,7 @@ async function updateHomeComponentStats(
   }
 }
 
-function collectConfigStorageIds(value: unknown, acc = new Set<Id<"_storage">>()): Id<"_storage">[] {
+function collectConfigStorageIds(value: unknown, acc = new Set<string>()): string[] {
   if (!value) {
     return Array.from(acc);
   }
@@ -43,7 +43,7 @@ function collectConfigStorageIds(value: unknown, acc = new Set<Id<"_storage">>()
   if (typeof value === "object") {
     const record = value as Record<string, unknown>;
     if (typeof record.storageId === "string" && record.storageId.trim()) {
-      acc.add(record.storageId as Id<"_storage">);
+      acc.add(record.storageId);
     }
     Object.values(record).forEach(item => collectConfigStorageIds(item, acc));
   }
@@ -74,15 +74,12 @@ function resolveConfigStorageIds(config: unknown) {
   return collectConfigStorageIds(config);
 }
 
-function sameStorageIds(
-  left: Array<Id<"_storage"> | null | undefined>,
-  right: Array<Id<"_storage"> | null | undefined>
-) {
-  const normalize = (values: Array<Id<"_storage"> | null | undefined>) =>
-    Array.from(new Set(values.filter((value): value is Id<"_storage"> => Boolean(value)))).sort();
-  const leftIds = normalize(left);
-  const rightIds = normalize(right);
-  return leftIds.length === rightIds.length && leftIds.every((value, index) => value === rightIds[index]);
+async function resolveConfigFileStorageIds(ctx: MutationCtx, config: unknown) {
+  const urls = collectConfigUrls(config);
+  return [
+    ...resolveConfigStorageIds(config),
+    ...await resolveStorageIdsFromLegacyUrls(ctx, urls, { limit: 1000 }),
+  ];
 }
 
 async function syncHomeComponentFileReferences(
@@ -92,14 +89,11 @@ async function syncHomeComponentFileReferences(
   previousConfig?: unknown
 ) {
   const [nextStorageIds, previousStorageIds] = await Promise.all([
-    resolveConfigStorageIds(nextConfig),
-    resolveConfigStorageIds(previousConfig),
+    resolveConfigFileStorageIds(ctx, nextConfig),
+    resolveConfigFileStorageIds(ctx, previousConfig),
   ]);
-  if (sameStorageIds(nextStorageIds, previousStorageIds)) {
-    return;
-  }
 
-  const { removedStorageIds } = await syncOwnerFileReferences(ctx, {
+  await syncOwnerFilesAndCleanup(ctx, {
     ownerField: "config",
     ownerId,
     ownerTable: "homeComponents",
@@ -107,10 +101,6 @@ async function syncHomeComponentFileReferences(
   }, nextStorageIds, {
     previousStorageIds,
   });
-
-  await Promise.all(removedStorageIds.map(storageId =>
-    ctx.runMutation(api.storage.cleanupStorageIfUnreferenced, { storageId })
-  ));
 }
 
 // CRIT-002 FIX: Thêm limit
@@ -258,12 +248,13 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const component = await ctx.db.get(args.id);
     if (!component) {throw new Error("Component not found");}
+    const previousStorageIds = await resolveConfigFileStorageIds(ctx, component.config);
     
     const { removedStorageIds } = await removeOwnerFileReferences(ctx, {
       ownerId: args.id,
       ownerTable: "homeComponents",
     }, {
-      previousStorageIds: resolveConfigStorageIds(component.config),
+      previousStorageIds,
     });
     
     await ctx.db.delete(args.id);
@@ -292,7 +283,7 @@ export const cleanupUnreferencedConfigMedia = mutation({
     const maxBatch = Math.min(args.batchSize ?? 100, 200);
     const homeComponents = await ctx.db.query("homeComponents").take(1000);
     const referencedUrls = new Set<string>();
-    const referencedStorageIds = new Set<Id<"_storage">>();
+    const referencedStorageIds = new Set<string>();
 
     for (const component of homeComponents) {
       collectConfigUrls(component.config).forEach(url => referencedUrls.add(url));

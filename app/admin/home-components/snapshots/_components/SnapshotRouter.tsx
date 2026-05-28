@@ -154,7 +154,7 @@ export function SnapshotRouter({
   };
 
   const currentSnapshot = JSON.stringify(getConfig());
-  const initialSnapshot = useMemo(() => JSON.stringify(rawConfig), [rawConfig]);
+  const [initialSnapshot] = useState(() => JSON.stringify(getConfig()));
   const hasChanges = title !== component.title || active !== component.active || currentSnapshot !== initialSnapshot;
 
   const handleSave = async (e: any) => {

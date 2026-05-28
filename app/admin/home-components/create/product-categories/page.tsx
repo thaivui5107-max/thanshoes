@@ -20,6 +20,7 @@ interface CategoryItem {
   categoryId: string;
   customImage?: string;
   imageMode?: 'product-image' | 'default' | 'icon' | 'upload' | 'url';
+  storageId?: string | null;
 }
 
 export default function ProductCategoriesCreatePage() {
@@ -71,6 +72,7 @@ export default function ProductCategoriesCreatePage() {
         categoryId: c.categoryId, 
         customImage: c.customImage,
         imageMode: c.imageMode ?? 'default',
+        storageId: c.storageId ?? null,
       })) : [],
       demoCategories: selectionMode === 'demo' ? sanitizeDemoCategories(demoCategories) : [],
       showProductCount,

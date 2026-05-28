@@ -134,3 +134,86 @@ export const getAssignedTermIds = query({
   },
   returns: v.array(v.id("attributeTerms")),
 });
+
+export const getTermsForProducts = query({
+  args: { productIds: v.array(v.id("products")) },
+  handler: async (ctx, args) => {
+    if (args.productIds.length === 0) return [];
+
+    const result = [];
+    for (const productId of args.productIds) {
+      const mappings = await ctx.db
+        .query("productAttributeTerms")
+        .withIndex("by_product", (q) => q.eq("productId", productId))
+        .collect();
+
+      const termDetails = [];
+      for (const m of mappings) {
+        const term = await ctx.db.get(m.termId);
+        if (term && term.active) {
+          const group = await ctx.db.get(term.groupId);
+          if (group) {
+            termDetails.push({
+              _id: term._id,
+              name: term.name,
+              slug: term.slug,
+              iconType: term.iconType,
+              iconValue: term.iconValue,
+              order: term.order,
+              group: {
+                _id: group._id,
+                name: group.name,
+                slug: group.slug,
+                code: group.code,
+                filterType: group.filterType,
+                iconPath: group.iconPath,
+                order: group.order,
+              },
+            });
+          }
+        }
+      }
+      result.push({
+        productId,
+        terms: termDetails,
+      });
+    }
+    return result;
+  },
+  returns: v.array(
+    v.object({
+      productId: v.id("products"),
+      terms: v.array(
+        v.object({
+          _id: v.id("attributeTerms"),
+          name: v.string(),
+          slug: v.string(),
+          iconType: v.optional(v.string()),
+          iconValue: v.optional(v.string()),
+          order: v.number(),
+          group: v.object({
+            _id: v.id("attributeGroups"),
+            name: v.string(),
+            slug: v.string(),
+            code: v.string(),
+            filterType: v.optional(v.string()),
+            iconPath: v.optional(v.string()),
+            order: v.number(),
+          }),
+        })
+      ),
+    })
+  ),
+});
+
+export const reorder = mutation({
+  args: { items: v.array(v.object({ id: v.id("attributeTerms"), order: v.number() })) },
+  handler: async (ctx, args) => {
+    await Promise.all(
+      args.items.map(async (item) => ctx.db.patch(item.id, { order: item.order }))
+    );
+    return null;
+  },
+  returns: v.null(),
+});
+

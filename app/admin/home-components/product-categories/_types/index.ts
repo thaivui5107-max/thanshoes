@@ -20,6 +20,7 @@ export interface CategoryConfigItem {
   categoryId: string;
   customImage?: string;
   imageMode?: 'product-image' | 'default' | 'icon' | 'upload' | 'url';
+  storageId?: string | null;
 }
 
 export interface CategoryData {
@@ -51,6 +52,7 @@ export interface DemoProductCategoryItem {
   description?: string;
   productCount?: number;
   link?: string;
+  storageId?: string | null;
 }
 
 export interface ProductCategoriesConfig {

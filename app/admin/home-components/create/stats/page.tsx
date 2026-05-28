@@ -52,6 +52,7 @@ export default function StatsCreatePage() {
   const [mediaPlacement, setMediaPlacement] = useState<StatsMediaPlacement>(DEFAULT_STATS_CONFIG.mediaPlacement ?? 'top');
   const [mediaAlign, setMediaAlign] = useState<StatsMediaAlign>(DEFAULT_STATS_CONFIG.mediaAlign ?? 'center');
   const [backgroundImage, setBackgroundImage] = useState(DEFAULT_STATS_CONFIG.backgroundImage ?? '');
+  const [backgroundImageStorageId, setBackgroundImageStorageId] = useState<string | null>(null);
   const [fullWidth, setFullWidth] = useState(DEFAULT_STATS_CONFIG.fullWidth ?? false);
   const [spacing, setSpacing] = useState<StatsSpacing>(DEFAULT_STATS_CONFIG.spacing ?? 'normal');
   const [cornerRadius, setCornerRadius] = useState<StatsCornerRadius>(DEFAULT_STATS_CONFIG.cornerRadius ?? 'lg');
@@ -64,7 +65,8 @@ export default function StatsCreatePage() {
         description: s.description,
         iconType: s.iconType,
         iconName: s.iconName,
-        iconUrl: s.iconUrl
+        iconUrl: s.iconUrl,
+        iconStorageId: s.iconStorageId,
       })),
       style,
       hideHeader,
@@ -82,6 +84,7 @@ export default function StatsCreatePage() {
       mediaPlacement,
       mediaAlign,
       backgroundImage,
+      backgroundImageStorageId,
       fullWidth,
       spacing,
       cornerRadius,
@@ -198,9 +201,13 @@ export default function StatsCreatePage() {
         mediaPlacement={mediaPlacement}
         mediaAlign={mediaAlign}
         backgroundImage={backgroundImage}
+        backgroundImageStorageId={backgroundImageStorageId}
         onMediaPlacementChange={setMediaPlacement}
         onMediaAlignChange={setMediaAlign}
-        onBackgroundImageChange={setBackgroundImage}
+        onBackgroundImageChange={(url, storageId) => {
+          setBackgroundImage(url);
+          setBackgroundImageStorageId(storageId ?? null);
+        }}
         className="mb-4"
         openSections={openSections}
         onToggleSection={toggleSection}

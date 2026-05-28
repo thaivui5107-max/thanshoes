@@ -1,2 +1,2 @@
-import PostsPage from '../[categorySlug]/_components/PostsPage';
+import PostsPage from '../_components/posts/PostsPage';
 export default PostsPage;

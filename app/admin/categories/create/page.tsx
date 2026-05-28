@@ -34,17 +34,21 @@ export default function CategoryCreatePage() {
   const enableCategoryFilterFooterContentSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableCategoryFilterFooterContent' });
   const enableCategoryProductDetailSuffixSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableCategoryProductDetailSuffix' });
   const enableCategoryProductDetailFaqSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableCategoryProductDetailFaq' });
+  const enableProductTypesSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'enableProductTypes' });
 
   const showCategorySubtitle = showCategorySubtitleSetting?.value === true;
   const enableCategoryFilterFooterContent = enableCategoryFilterFooterContentSetting?.value === true;
   const enableCategoryProductDetailSuffix = enableCategoryProductDetailSuffixSetting?.value === true;
   const enableCategoryProductDetailFaq = enableCategoryProductDetailFaqSetting?.value === true;
+  const enableProductTypes = enableProductTypesSetting?.value === true;
+  const productTypesData = useQuery(api.productTypes.listAll, enableProductTypes ? {} : 'skip');
 
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
   const [parentId, setParentId] = useState('');
   const [active, setActive] = useState(true);
+  const [productTypeIds, setProductTypeIds] = useState<Id<"productTypes">[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // New fields state
@@ -118,6 +122,7 @@ export default function CategoryCreatePage() {
         productDetailFaqItems: enableCategoryProductDetailFaq ? resolvedFaqItems : undefined,
         productDetailFaqStyle: enableCategoryProductDetailFaq ? faqStyle : undefined,
         productDetailFaqEnabled: faqEnabled,
+        productTypeIds: enableProductTypes ? productTypeIds : undefined,
       });
       toast.success('Tạo danh mục thành công');
       router.push('/admin/categories');
@@ -193,6 +198,55 @@ export default function CategoryCreatePage() {
                   placeholder="Mô tả ngắn hiển thị dưới tên danh mục..."
                   className="w-full min-h-[80px] rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
                 />
+              </div>
+            )}
+
+            {enableProductTypes && (
+              <div className="space-y-3 border-t border-slate-100 dark:border-slate-800 pt-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <Label className="text-base font-semibold block">Phân loại & Thuộc tính</Label>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Chọn duy nhất 1 kiểu sản phẩm cho danh mục này. Mỗi danh mục chỉ có thể liên kết với tối đa 1 kiểu để hiển thị các thuộc tính bộ lọc phù hợp.
+                    </p>
+                  </div>
+                  <Link href="/admin/product-types" className="text-xs text-orange-600 hover:underline whitespace-nowrap">
+                    Quản lý kiểu
+                  </Link>
+                </div>
+                <div className="border border-slate-200 dark:border-slate-700 rounded-md p-3 max-h-60 overflow-y-auto space-y-2 bg-slate-50 dark:bg-slate-900/30">
+                  {productTypesData === undefined ? (
+                    <p className="text-sm text-slate-500 italic">Đang tải kiểu sản phẩm...</p>
+                  ) : productTypesData.length === 0 ? (
+                    <p className="text-sm text-slate-500 italic">Chưa có kiểu sản phẩm nào.</p>
+                  ) : (
+                    <>
+                      <label className="flex items-center gap-2 cursor-pointer py-0.5 hover:text-orange-600">
+                        <input
+                          type="radio"
+                          name="productTypeId"
+                          checked={productTypeIds.length === 0}
+                          onChange={() => setProductTypeIds([])}
+                          className="h-4 w-4 border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                        />
+                        <span className="text-sm font-medium text-slate-500 italic">Không gán kiểu sản phẩm (Bỏ chọn)</span>
+                      </label>
+                      {productTypesData.map(type => (
+                        <label key={type._id} className="flex items-center gap-2 cursor-pointer py-0.5 hover:text-orange-600">
+                          <input
+                            type="radio"
+                            name="productTypeId"
+                            checked={productTypeIds.includes(type._id)}
+                            onChange={() => setProductTypeIds([type._id])}
+                            className="h-4 w-4 border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                          />
+                          <span className="text-sm font-medium">{type.name}</span>
+                          <span className="text-xs text-slate-400 font-mono">({type.slug})</span>
+                        </label>
+                      ))}
+                    </>
+                  )}
+                </div>
               </div>
             )}
 

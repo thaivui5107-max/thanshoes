@@ -299,7 +299,8 @@ export default function ServiceEditPage({ params }: { params: Promise<{ id: stri
       const allowedRenderTypes = new Set<'content' | 'markdown' | 'html'>(['content']);
       if (hasMarkdownRender) {allowedRenderTypes.add('markdown');}
       if (hasHtmlRender) {allowedRenderTypes.add('html');}
-      setRenderType(allowedRenderTypes.has(nextRenderType) ? nextRenderType : 'content');
+      const normalizedRenderType = allowedRenderTypes.has(nextRenderType) ? nextRenderType : 'content';
+      setRenderType(normalizedRenderType);
       setMarkdownRender(serviceData.markdownRender ?? '');
       setHtmlRender(serviceData.htmlRender ?? '');
       setExcerpt(serviceData.excerpt ?? '');
@@ -323,7 +324,7 @@ export default function ServiceEditPage({ params }: { params: Promise<{ id: stri
         categoryId: serviceData.categoryId,
         additionalCategoryIds: additionalCategoryIdsData ?? [],
         content: normalizeRichText(serviceData.content),
-        renderType: serviceData.renderType ?? 'content',
+        renderType: normalizedRenderType,
         markdownRender: (serviceData.markdownRender ?? '').trim(),
         htmlRender: (serviceData.htmlRender ?? '').trim(),
         duration: (serviceData.duration ?? '').trim(),

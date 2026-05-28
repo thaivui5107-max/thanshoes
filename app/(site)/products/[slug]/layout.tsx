@@ -66,6 +66,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ]);
 
     if (!product) {
+      const resolvedContext = await client.query(api.ia.resolveProductLandingContext, {
+        slugs: ['products', decodeURIComponent(slug)],
+      });
+
+      if (resolvedContext && resolvedContext.type === 'productTypeAttribute') {
+        const title = resolvedContext.termName
+          ? `${resolvedContext.termName} - ${resolvedContext.productTypeSlug.toUpperCase()}`
+          : `${resolvedContext.groupName} - ${resolvedContext.productTypeSlug.toUpperCase()}`;
+
+        return buildSeoMetadata({
+          contact,
+          descriptionOverride: seo.seo_description,
+          pathname: `/products/${slug}`,
+          routeType: 'list',
+          seo,
+          site,
+          social,
+          titleOverride: title,
+          useTitleTemplate: true,
+        });
+      }
+
       return buildSeoMetadata({
         contact,
         descriptionOverride: 'Sản phẩm này không tồn tại hoặc đã bị xóa.',

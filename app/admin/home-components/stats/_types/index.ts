@@ -24,6 +24,7 @@ export interface StatsItem {
   iconType?: StatsIconType;
   iconName?: string;
   iconUrl?: string;
+  iconStorageId?: string | null;
 }
 
 export interface StatsContent {
@@ -37,6 +38,7 @@ export interface StatsContent {
   mediaPlacement?: StatsMediaPlacement;
   mediaAlign?: StatsMediaAlign;
   backgroundImage?: string;
+  backgroundImageStorageId?: string | null;
   fullWidth?: boolean;
   spacing?: StatsSpacing;
   cornerRadius?: StatsCornerRadius;

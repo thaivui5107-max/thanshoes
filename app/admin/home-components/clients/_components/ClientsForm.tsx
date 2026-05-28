@@ -92,6 +92,7 @@ export const ClientsForm = ({
           enableCrop
           cropOnUpload={false}
           cropAspectRatio={cropAspectRatio}
+          deleteMode="defer"
         />
         {action ? (
           <div className="mt-4 flex justify-start">

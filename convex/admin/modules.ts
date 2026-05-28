@@ -47,7 +47,7 @@ const createToggleResult = (result: ToggleModuleResult): ToggleModuleResult => r
 const createToggleBasicResult = (result: ToggleModuleBasicResult): ToggleModuleBasicResult => result;
 
 function normalizeRolesModule<T extends ModuleRecord>(moduleItem: T): T {
-  if (moduleItem.key !== "roles") {
+  if (moduleItem.key !== "roles" && moduleItem.key !== "customers") {
     return moduleItem;
   }
   if (!moduleItem.isCore) {
@@ -60,7 +60,7 @@ async function normalizeRolesModuleWithPatch<T extends ModuleRecord>(
   ctx: MutationCtx,
   moduleItem: T
 ): Promise<T> {
-  if (moduleItem.key !== "roles") {
+  if (moduleItem.key !== "roles" && moduleItem.key !== "customers") {
     return moduleItem;
   }
   if (!moduleItem.isCore) {
@@ -70,19 +70,17 @@ async function normalizeRolesModuleWithPatch<T extends ModuleRecord>(
   return { ...moduleItem, isCore: false } as T;
 }
 
-async function repairRolesCoreFlag(ctx: MutationCtx) {
-  const rolesRecord = await ctx.db
-    .query("adminModules")
-    .withIndex("by_key", (q) => q.eq("key", "roles"))
-    .unique();
-  if (!rolesRecord) {
-    return null;
+async function repairSystemCoreFlags(ctx: MutationCtx) {
+  const keysToRepair = ["roles", "customers"];
+  for (const key of keysToRepair) {
+    const record = await ctx.db
+      .query("adminModules")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    if (record && record.isCore) {
+      await ctx.db.patch(record._id, { isCore: false });
+    }
   }
-  if (rolesRecord.isCore) {
-    await ctx.db.patch(rolesRecord._id, { isCore: false });
-    return { ...rolesRecord, isCore: false };
-  }
-  return rolesRecord;
 }
 
 async function upsertAdminPermissionMode(ctx: MutationCtx, value: "simple_full_admin" | "rbac") {
@@ -385,7 +383,7 @@ export const getDependentModules = query({
 export const toggleModule = mutation({
   args: { enabled: v.boolean(), key: v.string(), updatedBy: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
-    await repairRolesCoreFlag(ctx);
+    await repairSystemCoreFlags(ctx);
     const allModules = await ctx.db.query("adminModules").collect();
     const modulesByKey = new Map(allModules.map((module) => [module.key, module]));
     const moduleRecord = modulesByKey.get(args.key) ?? null;
@@ -467,7 +465,7 @@ export const toggleModuleWithCascade = mutation({
     updatedBy: v.optional(v.id("users")), // Modules con cần disable cùng
   },
   handler: async (ctx, args) => {
-    await repairRolesCoreFlag(ctx);
+    await repairSystemCoreFlags(ctx);
     const allModules = await ctx.db.query("adminModules").collect();
     const modulesByKey = new Map(allModules.map((module) => [module.key, module]));
     const moduleRecord = modulesByKey.get(args.key) ?? null;

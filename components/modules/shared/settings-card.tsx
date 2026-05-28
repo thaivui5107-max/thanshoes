@@ -170,6 +170,7 @@ interface SettingToggleProps {
   value: boolean;
   onChange: () => void;
   description?: string;
+  onHelpClick?: () => void;
 }
 
 export const SettingToggle: React.FC<SettingToggleProps> = ({
@@ -177,10 +178,26 @@ export const SettingToggle: React.FC<SettingToggleProps> = ({
   value,
   onChange,
   description,
+  onHelpClick,
 }) => (
   <div className="flex items-center justify-between gap-4">
     <div>
-      <p className="text-xs text-slate-600 dark:text-slate-300">{label}</p>
+      <div className="flex items-center gap-1.5">
+        <p className="text-xs text-slate-600 dark:text-slate-300">{label}</p>
+        {onHelpClick && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              onHelpClick();
+            }}
+            className="text-slate-400 hover:text-cyan-500 transition-colors p-0.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+            title="Xem hướng dẫn chi tiết"
+          >
+            <HelpCircle size={13} />
+          </button>
+        )}
+      </div>
       {description && (
         <p className="text-xs text-slate-400 mt-1">{description}</p>
       )}

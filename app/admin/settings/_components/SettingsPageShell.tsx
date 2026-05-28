@@ -410,6 +410,9 @@ function SettingsContent({ section }: { section: SettingsSection }) {
           storageIds.product_frame_overlay_square_url = storageIds.product_frame_overlay_url;
         }
       }
+      if (values.enable_product_watermark === undefined) {
+        values.enable_product_watermark = false;
+      }
       // Defaults cho watermark hình
       if (values.product_watermark_image_enabled === undefined) {
         values.product_watermark_image_enabled = false;
@@ -676,6 +679,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       });
       // Save watermark settings
       const watermarkKeys = [
+        'enable_product_watermark',
         'product_watermark_image_enabled',
         'product_watermark_image_url',
         'product_watermark_image_x',
@@ -693,7 +697,12 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       watermarkKeys.forEach((key) => {
         if (!settingsToSave.some((item) => item.key === key)) {
           let value = form[key] ?? '';
-          if (key === 'product_watermark_image_enabled' || key === 'product_watermark_text_enabled' || key === 'product_watermark_text_repeat') {
+          if (
+            key === 'enable_product_watermark' ||
+            key === 'product_watermark_image_enabled' ||
+            key === 'product_watermark_text_enabled' ||
+            key === 'product_watermark_text_repeat'
+          ) {
             value = form[key] === true || form[key] === 'true';
           }
           settingsToSave.push({
@@ -1084,7 +1093,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
               onChange={(url, storageId) =>{  updateImageField(key, url, storageId); }}
               folder="settings"
               previewSize={key.includes('favicon') ? 'sm' : 'md'}
-              smartLogoCrop={key === 'site_logo'}
+              smartLogoCrop={false}
             />
             {isFaviconField && (
               <div className="flex flex-wrap gap-2">
@@ -1523,7 +1532,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                         <div className="flex items-center gap-3">
                           <Checkbox
                             id="enable_product_watermark"
-                            checked={form.enable_product_watermark === true}
+                            checked={form.enable_product_watermark === true || form.enable_product_watermark === 'true'}
                             onCheckedChange={(checked) => updateField('enable_product_watermark', checked)}
                           />
                           <div className="space-y-0.5">
@@ -1796,7 +1805,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                           onChange={(url, storageId) =>{  updateImageField('site_logo', url, storageId); }}
                           folder="settings"
                           previewSize="md"
-                          smartLogoCrop
+                          smartLogoCrop={false}
                         />
                         <div className="flex items-center justify-between gap-3">
                           <Label>Tên thương hiệu</Label>

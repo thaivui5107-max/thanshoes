@@ -19,10 +19,36 @@ import {
   mergeProductsByCategoryAssignments,
 } from "./lib/multiCategory";
 
+export async function recalculateProductEffectivePrice(ctx: MutationCtx, productId: Id<"products">) {
+  const product = await ctx.db.get(productId);
+  if (!product) return;
+
+  let effectivePrice = product.salePrice ?? product.price;
+
+  if (product.hasVariants) {
+    const variants = await ctx.db
+      .query("productVariants")
+      .withIndex("by_product", (q) => q.eq("productId", productId))
+      .collect();
+    
+    const activeVariants = variants.filter(v => v.status === "Active");
+    if (activeVariants.length > 0) {
+      const prices = activeVariants.map(v => v.salePrice ?? v.price).filter((p): p is number => p !== undefined);
+      if (prices.length > 0) {
+        effectivePrice = Math.min(...prices);
+      }
+    }
+  }
+
+  await ctx.db.patch(productId, { effectivePrice });
+}
+
 const comboItemDoc = v.object({
   name: v.string(),
   price: v.optional(v.number()),
   type: v.union(v.literal("standard"), v.literal("mix")),
+  syncId: v.optional(v.string()),
+  isSynced: v.optional(v.boolean()),
   standardConfig: v.optional(
     v.object({
       minQty: v.number(),
@@ -39,6 +65,7 @@ const comboItemDoc = v.object({
   ),
   mixConfig: v.optional(
     v.object({
+      currentProductQty: v.optional(v.number()),
       items: v.array(
         v.object({
           productId: v.id("products"),
@@ -777,6 +804,9 @@ export const listPublishedPaginated = query({
   args: {
     paginationOpts: paginationOptsValidator,
     categoryId: v.optional(v.id("productCategories")),
+    productTypeId: v.optional(v.id("productTypes")),
+    minPrice: v.optional(v.number()),
+    maxPrice: v.optional(v.number()),
     sortBy: v.optional(v.union(
       v.literal("newest"),
       v.literal("oldest"),
@@ -789,20 +819,35 @@ export const listPublishedPaginated = query({
     let result;
 
     if (args.categoryId) {
-      result = await ctx.db
+      let query = ctx.db
         .query("products")
         .withIndex("by_category_status", (q) =>
           q.eq("categoryId", args.categoryId!).eq("status", "Active")
-        )
+        );
+      
+      if (args.productTypeId) {
+        query = query.filter((q) => q.eq(q.field("productTypeId"), args.productTypeId));
+      }
+      
+      result = await query
         .order(sortBy === "oldest" ? "asc" : "desc")
         .paginate(args.paginationOpts);
+
       if (await isMultiCategoryEnabled(ctx, "products")) {
         result = {
           ...result,
           page: (await mergeProductsByCategoryAssignments(ctx, args.categoryId, result.page, args.paginationOpts.numItems))
-            .filter((product) => product.status === "Active"),
+            .filter((product) => product.status === "Active" && (!args.productTypeId || product.productTypeId === args.productTypeId)),
         };
       }
+    } else if (args.productTypeId) {
+      result = await ctx.db
+        .query("products")
+        .withIndex("by_type_status_effectivePrice", (q) =>
+          q.eq("productTypeId", args.productTypeId!).eq("status", "Active")
+        )
+        .order(sortBy === "oldest" ? "asc" : "desc")
+        .paginate(args.paginationOpts);
     } else if (sortBy === "popular") {
       result = await ctx.db
         .query("products")
@@ -815,6 +860,16 @@ export const listPublishedPaginated = query({
         .withIndex("by_status_order", (q) => q.eq("status", "Active"))
         .order(sortBy === "oldest" ? "asc" : "desc")
         .paginate(args.paginationOpts);
+    }
+
+    // Filter by minPrice and maxPrice
+    if (args.minPrice !== undefined || args.maxPrice !== undefined) {
+      result.page = result.page.filter((p) => {
+        const price = p.effectivePrice ?? p.salePrice ?? p.price;
+        if (args.minPrice !== undefined && price < args.minPrice) return false;
+        if (args.maxPrice !== undefined && price > args.maxPrice) return false;
+        return true;
+      });
     }
 
     const hasAttributeFilter = args.attributeTermIds && args.attributeTermIds.length > 0;
@@ -852,6 +907,9 @@ export const listPublishedPaginated = query({
 export const listPublishedWithOffset = query({
   args: {
     categoryId: v.optional(v.id("productCategories")),
+    productTypeId: v.optional(v.id("productTypes")),
+    minPrice: v.optional(v.number()),
+    maxPrice: v.optional(v.number()),
     limit: v.optional(v.number()),
     offset: v.optional(v.number()),
     search: v.optional(v.string()),
@@ -872,7 +930,7 @@ export const listPublishedWithOffset = query({
 
     let products: Doc<"products">[] = [];
     const hasAttributeFilter = args.attributeTermIds && args.attributeTermIds.length > 0;
-    const fetchLimit = hasAttributeFilter ? 1000 : offset + limit + 10;
+    const fetchLimit = (hasAttributeFilter || args.minPrice !== undefined || args.maxPrice !== undefined) ? 1000 : offset + limit + 10;
 
     if (args.search?.trim()) {
       const searchLower = args.search.toLowerCase().trim();
@@ -884,17 +942,32 @@ export const listPublishedWithOffset = query({
           return args.categoryId ? builder.eq("categoryId", args.categoryId) : builder;
         });
       products = await searchQuery.take(fetchLimit);
+      if (args.productTypeId) {
+        products = products.filter((p) => p.productTypeId === args.productTypeId);
+      }
     } else if (args.categoryId) {
-      products = await ctx.db
+      let query = ctx.db
         .query("products")
         .withIndex("by_category_status", (q) =>
           q.eq("categoryId", args.categoryId!).eq("status", "Active")
-        )
-        .take(fetchLimit);
+        );
+      
+      if (args.productTypeId) {
+        query = query.filter((q) => q.eq(q.field("productTypeId"), args.productTypeId));
+      }
+      
+      products = await query.take(fetchLimit);
       if (await isMultiCategoryEnabled(ctx, "products")) {
         products = await mergeProductsByCategoryAssignments(ctx, args.categoryId, products, fetchLimit);
-        products = products.filter((product) => product.status === "Active");
+        products = products.filter((product) => product.status === "Active" && (!args.productTypeId || product.productTypeId === args.productTypeId));
       }
+    } else if (args.productTypeId) {
+      products = await ctx.db
+        .query("products")
+        .withIndex("by_type_status_effectivePrice", (q) =>
+          q.eq("productTypeId", args.productTypeId!).eq("status", "Active")
+        )
+        .take(fetchLimit);
     } else if (sortBy === "popular") {
       products = await ctx.db
         .query("products")
@@ -916,6 +989,15 @@ export const listPublishedWithOffset = query({
         42,
       );
       products = ranked.map((entry) => entry.item);
+    }
+
+    if (args.minPrice !== undefined || args.maxPrice !== undefined) {
+      products = products.filter((p) => {
+        const price = p.effectivePrice ?? p.salePrice ?? p.price;
+        if (args.minPrice !== undefined && price < args.minPrice) return false;
+        if (args.maxPrice !== undefined && price > args.maxPrice) return false;
+        return true;
+      });
     }
 
     if (hasAttributeFilter && args.attributeTermIds) {
@@ -1078,11 +1160,14 @@ export const searchPublished = query({
 export const countPublished = query({
   args: {
     categoryId: v.optional(v.id("productCategories")),
+    productTypeId: v.optional(v.id("productTypes")),
+    minPrice: v.optional(v.number()),
+    maxPrice: v.optional(v.number()),
     search: v.optional(v.string()),
     attributeTermIds: v.optional(v.array(v.array(v.id("attributeTerms")))),
   },
   handler: async (ctx, args) => {
-    if (!args.categoryId && !args.search?.trim() && !(args.attributeTermIds && args.attributeTermIds.length > 0)) {
+    if (!args.categoryId && !args.productTypeId && args.minPrice === undefined && args.maxPrice === undefined && !args.search?.trim() && !(args.attributeTermIds && args.attributeTermIds.length > 0)) {
       const activeStats = await ctx.db
         .query("productStats")
         .withIndex("by_key", (q) => q.eq("key", "Active"))
@@ -1092,29 +1177,54 @@ export const countPublished = query({
       }
     }
 
-    let products = args.categoryId
-      ? await ctx.db
-          .query("products")
-          .withIndex("by_category_status", (q) =>
-            q.eq("categoryId", args.categoryId!).eq("status", "Active")
-          )
-          .collect()
-      : await ctx.db
-          .query("products")
-          .withIndex("by_status_order", (q) => q.eq("status", "Active"))
-          .collect();
-
-    if (args.categoryId && await isMultiCategoryEnabled(ctx, "products")) {
-      products = await mergeProductsByCategoryAssignments(ctx, args.categoryId, products, 1000);
-      products = products.filter((product) => product.status === "Active");
+    let products;
+    if (args.categoryId) {
+      let query = ctx.db
+        .query("products")
+        .withIndex("by_category_status", (q) =>
+          q.eq("categoryId", args.categoryId!).eq("status", "Active")
+        );
+      
+      if (args.productTypeId) {
+        query = query.filter((q) => q.eq(q.field("productTypeId"), args.productTypeId));
+      }
+      
+      products = await query.collect();
+      if (await isMultiCategoryEnabled(ctx, "products")) {
+        products = await mergeProductsByCategoryAssignments(ctx, args.categoryId, products, 1000);
+        products = products.filter((product) => product.status === "Active" && (!args.productTypeId || product.productTypeId === args.productTypeId));
+      }
+    } else if (args.productTypeId) {
+      products = await ctx.db
+        .query("products")
+        .withIndex("by_type_status_effectivePrice", (q) =>
+          q.eq("productTypeId", args.productTypeId!).eq("status", "Active")
+        )
+        .collect();
+    } else {
+      products = await ctx.db
+        .query("products")
+        .withIndex("by_status_order", (q) => q.eq("status", "Active"))
+        .collect();
     }
 
-    if (args.search?.trim()) {
-      const searchLower = args.search.toLowerCase().trim();
-      products = products.filter((product) =>
-        product.name.toLowerCase().includes(searchLower) ||
-        product.sku.toLowerCase().includes(searchLower)
+    if (args.search?.trim() && products.length > 0) {
+      const ranked = rankByFuzzyMatches(
+        products,
+        args.search,
+        (product) => [product.name ?? "", product.sku ?? ""],
+        42,
       );
+      products = ranked.map((entry) => entry.item);
+    }
+
+    if (args.minPrice !== undefined || args.maxPrice !== undefined) {
+      products = products.filter((p) => {
+        const price = p.effectivePrice ?? p.salePrice ?? p.price;
+        if (args.minPrice !== undefined && price < args.minPrice) return false;
+        if (args.maxPrice !== undefined && price > args.maxPrice) return false;
+        return true;
+      });
     }
 
     const hasAttributeFilter = args.attributeTermIds && args.attributeTermIds.length > 0;
@@ -1612,6 +1722,7 @@ export const create = mutation({
 
     // Update stats counters
     await updateStats(ctx, { new: status });
+    await recalculateProductEffectivePrice(ctx, productId);
     await ctx.runMutation(api.landingPages.syncProgrammaticFromSourceChange, { source: "product" });
 
     return productId;
@@ -1821,6 +1932,7 @@ export const update = mutation({
       }
     }
 
+    await recalculateProductEffectivePrice(ctx, id);
     await ctx.runMutation(api.landingPages.syncProgrammaticFromSourceChange, { source: "product" });
     return null;
   },
@@ -2283,4 +2395,23 @@ export const initStats = mutation({
     return null;
   },
   returns: v.null(),
+});
+
+export const getActiveTermsForProducts = query({
+  args: { productIds: v.array(v.id("products")) },
+  handler: async (ctx, args) => {
+    if (args.productIds.length === 0) return [];
+
+    const allMappings = await Promise.all(
+      args.productIds.map((productId) =>
+        ctx.db
+          .query("productAttributeTerms")
+          .withIndex("by_product", (q) => q.eq("productId", productId))
+          .collect()
+      )
+    );
+    const termIds = allMappings.flat().map((m) => m.termId);
+    return Array.from(new Set(termIds));
+  },
+  returns: v.array(v.id("attributeTerms")),
 });

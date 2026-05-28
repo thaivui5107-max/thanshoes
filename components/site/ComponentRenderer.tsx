@@ -3535,7 +3535,7 @@ function GallerySection({ config, brandColor, secondary, mode, title, type }: { 
       logoSize={partnersLogoSize}
       showBorder={partnersShowBorder}
       spacing={partnersSpacing}
-      maxVisible={6}
+      maxVisible={items.length}
       variant="site"
       renderImage={(item, className) => (
         <SiteImage src={item.url} alt={item.name ?? ''} className={className} mode="logo" />

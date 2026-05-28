@@ -360,6 +360,7 @@ export default defineSchema({
         })
       )
     ),
+    effectivePrice: v.optional(v.number()), // Giá tính sẵn (đã tính salePrice/variant) để filter khoảng giá chuẩn và nhanh
   })
     .index("by_sku", ["sku"])
     .index("by_slug", ["slug"])
@@ -369,6 +370,7 @@ export default defineSchema({
     .index("by_status_sales", ["status", "sales"])
     .index("by_status_order", ["status", "order"])
     .index("by_order", ["order"])
+    .index("by_type_status_effectivePrice", ["productTypeId", "status", "effectivePrice"])
     .searchIndex("search_name", { filterFields: ["status", "categoryId"], searchField: "name" })
     .searchIndex("search_sku", { filterFields: ["status", "categoryId"], searchField: "sku" }),
 
@@ -474,9 +476,29 @@ export default defineSchema({
     description: v.optional(v.string()),
     order: v.number(),
     active: v.boolean(),
+    priceRanges: v.optional(
+      v.array(
+        v.object({
+          label: v.string(),
+          slug: v.string(),
+          minPrice: v.optional(v.number()),
+          maxPrice: v.optional(v.number()),
+        })
+      )
+    ),
   })
     .index("by_slug", ["slug"])
     .index("by_active_order", ["active", "order"]),
+
+  // 10ff. productCategoryTypes - Liên kết Danh mục và Loại sản phẩm (hệ thống Phân loại mới)
+  productCategoryTypes: defineTable({
+    categoryId: v.id("productCategories"),
+    typeId: v.id("productTypes"),
+  })
+    .index("by_category", ["categoryId"])
+    .index("by_type", ["typeId"])
+    .index("by_category_type", ["categoryId", "typeId"])
+    .index("by_type_category", ["typeId", "categoryId"]),
 
   // 10g. attributeGroups - Nhóm thuộc tính (Ví dụ: Quốc gia, Giống nho)
   attributeGroups: defineTable({
@@ -486,6 +508,7 @@ export default defineSchema({
     filterType: v.string(), // e.g. "checkbox", "radio", "select"
     inputType: v.string(),
     isFilterable: v.boolean(),
+    isSpecialFilter: v.optional(v.boolean()),
     order: v.number(),
     displayConfig: v.optional(v.any()),
     iconPath: v.optional(v.string()),
@@ -629,6 +652,7 @@ export default defineSchema({
     uploadedBy: v.optional(v.id("users")),
     usageCheckedAt: v.optional(v.number()),
     usageCount: v.optional(v.number()),
+    urlStorageKey: v.optional(v.string()),
     usages: v.optional(v.array(v.object({
       field: v.string(),
       label: v.optional(v.string()),
@@ -640,6 +664,7 @@ export default defineSchema({
     .index("by_folder", ["folder"])
     .index("by_mimeType", ["mimeType"])
     .index("by_storageId", ["storageId"])
+    .index("by_urlStorageKey", ["urlStorageKey"])
     .index("by_uploadedBy", ["uploadedBy"]),
 
   // 14a. mediaStats - Counter table cho media statistics (tránh full scan)

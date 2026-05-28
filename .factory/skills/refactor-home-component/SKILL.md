@@ -51,7 +51,7 @@ app/admin/home-components/[component]/
 - Tạo `app/admin/home-components/[component]/[id]/edit/page.tsx`
 - Load data bằng `useQuery`, save bằng `useMutation`
 - Layout 2 cột: Form trái, Preview phải (sticky)
-- Preserve `storageId` khi load/save config để backend sync `fileReferences`
+- Preserve `storageId` khi load/save config để backend sync `fileReferences`. **CRITICAL**: Khi tách từ legacy editor, bắt buộc phải audit kỹ lưỡng các hàm map (`.map(...)`), normalizer, và serializer để đảm bảo không bị rò rỉ hoặc bị strip/drop mất trường `storageId` của media.
 
 ### 8) Redirect từ route cũ
 - Trong `app/admin/home-components/[id]/edit/page.tsx`, nếu `type === [component]` thì `router.replace()` sang route mới

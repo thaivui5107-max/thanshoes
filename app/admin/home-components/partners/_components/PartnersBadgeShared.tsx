@@ -100,7 +100,17 @@ export const PartnersBadgeShared = ({
         <style>{`@keyframes badge-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } } .badge-no-scrollbar::-webkit-scrollbar { display: none; }`}</style>
         <div
           className="flex min-w-max items-center"
-          style={shouldAnimate ? { animation: `badge-scroll ${duration}s linear infinite`, animationPlayState: isPaused ? 'paused' : 'running' } : undefined}
+          style={
+            shouldAnimate
+              ? {
+                  animationName: 'badge-scroll',
+                  animationDuration: `${duration}s`,
+                  animationTimingFunction: 'linear',
+                  animationIterationCount: 'infinite',
+                  animationPlayState: isPaused ? 'paused' : 'running',
+                }
+              : undefined
+          }
         >
           {Array.from({ length: loopCount }).map((_, loopIdx) => (
             <div key={`loop-${loopIdx}`} className={cn('flex shrink-0 items-center px-1.5 md:px-2', itemGapClassName)}>

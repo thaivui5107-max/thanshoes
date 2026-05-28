@@ -32,7 +32,7 @@ const ProcessIconUpload = ({
   index,
 }: {
   value: string;
-  onChange: (url: string) => void;
+  onChange: (url: string, storageId?: string | null) => void;
   index: number;
 }) => {
   const [uploading, setUploading] = React.useState(false);
@@ -76,7 +76,7 @@ const ProcessIconUpload = ({
         width: prepared.width,
       });
       await trackDraftUpload(storageId as Id<'_storage'>, 'process-icons');
-      onChange(result.url ?? '');
+      onChange(result.url ?? '', storageId);
       toast.success('Tải icon thành công');
     } catch {
       toast.error('Lỗi tải icon');
@@ -310,19 +310,19 @@ export const ProcessForm = ({ steps, onChange, secondary, defaultExpanded = true
                     <ProcessIconUpload
                       value={step.icon}
                       index={idx}
-                      onChange={(url) => handleUpdate(step.id, (current) => ({ ...current, icon: url }))}
+                      onChange={(url, storageId) => handleUpdate(step.id, (current) => ({ ...current, icon: url, iconStorageId: storageId }))}
                     />
                     <div className="relative min-w-0 flex-1">
                       <Input
                         placeholder="Số, ký tự hoặc URL"
                         value={step.icon}
                         onChange={(event) => {
-                          handleUpdate(step.id, (current) => ({ ...current, icon: event.target.value }));
+                          handleUpdate(step.id, (current) => ({ ...current, icon: event.target.value, iconStorageId: null }));
                         }}
                         className="pr-6"
                       />
                       {step.icon && (
-                        <button type="button" className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" onClick={() => handleUpdate(step.id, (c) => ({ ...c, icon: '' }))}>
+                        <button type="button" className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" onClick={() => handleUpdate(step.id, (c) => ({ ...c, icon: '', iconStorageId: null }))}>
                           <X size={12} />
                         </button>
                       )}

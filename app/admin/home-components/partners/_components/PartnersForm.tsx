@@ -124,6 +124,7 @@ export const PartnersForm = ({
               enableCrop
               cropOnUpload={false}
               cropAspectRatio="square"
+              deleteMode="defer"
               imageFit="contain"
             />
           </div>

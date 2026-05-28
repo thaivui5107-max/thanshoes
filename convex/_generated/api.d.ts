@@ -23,6 +23,7 @@ import type * as convexDashboard from "../convexDashboard.js";
 import type * as crons from "../crons.js";
 import type * as customers from "../customers.js";
 import type * as dataManager from "../dataManager.js";
+import type * as experiences from "../experiences.js";
 import type * as fileLifecycle from "../fileLifecycle.js";
 import type * as homeComponentSystemConfig from "../homeComponentSystemConfig.js";
 import type * as homeComponents from "../homeComponents.js";
@@ -109,6 +110,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   customers: typeof customers;
   dataManager: typeof dataManager;
+  experiences: typeof experiences;
   fileLifecycle: typeof fileLifecycle;
   homeComponentSystemConfig: typeof homeComponentSystemConfig;
   homeComponents: typeof homeComponents;

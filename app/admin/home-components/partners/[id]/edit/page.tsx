@@ -114,6 +114,7 @@ export default function PartnersEditPage({
     link: item.link?.trim() ?? '',
     name: item.name?.trim() ?? '',
     url: item.url?.trim() ?? '',
+    storageId: item.storageId,
   }));
 
   useEffect(() => {
@@ -127,11 +128,12 @@ export default function PartnersEditPage({
       setActive(component.active);
 
       const config = component.config ?? {};
-      const nextItems = config.items?.map((item: { url: string; link: string; name?: string }, i: number) => ({
+      const nextItems = config.items?.map((item: { url: string; link: string; name?: string; storageId?: string }, i: number) => ({
         id: `item-${i}`,
         link: item.link || '',
         name: item.name ?? '',
         url: item.url,
+        storageId: item.storageId as Id<'_storage'> | undefined,
       })) ?? [{ id: 'item-1', link: '', name: '', url: '' }];
       const nextStyle = normalizePartnersStyle(config.style);
       const nextDisplayMode = normalizePartnersDisplayMode(config.displayMode);
@@ -234,7 +236,7 @@ export default function PartnersEditPage({
           logoSize,
           showBorder,
           spacing,
-          items: partnersItems.map((item: PartnerItem) => ({ link: item.link, name: item.name, url: item.url })),
+          items: partnersItems.map((item: PartnerItem) => ({ link: item.link, name: item.name, url: item.url, storageId: item.storageId })),
           style: partnersStyle,
           // Header fields
           hideHeader,

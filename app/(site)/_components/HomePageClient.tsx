@@ -28,12 +28,7 @@ export default function HomePageClient({
   const loadingStartRef = useRef<number | null>(null);
   const delayTimerRef = useRef<number | null>(null);
   const deferredTriggerRef = useRef<HTMLDivElement | null>(null);
-  const [criticalCount, setCriticalCount] = useState(() => {
-    if (typeof window === 'undefined') {
-      return MAX_CRITICAL_COMPONENTS;
-    }
-    return window.innerWidth < 768 ? 1 : MAX_CRITICAL_COMPONENTS;
-  });
+  const [criticalCount, setCriticalCount] = useState(MAX_CRITICAL_COMPONENTS);
 
   const isDataReady = typeof resolvedComponents !== 'undefined';
 
@@ -184,6 +179,7 @@ export default function HomePageClient({
   const sortedComponents = [...resolvedComponents]
     .filter((componentItem) => {
       if (componentItem.type === 'Footer') {return false;}
+      if (componentItem.type === 'Popup') {return false;}
       if (componentItem.type !== 'SpeedDial') {return true;}
 
       const config = componentItem.config as Record<string, unknown>;
@@ -192,6 +188,7 @@ export default function HomePageClient({
     .sort((firstComponent, secondComponent) => firstComponent.order - secondComponent.order);
   const criticalComponents = sortedComponents.slice(0, criticalCount);
   const deferredComponents = showDeferred ? sortedComponents.slice(criticalCount) : [];
+  const popupComponents = resolvedComponents.filter((componentItem) => componentItem.type === 'Popup');
 
   return (
     <>
@@ -222,6 +219,19 @@ export default function HomePageClient({
             }}
           />
         </div>
+      ))}
+      {popupComponents.map((component) => (
+        <HomeComponentRenderer
+          key={component._id}
+          component={{
+            _id: component._id,
+            active: component.active,
+            config: component.config as Record<string, unknown>,
+            order: component.order,
+            title: component.title,
+            type: component.type,
+          }}
+        />
       ))}
     </>
   );

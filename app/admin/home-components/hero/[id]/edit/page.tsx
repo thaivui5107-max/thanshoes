@@ -19,8 +19,8 @@ export default function HeroEditPage({ params }: { params: Promise<{ id: string 
   const router = useRouter();
   const decodedId = decodeURIComponent(id);
   const isSnapshotComponentKey = decodedId.startsWith('homeComponent:') || decodedId.startsWith('snapshot:');
-  const { customState, showCustomBlock, setInitialCustom } = useTypeColorOverrideState(COMPONENT_TYPE);
-  const { customState: customFontState, showCustomBlock: showFontCustomBlock, setInitialCustom: setInitialFontCustom } = useTypeFontOverrideState(COMPONENT_TYPE);
+  const colorOverride = useTypeColorOverrideState(COMPONENT_TYPE);
+  const fontOverride = useTypeFontOverrideState(COMPONENT_TYPE);
   const component = useQuery(api.homeComponents.getById, isSnapshotComponentKey ? 'skip' : { id: id as Id<"homeComponents"> });
   const updateMutation = useMutation(api.homeComponents.update);
   const setTypeColorOverride = useMutation(api.homeComponentSystemConfig.setTypeColorOverride);
@@ -60,6 +60,8 @@ export default function HeroEditPage({ params }: { params: Promise<{ id: string 
     <HeroEditor
       backHref="/admin/home-components"
       draftOwnerKey={`home-component:hero:edit:${decodedId}`}
+      colorOverride={colorOverride}
+      fontOverride={fontOverride}
       initial={{
         active: component.active,
         config: component.config ?? {},
@@ -72,30 +74,31 @@ export default function HeroEditPage({ params }: { params: Promise<{ id: string 
           id: id as Id<"homeComponents">,
           title,
         });
-        if (showCustomBlock) {
+        if (colorOverride.showCustomBlock) {
+          const resolvedSecondary = resolveSecondaryByMode(colorOverride.customState.mode, colorOverride.customState.primary, colorOverride.customState.secondary);
           await setTypeColorOverride({
-            enabled: customState.enabled,
-            mode: customState.mode,
-            primary: customState.primary,
-            secondary: resolveSecondaryByMode(customState.mode, customState.primary, customState.secondary),
+            enabled: colorOverride.customState.enabled,
+            mode: colorOverride.customState.mode,
+            primary: colorOverride.customState.primary,
+            secondary: resolvedSecondary,
             type: COMPONENT_TYPE,
           });
-          setInitialCustom({
-            enabled: customState.enabled,
-            mode: customState.mode,
-            primary: customState.primary,
-            secondary: resolveSecondaryByMode(customState.mode, customState.primary, customState.secondary),
+          colorOverride.setInitialCustom({
+            enabled: colorOverride.customState.enabled,
+            mode: colorOverride.customState.mode,
+            primary: colorOverride.customState.primary,
+            secondary: resolvedSecondary,
           });
         }
-        if (showFontCustomBlock) {
+        if (fontOverride.showCustomBlock) {
           await setTypeFontOverride({
-            enabled: customFontState.enabled,
-            fontKey: customFontState.fontKey,
+            enabled: fontOverride.customState.enabled,
+            fontKey: fontOverride.customState.fontKey,
             type: COMPONENT_TYPE,
           });
-          setInitialFontCustom({
-            enabled: customFontState.enabled,
-            fontKey: customFontState.fontKey,
+          fontOverride.setInitialCustom({
+            enabled: fontOverride.customState.enabled,
+            fontKey: fontOverride.customState.fontKey,
           });
         }
       }}

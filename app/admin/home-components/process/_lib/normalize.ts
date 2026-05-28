@@ -11,6 +11,7 @@ export interface ProcessRenderableStep {
   icon: string;
   title: string;
   description: string;
+  iconStorageId?: string | null;
 }
 
 export interface ProcessFormStep extends ProcessStep {
@@ -83,6 +84,7 @@ export const normalizeProcessRenderSteps = (input: unknown): ProcessRenderableSt
     const icon = coerceText(step.icon);
     const title = coerceText(step.title);
     const description = coerceText(step.description);
+    const iconStorageId = step.iconStorageId === null ? null : (step.iconStorageId ? coerceText(step.iconStorageId) : undefined);
     const baseKey = getStepBaseKey(step, index, icon, title, description);
     const count = duplicates.get(baseKey) ?? 0;
     duplicates.set(baseKey, count + 1);
@@ -92,6 +94,7 @@ export const normalizeProcessRenderSteps = (input: unknown): ProcessRenderableSt
       icon,
       title,
       description,
+      iconStorageId,
     };
   });
 };
@@ -103,6 +106,7 @@ export const createProcessFormStep = (partial?: Partial<ProcessStep>): ProcessFo
   icon: partial?.icon ?? '',
   title: partial?.title ?? '',
   description: partial?.description ?? '',
+  iconStorageId: partial?.iconStorageId,
 });
 
 export const normalizeProcessFormSteps = (input: unknown): ProcessFormStep[] => {
@@ -113,6 +117,7 @@ export const normalizeProcessFormSteps = (input: unknown): ProcessFormStep[] => 
     icon: step.icon,
     title: step.title,
     description: step.description,
+    iconStorageId: step.iconStorageId,
   }));
 };
 
@@ -121,6 +126,7 @@ export const serializeProcessFormSteps = (steps: ProcessFormStep[]): ProcessStep
     icon: step.icon,
     title: step.title,
     description: step.description,
+    iconStorageId: step.iconStorageId,
   }))
 );
 

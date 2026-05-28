@@ -28,13 +28,24 @@ export function CategoryTagsInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [limit, setLimit] = useState(8);
   const selectedIds = new Set(value);
   const categoryMap = useMemo(() => new Map(categories.map((category) => [category._id, category])), [categories]);
   const selectedCategories = value.map((id) => categoryMap.get(id)).filter((item): item is CategoryOption => Boolean(item));
-  const filteredCategories = categories
-    .filter((category) => !selectedIds.has(category._id))
-    .filter((category) => category.name.toLowerCase().includes(query.trim().toLowerCase()))
-    .slice(0, 8);
+
+  const allFilteredCategories = useMemo(() => {
+    return categories
+      .filter((category) => !selectedIds.has(category._id))
+      .filter((category) => category.name.toLowerCase().includes(query.trim().toLowerCase()));
+  }, [categories, selectedIds, query]);
+
+  const filteredCategories = useMemo(() => {
+    return allFilteredCategories.slice(0, limit);
+  }, [allFilteredCategories, limit]);
+
+  useEffect(() => {
+    setLimit(8);
+  }, [query]);
 
   const removeCategory = (id: string) => onChange(value.filter((item) => item !== id));
   const addCategory = (id: string) => {
@@ -132,16 +143,30 @@ export function CategoryTagsInput({
           {filteredCategories.length === 0 && (
             <div className="px-2 py-2 text-xs text-slate-500">Không còn danh mục phù hợp.</div>
           )}
-          {filteredCategories.map((category) => (
+          <div className="space-y-0.5">
+            {filteredCategories.map((category) => (
+              <button
+                key={category._id}
+                type="button"
+                onClick={() => addCategory(category._id)}
+                className="flex w-full rounded-md px-2 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors"
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+          {allFilteredCategories.length > limit && (
             <button
-              key={category._id}
               type="button"
-              onClick={() => addCategory(category._id)}
-              className="flex w-full rounded-md px-2 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLimit((prev) => prev + 12);
+              }}
+              className="mt-1 flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-slate-200 bg-slate-50/50 py-2 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-200 transition-colors cursor-pointer"
             >
-              {category.name}
+              Xem thêm (còn {allFilteredCategories.length - limit} danh mục khác)
             </button>
-          ))}
+          )}
         </div>
       )}
     </div>

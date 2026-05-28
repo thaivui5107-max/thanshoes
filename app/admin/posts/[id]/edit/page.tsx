@@ -206,7 +206,8 @@ export default function PostEditPage({ params }: { params: Promise<{ id: string 
       const allowedRenderTypes = new Set<'content' | 'markdown' | 'html'>(['content']);
       if (hasMarkdownRender) {allowedRenderTypes.add('markdown');}
       if (hasHtmlRender) {allowedRenderTypes.add('html');}
-      setRenderType(allowedRenderTypes.has(nextRenderType) ? nextRenderType : 'content');
+      const normalizedRenderType = allowedRenderTypes.has(nextRenderType) ? nextRenderType : 'content';
+      setRenderType(normalizedRenderType);
       setMarkdownRender(postData.markdownRender ?? '');
       setHtmlRender(postData.htmlRender ?? '');
       setExcerpt(postData.excerpt ?? '');
@@ -227,7 +228,7 @@ export default function PostEditPage({ params }: { params: Promise<{ id: string 
         categoryId: postData.categoryId,
         additionalCategoryIds: additionalCategoryIdsData ?? [],
         content: normalizeRichText(postData.content),
-        renderType: postData.renderType ?? 'content',
+        renderType: normalizedRenderType,
         markdownRender: (postData.markdownRender ?? '').trim(),
         htmlRender: (postData.htmlRender ?? '').trim(),
         excerpt: (postData.excerpt ?? '').trim(),
@@ -238,7 +239,9 @@ export default function PostEditPage({ params }: { params: Promise<{ id: string 
         publishedAt: isScheduled ? postData.publishedAt : undefined,
         thumbnail: postData.thumbnail ?? '',
         title: postData.title.trim(),
-        thumbnailStorageId: (postData as { thumbnailStorageId?: Id<'_storage'> }).thumbnailStorageId,
+        thumbnailStorageId: postData.thumbnail
+          ? ((postData as { thumbnailStorageId?: Id<'_storage'> }).thumbnailStorageId ?? null)
+          : null,
       };
       setSnapshotVersion((prev) => prev + 1);
       setIsDataLoaded(true);

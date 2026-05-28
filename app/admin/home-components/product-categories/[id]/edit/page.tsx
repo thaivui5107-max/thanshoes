@@ -153,11 +153,12 @@ export default function ProductCategoriesEditPage({
       setActive(component.active);
 
       const config = component.config ?? {};
-      const categories = config.categories?.map((c: { categoryId: string; customImage?: string; imageMode?: string }, i: number) => ({
+      const categories = config.categories?.map((c: { categoryId: string; customImage?: string; imageMode?: string; storageId?: string | null }, i: number) => ({
         categoryId: c.categoryId,
         customImage: c.customImage ?? '',
         id: i,
-        imageMode: (c.imageMode as 'product-image' | 'default' | 'icon' | 'upload' | 'url') || 'default'
+        imageMode: (c.imageMode as 'product-image' | 'default' | 'icon' | 'upload' | 'url') || 'default',
+        storageId: c.storageId ?? null,
       })) ?? [];
       const style = (config.style as ProductCategoriesStyle) || 'image-strip';
       const showProductCount = config.showProductCount ?? true;
@@ -306,6 +307,7 @@ export default function ProductCategoriesEditPage({
             categoryId: c.categoryId,
             customImage: c.customImage || undefined,
             imageMode: c.imageMode ?? 'default',
+            storageId: c.storageId ?? null,
           })) : [],
           demoCategories: selectionMode === 'demo' ? sanitizedDemoCategories : [],
           showProductCount: productCategoriesShowCount,

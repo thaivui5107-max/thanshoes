@@ -105,6 +105,7 @@ export const GalleryForm = ({
           enableCrop={componentType === 'TrustBadges' || componentType === 'Gallery'}
           cropOnUpload={false}
           cropAspectRatio={(item, index) => getCropAspectRatio(index)}
+          deleteMode="defer"
           imageFit={componentType === 'TrustBadges' ? 'contain' : 'cover'}
         />
       </SubSection>

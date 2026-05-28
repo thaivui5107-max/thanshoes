@@ -1,6 +1,6 @@
 import type { SectionSpacing } from '../../_shared/types/sectionSpacing';
 
-export type PopupStyle = 'center-card' | 'split-visual' | 'bottom-sheet' | 'side-panel' | 'minimal-alert' | 'full-screen' | 'image-only';
+export type PopupStyle = 'center-card' | 'split-visual' | 'bottom-sheet' | 'side-panel' | 'minimal-alert' | 'full-screen' | 'image-only' | 'centered-advertisement';
 
 export type PopupTrigger = 'immediate' | 'delay';
 
@@ -9,6 +9,20 @@ export type PopupFrequency = 'always' | 'oncePerPageView' | 'oncePerSession' | '
 export type PopupCornerRadius = 'none' | 'sm' | 'lg';
 
 export type PopupSpacing = SectionSpacing;
+
+export type PopupBackgroundMode = 
+  | 'solid' 
+  | 'brand' 
+  | 'secondary-solid'
+  | 'gradient-brand-to-secondary'
+  | 'gradient-secondary-to-brand'
+  | 'gradient-brand-dark'
+  | 'gradient-secondary-dark'
+  | 'pattern-sunburst'
+  | 'pattern-sunburst-secondary'
+  | 'pattern-sunburst-gradient'
+  | 'glassmorphism'
+  | 'dark-aesthetic';
 
 export interface PopupConfig {
   style: PopupStyle;
@@ -24,6 +38,7 @@ export interface PopupConfig {
   secondaryButtonLink: string;
   secondaryButtonDisabled: boolean;
   imageUrl: string;
+  storageId?: string | null;
   trigger: PopupTrigger;
   delaySeconds: number;
   frequency: PopupFrequency;
@@ -35,4 +50,5 @@ export interface PopupConfig {
   squareCorners?: boolean;
   colorIntensity: number;
   showDoNotShowToday: boolean;
+  backgroundMode?: PopupBackgroundMode;
 }

@@ -52,7 +52,7 @@ const getOuterShellClassName = (style: FaqStyle, context: 'preview' | 'site', de
   if (style === 'two-column' || style === 'timeline') {
     return isPreview
       ? (device === 'mobile' ? 'mx-auto max-w-[95%] px-1.5' : 'mx-auto max-w-[96%] px-2')
-      : 'mx-auto max-w-6xl px-4 sm:px-6 lg:px-8';
+      : 'mx-auto max-w-6xl px-0.5 sm:px-6 lg:px-8';
   }
 
   if (style === 'tabbed') {
@@ -69,7 +69,7 @@ const getOuterShellClassName = (style: FaqStyle, context: 'preview' | 'site', de
 
   return isPreview
     ? 'mx-auto max-w-[95%] px-1.5'
-    : 'mx-auto max-w-6xl px-4 sm:px-6 lg:px-8';
+    : 'mx-auto max-w-6xl px-0.5 sm:px-6 lg:px-8';
 };
 
 const getGridLayoutClassName = (context: 'preview' | 'site', device: PreviewDevice, desktopColumns: 3 | 4) => {
@@ -240,7 +240,7 @@ export function FaqSectionShared({
 
   if (style === 'accordion') {
     return (
-      <section className={cn('px-4', spacingClassName)} style={{ backgroundColor: tokens.sectionBg, ...themeStyle }}>
+      <section className={cn('px-0.5 sm:px-4', spacingClassName)} style={{ backgroundColor: tokens.sectionBg, ...themeStyle }}>
         <div className={outerShellClassName}>
           <div className={cn('w-full border shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col overflow-hidden @container', roundedClassName)} style={{ backgroundColor: tokens.panelBg, borderColor: tokens.panelBorder }}>
             {showInternalHeader ? (
@@ -325,7 +325,7 @@ export function FaqSectionShared({
 
   if (style === 'two-column') {
     return (
-      <section className={cn('px-4', spacingClassName)} style={{ backgroundColor: tokens.sectionBg, ...themeStyle }}>
+      <section className={cn('px-0.5 sm:px-4', spacingClassName)} style={{ backgroundColor: tokens.sectionBg, ...themeStyle }}>
         <div className={outerShellClassName}>
           <div className="w-full flex flex-col max-w-[1200px] mx-auto @container">
             <div className="px-2 w-full">
@@ -434,7 +434,7 @@ export function FaqSectionShared({
 
   if (style === 'minimal') {
     return (
-      <section className={cn('px-4', spacingClassName)} style={{ backgroundColor: tokens.sectionBg, ...themeStyle }}>
+      <section className={cn('px-0.5 sm:px-4', spacingClassName)} style={{ backgroundColor: tokens.sectionBg, ...themeStyle }}>
         <div className={outerShellClassName}>
           <div className="w-full flex flex-col items-center @container">
             {showInternalHeader ? <SectionHeader title={sectionTitle} subtitle={sectionSubtitle} align="center" /> : null}
@@ -489,7 +489,7 @@ export function FaqSectionShared({
 
   if (style === 'timeline') {
     return (
-      <section className={cn('px-4', spacingClassName)} style={{ backgroundColor: tokens.sectionBg, ...themeStyle }}>
+      <section className={cn('px-0.5 sm:px-4', spacingClassName)} style={{ backgroundColor: tokens.sectionBg, ...themeStyle }}>
         <div className={outerShellClassName}>
           <div className="w-full flex flex-col items-center px-2 @3xl:px-4 @container">
             <div className="w-full max-w-6xl">
@@ -598,7 +598,7 @@ export function FaqSectionShared({
   }
 
   return (
-    <section className={cn('px-2 md:px-4', spacingClassName)} style={{ backgroundColor: tokens.sectionBg, ...themeStyle }}>
+    <section className={cn('px-0.5 sm:px-4', spacingClassName)} style={{ backgroundColor: tokens.sectionBg, ...themeStyle }}>
       <div className={outerShellClassName}>
         <div className="w-full flex flex-col items-center px-1 md:px-3 @container">
           <div className={cn('w-full max-w-[1280px] p-3 @3xl:p-6 @4xl:p-10 @5xl:p-14 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] border', roundedClassName)} style={{ backgroundColor: tokens.panelBg, borderColor: tokens.panelBorder }}>

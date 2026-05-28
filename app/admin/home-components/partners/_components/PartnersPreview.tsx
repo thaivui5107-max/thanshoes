@@ -200,6 +200,7 @@ export const PartnersPreview = ({
         logoSize={logoSize}
         showBorder={showBorder}
         spacing={spacing}
+        maxVisible={items.length}
         openInNewTab
         renderImage={(item, className) => (
           <PreviewImage src={item.url} alt={item.name ?? ''} className={className} />

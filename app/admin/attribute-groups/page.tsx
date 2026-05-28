@@ -5,13 +5,28 @@ import Link from 'next/link';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { ChevronDown, Edit, FolderTree, Plus, Search, Trash2 } from 'lucide-react';
+import { ChevronDown, Edit, ExternalLink, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAttributeIconComponent } from './_lib/iconRegistry';
 import { Badge, Button, Card, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui';
 import { BulkActionBar, ColumnToggle, generatePaginationItems, SelectCheckbox, SortableHeader, useSortableData } from '../components/TableUtilities';
 import { ModuleGuard } from '../components/ModuleGuard';
 import { DeleteConfirmDialog } from '../components/DeleteConfirmDialog';
 import { usePersistedPageSize } from '../components/usePersistedPageSize';
+
+const ATTRIBUTE_GROUP_COLUMNS_STORAGE_KEY = 'admin_attribute_groups_visible_columns_v2';
+
+const FILTER_TYPE_LABELS: Record<string, string> = {
+  multiple: 'Nhiều lựa chọn',
+  range: 'Khoảng giá trị',
+  single: 'Một lựa chọn',
+};
+
+const INPUT_TYPE_LABELS: Record<string, string> = {
+  buttons: 'Nút bấm',
+  radio: 'Radio',
+  select: 'Dropdown',
+};
 
 export default function AttributeGroupsListPage() {
   return (
@@ -33,7 +48,7 @@ function AttributeGroupsContent() {
       return [];
     }
     try {
-      const stored = window.localStorage.getItem('admin_product_categories_visible_columns');
+      const stored = window.localStorage.getItem(ATTRIBUTE_GROUP_COLUMNS_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as string[];
         return parsed.length > 0 ? parsed : [];
@@ -62,7 +77,7 @@ function AttributeGroupsContent() {
 
   useEffect(() => {
     if (visibleColumns.length > 0) {
-      window.localStorage.setItem('admin_product_categories_visible_columns', JSON.stringify(visibleColumns));
+      window.localStorage.setItem(ATTRIBUTE_GROUP_COLUMNS_STORAGE_KEY, JSON.stringify(visibleColumns));
     }
   }, [visibleColumns]);
 
@@ -90,8 +105,6 @@ function AttributeGroupsContent() {
       : 'skip'
   );
 
-  const isTableLoading = categoriesData === undefined || totalCountData === undefined || productsData === undefined;
-
   useEffect(() => {
     if (selectAllData?.hasMore) {
       toast.info('Đã chọn tối đa 5.000 nhóm thuộc tính phù hợp.');
@@ -103,12 +116,39 @@ function AttributeGroupsContent() {
       id: cat._id,
       count: 0,
     })) ?? [], [categoriesData]);
+  const categoryIds = useMemo(() => categories.map(cat => cat.id as Id<"attributeGroups">), [categories]);
+  const assignedTypesData = useQuery(
+    api.attributeGroups.listAssignedProductTypesForGroups,
+    categoryIds.length > 0 ? { groupIds: categoryIds } : 'skip'
+  );
+  const termCountsData = useQuery(
+    api.attributeGroups.listTermCountsForGroups,
+    categoryIds.length > 0 ? { groupIds: categoryIds } : 'skip'
+  );
+  const assignedTypesByGroup = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof assignedTypesData>[number]['productTypes']>();
+    assignedTypesData?.forEach(row => {
+      map.set(row.groupId, row.productTypes);
+    });
+    return map;
+  }, [assignedTypesData]);
+  const termCountByGroup = useMemo(() => {
+    const map = new Map<string, number>();
+    termCountsData?.forEach(row => {
+      map.set(row.groupId, row.count);
+    });
+    return map;
+  }, [termCountsData]);
+  const isTableLoading = categoriesData === undefined || totalCountData === undefined || productsData === undefined || (categoryIds.length > 0 && (assignedTypesData === undefined || termCountsData === undefined));
 
   const columns = [
     { key: 'select', label: 'Chọn' },
     { key: 'name', label: 'Tên nhóm thuộc tính', required: true },
     { key: 'slug', label: 'Slug' },
     { key: 'code', label: 'Mã' },
+    { key: 'attributeType', label: 'Kiểu thuộc tính' },
+    { key: 'termCount', label: 'Số giá trị' },
+    { key: 'productTypes', label: 'Loại sản phẩm' },
     { key: 'actions', label: 'Hành động', required: true }
   ];
   const resolvedVisibleColumns = visibleColumns.length > 0 ? visibleColumns : columns.map(c => c.key);
@@ -247,7 +287,10 @@ function AttributeGroupsContent() {
               )}
               {resolvedVisibleColumns.includes('name') && <SortableHeader label="Tên nhóm thuộc tính" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />}
               {resolvedVisibleColumns.includes('slug') && <SortableHeader label="Slug" sortKey="slug" sortConfig={sortConfig} onSort={handleSort} />}
-              {resolvedVisibleColumns.includes('code') && <SortableHeader label="Mã" sortKey="code" sortConfig={sortConfig} onSort={handleSort} className="text-center" />}
+              {resolvedVisibleColumns.includes('code') && <SortableHeader label="Mã" sortKey="code" sortConfig={sortConfig} onSort={handleSort} className="w-[120px] text-center [&>div]:justify-center" />}
+              {resolvedVisibleColumns.includes('attributeType') && <SortableHeader label="Kiểu thuộc tính" sortKey="filterType" sortConfig={sortConfig} onSort={handleSort} />}
+              {resolvedVisibleColumns.includes('termCount') && <TableHead className="w-[110px] text-center">Số giá trị</TableHead>}
+              {resolvedVisibleColumns.includes('productTypes') && <TableHead>Loại sản phẩm</TableHead>}
               {resolvedVisibleColumns.includes('actions') && <TableHead className="text-right">Hành động</TableHead>}
             </TableRow>
           </TableHeader>
@@ -270,16 +313,84 @@ function AttributeGroupsContent() {
                 {resolvedVisibleColumns.includes('name') && (
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
-                      <FolderTree size={16} className="text-orange-500" />
+                      {(() => {
+                        const IconComponent = getAttributeIconComponent(cat.iconPath);
+                        const iconColor = cat.displayConfig?.iconColor || cat.displayConfig?.color || '#ea580c';
+                        return <IconComponent size={16} style={{ color: iconColor }} />;
+                      })()}
                       {cat.name}
                     </div>
                   </TableCell>
                 )}
                 {resolvedVisibleColumns.includes('slug') && <TableCell className="text-slate-500 font-mono text-sm">{cat.slug}</TableCell>}
-                {resolvedVisibleColumns.includes('code') && <TableCell className="text-center"><Badge variant="secondary">{cat.code}</Badge></TableCell>}
+                {resolvedVisibleColumns.includes('code') && (
+                  <TableCell className="w-[120px] text-center">
+                    <Badge variant="secondary" className="inline-flex min-w-20 justify-center font-mono">{cat.code}</Badge>
+                  </TableCell>
+                )}
+                {resolvedVisibleColumns.includes('attributeType') && (
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                        {FILTER_TYPE_LABELS[cat.filterType] ?? cat.filterType}
+                      </span>
+                      {cat.filterType !== 'range' && (
+                        <span className="text-xs text-slate-400">
+                          {INPUT_TYPE_LABELS[cat.inputType] ?? cat.inputType}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                )}
+                {resolvedVisibleColumns.includes('termCount') && (
+                  <TableCell className="w-[110px] text-center">
+                    {cat.filterType === 'range' ? (
+                      <span className="text-xs text-slate-400">Không áp dụng</span>
+                    ) : (
+                      <Badge variant="secondary" className="inline-flex min-w-10 justify-center">
+                        {termCountByGroup.get(cat.id) ?? 0}
+                      </Badge>
+                    )}
+                  </TableCell>
+                )}
+                {resolvedVisibleColumns.includes('productTypes') && (
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(assignedTypesByGroup.get(cat.id) ?? []).slice(0, 3).map(type => (
+                        <Link
+                          key={type._id}
+                          href={`/admin/product-types/${type._id}/edit`}
+                          className="inline-flex items-center rounded-full border border-slate-200 px-2 py-0.5 text-xs text-slate-600 hover:border-orange-300 hover:text-orange-700"
+                        >
+                          {type.name}
+                        </Link>
+                      ))}
+                      {(assignedTypesByGroup.get(cat.id)?.length ?? 0) > 3 && (
+                        <Badge variant="secondary">+{(assignedTypesByGroup.get(cat.id)?.length ?? 0) - 3}</Badge>
+                      )}
+                      {assignedTypesData !== undefined && (assignedTypesByGroup.get(cat.id)?.length ?? 0) === 0 && (
+                        <span className="text-xs text-slate-400">Chưa gán</span>
+                      )}
+                    </div>
+                  </TableCell>
+                )}
                 {resolvedVisibleColumns.includes('actions') && (
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      {(() => {
+                        const firstType = assignedTypesByGroup.get(cat.id)?.find(type => type.active) ?? assignedTypesByGroup.get(cat.id)?.[0];
+                        const href = firstType ? `/${firstType.slug}/${cat.slug}` : `/products/${cat.slug}`;
+                        return (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title={firstType ? 'Mở nhóm thuộc tính ngoài site' : 'Mở trang sản phẩm với filter group'}
+                            onClick={() => window.open(href, '_blank')}
+                          >
+                            <ExternalLink size={16}/>
+                          </Button>
+                        );
+                      })()}
                       <Link href={`/admin/attribute-groups/${cat.id}/edit`}><Button variant="ghost" size="icon"><Edit size={16}/></Button></Link>
                       <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600" onClick={ async () => handleDelete(cat.id as Id<"attributeGroups">)}><Trash2 size={16}/></Button>
                     </div>

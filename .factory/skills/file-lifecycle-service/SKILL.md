@@ -327,15 +327,33 @@ Không để mỗi admin page tự resolve URL hoặc query `images`.
 - Save config mới.
 - Server so sánh previous vs next và cleanup an toàn.
 
-## Guardrails bắt buộc
+## FLS Audit Matrix & Fail-Critical Rules
 
-- Không xóa storage trực tiếp từ UI/client cho business record đã lưu.
-- Không xóa bằng URL; luôn resolve về `storageId`.
-- Không chỉ check current config; phải so sánh previous config và next config.
-- Không tin `fileReferences` là đủ với legacy data; phải hỗ trợ URL-only cho migration period.
-- Không full scan không giới hạn; dùng folder/index/limit/batch.
-- Không xóa nếu `hasFileReferences(storageId)` trả true.
-- Cleanup rộng trên data thật phải đọc trước → mutate → verify sau.
+Để đảm bảo không bị rò rỉ hay làm rơi `storageId` trong toàn bộ vòng đời của file, Agent/Developer bắt buộc phải thực hiện kiểm tra chéo theo **FLS Audit Matrix** dưới đây:
+
+### 1. FLS Audit Matrix
+
+| Giai đoạn | Trách nhiệm | Checklist kiểm tra | Lỗi thường gặp |
+| --- | --- | --- | --- |
+| **1. Uploader** | Component Uploader | Trả về cả `url` và `storageId` khi upload xong. | Chỉ trả về URL: `onChange(result.url)` |
+| **2. Callback Props** | Callback Handler trên UI | Nhận tham số `(url, storageId)` và lưu vào state item tương ứng. | Bỏ qua storageId: `onChange={(url) => ...}` |
+| **3. Editor Type** | Type định nghĩa (TypeScript) | Khai báo thuộc tính `storageId?: string | null` trong interface của item. | Thiếu trường `storageId` trong type. |
+| **4. Normalizer** | Hàm chuẩn hóa (constants/lib) | Đọc trường `storageId` từ database/config thô, xử lý fallback URL-only. | Bỏ qua không parse `storageId` khi map dữ liệu. |
+| **5. Create/Edit Payload** | Hàm serialize / save payload | Truyền `storageId` vào payload gửi lên Convex mutation. | Strip bỏ `storageId` khi gửi payload lưu. |
+| **6. Backend Sync** | Convex mutation handler | Gọi `syncOwnerFileReferences` và dọn dẹp các storageId bị xóa. | Quên không gọi cleanup khi update/delete config. |
+
+### 2. Rule Fail-Critical
+
+> [!CAUTION]
+> **CRITICAL FAIL**: Bất kỳ hành động upload nào gọi `registerDraftUpload` hoặc hook `useFileDraftUploads` mà cấu trúc lưu trữ (config/payload) sau đó làm rơi hoặc không duy trì `storageId` đều được coi là một lỗi đặc biệt nghiêm trọng. Agent không được phép commit code nếu rơi vào trường hợp này.
+
+### 3. Grep Checklist phát hiện nhanh "Mùi lỗi" (FLS Smells)
+
+Trước khi bàn giao task có upload file, Agent bắt buộc phải chạy grep các pattern sau để phát hiện rủi ro:
+- `onChange={(url)` -> Dấu hiệu callback uploader đang làm rơi storageId.
+- `deleteImage` -> Dấu hiệu UI tự ý xóa file trực tiếp trước khi save config.
+- `ctx.storage.delete` -> Dấu hiệu business mutation tự ý xóa file trực tiếp không qua safe cleanup gateway.
+- `storageId: undefined` -> Dấu hiệu serializer đang cố tình strip bỏ định danh file.
 
 ## Verification checklist
 

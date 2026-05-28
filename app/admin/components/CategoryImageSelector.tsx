@@ -23,6 +23,7 @@ import { resolveNamingContext } from '@/lib/image/uploadNaming';
 import { ImageEditorDialog } from './ImageEditorDialog';
 import { getProductImageAspectRatioLabel, type ImageAspectRatioInput } from '@/lib/products/image-aspect-ratio';
 import { ImageSourceActions } from './ImageSourceActions';
+import { useFileDraftUploads } from './useFileDraftUploads';
 
 // Available icons for categories
 const CATEGORY_ICONS = [
@@ -105,7 +106,7 @@ const resolveImageMode = (value: string): ImageMode => {
 
 interface CategoryImageSelectorProps {
   value: string;
-  onChange: (value: string, mode: ImageMode) => void;
+  onChange: (value: string, mode: ImageMode, storageId?: Id<'_storage'> | null) => void;
   categoryImage?: string;
   categoryId?: string;
   brandColor?: string;
@@ -137,6 +138,7 @@ export function CategoryImageSelector({
 
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
   const saveImage = useMutation(api.storage.saveImage);
+  const { trackDraftUpload } = useFileDraftUploads(`category-image-selector:${categoryId ?? 'new'}`);
   const productsByCategory = useQuery(
     api.products.listByCategory,
     categoryId ? { categoryId: categoryId as Id<"productCategories">, paginationOpts: { cursor: null, numItems: 50 }, status: 'Active' } : "skip"
@@ -163,17 +165,17 @@ export function CategoryImageSelector({
     setMode(newMode);
     setShowIconPicker(false);
     if (newMode === 'default') {
-      onChange('', 'default');
+      onChange('', 'default', null);
     } else if (newMode === 'product-image') {
       if (selectedProductId) {
-        onChange(`product:${selectedProductId}`, 'product-image');
+        onChange(`product:${selectedProductId}`, 'product-image', null);
       } else {
-        onChange('', 'product-image');
+        onChange('', 'product-image', null);
       }
     } else if (newMode === 'icon' && selectedIcon) {
-      onChange(`icon:${selectedIcon}`, 'icon');
+      onChange(`icon:${selectedIcon}`, 'icon', null);
     } else if (newMode === 'url' && urlInput) {
-      onChange(urlInput, 'url');
+      onChange(urlInput, 'url', null);
     } else if (newMode === 'upload' && uploadedUrl) {
       onChange(uploadedUrl, 'upload');
     }
@@ -182,21 +184,21 @@ export function CategoryImageSelector({
   const handleProductSelect = (productId: string) => {
     setSelectedProductId(productId);
     if (productId) {
-      onChange(`product:${productId}`, 'product-image');
+      onChange(`product:${productId}`, 'product-image', null);
     } else {
-      onChange('', 'product-image');
+      onChange('', 'product-image', null);
     }
   };
 
   const handleIconSelect = (iconName: string) => {
     setSelectedIcon(iconName);
-    onChange(`icon:${iconName}`, 'icon');
+    onChange(`icon:${iconName}`, 'icon', null);
     setShowIconPicker(false);
   };
 
   const handleUrlApply = () => {
     if (urlInput.trim()) {
-      onChange(urlInput.trim(), 'url');
+      onChange(urlInput.trim(), 'url', null);
     }
   };
 
@@ -232,10 +234,11 @@ export function CategoryImageSelector({
         storageId: storageId as Id<"_storage">,
         width: prepared.width,
       });
+      await trackDraftUpload(storageId as Id<'_storage'>, 'category-images');
 
       const imageUrl = result.url ?? '';
       setUploadedUrl(imageUrl);
-      onChange(imageUrl, 'upload');
+      onChange(imageUrl, 'upload', storageId as Id<'_storage'>);
       toast.success('Tải ảnh lên thành công');
     } catch (error) {
       console.error('Upload error:', error);
@@ -243,7 +246,7 @@ export function CategoryImageSelector({
     } finally {
       setIsUploading(false);
     }
-  }, [generateUploadUrl, saveImage, onChange]);
+  }, [generateUploadUrl, saveImage, onChange, trackDraftUpload]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -279,7 +282,7 @@ export function CategoryImageSelector({
 
   const handleRemoveUpload = () => {
     setUploadedUrl('');
-    onChange('', 'default');
+    onChange('', 'default', null);
     setMode('default');
   };
 

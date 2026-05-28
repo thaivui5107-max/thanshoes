@@ -46,7 +46,6 @@ export function DemoItemImageUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
   const saveImage = useMutation(api.storage.saveImage);
-  const deleteImage = useMutation(api.storage.deleteImage);
   const { trackDraftUpload } = useFileDraftUploads('product-list-demo-products');
 
   const handleFile = useCallback(async (file: File) => {
@@ -67,9 +66,7 @@ export function DemoItemImageUploader({
       if (!response.ok) { throw new Error('Upload failed'); }
       const { storageId } = await response.json();
 
-      if (item.storageId) {
-        try { await deleteImage({ storageId: item.storageId as Id<'_storage'> }); } catch { /* ignore */ }
-      }
+
 
       const result = await saveImage({
         filename: prepared.filename,
@@ -89,7 +86,7 @@ export function DemoItemImageUploader({
     } finally {
       setUploading(false);
     }
-  }, [generateUploadUrl, saveImage, deleteImage, item.storageId, onImageChange, trackDraftUpload]);
+  }, [generateUploadUrl, saveImage, item.storageId, onImageChange, trackDraftUpload]);
 
   const handleClipboardPaste = useCallback(async () => {
     if (uploading) return;

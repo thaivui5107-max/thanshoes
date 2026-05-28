@@ -148,11 +148,15 @@ Phải kiểm tra:
 - nội dung style-specific có bị hardcode sai chỗ không
 - màu / secondary / mode / override state có được preserve không
 
-### Phase 6.5 — File Lifecycle Guard
+### Phase 6.5 — File Lifecycle Guard (FAIL CRITICAL)
+
+> [!CAUTION]
+> **FAIL CRITICAL**: Bất kỳ hành động upload media mới nào mà form component chỉ trả về URL hoặc serializer bỏ qua/strip mất `storageId` đều bị coi là vi phạm nghiêm trọng và sẽ fail validation ngay lập tức.
 
 Nếu config có field file/media (`image`, `imageUrl`, `avatar`, `icon`, `logo`, `gallery`, `video`, `storageId`):
+- **Upload mới bắt buộc phải persist `storageId`**: Không được phép tạo upload mới chỉ lưu URL; uploader, callback và config lưu trữ bắt buộc phải đồng bộ giữ `storageId`.
 - Upload mới phải được register draft qua shared uploader hoặc `useFileDraftUploads`.
-- Config lưu `storageId` khi uploader có trả về; nếu legacy chỉ có URL thì backend `homeComponents` phải resolve được.
+- Config lưu `storageId` khi uploader có trả về; nếu legacy chỉ có URL thì backend `homeComponents` phải resolve được làm fallback.
 - Create/edit save phải gọi `homeComponents.create/update/updateConfig` để sync `fileReferences`.
 - Xóa/đổi ảnh trong form không được bypass FLS bằng xóa storage trực tiếp sau khi record đã lưu.
 - Delete/bulk delete list page phải dùng `api.homeComponents.remove`.

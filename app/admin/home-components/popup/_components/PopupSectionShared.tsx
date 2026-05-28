@@ -88,6 +88,103 @@ function PopupImage({ config, className }: { config: PopupConfig; className?: st
 }
 
 const sectionImageAlt = 'Popup image';
+
+function SunburstPattern() {
+  return (
+    <div className="absolute inset-0 opacity-[0.08] pointer-events-none overflow-hidden select-none">
+      <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="sunburst-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.25" />
+          </radialGradient>
+        </defs>
+        <g fill="url(#sunburst-glow)">
+          {Array.from({ length: 12 }).map((_, idx) => {
+            const angle1 = (idx * 360) / 12;
+            const angle2 = angle1 + 15;
+            const rad1 = (angle1 * Math.PI) / 180;
+            const rad2 = (angle2 * Math.PI) / 180;
+            const x1 = 50 + 100 * Math.cos(rad1);
+            const y1 = 50 + 100 * Math.sin(rad1);
+            const x2 = 50 + 100 * Math.cos(rad2);
+            const y2 = 50 + 100 * Math.sin(rad2);
+            return (
+              <path
+                key={idx}
+                d={`M 50 50 L ${x1} ${y1} L ${x2} ${y2} Z`}
+              />
+            );
+          })}
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+const parseDescription = (text: string, isDarkBg: boolean) => {
+  if (!text) {return null;}
+  const parts = text.split(/(\*[^*]+\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('*') && part.endsWith('*')) {
+      const clean = part.slice(1, -1);
+      return (
+        <span key={index} className={isDarkBg ? 'text-[#f59e0b] underline font-bold' : 'text-blue-600 underline font-bold'}>
+          {clean}
+        </span>
+      );
+    }
+    return part;
+  });
+};
+
+const getPopupBackgroundStyle = (config: PopupConfig, brandColor: string, secondary?: string) => {
+  const mode = config.backgroundMode ?? 'solid';
+  const secColor = secondary || brandColor;
+
+  if (mode === 'brand' || mode === 'pattern-sunburst') {
+    return { backgroundColor: brandColor };
+  }
+  if (mode === 'secondary-solid' || mode === 'pattern-sunburst-secondary') {
+    return { backgroundColor: secColor };
+  }
+  if (mode === 'gradient-brand-to-secondary' || mode === 'pattern-sunburst-gradient') {
+    return { backgroundImage: `linear-gradient(135deg, ${brandColor}, ${secColor})` };
+  }
+  if (mode === 'gradient-secondary-to-brand') {
+    return { backgroundImage: `linear-gradient(135deg, ${secColor}, ${brandColor})` };
+  }
+  if (mode === 'gradient-brand-dark') {
+    return { backgroundImage: `linear-gradient(135deg, ${brandColor}, #020617)` };
+  }
+  if (mode === 'gradient-secondary-dark') {
+    return { backgroundImage: `linear-gradient(135deg, ${secColor}, #020617)` };
+  }
+  if (mode === 'glassmorphism') {
+    return { 
+      backgroundColor: 'rgba(255, 255, 255, 0.45)', 
+      backdropFilter: 'blur(16px)', 
+      WebkitBackdropFilter: 'blur(16px)',
+      borderColor: 'rgba(255, 255, 255, 0.3)' 
+    };
+  }
+  if (mode === 'dark-aesthetic') {
+    return { 
+      backgroundColor: '#0f172a', 
+      borderColor: 'rgba(255, 255, 255, 0.1)' 
+    };
+  }
+  return { backgroundColor: '#ffffff' };
+};
+
+const isDarkBackground = (style: PopupStyle, backgroundMode?: string) => {
+  if (style !== 'centered-advertisement') {return false;}
+  if (!backgroundMode || backgroundMode === 'solid' || backgroundMode === 'glassmorphism') {
+    return false;
+  }
+  return true;
+};
+
 const popupFontStyle = {
   fontFamily: 'var(--font-active, var(--font-be-vietnam-pro)), var(--font-be-vietnam-pro), sans-serif',
 } as React.CSSProperties;
@@ -104,14 +201,14 @@ const getOverlayPaddingClass = (config: PopupConfig) => {
   return 'p-4';
 };
 
-function PopupActions({ config, brandColor, onClose, onDismissToday, forceStack = false }: { config: PopupConfig; brandColor: string; onClose: () => void; onDismissToday: () => void; forceStack?: boolean }) {
-  const hasPrimaryLink = config.primaryButtonLink.trim().length > 0;
-  const hasSecondaryLink = config.secondaryButtonLink.trim().length > 0;
+function PopupActions({ config, brandColor, onClose, onDismissToday, forceStack = false, isDarkBg = false }: { config: PopupConfig; brandColor: string; onClose: () => void; onDismissToday: () => void; forceStack?: boolean; isDarkBg?: boolean }) {
+  const hasPrimaryLink = config.primaryButtonLink.trim().length > 0 && config.primaryButtonLink !== '#';
+  const hasSecondaryLink = config.secondaryButtonLink.trim().length > 0 && config.secondaryButtonLink !== '#';
   const hasPrimaryText = config.primaryButtonText.trim().length > 0;
   const hasSecondaryText = config.secondaryButtonText.trim().length > 0;
   const tokens = getPopupColorTokens(brandColor, config.colorIntensity);
-  const secondaryClass = `inline-flex min-h-[46px] flex-1 items-center justify-center rounded-2xl border px-5 py-2.5 text-center text-sm font-semibold text-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 whitespace-normal break-words ${config.secondaryButtonDisabled ? 'cursor-not-allowed opacity-55' : 'hover:bg-slate-50'}`;
-  const primaryClass = `inline-flex min-h-[46px] flex-1 items-center justify-center rounded-2xl px-5 py-2.5 text-center text-sm font-bold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 whitespace-normal break-words ${config.primaryButtonDisabled ? 'cursor-not-allowed opacity-55' : 'hover:brightness-95'}`;
+  const secondaryClass = `inline-flex min-h-[46px] flex-1 items-center justify-center rounded-2xl border px-5 py-2.5 text-center text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 whitespace-normal break-words ${config.secondaryButtonDisabled ? 'cursor-not-allowed opacity-55' : isDarkBg ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-50 text-slate-700'}`;
+  const primaryClass = `inline-flex min-h-[46px] flex-1 items-center justify-center rounded-2xl px-5 py-2.5 text-center text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 whitespace-normal break-words ${config.primaryButtonDisabled ? 'cursor-not-allowed opacity-55' : 'hover:brightness-95'}`;
   const wrapperClass = forceStack ? 'flex flex-col gap-2.5' : 'flex flex-col gap-2.5 sm:flex-row';
 
   return (
@@ -121,7 +218,7 @@ function PopupActions({ config, brandColor, onClose, onDismissToday, forceStack 
           type="button"
           disabled
           className={secondaryClass}
-          style={{ borderColor: tokens.primaryBorder, '--tw-ring-color': tokens.ring } as React.CSSProperties}
+          style={{ borderColor: isDarkBg ? 'rgba(255,255,255,0.25)' : tokens.primaryBorder, '--tw-ring-color': tokens.ring } as React.CSSProperties}
         >
           {config.secondaryButtonText}
         </button>
@@ -129,7 +226,7 @@ function PopupActions({ config, brandColor, onClose, onDismissToday, forceStack 
         <a
           {...getLinkProps(config.secondaryButtonLink)}
           className={secondaryClass}
-          style={{ borderColor: tokens.primaryBorder, '--tw-ring-color': tokens.ring } as React.CSSProperties}
+          style={{ borderColor: isDarkBg ? 'rgba(255,255,255,0.25)' : tokens.primaryBorder, '--tw-ring-color': tokens.ring } as React.CSSProperties}
         >
           {config.secondaryButtonText}
         </a>
@@ -138,7 +235,7 @@ function PopupActions({ config, brandColor, onClose, onDismissToday, forceStack 
           type="button"
           onClick={onClose}
           className={secondaryClass}
-          style={{ borderColor: tokens.primaryBorder, '--tw-ring-color': tokens.ring } as React.CSSProperties}
+          style={{ borderColor: isDarkBg ? 'rgba(255,255,255,0.25)' : tokens.primaryBorder, '--tw-ring-color': tokens.ring } as React.CSSProperties}
         >
           {config.secondaryButtonText}
         </button>
@@ -149,7 +246,11 @@ function PopupActions({ config, brandColor, onClose, onDismissToday, forceStack 
           type="button"
           disabled
           className={primaryClass}
-          style={{ backgroundColor: brandColor, '--tw-ring-color': tokens.ring } as React.CSSProperties}
+          style={{ 
+            backgroundColor: isDarkBg ? '#f59e0b' : brandColor, 
+            color: isDarkBg ? '#0f172a' : '#ffffff', 
+            '--tw-ring-color': tokens.ring 
+          } as React.CSSProperties}
         >
           {config.primaryButtonText}
         </button>
@@ -157,7 +258,11 @@ function PopupActions({ config, brandColor, onClose, onDismissToday, forceStack 
         <a
           {...getLinkProps(config.primaryButtonLink)}
           className={primaryClass}
-          style={{ backgroundColor: brandColor, '--tw-ring-color': tokens.ring } as React.CSSProperties}
+          style={{ 
+            backgroundColor: isDarkBg ? '#f59e0b' : brandColor, 
+            color: isDarkBg ? '#0f172a' : '#ffffff', 
+            '--tw-ring-color': tokens.ring 
+          } as React.CSSProperties}
         >
           {config.primaryButtonText}
         </a>
@@ -166,7 +271,11 @@ function PopupActions({ config, brandColor, onClose, onDismissToday, forceStack 
           type="button"
           onClick={onClose}
           className={primaryClass}
-          style={{ backgroundColor: brandColor, '--tw-ring-color': tokens.ring } as React.CSSProperties}
+          style={{ 
+            backgroundColor: isDarkBg ? '#f59e0b' : brandColor, 
+            color: isDarkBg ? '#0f172a' : '#ffffff', 
+            '--tw-ring-color': tokens.ring 
+          } as React.CSSProperties}
         >
           {config.primaryButtonText}
         </button>
@@ -175,7 +284,7 @@ function PopupActions({ config, brandColor, onClose, onDismissToday, forceStack 
         <button
           type="button"
           onClick={onDismissToday}
-          className="min-h-[46px] rounded-2xl px-4 text-center text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 sm:flex-none whitespace-normal break-words"
+          className={`min-h-[46px] rounded-2xl px-4 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 sm:flex-none whitespace-normal break-words ${isDarkBg ? 'text-white/60 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
           style={{ '--tw-ring-color': tokens.ring } as React.CSSProperties}
         >
           Không hiện lại hôm nay
@@ -185,7 +294,7 @@ function PopupActions({ config, brandColor, onClose, onDismissToday, forceStack 
   );
 }
 
-function PopupText({ config, brandColor, align = 'center' }: { config: PopupConfig; brandColor: string; align?: 'center' | 'left' }) {
+function PopupText({ config, brandColor, align = 'center', isDarkBg = false }: { config: PopupConfig; brandColor: string; align?: 'center' | 'left'; isDarkBg?: boolean }) {
   const tokens = getPopupColorTokens(brandColor, config.colorIntensity);
 
   return (
@@ -195,12 +304,12 @@ function PopupText({ config, brandColor, align = 'center' }: { config: PopupConf
           {config.eyebrow}
         </div>
       )}
-      <h2 className="break-words text-balance text-2xl font-bold tracking-[-0.03em] text-slate-950 sm:text-3xl">{config.heading}</h2>
+      <h2 className={`break-words text-balance text-2xl font-bold tracking-[-0.03em] sm:text-3xl ${isDarkBg ? 'text-white' : 'text-slate-950'}`}>{config.heading}</h2>
       {config.description && (
-        <p className="mt-3 break-words text-sm leading-6 text-slate-600 sm:text-base">{config.description}</p>
+        <p className={`mt-3 break-words text-sm leading-6 sm:text-base whitespace-pre-wrap ${isDarkBg ? 'text-slate-100' : 'text-slate-600'}`}>{parseDescription(config.description, isDarkBg)}</p>
       )}
       {config.note && (
-        <div className={`${roundedClass(config, 'rounded-2xl', 'rounded-lg')} mt-5 break-words border px-4 py-3 text-sm leading-5 text-slate-500`} style={{ backgroundColor: tokens.primaryWash, borderColor: tokens.border }}>
+        <div className={`${roundedClass(config, 'rounded-2xl', 'rounded-lg')} mt-5 break-words border px-4 py-3 text-sm leading-5`} style={{ backgroundColor: isDarkBg ? 'rgba(255,255,255,0.08)' : tokens.primaryWash, borderColor: isDarkBg ? 'rgba(255,255,255,0.15)' : tokens.border, color: isDarkBg ? 'rgba(255,255,255,0.8)' : '#64748b' }}>
           {config.note}
         </div>
       )}
@@ -208,24 +317,52 @@ function PopupText({ config, brandColor, align = 'center' }: { config: PopupConf
   );
 }
 
-function CloseButton({ onClose }: { onClose: () => void }) {
+function CloseButton({ onClose, isDarkBg = false }: { onClose: () => void; isDarkBg?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClose}
       aria-label="Đóng popup"
-      className="absolute right-4 top-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900"
-      style={{ color: '#dc2626' }}
+      className={`absolute right-4 top-4 z-50 inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${isDarkBg ? 'bg-transparent border-none text-white/80 hover:text-white' : 'border border-slate-200 bg-white/90 text-slate-500 shadow-sm hover:bg-slate-50 hover:text-slate-900'}`}
+      style={isDarkBg ? undefined : { color: '#dc2626' }}
     >
-      <X className="h-4 w-4" strokeWidth={1.5} />
+      <X className="h-5 w-5" strokeWidth={1.5} />
     </button>
   );
 }
 
-function PopupCard({ config, brandColor, style, previewDevice, onClose, onDismissToday }: { config: PopupConfig; brandColor: string; style: PopupStyle; previewDevice: PreviewDevice; onClose: () => void; onDismissToday: () => void }) {
+function PopupCard({ config, brandColor, secondary, style, previewDevice, onClose, onDismissToday }: { config: PopupConfig; brandColor: string; secondary?: string; style: PopupStyle; previewDevice: PreviewDevice; onClose: () => void; onDismissToday: () => void }) {
   const tokens = getPopupColorTokens(brandColor, config.colorIntensity);
   const borderStyle = { borderColor: tokens.border };
   const isMobilePreview = previewDevice === 'mobile';
+  const darkBg = isDarkBackground(style, config.backgroundMode);
+
+  if (style === 'centered-advertisement') {
+    const hasSunburst = config.backgroundMode === 'pattern-sunburst' 
+      || config.backgroundMode === 'pattern-sunburst-secondary' 
+      || config.backgroundMode === 'pattern-sunburst-gradient';
+
+    return (
+      <div 
+        className={`relative flex w-full max-w-[320px] flex-col items-center justify-center p-6 border text-center overflow-hidden ${roundedClass(config, 'rounded-[2rem]', 'rounded-2xl')}`} 
+        style={{ ...borderStyle, boxShadow: tokens.premiumShadow, ...getPopupBackgroundStyle(config, brandColor, secondary) }}
+      >
+        <CloseButton onClose={onClose} isDarkBg={darkBg} />
+        {hasSunburst && <SunburstPattern />}
+        <div className="relative z-10 w-full space-y-5">
+          <PopupText config={config} brandColor={brandColor} align="center" isDarkBg={darkBg} />
+          <div className="w-full overflow-hidden">
+            {config.imageUrl.trim() ? (
+              <img src={config.imageUrl} alt={config.heading || sectionImageAlt} className="mx-auto aspect-[3/4] w-[190px] rounded-full object-cover border-2 border-white/10 shadow-md" />
+            ) : (
+              <PopupImage config={config} className="min-h-[180px] p-2" />
+            )}
+          </div>
+          <PopupActions config={config} brandColor={brandColor} onClose={onClose} onDismissToday={onDismissToday} forceStack={true} isDarkBg={darkBg} />
+        </div>
+      </div>
+    );
+  }
 
   if (style === 'split-visual') {
     return (
@@ -365,7 +502,9 @@ function PopupOverlay({
     ? 'items-end justify-center'
     : style === 'side-panel'
       ? 'items-stretch justify-end'
-      : 'items-center justify-center';
+      : style === 'centered-advertisement'
+        ? 'items-end justify-end md:p-6 p-4'
+        : 'items-center justify-center';
 
   const handleDismissToday = () => {
     if (context === 'site') {
@@ -382,7 +521,7 @@ function PopupOverlay({
         ...fontStyle,
         '--popup-secondary': secondary ?? brandColor,
         '--popup-color-mode': mode ?? 'single',
-        backgroundColor: tokens.overlay,
+        backgroundColor: style === 'centered-advertisement' ? 'rgba(2, 6, 23, 0.4)' : tokens.overlay,
       } as React.CSSProperties}
       role="dialog"
       aria-modal="true"
@@ -390,7 +529,7 @@ function PopupOverlay({
       onClick={onClose}
     >
       <div onClick={(event) => event.stopPropagation()} className="contents">
-        <PopupCard config={config} brandColor={brandColor} style={style} previewDevice={previewDevice} onClose={onClose} onDismissToday={handleDismissToday} />
+        <PopupCard config={config} brandColor={brandColor} secondary={secondary} style={style} previewDevice={previewDevice} onClose={onClose} onDismissToday={handleDismissToday} />
       </div>
     </div>
   );

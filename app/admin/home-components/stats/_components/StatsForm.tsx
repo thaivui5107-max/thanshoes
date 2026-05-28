@@ -30,7 +30,7 @@ const resolveIconComponent = (iconName: string) => {
 };
 
 // ── Icon Upload ──────────────────────────────────────────────────
-function IconUpload({ value, onChange, index }: { value: string; onChange: (url: string) => void; index: number }) {
+function IconUpload({ value, onChange, index }: { value: string; onChange: (url: string, storageId?: string | null) => void; index: number }) {
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -52,7 +52,7 @@ function IconUpload({ value, onChange, index }: { value: string; onChange: (url:
       const { storageId } = await res.json() as { storageId: string };
       const result = await saveImage({ storageId: storageId as Id<'_storage'>, filename: prepared.filename, folder: 'stats-icons', mimeType: prepared.mimeType, size: prepared.size, width: prepared.width, height: prepared.height });
       await trackDraftUpload(storageId as Id<'_storage'>, 'stats-icons');
-      onChange(result.url ?? '');
+      onChange(result.url ?? '', storageId);
       toast.success('Tải icon thành công');
     } catch { toast.error('Lỗi tải icon'); } finally { setUploading(false); }
   }, [generateUploadUrl, index, onChange, saveImage, trackDraftUpload]);
@@ -104,7 +104,7 @@ function IconUpload({ value, onChange, index }: { value: string; onChange: (url:
           </div>
           {value && (
             <button type="button" className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full bg-red-500 text-white text-[8px] flex items-center justify-center"
-              onClick={(e) => { e.stopPropagation(); onChange(''); }}>×</button>
+              onClick={(e) => { e.stopPropagation(); onChange('', null); }}>×</button>
           )}
         </div>
         <ImageSourceActions
@@ -155,6 +155,7 @@ export const StatsForm = ({
   mediaPlacement,
   mediaAlign,
   backgroundImage,
+  backgroundImageStorageId,
   onMediaPlacementChange,
   onMediaAlignChange,
   onBackgroundImageChange,
@@ -169,9 +170,10 @@ export const StatsForm = ({
   mediaPlacement: StatsMediaPlacement;
   mediaAlign: StatsMediaAlign;
   backgroundImage?: string;
+  backgroundImageStorageId?: string | null;
   onMediaPlacementChange: (value: StatsMediaPlacement) => void;
   onMediaAlignChange: (value: StatsMediaAlign) => void;
-  onBackgroundImageChange?: (value: string) => void;
+  onBackgroundImageChange?: (value: string, storageId?: string | null) => void;
   defaultExpanded?: boolean;
   className?: string;
   openSections?: Record<string, boolean>;
@@ -256,7 +258,8 @@ export const StatsForm = ({
               <SettingsImageUploader
                 label="Ảnh nền layout Hero ảnh nền"
                 value={backgroundImage}
-                onChange={(url) => onBackgroundImageChange(url ?? '')}
+                storageId={backgroundImageStorageId as Id<'_storage'>}
+                onChange={(url, storageId) => onBackgroundImageChange(url ?? '', storageId)}
                 folder="stats-backgrounds"
                 naming={{ entityName: 'stats', field: 'background-image', index: 1 }}
                 previewSize="md"
@@ -352,6 +355,7 @@ export const StatsForm = ({
                             iconName: newIconType === 'lucide' ? (item.iconName || STATS_ICON_CHOICES[0]) : undefined,
                             iconType: newIconType,
                             iconUrl: (newIconType === 'url' || newIconType === 'upload') ? item.iconUrl : undefined,
+                            iconStorageId: newIconType === 'upload' ? item.iconStorageId : null,
                           });
                           // Mở picker lucide khi chọn lucide
                           if (newIconType === 'lucide') {
@@ -412,7 +416,7 @@ export const StatsForm = ({
                     <div className="flex items-center gap-2">
                       <IconUpload
                         value={item.iconUrl ?? ''}
-                        onChange={(url) => { handleUpdate(item.id, { iconUrl: url }); }}
+                        onChange={(url, storageId) => { handleUpdate(item.id, { iconUrl: url, iconStorageId: storageId }); }}
                         index={idx + 1}
                       />
                       {item.iconUrl ? (

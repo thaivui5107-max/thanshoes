@@ -102,6 +102,7 @@ export function IconPopoverPicker({ value, onChange, options, brandColor = '#3b8
         className={cn(
           'flex items-center justify-between gap-2 rounded-md border border-input bg-background text-left text-sm transition-colors hover:bg-slate-50',
           compact ? 'h-8 px-2' : 'h-10 w-full px-3',
+          brandColor.toLowerCase() === '#ffffff' && 'bg-slate-950 text-white border-slate-800 hover:bg-slate-900',
         )}
       >
         <span className="flex min-w-0 items-center gap-2">

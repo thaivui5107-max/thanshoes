@@ -77,6 +77,7 @@ export default function StatsEditPage({
   const [mediaPlacement, setMediaPlacement] = useState<StatsMediaPlacement>(DEFAULT_STATS_CONFIG.mediaPlacement ?? 'top');
   const [mediaAlign, setMediaAlign] = useState<StatsMediaAlign>(DEFAULT_STATS_CONFIG.mediaAlign ?? 'center');
   const [backgroundImage, setBackgroundImage] = useState(DEFAULT_STATS_CONFIG.backgroundImage ?? '');
+  const [backgroundImageStorageId, setBackgroundImageStorageId] = useState<string | null>(null);
   const [fullWidth, setFullWidth] = useState(DEFAULT_STATS_CONFIG.fullWidth ?? false);
   const [spacing, setSpacing] = useState<StatsSpacing>(DEFAULT_STATS_CONFIG.spacing ?? 'normal');
   const [cornerRadius, setCornerRadius] = useState<StatsCornerRadius>(DEFAULT_STATS_CONFIG.cornerRadius ?? 'lg');
@@ -111,6 +112,7 @@ export default function StatsEditPage({
     mediaPlacement: StatsMediaPlacement;
     mediaAlign: StatsMediaAlign;
     backgroundImage: string;
+    backgroundImageStorageId: string | null;
     fullWidth: boolean;
     spacing: StatsSpacing;
     cornerRadius: StatsCornerRadius;
@@ -147,6 +149,7 @@ export default function StatsEditPage({
         iconType: item.iconType,
         iconName: item.iconName,
         iconUrl: item.iconUrl,
+        iconStorageId: item.iconStorageId,
       }));
       const style = (config.style as StatsStyle) || 'horizontal';
       const resolvedShowTitle = typeof config.showTitle === 'boolean' ? config.showTitle : DEFAULT_STATS_CONFIG.showTitle !== false;
@@ -157,6 +160,7 @@ export default function StatsEditPage({
       const resolvedMediaPlacement = (config.mediaPlacement as StatsMediaPlacement) || DEFAULT_STATS_CONFIG.mediaPlacement || 'top';
       const resolvedMediaAlign = (config.mediaAlign as StatsMediaAlign) || DEFAULT_STATS_CONFIG.mediaAlign || 'center';
       const resolvedBackgroundImage = typeof config.backgroundImage === 'string' ? config.backgroundImage : DEFAULT_STATS_CONFIG.backgroundImage ?? '';
+      const resolvedBackgroundImageStorageId = typeof config.backgroundImageStorageId === 'string' ? config.backgroundImageStorageId : null;
       const resolvedFullWidth = typeof config.fullWidth === 'boolean' ? config.fullWidth : DEFAULT_STATS_CONFIG.fullWidth ?? false;
       const resolvedSpacing = config.noVerticalMargin === true ? 'none' : normalizeStatsSpacing(config.spacing);
       const resolvedCornerRadius = normalizeStatsCornerRadius(config.cornerRadius, config.noBorderRadius);
@@ -178,6 +182,7 @@ export default function StatsEditPage({
       setMediaPlacement(resolvedMediaPlacement);
       setMediaAlign(resolvedMediaAlign);
       setBackgroundImage(resolvedBackgroundImage);
+      setBackgroundImageStorageId(resolvedBackgroundImageStorageId);
       setFullWidth(resolvedFullWidth);
       setSpacing(resolvedSpacing);
       setCornerRadius(resolvedCornerRadius);
@@ -199,6 +204,7 @@ export default function StatsEditPage({
         mediaPlacement: resolvedMediaPlacement,
         mediaAlign: resolvedMediaAlign,
         backgroundImage: resolvedBackgroundImage,
+        backgroundImageStorageId: resolvedBackgroundImageStorageId,
         fullWidth: resolvedFullWidth,
         spacing: resolvedSpacing,
         cornerRadius: resolvedCornerRadius,
@@ -242,6 +248,7 @@ export default function StatsEditPage({
       || mediaPlacement !== initialData.mediaPlacement
       || mediaAlign !== initialData.mediaAlign
       || backgroundImage !== initialData.backgroundImage
+      || backgroundImageStorageId !== initialData.backgroundImageStorageId
       || fullWidth !== initialData.fullWidth
       || spacing !== initialData.spacing
       || cornerRadius !== initialData.cornerRadius
@@ -258,7 +265,7 @@ export default function StatsEditPage({
       || customFontChanged;
 
     setHasChanges(changed);
-  }, [hideHeader, title, showTitle, subtitle, showSubtitle, headerAlign, desktopColumns, mediaPlacement, mediaAlign, backgroundImage, fullWidth, spacing, cornerRadius, titleColorPrimary, subtitleAboveTitle, uppercaseText, showBadge, badgeText, enableAnimation, active, statsItems, statsStyle, initialData, customState, initialCustom, showCustomBlock, customFontState, initialFontCustom, showFontCustomBlock, resolvedCustomSecondary, resolvedInitialSecondary, enableTypeOverrides]);
+  }, [hideHeader, title, showTitle, subtitle, showSubtitle, headerAlign, desktopColumns, mediaPlacement, mediaAlign, backgroundImage, backgroundImageStorageId, fullWidth, spacing, cornerRadius, titleColorPrimary, subtitleAboveTitle, uppercaseText, showBadge, badgeText, enableAnimation, active, statsItems, statsStyle, initialData, customState, initialCustom, showCustomBlock, customFontState, initialFontCustom, showFontCustomBlock, resolvedCustomSecondary, resolvedInitialSecondary, enableTypeOverrides]);
 
   useUnsavedGuard(hasChanges);
 
@@ -276,6 +283,7 @@ export default function StatsEditPage({
             iconType: item.iconType,
             iconName: item.iconName,
             iconUrl: item.iconUrl,
+            iconStorageId: item.iconStorageId,
           })),
           style: statsStyle,
           hideHeader,
@@ -287,6 +295,7 @@ export default function StatsEditPage({
           mediaPlacement,
           mediaAlign,
           backgroundImage,
+          backgroundImageStorageId,
           fullWidth,
           spacing,
           cornerRadius,
@@ -338,6 +347,7 @@ export default function StatsEditPage({
         mediaPlacement,
         mediaAlign,
         backgroundImage,
+        backgroundImageStorageId,
         fullWidth,
         spacing,
         cornerRadius,
@@ -487,9 +497,13 @@ export default function StatsEditPage({
           mediaPlacement={mediaPlacement}
           mediaAlign={mediaAlign}
           backgroundImage={backgroundImage}
+          backgroundImageStorageId={backgroundImageStorageId}
           onMediaPlacementChange={setMediaPlacement}
           onMediaAlignChange={setMediaAlign}
-          onBackgroundImageChange={setBackgroundImage}
+          onBackgroundImageChange={(url, storageId) => {
+            setBackgroundImage(url);
+            setBackgroundImageStorageId(storageId ?? null);
+          }}
           className="mb-4"
           openSections={openSections}
           onToggleSection={toggleSection}

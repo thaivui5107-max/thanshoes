@@ -721,6 +721,7 @@ export function HomepageCategoryHeroForm({
             cropOnUpload={false}
             cropAspectRatio={() => getHomepageCategoryHeroCropAspectRatio(style)}
             imageAspectRatio={getHomepageCategoryHeroCropAspectRatio(style)}
+            deleteMode="defer"
             addButtonText="Thêm banner"
             emptyText="Chưa có banner hero"
           />

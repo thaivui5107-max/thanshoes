@@ -66,7 +66,7 @@ export default function TrustBadgesCreatePage() {
 
   const onSubmit = (e: React.FormEvent) => {
     void handleSubmit(e, {
-      items: trustBadgeItems.map((item) => ({ link: item.link, name: item.name, url: item.url })),
+      items: trustBadgeItems.map((item) => ({ link: item.link, name: item.name, url: item.url, storageId: item.storageId })),
       style: trustBadgesStyle,
       desktopColumns,
       cornerRadius,

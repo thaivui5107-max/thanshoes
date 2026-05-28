@@ -223,7 +223,7 @@ export const ProductCategoriesForm = ({
                     {item.categoryId && (
                       <div className="space-y-2">
                         <Label className="text-xs text-slate-500">Hình ảnh hiển thị</Label>
-                        <CategoryImageSelector value={item.customImage || ''} onChange={(value, mode) => setProductCategoriesItems(productCategoriesItems.map(c => c.id === item.id ? {...c, customImage: value, imageMode: mode} : c))} categoryId={item.categoryId} categoryImage={productCategoriesData?.find(cat => cat._id === item.categoryId)?.image} brandColor={brandColor} cropAspectRatio={cropAspectRatio} />
+                        <CategoryImageSelector value={item.customImage || ''} onChange={(value, mode, storageId) => setProductCategoriesItems(productCategoriesItems.map(c => c.id === item.id ? {...c, customImage: value, imageMode: mode, storageId: storageId === undefined ? c.storageId ?? null : storageId} : c))} categoryId={item.categoryId} categoryImage={productCategoriesData?.find(cat => cat._id === item.categoryId)?.image} brandColor={brandColor} cropAspectRatio={cropAspectRatio} />
                       </div>
                     )}
                   </div>
@@ -249,7 +249,7 @@ export const ProductCategoriesForm = ({
                     <SettingsImageUploader
                       label="Ảnh đại diện"
                       value={item.image ?? ''}
-                      onChange={(url) => updateDemoItem(item.id, { image: url ?? '' })}
+                      onChange={(url, storageId) => updateDemoItem(item.id, { image: url ?? '', storageId: storageId ?? null })}
                       folder="home-components/product-categories"
                       naming={{ entityName: item.name || 'demo-category', field: 'image', index: index + 1 }}
                       previewSize="sm"
