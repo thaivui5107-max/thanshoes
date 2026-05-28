@@ -99,7 +99,7 @@ const darkenColor = (hex: string, pct: number): string => {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 };
 
-const getIconNode = (name: string, size = 18) => {
+export const getIconNode = (name: string, size = 18) => {
   const normalized = name.trim().toLowerCase();
 
   if (normalized === 'calendar') {return <Calendar size={size} />;}
