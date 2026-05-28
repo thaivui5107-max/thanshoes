@@ -43,11 +43,10 @@ export default function CustomerRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10">
+    <div className="min-h-[calc(100vh-140px)] md:min-h-[calc(100vh-420px)] min-h-[550px] bg-slate-50 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-slate-900">Tạo tài khoản</h1>
-          <p className="text-sm text-slate-500 mt-2">Lưu sản phẩm yêu thích của bạn</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
