@@ -281,6 +281,7 @@ export interface ParsedProductRecord {
   digitalData?: string;
   imageUrl?: string;
   images?: string[];
+  detectedOptionNames?: string[];
   variants: {
     sku?: string;
     variantOption1?: string;
@@ -297,7 +298,7 @@ export async function parseProductExcelBase64(
   config: ProductModuleConfig,
   options?: ExcelOptionDef[],
   categories?: { id: string; name: string }[]
-): Promise<{ success: boolean; data?: ParsedProductRecord[]; error?: string }> {
+): Promise<{ success: boolean; data?: ParsedProductRecord[]; optionNames?: string[]; error?: string }> {
   try {
     const buffer = Buffer.from(base64String, "base64");
     const wb = new ExcelJS.Workbook();
@@ -317,7 +318,7 @@ export async function parseProductExcelBase64(
       }
       console.log(`[Excel Import] Sử dụng bộ chuyển đổi: ${customAdapter.name}`);
       const data = await customAdapter.parse(wb, config, options, categories);
-      return { success: true, data };
+      return { success: true, data, optionNames: data[0]?.detectedOptionNames };
     }
 
     const mainSheet = wb.getWorksheet("SanPham");

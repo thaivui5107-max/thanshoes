@@ -115,7 +115,10 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
     const typeCol = getColIndex(["loại sản phẩm", "loại"], 3); // C
     const brandCol = getColIndex(["nhãn hiệu", "thương hiệu"], 5); // E
     const descCol = getColIndex(["mô tả", "mô tả sản phẩm"], 4); // D
-    const sizeCol = getColIndex(["giá trị thuộc tính 1", "thuộc tính 1", "size", "kích cỡ"], 8); // H
+    const opt1NameCol = getColIndex(["thuộc tính 1"], 7); // G
+    const opt1ValueCol = getColIndex(["giá trị thuộc tính 1", "thuộc tính 1", "size", "kích cỡ"], 8); // H
+    const opt2NameCol = getColIndex(["thuộc tính 2"], 9); // I
+    const opt2ValueCol = getColIndex(["giá trị thuộc tính 2", "thuộc tính 2"], 10); // J
     const priceCol = getColIndex(["giá bán lẻ", "giá bán", "pl_giá bán lẻ"], 32); // AF
     const stockCol = getColIndex(["tồn kho", "tồn kho thực tế", "lc_cn1_tồn kho ban đầu"], 27); // AA
     const imageCol = getColIndex(["ảnh đại diện", "đường dẫn ảnh", "ảnh biến thể"], 18); // R
@@ -124,6 +127,10 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
     let currentBrand = "";
     let currentType = "";
     let currentDesc = "";
+    let currentOpt1Name = "";
+    let currentOpt2Name = "";
+
+    const detectedOptions = new Set<string>();
 
     for (let r = 2; r <= rowCount; r++) {
       const row = worksheet.getRow(r);
@@ -139,6 +146,16 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
         currentBrand = getCellText(row.getCell(brandCol));
         currentDesc = getCellText(row.getCell(descCol));
       }
+
+      // Cập nhật tên thuộc tính động khi có giá trị mới xuất hiện ở dòng cha/con
+      const opt1NameVal = getCellText(row.getCell(opt1NameCol));
+      if (opt1NameVal) currentOpt1Name = opt1NameVal;
+
+      const opt2NameVal = getCellText(row.getCell(opt2NameCol));
+      if (opt2NameVal) currentOpt2Name = opt2NameVal;
+
+      if (currentOpt1Name) detectedOptions.add(currentOpt1Name);
+      if (currentOpt2Name) detectedOptions.add(currentOpt2Name);
 
       // Sapo gom SKU biến thể là "SKUCHA-SIZE". Ta lấy SKUCHA làm SKU sản phẩm
       const skuParts = skuVal.split("-");
@@ -194,7 +211,8 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
       // Thêm biến thể
       parentRecord.variants.push({
         sku: skuVal,
-        variantOption1: getCellText(row.getCell(sizeCol)) || undefined,
+        variantOption1: getCellText(row.getCell(opt1ValueCol)) || undefined,
+        variantOption2: getCellText(row.getCell(opt2ValueCol)) || undefined,
         price: priceVal,
         salePrice: undefined,
         stock: stockVal,
@@ -202,6 +220,11 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
       });
     }
 
-    return Array.from(recordsMap.values());
+    const resultRecords = Array.from(recordsMap.values());
+    if (resultRecords.length > 0) {
+      resultRecords[0].detectedOptionNames = Array.from(detectedOptions).filter(Boolean).slice(0, 2);
+    }
+
+    return resultRecords;
   }
 };
