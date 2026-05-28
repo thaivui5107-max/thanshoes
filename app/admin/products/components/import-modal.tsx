@@ -146,12 +146,16 @@ export function ImportExportModal() {
 
       console.log("Parsed Data:", result.data);
       const optionNames = excelOptions.map((opt) => opt.name);
-      await upsertBulk({ 
+      const importResult = await upsertBulk({ 
         products: result.data as any,
         optionNames: optionNames.length > 0 ? optionNames : undefined,
       });
       
-      toast.success(`Upsert thành công ${result.data?.length} sản phẩm (Cha).`);
+      if (importResult.success) {
+        toast.success(`Import thành công: Tạo mới ${importResult.createdCount}, Cập nhật ${importResult.updatedCount} sản phẩm (Cha).`);
+      } else {
+        toast.error("Có lỗi xảy ra trong quá trình Import.");
+      }
       setIsOpen(false);
       setFile(null);
       setCompatibilityIssues([]);

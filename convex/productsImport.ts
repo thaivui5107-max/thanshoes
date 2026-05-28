@@ -48,6 +48,20 @@ export const upsertBulk = mutation({
     const categories = await ctx.db.query("productCategories").collect();
     const categoryMap = new Map(categories.map(c => [c._id.toString(), c._id]));
 
+    let defaultCategoryId: Id<"productCategories"> | undefined = undefined;
+    if (categories.length > 0) {
+      defaultCategoryId = categories[0]._id;
+    } else {
+      const defaultId = await ctx.db.insert("productCategories", {
+        name: "Chưa phân loại",
+        slug: "chua-phan-loai",
+        active: true,
+        order: 0,
+      });
+      defaultCategoryId = defaultId;
+      categoryMap.set(defaultId.toString(), defaultId);
+    }
+
     // TỐI ƯU BANDWIDTH 3: Load toàn bộ Options & Values (số lượng thường rất ít < 1000, 
     // fetch 1 lần rẻ hơn nhiều so với query từng dòng)
     const allOptions = await ctx.db.query("productOptions").collect();
@@ -67,7 +81,7 @@ export const upsertBulk = mutation({
       if (!option) {
         const optionId = await ctx.db.insert("productOptions", {
           name: optionName,
-          slug: optionName.toLowerCase().replace(/\\s+/g, '-'),
+          slug: optionName.toLowerCase().replace(/\s+/g, '-'),
           active: true,
           displayType: "dropdown",
           isPreset: false,
@@ -105,7 +119,11 @@ export const upsertBulk = mutation({
 
     for (const p of args.products) {
       const existing = existingProductsMap.get(p.sku);
-      const categoryId = p.categoryId ? categoryMap.get(p.categoryId) : undefined;
+      let categoryId = p.categoryId ? categoryMap.get(p.categoryId) : undefined;
+      
+      if (!categoryId) {
+        categoryId = defaultCategoryId;
+      }
       
       if (!existing && !categoryId) {
         errors.push({ sku: p.sku, message: "Thiếu danh mục khi tạo mới." });
