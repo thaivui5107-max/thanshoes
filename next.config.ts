@@ -57,6 +57,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
       },
       {
+        hostname: 'sapo.dktcdn.net',
+        protocol: 'https',
+      },
+      {
+        hostname: '*.dktcdn.net',
+        protocol: 'https',
+      },
+      {
         hostname: 'i.pravatar.cc',
         protocol: 'https',
       },
