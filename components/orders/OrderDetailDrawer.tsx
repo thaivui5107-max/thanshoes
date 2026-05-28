@@ -167,7 +167,7 @@ export function OrderDetailDrawer({
       <button
         type="button"
         className="absolute inset-0"
-        style={{ backgroundColor: tokens?.overlayBg ?? 'rgba(0, 0, 0, 0.4)' }}
+        style={{ backgroundColor: tokens?.overlayBg ? hexToRgba(tokens.overlayBg, 0.6) : 'rgba(0, 0, 0, 0.4)' }}
         onClick={onClose}
         aria-label="Đóng chi tiết đơn hàng"
       />

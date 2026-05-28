@@ -42,7 +42,7 @@ export function CartDrawer() {
       <button
         type="button"
         className="absolute inset-0"
-        style={{ backgroundColor: tokens.drawerOverlayBg }}
+        style={{ backgroundColor: tokens.drawerOverlayBg, opacity: 0.6 }}
         onClick={closeDrawer}
         aria-label="Đóng giỏ hàng"
       />
