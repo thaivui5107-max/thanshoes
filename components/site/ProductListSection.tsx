@@ -1020,7 +1020,7 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
                   <Link
                     href={getProductDetailHref(product)}
                     title={imageAlt}
-                    className={cn("group block h-full bg-white", cardRadiusClassName)}
+                    className={cn("group block bg-white", cardRadiusClassName)}
                     style={{ borderColor: `${secondary}26` }}
                     onClick={(event) => {
                       if (typeof window === 'undefined' || !window.matchMedia('(hover: none)').matches || isActive) {
