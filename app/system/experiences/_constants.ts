@@ -13,6 +13,7 @@ import {
   ShoppingCart,
   Ticket,
   User,
+  Search,
 } from 'lucide-react';
 
 export type SystemExperience = {
@@ -124,5 +125,11 @@ export const systemExperiences: SystemExperience[] = [
     href: '/system/experiences/promotions-list',
     icon: Ticket,
     title: 'Khuyến mãi',
+  },
+  {
+    description: 'Cấu hình bố cục tìm kiếm, bộ lọc danh mục và hiển thị sản phẩm.',
+    href: '/system/experiences/search-filter',
+    icon: Search,
+    title: 'Tìm kiếm & Bộ lọc',
   },
 ];

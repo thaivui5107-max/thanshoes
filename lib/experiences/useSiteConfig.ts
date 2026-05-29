@@ -26,6 +26,15 @@ type SearchFilterConfig = {
   showFilters: boolean;
   showSorting: boolean;
   showResultCount: boolean;
+  
+  // Cấu hình sản phẩm (đọc từ products_list_ui pattern)
+  showWishlistButton: boolean;
+  showAddToCartButton: boolean;
+  showBuyNowButton: boolean;
+  showPromotionBadge: boolean;
+  enableQuickAddVariant: boolean;
+  cornerRadius: 'none' | 'sm' | 'lg';
+  cartButtonsLayout?: 'stack' | 'grid-2';
 };
 
 type PostDetailLayoutStyle = 'classic' | 'modern' | 'minimal';
@@ -92,7 +101,14 @@ export function useSearchFilterConfig(): SearchFilterConfig {
   return useMemo(() => {
     const raw = experienceSetting?.value as {
       layoutStyle?: SearchLayoutStyle;
-      layouts?: Partial<Record<SearchLayoutStyle, Partial<Omit<SearchFilterConfig, 'layoutStyle'>>>>;
+      layouts?: Partial<Record<SearchLayoutStyle, Partial<Omit<SearchFilterConfig, 'layoutStyle' | 'showWishlistButton' | 'showAddToCartButton' | 'showBuyNowButton' | 'showPromotionBadge' | 'enableQuickAddVariant' | 'cornerRadius' | 'cartButtonsLayout'>>>>;
+      showWishlistButton?: boolean;
+      showAddToCartButton?: boolean;
+      showBuyNowButton?: boolean;
+      showPromotionBadge?: boolean;
+      enableQuickAddVariant?: boolean;
+      cornerRadius?: 'none' | 'sm' | 'lg';
+      cartButtonsLayout?: 'stack' | 'grid-2';
     } | undefined;
     const layoutStyle: SearchLayoutStyle = raw?.layoutStyle ?? 'with-filters';
     const defaultConfig = {
@@ -106,6 +122,13 @@ export function useSearchFilterConfig(): SearchFilterConfig {
       layoutStyle,
       ...defaultConfig,
       ...layoutConfig,
+      showWishlistButton: raw?.showWishlistButton ?? true,
+      showAddToCartButton: raw?.showAddToCartButton ?? true,
+      showBuyNowButton: raw?.showBuyNowButton ?? true,
+      showPromotionBadge: raw?.showPromotionBadge ?? true,
+      enableQuickAddVariant: raw?.enableQuickAddVariant ?? true,
+      cornerRadius: raw?.cornerRadius ?? 'lg',
+      cartButtonsLayout: raw?.cartButtonsLayout ?? 'stack',
     };
   }, [experienceSetting?.value]);
 }

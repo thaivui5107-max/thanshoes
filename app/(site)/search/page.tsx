@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { useQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/convex/_generated/api';
 import { useBrandColors } from '@/components/site/hooks';
@@ -24,9 +24,11 @@ import {
   X, 
   Calendar, 
   Eye, 
-  ArrowUpDown,
-  Compass
+  Compass,
+  Heart
 } from 'lucide-react';
+import { useSearchFilterConfig } from '@/lib/experiences';
+import { useCustomerAuth } from '@/app/(site)/auth/context';
 import type { Id } from '@/convex/_generated/dataModel';
 import { CategoryCombobox } from './_components/CategoryCombobox';
 
@@ -104,6 +106,66 @@ function generatePaginationItems(currentPage: number, totalPages: number): (numb
   return items;
 }
 
+function SearchProductCardActions({
+  product,
+  primaryColor,
+  showAddToCartButton,
+  showBuyNowButton,
+  cartButtonsLayout,
+  onAddToCart,
+  onBuyNow
+}: {
+  product: any;
+  primaryColor: string;
+  showAddToCartButton: boolean;
+  showBuyNowButton: boolean;
+  cartButtonsLayout?: 'stack' | 'grid-2';
+  onAddToCart: (e: React.MouseEvent) => void;
+  onBuyNow: (e: React.MouseEvent) => void;
+}) {
+  if (!showAddToCartButton && !showBuyNowButton) return null;
+
+  const isOutOfStock = product.stock <= 0;
+  const isGrid2 = cartButtonsLayout === 'grid-2' && showAddToCartButton && showBuyNowButton;
+  const gridColsClass = isGrid2 ? 'grid-cols-2' : 'grid-cols-1';
+
+  return (
+    <div className={`grid ${gridColsClass} gap-1.5 sm:gap-2 w-full mt-auto pt-3`}>
+      {showAddToCartButton && (
+        <button
+          type="button"
+          onClick={onAddToCart}
+          disabled={isOutOfStock}
+          className="w-full flex items-center justify-center gap-1 sm:gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all border disabled:opacity-55 disabled:cursor-not-allowed text-white hover:brightness-95 hover:scale-[1.02]"
+          style={{
+            backgroundColor: !isOutOfStock ? primaryColor : '#f1f5f9',
+            color: !isOutOfStock ? '#ffffff' : '#64748b',
+            borderColor: !isOutOfStock ? 'transparent' : '#e2e8f0'
+          }}
+        >
+          <ShoppingCart size={12} />
+          <span>{isOutOfStock ? 'Hết hàng' : (product.hasVariants ? 'Chọn size' : 'Thêm giỏ')}</span>
+        </button>
+      )}
+      {showBuyNowButton && (
+        <button
+          type="button"
+          onClick={onBuyNow}
+          disabled={isOutOfStock}
+          className="w-full flex items-center justify-center gap-1 sm:gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all border disabled:opacity-55 disabled:cursor-not-allowed hover:brightness-95 hover:scale-[1.02]"
+          style={{
+            backgroundColor: '#ffffff',
+            color: !isOutOfStock ? primaryColor : '#64748b',
+            borderColor: !isOutOfStock ? primaryColor : '#e2e8f0'
+          }}
+        >
+          <span>{isOutOfStock ? 'Hết hàng' : 'Mua ngay'}</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 function SearchContent() {
   const brandColors = useBrandColors();
   const primaryColor = brandColors.primary || '#ea580c';
@@ -142,6 +204,12 @@ function SearchContent() {
   // Cart
   const { addItem, openDrawer } = useCart();
 
+  // Search Filter Experience Config
+  const searchFilterConfig = useSearchFilterConfig();
+  const cornerRadiusClass = searchFilterConfig.cornerRadius === 'none' ? 'rounded-none' 
+    : searchFilterConfig.cornerRadius === 'sm' ? 'rounded-lg' 
+    : 'rounded-2xl';
+
   // Route Mode & Settings
   const routeModeSetting = useQuery(api.settings.getValue, { key: 'ia_route_mode', defaultValue: 'unified' });
   const routeMode = useMemo(() => normalizeRouteMode(routeModeSetting), [routeModeSetting]);
@@ -152,11 +220,22 @@ function SearchContent() {
   const productsModule = useQuery(api.admin.modules.getModuleByKey, { key: 'products' });
   const postsModule = useQuery(api.admin.modules.getModuleByKey, { key: 'posts' });
   const servicesModule = useQuery(api.admin.modules.getModuleByKey, { key: 'services' });
+  const wishlistModule = useQuery(api.admin.modules.getModuleByKey, { key: 'wishlist' });
+  const ordersModule = useQuery(api.admin.modules.getModuleByKey, { key: 'orders' });
+  const cartModule = useQuery(api.admin.modules.getModuleByKey, { key: 'cart' });
+  const toggleWishlist = useMutation(api.wishlist.toggle);
+  const { customer, isAuthenticated } = useCustomerAuth();
 
   const isProductsEnabled = productsModule?.enabled ?? false;
   const isPostsEnabled = postsModule?.enabled ?? false;
   const isServicesEnabled = servicesModule?.enabled ?? false;
   const isModulesLoading = productsModule === undefined || postsModule === undefined || servicesModule === undefined;
+
+  // Derived button visibility flags (respects experience config + module status)
+  const canUseWishlist = (wishlistModule?.enabled ?? false) && searchFilterConfig.showWishlistButton;
+  const canUseCart = (cartModule?.enabled ?? false) && (ordersModule?.enabled ?? false);
+  const showAddToCartButton = canUseCart && searchFilterConfig.showAddToCartButton;
+  const showBuyNowButton = (ordersModule?.enabled ?? false) && searchFilterConfig.showBuyNowButton;
 
   // Active Categories of each type
   const productCategories = useQuery(api.productCategories.listActive);
@@ -374,6 +453,37 @@ function SearchContent() {
     moduleKey: 'services',
     recordSlug: service.slug
   });
+
+  // Wishlist IDs for current products (to show filled heart)
+  const productIds = useMemo(() => products?.map(p => p._id) ?? [], [products]);
+  const wishlistProductIds = useQuery(
+    api.wishlist.listCustomerProductIds,
+    isAuthenticated && customer && productIds.length > 0 && canUseWishlist
+      ? { customerId: customer.id as Id<'customers'>, productIds }
+      : 'skip'
+  );
+  const wishlistIdSet = useMemo(() => new Set<Id<'products'>>(wishlistProductIds ?? []), [wishlistProductIds]);
+
+  // Wishlist toggle handler
+  const handleWishlistToggle = useCallback(async (e: React.MouseEvent, productId: Id<'products'>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isAuthenticated || !customer) return;
+    await toggleWishlist({ customerId: customer.id as Id<'customers'>, productId });
+  }, [isAuthenticated, customer, toggleWishlist]);
+
+  // Buy now handler
+  const handleBuyNow = useCallback((e: React.MouseEvent, product: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (product.stock <= 0) return;
+    if (product.hasVariants) {
+      const categorySlug = productCategorySlugMap.get(product.categoryId) || 'products';
+      router.push(buildDetailPath({ categorySlug, mode: routeMode, moduleKey: 'products', recordSlug: product.slug }));
+      return;
+    }
+    router.push(`/checkout?productId=${product._id}&quantity=1`);
+  }, [router, routeMode, productCategorySlugMap]);
 
   // Calculate current pagination metrics
   const totalCount = activeTab === 'product' ? (prodCount ?? 0) : activeTab === 'post' ? (postCount ?? 0) : (svcCount ?? 0);
@@ -614,12 +724,13 @@ function SearchContent() {
                       salePrice: product.salePrice, 
                       isRangeFromVariant: product.hasVariants 
                     });
+                    const isWishlisted = wishlistIdSet.has(product._id);
                     
                     return (
                       <Link
                         key={product._id}
                         href={getProductDetailHref(product)}
-                        className="group flex flex-col h-full bg-white rounded-2xl border border-slate-100 overflow-hidden transition-all duration-300 hover:border-slate-200 hover:shadow-lg hover:-translate-y-1"
+                        className={`group flex flex-col h-full bg-white border border-slate-100 overflow-hidden transition-all duration-300 hover:border-slate-200 hover:shadow-lg hover:-translate-y-1 ${cornerRadiusClass}`}
                       >
                         <div className="aspect-square w-full relative overflow-hidden bg-slate-50 border-b border-slate-100/50">
                           {product.image || productPlaceholder ? (
@@ -636,13 +747,27 @@ function SearchContent() {
                               <Package size={40} />
                             </div>
                           )}
-                          {product.salePrice && product.price > product.salePrice && (
+                          {searchFilterConfig.showPromotionBadge && product.salePrice && product.price > product.salePrice && (
                             <span
                               className="absolute top-2 left-2 sm:top-3 sm:left-3 px-1.5 py-0.5 sm:px-2 sm:py-1 text-[9px] sm:text-[10px] font-bold rounded-lg text-white z-10"
                               style={{ backgroundColor: secondaryColor }}
                             >
                               -{Math.round((1 - product.salePrice / product.price) * 100)}%
                             </span>
+                          )}
+                          {canUseWishlist && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleWishlistToggle(e, product._id)}
+                              className="absolute top-2 right-2 p-1.5 sm:p-2 rounded-full border transition-colors z-20 bg-white/90 backdrop-blur-sm"
+                              style={{
+                                borderColor: isWishlisted ? '#ef4444' : '#e2e8f0',
+                                color: isWishlisted ? '#ef4444' : '#94a3b8'
+                              }}
+                              aria-label="Thêm vào yêu thích"
+                            >
+                              <Heart size={14} className={isWishlisted ? 'fill-current' : ''} />
+                            </button>
                           )}
                         </div>
                         
@@ -652,12 +777,11 @@ function SearchContent() {
                           </span>
                           <h3 
                             className="font-semibold text-slate-800 text-sm line-clamp-2 mb-2 group-hover:text-slate-900 transition-colors"
-                            style={{ '--hover-color': primaryColor } as React.CSSProperties}
                           >
                             {product.name}
                           </h3>
                           
-                          <div className="mt-auto pt-3 flex flex-col gap-3">
+                          <div className="mt-auto pt-3 flex flex-col gap-2">
                             {/* Price */}
                             <div className="flex flex-wrap items-baseline gap-1.5">
                               <span className="font-bold text-slate-900 text-base">
@@ -671,20 +795,15 @@ function SearchContent() {
                             </div>
 
                             {/* Actions */}
-                            <button
-                              type="button"
-                              onClick={(e) => handleAddToCart(e, product)}
-                              disabled={product.stock <= 0}
-                              className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all border disabled:opacity-55 disabled:cursor-not-allowed text-white hover:brightness-95 hover:scale-[1.02]"
-                              style={{
-                                backgroundColor: product.stock > 0 ? primaryColor : '#f1f5f9',
-                                color: product.stock > 0 ? '#ffffff' : '#64748b',
-                                borderColor: product.stock > 0 ? 'transparent' : '#e2e8f0'
-                              }}
-                            >
-                              <ShoppingCart size={12} />
-                              {product.stock > 0 ? (product.hasVariants ? 'Chọn phiên bản' : 'Thêm giỏ hàng') : 'Hết hàng'}
-                            </button>
+                            <SearchProductCardActions
+                              product={product}
+                              primaryColor={primaryColor}
+                              showAddToCartButton={showAddToCartButton}
+                              showBuyNowButton={showBuyNowButton}
+                              cartButtonsLayout={searchFilterConfig.cartButtonsLayout}
+                              onAddToCart={(e) => handleAddToCart(e, product)}
+                              onBuyNow={(e) => handleBuyNow(e, product)}
+                            />
                           </div>
                         </div>
                       </Link>
@@ -701,12 +820,13 @@ function SearchContent() {
                       salePrice: product.salePrice, 
                       isRangeFromVariant: product.hasVariants 
                     });
+                    const isWishlisted = wishlistIdSet.has(product._id);
                     
                     return (
                       <Link
                         key={product._id}
                         href={getProductDetailHref(product)}
-                        className="group flex gap-4 md:gap-6 bg-white p-4 rounded-2xl border border-slate-100 transition-all duration-300 hover:border-slate-200 hover:shadow-md"
+                        className={`group flex gap-4 md:gap-6 bg-white p-4 border border-slate-100 transition-all duration-300 hover:border-slate-200 hover:shadow-md ${cornerRadiusClass}`}
                       >
                         {/* Thumbnail left */}
                         <div className="w-24 md:w-32 aspect-square relative overflow-hidden bg-slate-50 rounded-xl shrink-0 border border-slate-100">
@@ -724,6 +844,20 @@ function SearchContent() {
                               <Package size={32} />
                             </div>
                           )}
+                          {canUseWishlist && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleWishlistToggle(e, product._id)}
+                              className="absolute top-1.5 right-1.5 p-1.5 rounded-full border transition-colors z-20 bg-white/90 backdrop-blur-sm"
+                              style={{
+                                borderColor: isWishlisted ? '#ef4444' : '#e2e8f0',
+                                color: isWishlisted ? '#ef4444' : '#94a3b8'
+                              }}
+                              aria-label="Thêm vào yêu thích"
+                            >
+                              <Heart size={12} className={isWishlisted ? 'fill-current' : ''} />
+                            </button>
+                          )}
                         </div>
 
                         {/* Details right */}
@@ -740,7 +874,7 @@ function SearchContent() {
                             </p>
                           </div>
 
-                          <div className="flex items-center justify-between mt-2 gap-4 flex-wrap">
+                          <div className="flex items-end justify-between mt-2 gap-3 flex-wrap">
                             <div className="flex flex-wrap items-baseline gap-2">
                               <span className="font-bold text-slate-900 text-base md:text-lg">
                                 {priceDisplay.label}
@@ -752,20 +886,39 @@ function SearchContent() {
                               )}
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={(e) => handleAddToCart(e, product)}
-                              disabled={product.stock <= 0}
-                              className="flex items-center justify-center gap-1.5 py-2 px-4 rounded-xl text-xs font-bold transition-all border disabled:opacity-55 disabled:cursor-not-allowed text-white hover:brightness-95 hover:scale-[1.02]"
-                              style={{
-                                backgroundColor: product.stock > 0 ? primaryColor : '#f1f5f9',
-                                color: product.stock > 0 ? '#ffffff' : '#64748b',
-                                borderColor: product.stock > 0 ? 'transparent' : '#e2e8f0'
-                              }}
-                            >
-                              <ShoppingCart size={12} />
-                              {product.stock > 0 ? (product.hasVariants ? 'Chọn phiên bản' : 'Thêm giỏ') : 'Hết hàng'}
-                            </button>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {showAddToCartButton && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleAddToCart(e, product)}
+                                  disabled={product.stock <= 0}
+                                  className="flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs font-bold transition-all border disabled:opacity-55 disabled:cursor-not-allowed hover:brightness-95 hover:scale-[1.02]"
+                                  style={{
+                                    backgroundColor: product.stock > 0 ? primaryColor : '#f1f5f9',
+                                    color: product.stock > 0 ? '#ffffff' : '#64748b',
+                                    borderColor: product.stock > 0 ? 'transparent' : '#e2e8f0'
+                                  }}
+                                >
+                                  <ShoppingCart size={12} />
+                                  <span className="hidden sm:inline">{product.stock > 0 ? (product.hasVariants ? 'Chọn size' : 'Thêm giỏ') : 'Hết hàng'}</span>
+                                </button>
+                              )}
+                              {showBuyNowButton && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleBuyNow(e, product)}
+                                  disabled={product.stock <= 0}
+                                  className="hidden sm:flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs font-bold transition-all border disabled:opacity-55 disabled:cursor-not-allowed hover:brightness-95"
+                                  style={{
+                                    backgroundColor: '#ffffff',
+                                    color: product.stock > 0 ? primaryColor : '#64748b',
+                                    borderColor: product.stock > 0 ? primaryColor : '#e2e8f0'
+                                  }}
+                                >
+                                  <span>{product.stock > 0 ? 'Mua ngay' : 'Hết hàng'}</span>
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </Link>
