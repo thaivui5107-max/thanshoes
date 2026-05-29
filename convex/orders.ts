@@ -749,6 +749,277 @@ export const cancel = mutation({
   returns: v.null(),
 });
 
+async function recalculateCartInternal(ctx: MutationCtx, cartId: Id<"carts">) {
+  const items = await ctx.db
+    .query("cartItems")
+    .withIndex("by_cart", (q) => q.eq("cartId", cartId))
+    .collect();
+
+  const itemsCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalAmount = items.reduce((sum, item) => sum + item.subtotal, 0);
+
+  await ctx.db.patch(cartId, { itemsCount, totalAmount });
+}
+
+export const placeOrder = mutation({
+  args: {
+    customer: v.object({
+      name: v.string(),
+      email: v.string(),
+      phone: v.string(),
+    }),
+    items: v.array(orderItemValidator),
+    note: v.optional(v.string()),
+    paymentMethod: v.optional(paymentMethod),
+    shippingMethodId: v.optional(v.string()),
+    shippingMethodLabel: v.optional(v.string()),
+    shippingAddress: v.optional(v.string()),
+    shippingFee: v.optional(v.number()),
+    promotionId: v.optional(v.id("promotions")),
+    promotionCode: v.optional(v.string()),
+    discountAmount: v.optional(v.number()),
+    cartId: v.optional(v.id("carts")),
+  },
+  handler: async (ctx, args) => {
+    let customerId: Id<"customers">;
+    const cleanEmail = args.customer.email.trim().toLowerCase();
+    const cleanPhone = args.customer.phone.trim();
+
+    let customer = await ctx.db
+      .query("customers")
+      .withIndex("by_email", (q) => q.eq("email", cleanEmail))
+      .first();
+
+    if (!customer && cleanPhone) {
+      const allCustomers = await ctx.db.query("customers").collect();
+      customer = allCustomers.find((c) => c.phone.trim() === cleanPhone.trim()) ?? null;
+    }
+
+    if (customer) {
+      customerId = customer._id;
+      await ctx.db.patch(customerId, {
+        name: args.customer.name,
+        address: args.shippingAddress ?? customer.address,
+      });
+    } else {
+      customerId = await ctx.db.insert("customers", {
+        name: args.customer.name,
+        email: cleanEmail,
+        phone: cleanPhone,
+        address: args.shippingAddress,
+        ordersCount: 0,
+        totalSpent: 0,
+        status: "Active",
+      });
+    }
+
+    const { variantPricing, variantStock } = await getVariantSettings(ctx);
+    const normalizedItems = await normalizeOrderItems(ctx, args.items, variantPricing);
+    const stockCheckEnabled = await isStockCheckEnabled(ctx);
+    if (stockCheckEnabled) {
+      const stockError = await validateStockBeforeCreate(ctx, normalizedItems, variantStock);
+      if (stockError) {
+        throw new Error(stockError);
+      }
+    }
+
+    if (args.promotionId) {
+      const promotion = await ctx.db.get(args.promotionId);
+      if (!promotion || promotion.status !== "Active") {
+        throw new Error("Mã giảm giá không hợp lệ hoặc đã hết hạn");
+      }
+      const usedCount = promotion.usedCount + 1;
+      const budgetUsed = (promotion.budgetUsed ?? 0) + (args.discountAmount ?? 0);
+      await ctx.db.patch(promotion._id, { usedCount, budgetUsed });
+      await ctx.db.insert("promotionUsage", {
+        customerId,
+        discountAmount: args.discountAmount ?? 0,
+        orderId: undefined as any,
+        promotionId: promotion._id,
+        usedAt: Date.now(),
+      });
+    }
+
+    const isDigitalOrder = normalizedItems.some((item) => item.isDigital);
+    const { statuses } = await getOrderStatusSettings(ctx);
+    const defaultStatus = statuses[0]?.key ?? "Pending";
+
+    const orderId = await OrdersModel.create(ctx, {
+      customerId,
+      items: normalizedItems,
+      note: args.note,
+      paymentMethod: args.paymentMethod,
+      shippingMethodId: args.shippingMethodId,
+      shippingMethodLabel: args.shippingMethodLabel,
+      shippingAddress: args.shippingAddress,
+      shippingFee: args.shippingFee ?? 0,
+      promotionId: args.promotionId,
+      promotionCode: args.promotionCode,
+      discountAmount: args.discountAmount ?? 0,
+      status: defaultStatus,
+      isDigitalOrder,
+    });
+
+    if (args.promotionId) {
+      const usage = await ctx.db
+        .query("promotionUsage")
+        .withIndex("by_customer_promotion", (q) =>
+          q.eq("customerId", customerId).eq("promotionId", args.promotionId!)
+        )
+        .order("desc")
+        .first();
+      if (usage && !usage.orderId) {
+        await ctx.db.patch(usage._id, { orderId });
+      }
+    }
+
+    if (stockCheckEnabled) {
+      if (variantStock === "variant") {
+        await decrementVariantStock(ctx, normalizedItems);
+      } else {
+        await decrementProductStock(ctx, normalizedItems);
+      }
+    }
+
+    if (args.cartId) {
+      const cartItems = await ctx.db
+        .query("cartItems")
+        .withIndex("by_cart", (q) => q.eq("cartId", args.cartId!))
+        .collect();
+
+      for (const item of cartItems) {
+        const isInOrder = normalizedItems.some(
+          (orderItem) =>
+            orderItem.productId === item.productId &&
+            orderItem.variantId === item.variantId
+        );
+        if (isInOrder) {
+          await ctx.db.delete(item._id);
+        }
+      }
+      await recalculateCartInternal(ctx, args.cartId);
+    }
+
+    const orderNumber = await ctx.db.get(orderId).then((o) => o?.orderNumber ?? "");
+    const formattedAmount = (normalizedItems.reduce((sum, item) => sum + item.price * item.quantity, 0) - (args.discountAmount ?? 0) + (args.shippingFee ?? 0)).toLocaleString("vi-VN") + "đ";
+
+    await ctx.db.insert("notifications", {
+      title: "Đơn hàng mới #" + orderNumber,
+      content: `Khách hàng ${args.customer.name} vừa đặt đơn hàng trị giá ${formattedAmount}.`,
+      type: "success",
+      status: "Sent",
+      targetType: "users",
+      order: Date.now(),
+      readCount: 0,
+      sentAt: Date.now(),
+    });
+
+    return { ok: true, orderId, orderNumber };
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    orderId: v.optional(v.id("orders")),
+    orderNumber: v.optional(v.string()),
+    error: v.optional(v.string()),
+  }),
+});
+
+export const cancelByCustomer = mutation({
+  args: {
+    orderId: v.id("orders"),
+    phone: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      return { ok: false, error: "Không tìm thấy đơn hàng" };
+    }
+
+    const customer = await ctx.db.get(order.customerId);
+    if (!customer || customer.phone.trim() !== args.phone.trim()) {
+      return { ok: false, error: "Số điện thoại không khớp với thông tin đặt hàng" };
+    }
+
+    const statusLower = order.status.toLowerCase();
+    if (statusLower !== "pending" && statusLower !== "confirmed") {
+      return { ok: false, error: "Đơn hàng đã được chuyển sang khâu đóng gói hoặc vận chuyển, không thể hủy." };
+    }
+
+    const { statuses } = await getOrderStatusSettings(ctx);
+    const cancelledStatus = statuses.find((status) => status.key.toLowerCase().includes("cancel"));
+    if (!cancelledStatus) {
+      return { ok: false, error: "Chưa cấu hình trạng thái hủy đơn trên hệ thống." };
+    }
+
+    await ctx.db.patch(order._id, { status: cancelledStatus.key });
+
+    const stockCheckEnabled = await isStockCheckEnabled(ctx);
+    if (stockCheckEnabled) {
+      const { variantStock } = await getVariantSettings(ctx);
+      if (variantStock === "variant") {
+        await Promise.all(
+          order.items.map(async (item) => {
+            if (item.variantId) {
+              const variant = await ctx.db.get(item.variantId);
+              if (variant && variant.stock !== undefined) {
+                await ctx.db.patch(item.variantId, { stock: variant.stock + item.quantity });
+              }
+            } else {
+              const product = await ctx.db.get(item.productId);
+              if (product && product.stock !== undefined) {
+                await ctx.db.patch(item.productId, { stock: product.stock + item.quantity });
+              }
+            }
+          })
+        );
+      } else {
+        await Promise.all(
+          order.items.map(async (item) => {
+            const product = await ctx.db.get(item.productId);
+            if (product && product.stock !== undefined) {
+              await ctx.db.patch(item.productId, { stock: product.stock + item.quantity });
+            }
+          })
+        );
+      }
+    }
+
+    if (order.promotionId) {
+      const promotion = await ctx.db.get(order.promotionId);
+      if (promotion) {
+        const usedCount = Math.max(0, promotion.usedCount - 1);
+        const budgetUsed = Math.max(0, (promotion.budgetUsed ?? 0) - (order.discountAmount ?? 0));
+        await ctx.db.patch(promotion._id, { usedCount, budgetUsed });
+      }
+
+      const usage = await ctx.db
+        .query("promotionUsage")
+        .withIndex("by_order", (q) => q.eq("orderId", order._id))
+        .first();
+      if (usage) {
+        await ctx.db.delete(usage._id);
+      }
+    }
+
+    await ctx.db.insert("notifications", {
+      title: `Đơn hàng #${order.orderNumber} đã bị khách hủy`,
+      content: `Khách hàng ${customer.name} đã chủ động hủy đơn hàng này.`,
+      type: "warning",
+      status: "Sent",
+      targetType: "users",
+      order: Date.now(),
+      readCount: 0,
+      sentAt: Date.now(),
+    });
+
+    return { ok: true };
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    error: v.optional(v.string()),
+  }),
+});
+
 export const remove = mutation({
   args: { cascade: v.optional(v.boolean()), id: v.id("orders") },
   handler: async (ctx, args) => {

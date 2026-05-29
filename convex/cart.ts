@@ -332,6 +332,109 @@ export const markAsConverted = mutation({
   returns: v.null(),
 });
 
+export const mergeCart = mutation({
+  args: {
+    customerId: v.id("customers"),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const sessionCart = await ctx.db
+      .query("carts")
+      .withIndex("by_session_status", (q) =>
+        q.eq("sessionId", args.sessionId).eq("status", "Active")
+      )
+      .first();
+
+    if (!sessionCart) {
+      return { ok: true, message: "Không tìm thấy giỏ hàng vãng lai hoạt động" };
+    }
+
+    const customerCart = await ctx.db
+      .query("carts")
+      .withIndex("by_customer_status", (q) =>
+        q.eq("customerId", args.customerId).eq("status", "Active")
+      )
+      .first();
+
+    if (!customerCart) {
+      await ctx.db.patch(sessionCart._id, {
+        customerId: args.customerId,
+        sessionId: undefined,
+      });
+      return { ok: true, cartId: sessionCart._id, merged: false };
+    }
+
+    const sessionItems = await ctx.db
+      .query("cartItems")
+      .withIndex("by_cart", (q) => q.eq("cartId", sessionCart._id))
+      .collect();
+
+    if (sessionItems.length > 0) {
+      const [variantStock, stockCheckEnabled] = await Promise.all([
+        getVariantStockSetting(ctx),
+        isStockCheckEnabled(ctx),
+      ]);
+
+      for (const item of sessionItems) {
+        const existingItem = await ctx.db
+          .query("cartItems")
+          .withIndex("by_cart_product_variant", (q) =>
+            q.eq("cartId", customerCart._id)
+              .eq("productId", item.productId)
+              .eq("variantId", item.variantId)
+          )
+          .first();
+
+        if (existingItem) {
+          const newQty = existingItem.quantity + item.quantity;
+
+          if (stockCheckEnabled) {
+            const product = await ctx.db.get(item.productId);
+            let stockValue = product?.stock;
+            if (variantStock === "variant" && item.variantId) {
+              const variant = await ctx.db.get(item.variantId);
+              if (variant?.stock !== undefined) {
+                stockValue = variant.stock;
+              }
+            }
+            if (product && stockValue !== undefined && newQty > stockValue) {
+              const adjustedQty = Math.max(existingItem.quantity, stockValue);
+              await ctx.db.patch(existingItem._id, {
+                quantity: adjustedQty,
+                subtotal: existingItem.price * adjustedQty,
+              });
+              await ctx.db.delete(item._id);
+              continue;
+            }
+          }
+
+          await ctx.db.patch(existingItem._id, {
+            quantity: newQty,
+            subtotal: existingItem.price * newQty,
+          });
+          await ctx.db.delete(item._id);
+        } else {
+          await ctx.db.patch(item._id, {
+            cartId: customerCart._id,
+          });
+        }
+      }
+    }
+
+    await ctx.db.patch(sessionCart._id, { status: "Converted" });
+    await ctx.db.delete(sessionCart._id);
+    await recalculateCart(ctx, customerCart._id);
+
+    return { ok: true, cartId: customerCart._id, merged: true };
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    cartId: v.optional(v.id("carts")),
+    merged: v.optional(v.boolean()),
+    message: v.optional(v.string()),
+  }),
+});
+
 // FIX Issue #4: Use Promise.all instead of sequential loop
 export const remove = mutation({
   args: { id: v.id("carts") },

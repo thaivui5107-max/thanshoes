@@ -141,11 +141,10 @@ function CheckoutContent() {
   const ordersSettings = useQuery(api.admin.modules.listModuleSettings, { moduleKey: 'orders' });
   const paymentFeature = useQuery(api.admin.modules.getModuleFeature, { featureKey: 'enablePayment', moduleKey: 'orders' });
   const shippingFeature = useQuery(api.admin.modules.getModuleFeature, { featureKey: 'enableShipping', moduleKey: 'orders' });
-  const createOrder = useMutation(api.orders.create);
-  const incrementPromotionUsage = useMutation(api.promotions.incrementUsage);
-  const removeCart = useMutation(api.cart.remove);
+  const placeOrderMutation = useMutation(api.orders.placeOrder);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
   const [addressDetail, setAddressDetail] = useState('');
   const [provinceCode, setProvinceCode] = useState('');
@@ -552,7 +551,10 @@ function CheckoutContent() {
     if (customer && !customerPhone) {
       setCustomerPhone(customer.phone ?? '');
     }
-  }, [customer, customerName, customerPhone]);
+    if (customer && !customerEmail) {
+      setCustomerEmail(customer.email ?? '');
+    }
+  }, [customer, customerEmail, customerName, customerPhone]);
 
   useEffect(() => {
     if (activeWizardStep >= wizardStepCount) {
@@ -575,13 +577,19 @@ function CheckoutContent() {
   };
 
   const handlePlaceOrder = async () => {
-    if (!customer) {
-      openLoginModal();
+    if (!customerName.trim() || !customerPhone.trim()) {
+      toast.error('Vui lòng nhập đầy đủ tên và số điện thoại.');
       return;
     }
 
-    if (!customerName.trim() || !customerPhone.trim() || !isAddressValid) {
-      toast.error('Vui lòng nhập đầy đủ tên, số điện thoại và địa chỉ.');
+    const emailTrimmed = customerEmail.trim();
+    if (!emailTrimmed || !emailTrimmed.includes('@') || !emailTrimmed.includes('.')) {
+      toast.error('Vui lòng nhập email hợp lệ.');
+      return;
+    }
+
+    if (!isAddressValid) {
+      toast.error('Vui lòng nhập địa chỉ giao hàng.');
       return;
     }
 
@@ -592,10 +600,9 @@ function CheckoutContent() {
 
     setIsSubmitting(true);
     try {
-      const result = await createOrder({
-        customerId: customer.id as Id<'customers'>,
+      const result = await placeOrderMutation({
+        customer: { name: customerName.trim(), email: emailTrimmed, phone: customerPhone.trim() },
         items: orderItems,
-        note: fromCart ? cart?.note : undefined,
         paymentMethod: selectedPayment?.type ?? 'COD',
         promotionId: appliedPromotion?.promotion?._id,
         promotionCode: appliedPromotion?.promotion?.code,
@@ -603,24 +610,19 @@ function CheckoutContent() {
         shippingMethodId: shouldCollectShipping ? selectedShipping?.id : undefined,
         shippingMethodLabel: shouldCollectShipping ? selectedShipping?.label : undefined,
         shippingAddress: shouldCollectShipping
-          ? `${customerName} | ${customerPhone} | ${resolvedAddress}`
-          : `${customerName} | ${customerPhone}`,
+          ? `${customerName.trim()} | ${customerPhone.trim()} | ${resolvedAddress}`
+          : `${customerName.trim()} | ${customerPhone.trim()}`,
         shippingFee: shouldCollectShipping ? shippingFee : 0,
+        cartId: fromCart && cart?._id ? cart._id : undefined,
       });
       if (!result.ok) {
-        toast.error(result.error ?? 'Không thể tạo đơn hàng.');
+        toast.error('Không thể tạo đơn hàng.');
         return;
       }
-      if (appliedPromotion?.promotion?._id) {
-        await incrementPromotionUsage({ id: appliedPromotion.promotion._id });
-      }
-      if (fromCart && cart?._id) {
-        await removeCart({ id: cart._id });
-      }
       setOrderId(result.orderId ?? null);
-      toast.success('Đặt hàng thành công! Đang chuyển đến trang đơn hàng...');
+      toast.success('Đặt hàng thành công! Đang chuyển hướng...');
       setTimeout(() => {
-        router.push('/account/orders');
+        router.push(`/checkout/thank-you?orderId=${result.orderId ?? ''}&orderNumber=${result.orderNumber ?? ''}`);
       }, 1500);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Không thể tạo đơn hàng.');
@@ -644,7 +646,7 @@ function CheckoutContent() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (fromCart && !isAuthenticated) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-16 text-center">
         <div
@@ -653,8 +655,8 @@ function CheckoutContent() {
         >
           <CreditCard size={32} style={{ color: tokens.emptyStateIcon }} />
         </div>
-        <h1 className="text-2xl font-bold mb-2" style={{ color: tokens.heading }}>Đăng nhập để thanh toán</h1>
-        <p className="mb-6" style={{ color: tokens.metaText }}>Bạn cần đăng nhập để tạo đơn hàng.</p>
+        <h1 className="text-2xl font-bold mb-2" style={{ color: tokens.heading }}>Đăng nhập để thanh toán từ giỏ hàng</h1>
+        <p className="mb-6" style={{ color: tokens.metaText }}>Bạn cần đăng nhập để thanh toán từ giỏ hàng.</p>
         <button
           onClick={openLoginModal}
           className="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-medium"
@@ -817,6 +819,14 @@ function CheckoutContent() {
             onChange={(event) => setCustomerPhone(event.target.value)}
           />
         </div>
+        <input
+          type="email"
+          placeholder="Email"
+          className="w-full px-3 py-2.5 border rounded-lg text-sm"
+          style={{ backgroundColor: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.inputText }}
+          value={customerEmail}
+          onChange={(event) => setCustomerEmail(event.target.value)}
+        />
         {shouldCollectShipping && addressFormat === 'text' ? (
           <input
             type="text"

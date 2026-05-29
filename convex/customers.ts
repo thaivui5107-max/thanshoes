@@ -429,6 +429,17 @@ export const getStats = query({
   }),
 });
 
+export const getByPhone = query({
+  args: { phone: v.string() },
+  handler: async (ctx, args) => {
+    const normalizedPhone = args.phone.trim();
+    // No by_phone index in schema → scan with limit 500 then filter
+    const customers = await ctx.db.query('customers').take(500);
+    return customers.find((c) => c.phone.trim() === normalizedPhone) ?? null;
+  },
+  returns: v.union(customerDoc, v.null()),
+});
+
 // CUST-004 FIX: Get unique cities - optimized with indexed query
 export const getCities = query({
   args: {},
