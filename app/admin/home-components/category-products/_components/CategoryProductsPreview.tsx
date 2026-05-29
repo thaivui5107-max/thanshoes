@@ -628,7 +628,7 @@ export const CategoryProductsPreview = ({
                             Nổi bật
                           </span>
                           <h3 className="font-bold text-base line-clamp-2 mb-1">{featured.name}</h3>
-                          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
+                          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0 mb-3">
                             {(() => {
                               const priceDisplay = getPriceDisplay(featured?.price, featured?.salePrice, featured?.hasVariants);
                               if (priceDisplay.comparePrice) {
@@ -644,29 +644,67 @@ export const CategoryProductsPreview = ({
                               return <span className="font-bold text-base">{priceDisplay.label}</span>;
                             })()}
                           </div>
+                          {(config.showAddToCartButton !== false || config.showBuyNowButton !== false) && (
+                            <div className="mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                              <ProductCardActions
+                                product={featured as any}
+                                tokens={listTokens}
+                                showStock={false}
+                                showAddToCartButton={config.showAddToCartButton !== false}
+                                showBuyNowButton={config.showBuyNowButton !== false}
+                                buyNowLabel="Mua ngay"
+                                onAddToCart={() => {}}
+                                onBuyNow={() => {}}
+                                cartButtonsLayout={config.cartButtonsLayout || 'stack'}
+                                device={device}
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
 
-                    {others.map((product) => (
-                      <div key={product._id} className={cn('group cursor-pointer relative overflow-hidden bg-slate-100 dark:bg-slate-800', imageRadiusClassName)}>
-                        {product.image ? (
-                          <FramePreviewImage 
-                            src={product.image} 
-                            alt={product.name} 
-                            className="w-full h-full object-cover" 
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package size={24} className="text-slate-300" />
+                    {others.map((product) => {
+                      const showAddToCartButton = config.showAddToCartButton !== false;
+                      const showBuyNowButton = config.showBuyNowButton !== false;
+                      const cartButtonsLayout = config.cartButtonsLayout || 'stack';
+                      return (
+                        <div key={product._id} className={cn('group cursor-pointer relative overflow-hidden bg-slate-100 dark:bg-slate-800', imageRadiusClassName)}>
+                          {product.image ? (
+                            <FramePreviewImage 
+                              src={product.image} 
+                              alt={product.name} 
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package size={24} className="text-slate-300" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-20" />
+                          <div className="absolute bottom-0 left-0 right-0 p-3 text-white transform translate-y-full group-hover:translate-y-0 transition-transform duration-300 z-30 flex flex-col justify-end bg-black/60 max-h-full overflow-y-auto">
+                            <h4 className="font-medium text-xs line-clamp-1">{product.name}</h4>
+                            <span className="font-bold text-xs mb-2">{getPriceDisplay(product.price, product.salePrice, product.hasVariants).label}</span>
+                            {(showAddToCartButton || showBuyNowButton) && (
+                              <div className="mt-1" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                                <ProductCardActions
+                                  product={product as any}
+                                  tokens={listTokens}
+                                  showStock={false}
+                                  showAddToCartButton={showAddToCartButton}
+                                  showBuyNowButton={showBuyNowButton}
+                                  buyNowLabel="Mua ngay"
+                                  onAddToCart={() => {}}
+                                  onBuyNow={() => {}}
+                                  cartButtonsLayout={cartButtonsLayout}
+                                  device={device}
+                                />
+                              </div>
+                            )}
                           </div>
-                        )}
-                        <div className="absolute inset-x-0 bottom-0 p-3 text-white bg-black/55">
-                          <h4 className="font-medium text-xs line-clamp-1">{product.name}</h4>
-                          <span className="font-bold text-xs">{getPriceDisplay(product.price, product.salePrice, product.hasVariants).label}</span>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ))}
               </div>
@@ -755,7 +793,7 @@ export const CategoryProductsPreview = ({
                             Nổi bật
                           </span>
                           <h3 className="font-bold text-xl md:text-2xl line-clamp-2 mb-2">{featured.name}</h3>
-                          <div className="flex items-baseline gap-3">
+                          <div className="flex items-baseline gap-3 mb-3">
                             {(() => {
                               const priceDisplay = getPriceDisplay(featured?.price, featured?.salePrice, featured?.hasVariants);
                               if (priceDisplay.comparePrice) {
@@ -771,64 +809,101 @@ export const CategoryProductsPreview = ({
                               return <span className="font-bold text-2xl">{priceDisplay.label}</span>;
                             })()}
                           </div>
+                          {(config.showAddToCartButton !== false || config.showBuyNowButton !== false) && (
+                            <div className="mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                              <ProductCardActions
+                                product={featured as any}
+                                tokens={listTokens}
+                                showStock={false}
+                                showAddToCartButton={config.showAddToCartButton !== false}
+                                showBuyNowButton={config.showBuyNowButton !== false}
+                                buyNowLabel="Mua ngay"
+                                onAddToCart={() => {}}
+                                onBuyNow={() => {}}
+                                cartButtonsLayout={config.cartButtonsLayout || 'stack'}
+                                device={device}
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
 
                     <div className="grid grid-cols-2 gap-4">
-                      {gridItems.map((product) => (
-                        <div key={product._id} className="group cursor-pointer">
-                          <div 
-                            className={cn('overflow-hidden mb-3 relative', imageRadiusClassName)}
-                            style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}
-                          >
-                            {product.image ? (
-                              <FramePreviewImage 
-                                src={product.image} 
-                                alt={product.name} 
-                                className="w-full h-full object-cover" 
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Package size={24} style={{ color: colors.emptyStateIcon }} />
+                      {gridItems.map((product) => {
+                        const showAddToCartButton = config.showAddToCartButton !== false;
+                        const showBuyNowButton = config.showBuyNowButton !== false;
+                        const cartButtonsLayout = config.cartButtonsLayout || 'stack';
+                        return (
+                          <div key={product._id} className="group cursor-pointer">
+                            <div 
+                              className={cn('overflow-hidden mb-3 relative', imageRadiusClassName)}
+                              style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}
+                            >
+                              {product.image ? (
+                                <FramePreviewImage 
+                                  src={product.image} 
+                                  alt={product.name} 
+                                  className="w-full h-full object-cover" 
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Package size={24} style={{ color: colors.emptyStateIcon }} />
+                                </div>
+                              )}
+                              <div
+                                className="absolute inset-x-2 bottom-2 flex items-center justify-center"
+                              >
+                                <span
+                                  className="px-4 py-2 rounded-full text-sm font-medium"
+                                  style={{ backgroundColor: colors.buttonBackground, border: `1px solid ${colors.buttonBorder}`, color: colors.buttonText }}
+                                >
+                                  Xem nhanh
+                                </span>
+                              </div>
+                            </div>
+                            <h4 className="font-medium text-sm line-clamp-2 min-h-[2.5rem]">{product.name}</h4>
+                            <div className="flex items-baseline gap-2 mt-1">
+                              {(() => {
+                                const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
+                                if (priceDisplay.comparePrice) {
+                                  return (
+                                    <>
+                                      <span className={cn('font-bold', 'text-sm')}>
+                                        {priceDisplay.label}
+                                      </span>
+                                      <span className="text-[10px] text-slate-400 line-through">
+                                        {getHomeComponentPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label}
+                                      </span>
+                                    </>
+                                  );
+                                }
+                                return (
+                                  <span className={cn('font-bold', 'text-sm')}>
+                                    {priceDisplay.label}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                            {(showAddToCartButton || showBuyNowButton) && (
+                              <div className="mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                                <ProductCardActions
+                                  product={product as any}
+                                  tokens={listTokens}
+                                  showStock={false}
+                                  showAddToCartButton={showAddToCartButton}
+                                  showBuyNowButton={showBuyNowButton}
+                                  buyNowLabel="Mua ngay"
+                                  onAddToCart={() => {}}
+                                  onBuyNow={() => {}}
+                                  cartButtonsLayout={cartButtonsLayout}
+                                  device={device}
+                                />
                               </div>
                             )}
-                            <div
-                              className="absolute inset-x-2 bottom-2 flex items-center justify-center"
-                            >
-                              <span
-                                className="px-4 py-2 rounded-full text-sm font-medium"
-                                style={{ backgroundColor: colors.buttonBackground, border: `1px solid ${colors.buttonBorder}`, color: colors.buttonText }}
-                              >
-                                Xem nhanh
-                              </span>
-                            </div>
                           </div>
-                          <h4 className="font-medium text-sm line-clamp-2 min-h-[2.5rem]">{product.name}</h4>
-                          <div className="flex items-baseline gap-2 mt-1">
-                            {(() => {
-                              const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
-                              if (priceDisplay.comparePrice) {
-                                return (
-                                  <>
-                                    <span className={cn('font-bold', 'text-sm')}>
-                                      {priceDisplay.label}
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 line-through">
-                                      {getHomeComponentPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label}
-                                    </span>
-                                  </>
-                                );
-                              }
-                              return (
-                                <span className={cn('font-bold', 'text-sm')}>
-                                  {priceDisplay.label}
-                                </span>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
 
                       {gridItems.length < 4 && Array.from({ length: 4 - gridItems.length }).map((_, i) => (
                         <div
@@ -909,81 +984,108 @@ export const CategoryProductsPreview = ({
                   'grid gap-4',
                   getGridCols()
                 )}>
-                  {section.products.map((product) => (
-                    <div key={product._id} className="cursor-pointer">
-                      <div
-                        className={cn('relative overflow-hidden border', cardRadiusClassName)}
-                        style={{ ...imageAspectRatioStyle, borderColor: colors.cardBorder, backgroundColor: colors.imageBackground }}
-                      >
-                        {product.image ? (
-                          <FramePreviewImage
-                            src={product.image}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
+                  {section.products.map((product) => {
+                    const showAddToCartButton = config.showAddToCartButton !== false;
+                    const showBuyNowButton = config.showBuyNowButton !== false;
+                    const cartButtonsLayout = config.cartButtonsLayout || 'stack';
+                    return (
+                      <div key={product._id} className="cursor-pointer group block">
+                        <div
+                          className={cn('relative overflow-hidden border mb-3', cardRadiusClassName)}
+                          style={{ ...imageAspectRatioStyle, borderColor: colors.cardBorder, backgroundColor: colors.imageBackground }}
+                        >
+                          <div 
+                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20"
+                            style={{ background: `linear-gradient(135deg, ${colors.neutralBorder} 0%, transparent 50%, ${colors.neutralBackground} 100%)` }}
                           />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package size={32} style={{ color: colors.emptyStateIcon }} />
+                          {product.image ? (
+                            <FramePreviewImage
+                              src={product.image}
+                              alt={product.name}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package size={32} style={{ color: colors.emptyStateIcon }} />
+                            </div>
+                          )}
+
+                          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10" />
+
+                          <div className="absolute bottom-3 left-3 right-3 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-30">
+                            <span
+                              className="block w-full py-2.5 rounded-xl text-sm font-medium text-center backdrop-blur-sm"
+                              style={{ backgroundColor: colors.buttonBackground, border: `1px solid ${colors.buttonBorder}`, color: colors.buttonText }}
+                            >
+                              Xem chi tiết
+                            </span>
                           </div>
-                        )}
 
-                        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 via-black/45 to-transparent" />
+                          {(() => {
+                            const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
+                            if (!priceDisplay.comparePrice) {return null;}
+                            return (
+                              <div className="absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-bold text-white bg-red-500 z-30">
+                                -{Math.round((1 - (product.price ?? 0) / priceDisplay.comparePrice) * 100)}%
+                              </div>
+                            );
+                          })()}
+                        </div>
 
-                        <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                          <h4 className={cn('font-medium line-clamp-2', device === 'mobile' ? 'text-xs' : 'text-sm')}>
+                        <div className="space-y-1">
+                          <h4 className="font-medium text-sm line-clamp-2 group-hover:opacity-80 transition-opacity" style={{ color: colors.bodyText }}>
                             {product.name}
                           </h4>
-                          <div className="flex flex-col mt-1">
+                          <div className="flex flex-col mb-2">
                             {(() => {
                               const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
                               if (priceDisplay.comparePrice) {
                                 return (
                                   <>
-                                    <span className={cn('font-bold', device === 'mobile' ? 'text-xs' : 'text-sm')}>
+                                    <span className="font-bold text-sm" style={{ color: colors.priceText }}>
                                       {priceDisplay.label}
                                     </span>
-                                    <span className="text-[10px] text-white/70 line-through">
+                                    <span className="text-xs line-through" style={{ color: colors.mutedText }}>
                                       {getHomeComponentPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label}
                                     </span>
                                   </>
                                 );
                               }
                               return (
-                                <span className={cn('font-bold', device === 'mobile' ? 'text-xs' : 'text-sm')}>
+                                <span className="font-bold text-sm" style={{ color: colors.priceText }}>
                                   {priceDisplay.label}
                                 </span>
                               );
                             })()}
                           </div>
+                          {(showAddToCartButton || showBuyNowButton) && (
+                            <div className="mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                              <ProductCardActions
+                                product={product as any}
+                                tokens={listTokens}
+                                showStock={false}
+                                  showAddToCartButton={showAddToCartButton}
+                                  showBuyNowButton={showBuyNowButton}
+                                  buyNowLabel="Mua ngay"
+                                  onAddToCart={() => {}}
+                                  onBuyNow={() => {}}
+                                  cartButtonsLayout={cartButtonsLayout}
+                                  device={device}
+                                />
+                              </div>
+                            )}
+                          </div>
                         </div>
-
-                        <span
-                          className="absolute top-3 right-3 px-2 py-1 rounded-md text-[11px] font-medium"
-                          style={{ backgroundColor: colors.buttonBackground, border: `1px solid ${colors.buttonBorder}`, color: colors.buttonText }}
-                        >
-                          Chi tiết
-                        </span>
-
-                        {(() => {
-                          const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
-                          if (!priceDisplay.comparePrice) {return null;}
-                          return (
-                            <div className="absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-bold text-white bg-red-500">
-                              -{Math.round((1 - (product.price ?? 0) / priceDisplay.comparePrice) * 100)}%
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        ))
-      )}
-    </div>
-  );
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </section>
+          ))
+        )}
+      </div>
+    );
 
   const getProductDiscount = (product: CategoryProductsProduct) => {
     const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
@@ -1048,6 +1150,9 @@ export const CategoryProductsPreview = ({
                     {section.products.map((product) => {
                       const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
                       const discount = getProductDiscount(product);
+                      const showAddToCartButton = config.showAddToCartButton !== false;
+                      const showBuyNowButton = config.showBuyNowButton !== false;
+                      const cartButtonsLayout = config.cartButtonsLayout || 'stack';
 
                       return (
                         <article
@@ -1081,24 +1186,44 @@ export const CategoryProductsPreview = ({
                               {product.name || 'Tên sản phẩm'}
                             </h3>
                             <div className="mb-2 flex flex-col gap-1" />
-                            <div className="mt-auto flex min-w-0 flex-row items-end justify-between gap-1.5 border-t pt-2" style={{ borderColor: colors.cardBorder }}>
-                              <div className="min-w-0 flex flex-col">
-                                {priceDisplay.comparePrice && (
-                                  <span className="max-w-full truncate text-xs font-medium leading-4 line-through" style={{ color: colors.mutedText }}>
-                                    {getHomeComponentPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label}
+                            <div className="mt-auto flex flex-col gap-2 border-t pt-2" style={{ borderColor: colors.cardBorder }}>
+                              <div className="flex min-w-0 flex-row items-end justify-between gap-1.5">
+                                <div className="min-w-0 flex flex-col">
+                                  {priceDisplay.comparePrice && (
+                                    <span className="max-w-full truncate text-xs font-medium leading-4 line-through" style={{ color: colors.mutedText }}>
+                                      {getHomeComponentPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label}
+                                    </span>
+                                  )}
+                                  <span className="max-w-full truncate whitespace-nowrap text-[12px] font-bold leading-4 md:text-[13px] md:leading-5 lg:text-sm" style={{ color: colors.bodyText }}>
+                                    {priceDisplay.label}
                                   </span>
+                                </div>
+                                {!showAddToCartButton && !showBuyNowButton && (
+                                  <button
+                                    type="button"
+                                    className="inline-flex h-6 min-w-9 shrink-0 items-center justify-center whitespace-nowrap rounded px-2 text-[10px] font-medium leading-none transition-colors md:min-w-10 md:px-2.5 md:text-[11px]"
+                                    style={{ backgroundColor: colors.buttonSolidBackground, color: colors.buttonSolidText }}
+                                  >
+                                    Xem
+                                  </button>
                                 )}
-                                <span className="max-w-full truncate whitespace-nowrap text-[12px] font-bold leading-4 md:text-[13px] md:leading-5 lg:text-sm" style={{ color: colors.bodyText }}>
-                                  {priceDisplay.label}
-                                </span>
                               </div>
-                              <button
-                                type="button"
-                                className="inline-flex h-6 min-w-9 shrink-0 items-center justify-center whitespace-nowrap rounded px-2 text-[10px] font-medium leading-none transition-colors md:min-w-10 md:px-2.5 md:text-[11px]"
-                                style={{ backgroundColor: colors.buttonSolidBackground, color: colors.buttonSolidText }}
-                              >
-                                Xem
-                              </button>
+                              {(showAddToCartButton || showBuyNowButton) && (
+                                <div className="mt-1" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                                  <ProductCardActions
+                                    product={product as any}
+                                    tokens={listTokens}
+                                    showStock={false}
+                                    showAddToCartButton={showAddToCartButton}
+                                    showBuyNowButton={showBuyNowButton}
+                                    buyNowLabel="Mua ngay"
+                                    onAddToCart={() => {}}
+                                    onBuyNow={() => {}}
+                                    cartButtonsLayout={cartButtonsLayout}
+                                    device={device}
+                                  />
+                                </div>
+                              )}
                             </div>
                           </div>
                         </article>

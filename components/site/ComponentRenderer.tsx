@@ -4373,7 +4373,7 @@ function CategoryProductsSection({
                                 Nổi bật
                               </span>
                               <h3 className="font-bold text-lg line-clamp-2 mb-1">{featured.name}</h3>
-                              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
+                              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0 mb-3">
                                 {(() => {
                                   const priceDisplay = getPriceDisplay(featured?.price, featured?.salePrice, featured?.hasVariants);
                                   if (priceDisplay.comparePrice) {
@@ -4387,6 +4387,21 @@ function CategoryProductsSection({
                                   return <span className="font-bold text-lg">{priceDisplay.label}</span>;
                                 })()}
                               </div>
+                              {(showAddToCartButton || showBuyNowButton) && (
+                                <div className="mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                                  <ProductCardActions
+                                    product={featured as any}
+                                    tokens={tokens}
+                                    showStock={showStock}
+                                    showAddToCartButton={showAddToCartButton}
+                                    showBuyNowButton={showBuyNowButton}
+                                    buyNowLabel="Mua ngay"
+                                    onAddToCart={handleAddToCart}
+                                    onBuyNow={handleBuyNow}
+                                    cartButtonsLayout={cartButtonsLayout}
+                                  />
+                                </div>
+                              )}
                             </div>
                           </a>
                         </ProductImageWithOverlay>
@@ -4414,10 +4429,25 @@ function CategoryProductsSection({
                                 <Package size={24} style={{ color: colors.emptyStateIcon }} />
                               </div>
                             )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-30" />
-                            <div className="absolute bottom-0 left-0 right-0 p-3 text-white transform translate-y-full group-hover:translate-y-0 transition-transform z-30">
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-20" />
+                            <div className="absolute bottom-0 left-0 right-0 p-3 text-white transform translate-y-full group-hover:translate-y-0 transition-transform duration-300 z-30 flex flex-col justify-end bg-black/60 max-h-full overflow-y-auto">
                               <h4 className="font-medium text-sm line-clamp-1">{product.name}</h4>
-                              <span className="font-bold text-sm">{getPriceDisplay(product.price, product.salePrice, product.hasVariants).label}</span>
+                              <span className="font-bold text-sm mb-2">{getPriceDisplay(product.price, product.salePrice, product.hasVariants).label}</span>
+                              {(showAddToCartButton || showBuyNowButton) && (
+                                <div className="mt-1" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                                  <ProductCardActions
+                                    product={product as any}
+                                    tokens={tokens}
+                                    showStock={showStock}
+                                    showAddToCartButton={showAddToCartButton}
+                                    showBuyNowButton={showBuyNowButton}
+                                    buyNowLabel="Mua ngay"
+                                    onAddToCart={handleAddToCart}
+                                    onBuyNow={handleBuyNow}
+                                    cartButtonsLayout={cartButtonsLayout}
+                                  />
+                                </div>
+                              )}
                             </div>
                           </a>
                         </ProductImageWithOverlay>
@@ -4514,7 +4544,7 @@ function CategoryProductsSection({
                                 Nổi bật
                               </span>
                               <h3 className="font-bold text-xl md:text-2xl line-clamp-2 mb-2">{featured.name}</h3>
-                              <div className="flex items-baseline gap-3">
+                              <div className="flex items-baseline gap-3 mb-3">
                                 {(() => {
                                   const priceDisplay = getPriceDisplay(featured?.price, featured?.salePrice, featured?.hasVariants);
                                   if (priceDisplay.comparePrice) {
@@ -4528,6 +4558,21 @@ function CategoryProductsSection({
                                   return <span className="font-bold text-2xl">{priceDisplay.label}</span>;
                                 })()}
                               </div>
+                              {(showAddToCartButton || showBuyNowButton) && (
+                                <div className="mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                                  <ProductCardActions
+                                    product={featured as any}
+                                    tokens={tokens}
+                                    showStock={showStock}
+                                    showAddToCartButton={showAddToCartButton}
+                                    showBuyNowButton={showBuyNowButton}
+                                    buyNowLabel="Mua ngay"
+                                    onAddToCart={handleAddToCart}
+                                    onBuyNow={handleBuyNow}
+                                    cartButtonsLayout={cartButtonsLayout}
+                                  />
+                                </div>
+                              )}
                             </div>
                           </a>
                         </ProductImageWithOverlay>
@@ -4536,63 +4581,82 @@ function CategoryProductsSection({
                       {/* Grid 2x2 */}
                       <div className="grid grid-cols-2 gap-4">
                         {gridItems.map((product) => (
-                          <a 
+                          <div 
                             key={product._id}
-                            href={resolveProductHrefByCategory({ categoryId: section.category._id, product })}
-                            className="group cursor-pointer"
+                            className="group cursor-pointer flex flex-col justify-between"
                           >
-                            <ProductImageWithOverlay
-                              frameConfig={frameConfig}
-                              watermarkConfig={watermarkConfig}
-                              className={cn('overflow-hidden mb-3 relative', imageRadiusClassName)}
-                              style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}
+                            <a 
+                              href={resolveProductHrefByCategory({ categoryId: section.category._id, product })}
+                              className="block mb-2"
                             >
-                              {product.image ? (
-                                <SiteImage 
-                                  src={product.image} 
-                                  alt={product.name} 
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                <Package size={24} style={{ color: colors.emptyStateIcon }} />
-                                </div>
-                              )}
-                              {/* Quick view overlay */}
-                              <div 
-                                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-30"
-                              style={{ backgroundColor: colors.neutralSurface }}
+                              <ProductImageWithOverlay
+                                frameConfig={frameConfig}
+                                watermarkConfig={watermarkConfig}
+                                className={cn('overflow-hidden mb-3 relative', imageRadiusClassName)}
+                                style={{ ...imageAspectRatioStyle, backgroundColor: colors.imageBackground }}
                               >
-                                <span 
-                                className="px-4 py-2 rounded-full text-sm font-medium"
-                                style={{ backgroundColor: colors.buttonBackground, border: `1px solid ${colors.buttonBorder}`, color: colors.buttonText }}
+                                {product.image ? (
+                                  <SiteImage 
+                                    src={product.image} 
+                                    alt={product.name} 
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                  <Package size={24} style={{ color: colors.emptyStateIcon }} />
+                                  </div>
+                                )}
+                                {/* Quick view overlay */}
+                                <div 
+                                  className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-30"
+                                  style={{ backgroundColor: colors.neutralSurface }}
                                 >
-                                  Xem nhanh
-                                </span>
-                              </div>
-                            </ProductImageWithOverlay>
-                          <h4 className="font-medium text-sm line-clamp-2 min-h-[2.5rem]" style={{ color: colors.bodyText }}>{product.name}</h4>
-                            <div className="flex items-baseline gap-2 mt-1">
-                              {(() => {
-                                const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
-                                if (priceDisplay.comparePrice) {
-                                  return (
-                                    <>
-                                    <span className="font-bold text-sm" style={{ color: colors.priceText }}>
-                                        {priceDisplay.label}
-                                      </span>
-                                    <span className="text-xs line-through" style={{ color: colors.mutedText }}>{formatComparePrice(priceDisplay.comparePrice)}</span>
-                                    </>
-                                  );
-                                }
-                                return (
-                                <span className="font-bold text-sm" style={{ color: colors.priceText }}>
-                                    {priceDisplay.label}
+                                  <span 
+                                    className="px-4 py-2 rounded-full text-sm font-medium"
+                                    style={{ backgroundColor: colors.buttonBackground, border: `1px solid ${colors.buttonBorder}`, color: colors.buttonText }}
+                                  >
+                                    Xem nhanh
                                   </span>
-                                );
-                              })()}
-                            </div>
-                          </a>
+                                </div>
+                              </ProductImageWithOverlay>
+                              <h4 className="font-medium text-sm line-clamp-2 min-h-[2.5rem]" style={{ color: colors.bodyText }}>{product.name}</h4>
+                              <div className="flex items-baseline gap-2 mt-1">
+                                {(() => {
+                                  const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
+                                  if (priceDisplay.comparePrice) {
+                                    return (
+                                      <>
+                                        <span className="font-bold text-sm" style={{ color: colors.priceText }}>
+                                          {priceDisplay.label}
+                                        </span>
+                                        <span className="text-xs line-through" style={{ color: colors.mutedText }}>{formatComparePrice(priceDisplay.comparePrice)}</span>
+                                      </>
+                                    );
+                                  }
+                                  return (
+                                    <span className="font-bold text-sm" style={{ color: colors.priceText }}>
+                                      {priceDisplay.label}
+                                    </span>
+                                  );
+                                })()}
+                              </div>
+                            </a>
+                            {(showAddToCartButton || showBuyNowButton) && (
+                              <div className="mt-auto" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                                <ProductCardActions
+                                  product={product as any}
+                                  tokens={tokens}
+                                  showStock={showStock}
+                                  showAddToCartButton={showAddToCartButton}
+                                  showBuyNowButton={showBuyNowButton}
+                                  buyNowLabel="Mua ngay"
+                                  onAddToCart={handleAddToCart}
+                                  onBuyNow={handleBuyNow}
+                                  cartButtonsLayout={cartButtonsLayout}
+                                />
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -4707,24 +4771,43 @@ function CategoryProductsSection({
                               </h3>
                             </a>
                             <div className="mb-2 flex flex-col gap-1" />
-                            <div className="mt-auto flex min-w-0 flex-row items-end justify-between gap-1.5 border-t pt-2" style={{ borderColor: colors.cardBorder }}>
-                              <div className="min-w-0 flex flex-col">
-                                {priceDisplay.comparePrice && (
-                                  <span className="max-w-full truncate text-xs font-medium leading-4 line-through" style={{ color: colors.mutedText }}>
-                                    {formatComparePrice(priceDisplay.comparePrice)}
+                            <div className="mt-auto flex flex-col gap-2 border-t pt-2" style={{ borderColor: colors.cardBorder }}>
+                              <div className="flex min-w-0 flex-row items-end justify-between gap-1.5">
+                                <div className="min-w-0 flex flex-col">
+                                  {priceDisplay.comparePrice && (
+                                    <span className="max-w-full truncate text-xs font-medium leading-4 line-through" style={{ color: colors.mutedText }}>
+                                      {formatComparePrice(priceDisplay.comparePrice)}
+                                    </span>
+                                  )}
+                                  <span className="max-w-full truncate whitespace-nowrap text-[12px] font-bold leading-4 md:text-[13px] md:leading-5 lg:text-sm" style={{ color: colors.bodyText }}>
+                                    {priceDisplay.label}
                                   </span>
+                                </div>
+                                {!showAddToCartButton && !showBuyNowButton && (
+                                  <a
+                                    href={resolveProductHrefByCategory({ categoryId: section.category._id, product })}
+                                    className="inline-flex h-6 min-w-9 shrink-0 items-center justify-center whitespace-nowrap rounded px-2 text-[10px] font-medium leading-none transition-colors md:min-w-10 md:px-2.5 md:text-[11px]"
+                                    style={{ backgroundColor: colors.buttonSolidBackground, color: colors.buttonSolidText }}
+                                  >
+                                    Xem
+                                  </a>
                                 )}
-                                <span className="max-w-full truncate whitespace-nowrap text-[12px] font-bold leading-4 md:text-[13px] md:leading-5 lg:text-sm" style={{ color: colors.bodyText }}>
-                                  {priceDisplay.label}
-                                </span>
                               </div>
-                              <a
-                                href={resolveProductHrefByCategory({ categoryId: section.category._id, product })}
-                                className="inline-flex h-6 min-w-9 shrink-0 items-center justify-center whitespace-nowrap rounded px-2 text-[10px] font-medium leading-none transition-colors md:min-w-10 md:px-2.5 md:text-[11px]"
-                                style={{ backgroundColor: colors.buttonSolidBackground, color: colors.buttonSolidText }}
-                              >
-                                Xem
-                              </a>
+                              {(showAddToCartButton || showBuyNowButton) && (
+                                <div className="mt-1" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                                  <ProductCardActions
+                                    product={product as any}
+                                    tokens={tokens}
+                                    showStock={showStock}
+                                    showAddToCartButton={showAddToCartButton}
+                                    showBuyNowButton={showBuyNowButton}
+                                    buyNowLabel="Mua ngay"
+                                    onAddToCart={handleAddToCart}
+                                    onBuyNow={handleBuyNow}
+                                    cartButtonsLayout={cartButtonsLayout}
+                                  />
+                                </div>
+                              )}
                             </div>
                           </div>
                         </article>
@@ -4786,86 +4869,105 @@ function CategoryProductsSection({
             ) : (
               <div className={cn('grid gap-5', getGridCols())}>
                 {section.products.map((product) => (
-                  <a 
+                  <div 
                     key={product._id}
-                    href={resolveProductHrefByCategory({ categoryId: section.category._id, product })}
-                    className="group cursor-pointer block"
+                    className="group cursor-pointer flex flex-col justify-between"
                   >
-                    {/* Image Container với effects */}
-                    <ProductImageWithOverlay
-                      frameConfig={frameConfig}
-                      watermarkConfig={watermarkConfig}
-                      className={cn('relative overflow-hidden mb-3', cardRadiusClassName)}
-                      style={imageAspectRatioStyle}
+                    <a 
+                      href={resolveProductHrefByCategory({ categoryId: section.category._id, product })}
+                      className="block mb-2"
                     >
-                      {/* Background gradient on hover */}
-                      <div 
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30"
-                        style={{ background: `linear-gradient(135deg, ${colors.neutralBorder} 0%, transparent 50%, ${colors.neutralBackground} 100%)` }}
-                      />
-                      
-                      {product.image ? (
-                        <SiteImage 
-                          src={product.image} 
-                          alt={product.name} 
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                      {/* Image Container với effects */}
+                      <ProductImageWithOverlay
+                        frameConfig={frameConfig}
+                        watermarkConfig={watermarkConfig}
+                        className={cn('relative overflow-hidden mb-3', cardRadiusClassName)}
+                        style={imageAspectRatioStyle}
+                      >
+                        {/* Background gradient on hover */}
+                        <div 
+                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30"
+                          style={{ background: `linear-gradient(135deg, ${colors.neutralBorder} 0%, transparent 50%, ${colors.neutralBackground} 100%)` }}
                         />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: colors.imageBackground }}>
-                          <Package size={32} style={{ color: colors.emptyStateIcon }} />
-                        </div>
-                      )}
-                      
-                      {/* Gradient overlay bottom */}
-                      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20" />
-                      
-                      {/* Quick action button */}
-                      <div className="absolute bottom-3 left-3 right-3 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-30">
-                        <span 
-                          className="block w-full py-2.5 rounded-xl text-sm font-medium text-center backdrop-blur-sm"
-                          style={{ backgroundColor: colors.buttonBackground, border: `1px solid ${colors.buttonBorder}`, color: colors.buttonText }}
-                        >
-                          Xem chi tiết
-                        </span>
-                      </div>
-                      
-                      {/* Badge for sale */}
-                      {(() => {
-                        const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
-                        if (!priceDisplay.comparePrice) {return null;}
-                        return (
-                          <div className="absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-bold text-white bg-red-500 z-30">
-                            -{Math.round((1 - (product.price ?? 0) / priceDisplay.comparePrice) * 100)}%
+                        
+                        {product.image ? (
+                          <SiteImage 
+                            src={product.image} 
+                            alt={product.name} 
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: colors.imageBackground }}>
+                            <Package size={32} style={{ color: colors.emptyStateIcon }} />
                           </div>
-                        );
-                      })()}
-                    </ProductImageWithOverlay>
-                    
-                    {/* Product info */}
-                    <div className="space-y-1">
-                      <h4 className="font-medium text-sm line-clamp-2 group-hover:opacity-80 transition-opacity" style={{ color: colors.bodyText }}>{product.name}</h4>
-                      <div className="flex flex-col">
+                        )}
+                        
+                        {/* Gradient overlay bottom */}
+                        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20" />
+                        
+                        {/* Quick action button */}
+                        <div className="absolute bottom-3 left-3 right-3 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-30">
+                          <span 
+                            className="block w-full py-2.5 rounded-xl text-sm font-medium text-center backdrop-blur-sm"
+                            style={{ backgroundColor: colors.buttonBackground, border: `1px solid ${colors.buttonBorder}`, color: colors.buttonText }}
+                          >
+                            Xem chi tiết
+                          </span>
+                        </div>
+                        
+                        {/* Badge for sale */}
                         {(() => {
                           const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
-                          if (priceDisplay.comparePrice) {
-                            return (
-                              <>
-                                <span className="font-bold text-sm" style={{ color: colors.priceText }}>
-                                  {priceDisplay.label}
-                                </span>
-                                <span className="text-xs line-through" style={{ color: colors.mutedText }}>{formatComparePrice(priceDisplay.comparePrice)}</span>
-                              </>
-                            );
-                          }
+                          if (!priceDisplay.comparePrice) {return null;}
                           return (
-                            <span className="font-bold text-sm" style={{ color: colors.priceText }}>
-                              {priceDisplay.label}
-                            </span>
+                            <div className="absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-bold text-white bg-red-500 z-30">
+                              -{Math.round((1 - (product.price ?? 0) / priceDisplay.comparePrice) * 100)}%
+                            </div>
                           );
                         })()}
+                      </ProductImageWithOverlay>
+                      
+                      {/* Product info */}
+                      <div className="space-y-1">
+                        <h4 className="font-medium text-sm line-clamp-2 group-hover:opacity-80 transition-opacity" style={{ color: colors.bodyText }}>{product.name}</h4>
+                        <div className="flex flex-col">
+                          {(() => {
+                            const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
+                            if (priceDisplay.comparePrice) {
+                              return (
+                                <>
+                                  <span className="font-bold text-sm" style={{ color: colors.priceText }}>
+                                    {priceDisplay.label}
+                                  </span>
+                                  <span className="text-xs line-through" style={{ color: colors.mutedText }}>{formatComparePrice(priceDisplay.comparePrice)}</span>
+                                </>
+                              );
+                            }
+                            return (
+                              <span className="font-bold text-sm" style={{ color: colors.priceText }}>
+                                {priceDisplay.label}
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </div>
-                    </div>
-                  </a>
+                    </a>
+                    {(showAddToCartButton || showBuyNowButton) && (
+                      <div className="mt-auto" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                        <ProductCardActions
+                          product={product as any}
+                          tokens={tokens}
+                          showStock={showStock}
+                          showAddToCartButton={showAddToCartButton}
+                          showBuyNowButton={showBuyNowButton}
+                          buyNowLabel="Mua ngay"
+                          onAddToCart={handleAddToCart}
+                          onBuyNow={handleBuyNow}
+                          cartButtonsLayout={cartButtonsLayout}
+                        />
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
