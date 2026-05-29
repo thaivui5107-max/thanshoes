@@ -26,7 +26,7 @@ export function CategoryTabSlider({
   onTabChange,
   brandColor,
   className,
-  showAllTab = true,
+  showAllTab = false,
   allTabLabel = 'Tất cả',
   brandBgColor,
 }: CategoryTabSliderProps) {

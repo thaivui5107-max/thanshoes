@@ -385,9 +385,9 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
         <CategoryTabSlider
           tabs={displayTabs}
           activeTabId={activeTabId}
-          onTabChange={setActiveTabId}
+          onTabChange={(tabId) => setActiveTabId(tabId === activeTabId ? null : tabId)}
           brandColor={brandColor}
-          showAllTab={true}
+          showAllTab={false}
           allTabLabel="Tất cả"
         />
       </div>
@@ -406,9 +406,9 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
             <CategoryTabSlider
               tabs={displayTabs}
               activeTabId={activeTabId}
-              onTabChange={setActiveTabId}
+              onTabChange={(tabId) => setActiveTabId(tabId === activeTabId ? null : tabId)}
               brandColor={brandColor}
-              showAllTab={true}
+              showAllTab={false}
               allTabLabel="Tất cả"
             />
           </div>
@@ -728,10 +728,10 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
               <CategoryTabSlider
                 tabs={displayTabs}
                 activeTabId={activeTabId}
-                onTabChange={setActiveTabId}
+                onTabChange={(tabId) => setActiveTabId(tabId === activeTabId ? null : tabId)}
                 brandColor={brandColor}
                 brandBgColor={brandColor}
-                showAllTab={true}
+                showAllTab={false}
                 allTabLabel="Tất cả"
               />
             </div>
@@ -783,10 +783,10 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
                 <CategoryTabSlider
                   tabs={displayTabs}
                   activeTabId={activeTabId}
-                  onTabChange={setActiveTabId}
+                  onTabChange={(tabId) => setActiveTabId(tabId === activeTabId ? null : tabId)}
                   brandColor={brandColor}
                   brandBgColor={brandColor}
-                  showAllTab={true}
+                  showAllTab={false}
                   allTabLabel="Tất cả"
                 />
               </div>

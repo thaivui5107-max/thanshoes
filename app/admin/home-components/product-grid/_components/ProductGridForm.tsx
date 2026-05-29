@@ -75,6 +75,7 @@ export const ProductGridForm = ({
   setShowBuyNowButton,
   cartButtonsLayout,
   setCartButtonsLayout,
+  categoryProductCountsMap, // Nhận map đếm số lượng từ DB
 }: {
   itemCount: number;
   setItemCount: (value: number) => void;
@@ -97,6 +98,7 @@ export const ProductGridForm = ({
   categoryTabIds: string[];
   setCategoryTabIds: React.Dispatch<React.SetStateAction<string[]>>;
   allCategories?: CategoryTabItem[];
+  categoryProductCountsMap?: Record<string, number>;
   desktopColumns?: 3 | 4 | 5 | 6;
   onDesktopColumnsChange?: (cols: 3 | 4 | 5 | 6) => void;
   spacing?: SectionSpacing;
@@ -133,9 +135,15 @@ export const ProductGridForm = ({
     },
   );
 
-  // Đếm số lượng sản phẩm Active của từng danh mục
+  // Đếm số lượng sản phẩm Active của từng danh mục một cách chính xác
   const categoryProductCounts = useMemo(() => {
     const counts = new Map<string, number>();
+    if (categoryProductCountsMap) {
+      Object.entries(categoryProductCountsMap).forEach(([catId, count]) => {
+        counts.set(catId, count);
+      });
+      return counts;
+    }
     const source = allActiveProducts || filteredProducts;
     if (!source) return counts;
     source.forEach(p => {
@@ -144,7 +152,19 @@ export const ProductGridForm = ({
       }
     });
     return counts;
-  }, [allActiveProducts, filteredProducts]);
+  }, [categoryProductCountsMap, allActiveProducts, filteredProducts]);
+
+  // Sắp xếp danh mục từ nhiều sản phẩm Active nhất xuống ít nhất
+  const sortedCategories = useMemo(() => {
+    if (!allCategories) return [];
+    return [...allCategories]
+      .filter(cat => cat.active)
+      .sort((a, b) => {
+        const countA = categoryProductCounts.get(a._id) ?? 0;
+        const countB = categoryProductCounts.get(b._id) ?? 0;
+        return countB - countA;
+      });
+  }, [allCategories, categoryProductCounts]);
 
   // Bộ lọc sản phẩm thủ công theo danh mục chọn nhanh
   const finalFilteredProducts = useMemo(() => {
@@ -400,7 +420,7 @@ export const ProductGridForm = ({
                   <p className="text-xs text-slate-400">Chưa có danh mục sản phẩm nào</p>
                 ) : (
                   <div className="flex flex-wrap gap-2 max-h-[220px] overflow-y-auto p-1 border rounded-lg bg-slate-50/50 dark:bg-slate-900/30">
-                    {allCategories.filter(cat => cat.active).map(cat => {
+                    {sortedCategories.map(cat => {
                       const isSelected = categoryTabIds.includes(cat._id);
                       const count = categoryProductCounts.get(cat._id) ?? 0;
                       return (

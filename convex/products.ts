@@ -2599,3 +2599,22 @@ export const listProductsForCategories = query({
   },
   returns: v.array(productDoc),
 });
+
+export const countActiveByCategory = query({
+  args: {},
+  handler: async (ctx) => {
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_status_order", (q) => q.eq("status", "Active"))
+      .collect();
+
+    const counts: Record<string, number> = {};
+    products.forEach((p) => {
+      if (p.categoryId) {
+        counts[p.categoryId] = (counts[p.categoryId] ?? 0) + 1;
+      }
+    });
+    return counts;
+  },
+  returns: v.any(),
+});

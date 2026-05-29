@@ -240,10 +240,10 @@ export const ProductGridPreview = ({
                       <CategoryTabSlider
                         tabs={resolvedTabs}
                         activeTabId={activeTab}
-                        onTabChange={setActiveTab}
+                        onTabChange={(tabId) => setActiveTab(tabId === activeTab ? null : tabId)}
                         brandColor={brandColor}
                         brandBgColor={brandColor}
-                        showAllTab={true}
+                        showAllTab={false}
                         allTabLabel="Tất cả"
                       />
                     </div>
@@ -370,10 +370,10 @@ export const ProductGridPreview = ({
                     <CategoryTabSlider
                       tabs={resolvedTabs}
                       activeTabId={activeTab}
-                      onTabChange={setActiveTab}
+                      onTabChange={(tabId) => setActiveTab(tabId === activeTab ? null : tabId)}
                       brandColor={brandColor}
                       brandBgColor={brandColor}
-                      showAllTab={true}
+                      showAllTab={false}
                       allTabLabel="Tất cả"
                     />
                   </div>
@@ -486,9 +486,9 @@ export const ProductGridPreview = ({
       <CategoryTabSlider
         tabs={resolvedTabs}
         activeTabId={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tabId) => setActiveTab(tabId === activeTab ? null : tabId)}
         brandColor={brandColor}
-        showAllTab={true}
+        showAllTab={false}
         allTabLabel="Tất cả"
       />
     </div>
@@ -500,9 +500,9 @@ export const ProductGridPreview = ({
       <CategoryTabSlider
         tabs={resolvedTabs}
         activeTabId={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tabId) => setActiveTab(tabId === activeTab ? null : tabId)}
         brandColor={brandColor}
-        showAllTab={true}
+        showAllTab={false}
         allTabLabel="Tất cả"
       />
     </div>
