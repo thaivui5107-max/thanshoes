@@ -903,9 +903,26 @@ export const ProductListPreview = ({
                 <div className="flex flex-row items-center justify-between gap-4 mt-2">
                   <span className="text-2xl font-bold text-white">{featured?.price}</span>
 
-                  <button type="button" className="rounded-full px-6 py-2 text-white border-0 shadow-lg transition-all hover:scale-105" style={{ backgroundColor: brandColor, boxShadow: `0 4px 6px ${brandColor}20` }}>
-                    Xem chi tiết
-                  </button>
+                  {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) ? (
+                    <div className="shrink-0 min-w-[140px]">
+                      <ProductCardActions
+                        product={{ _id: String(featured?.id ?? 0), name: featured?.name ?? '', price: featured?.price ? Number(featured.price.replace(/\D/g, '')) : undefined, salePrice: featured?.price ? Number(featured.price.replace(/\D/g, '')) : undefined }}
+                        tokens={tokens}
+                        showStock={false}
+                        showAddToCartButton={!!effectiveShowAddToCartButton}
+                        showBuyNowButton={!!effectiveShowBuyNowButton}
+                        buyNowLabel="Mua ngay"
+                        onAddToCart={() => {}}
+                        onBuyNow={() => {}}
+                        cartButtonsLayout="grid-2"
+                        device={device}
+                      />
+                    </div>
+                  ) : (
+                    <button type="button" className="rounded-full px-6 py-2 text-white border-0 shadow-lg transition-all hover:scale-105" style={{ backgroundColor: brandColor, boxShadow: `0 4px 6px ${brandColor}20` }}>
+                      Xem chi tiết
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1124,10 +1141,27 @@ export const ProductListPreview = ({
               <div className="absolute bottom-0 left-0 p-6 w-full">
                 <BrandBadge text="Nổi bật" variant="solid" brandColor={brandColor} secondary={secondary} className="mb-2" />
                 <h3 className="text-xl md:text-2xl font-bold text-white mb-2 line-clamp-2">{showcaseFeatured?.name}</h3>
-                <div className="flex items-center justify-between">
-                  <span className="text-xl font-bold text-white">{showcaseFeatured?.price}</span>
-                  <button type="button" className="h-9 px-4 rounded-lg text-white text-sm font-medium shrink-0" style={{ backgroundColor: brandColor }}>Xem chi tiết</button>
-                </div>
+                {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) ? (
+                  <div className="mt-2">
+                    <ProductCardActions
+                      product={{ _id: String(showcaseFeatured?.id ?? 0), name: showcaseFeatured?.name ?? '', price: showcaseFeatured?.price ? Number(showcaseFeatured.price.replace(/\D/g, '')) : undefined, salePrice: showcaseFeatured?.price ? Number(showcaseFeatured.price.replace(/\D/g, '')) : undefined }}
+                      tokens={tokens}
+                      showStock={false}
+                      showAddToCartButton={!!effectiveShowAddToCartButton}
+                      showBuyNowButton={!!effectiveShowBuyNowButton}
+                      buyNowLabel="Mua ngay"
+                      onAddToCart={() => {}}
+                      onBuyNow={() => {}}
+                      cartButtonsLayout="grid-2"
+                      device={device}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xl font-bold text-white">{showcaseFeatured?.price}</span>
+                    <button type="button" className="h-9 px-4 rounded-lg text-white text-sm font-medium shrink-0" style={{ backgroundColor: brandColor }}>Xem chi tiết</button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1285,6 +1319,7 @@ export const ProductListPreview = ({
                     }
                   }}
                 >
+                  {/* 3D flip card */}
                   <div className="relative isolate aspect-[380/460] overflow-visible [perspective:2500px]">
                     <div
                       className={cn(
@@ -1314,6 +1349,7 @@ export const ProductListPreview = ({
                           <SaleBadge text={discount} className="text-[11px] px-3 py-1 font-bold shadow-lg" />
                         </div>
                       )}
+                      {/* Overlay text — luôn show tên/giá; nút Xem chi tiết chỉ khi KHÔNG có cart buttons */}
                       <div className={cn("absolute inset-x-0 bottom-0 z-20 space-y-2 p-4 text-center transition duration-500 group-hover:translate-y-1", isActive && "translate-y-1")}>
                         {item.category ? (
                           <div className={cn("text-[11px] font-semibold uppercase tracking-wide text-white/70 transition-colors duration-500 group-hover:text-slate-500", isActive && "text-slate-500")}>
@@ -1335,22 +1371,8 @@ export const ProductListPreview = ({
                             </span>
                           )}
                         </div>
-                        {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) ? (
-                          <div className="mt-2">
-                            <ProductCardActions
-                              product={{ _id: String(item.id), name: item.name, price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined, salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined }}
-                              tokens={tokens}
-                              showStock={false}
-                              showAddToCartButton={!!effectiveShowAddToCartButton}
-                              showBuyNowButton={!!effectiveShowBuyNowButton}
-                              buyNowLabel="Mua ngay"
-                              onAddToCart={() => {}}
-                              onBuyNow={() => {}}
-                              cartButtonsLayout={cartButtonsLayout}
-                              device={device}
-                            />
-                          </div>
-                        ) : (
+                        {/* Chỉ show nút Xem chi tiết khi KHÔNG có cart mode */}
+                        {(!isProduct || (!effectiveShowAddToCartButton && !effectiveShowBuyNowButton)) && (
                           <div className="inline-flex items-center justify-center rounded-full px-5 py-2 text-xs font-bold text-white shadow-lg transition duration-300 group-hover:scale-105" style={{ backgroundColor: secondary }}>
                             Xem chi tiết <ArrowRight size={14} className="ml-1.5" />
                           </div>
@@ -1370,6 +1392,24 @@ export const ProductListPreview = ({
                       />
                     )}
                   </div>
+
+                  {/* Cart buttons đặt NGOÀI card 3D — rộng rãi, dễ nhìn */}
+                  {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) && (
+                    <div className="mt-3 px-1">
+                      <ProductCardActions
+                        product={{ _id: String(item.id), name: item.name, price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined, salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined }}
+                        tokens={tokens}
+                        showStock={false}
+                        showAddToCartButton={!!effectiveShowAddToCartButton}
+                        showBuyNowButton={!!effectiveShowBuyNowButton}
+                        buyNowLabel="Mua ngay"
+                        onAddToCart={() => {}}
+                        onBuyNow={() => {}}
+                        cartButtonsLayout={cartButtonsLayout}
+                        device={device}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             );
