@@ -103,6 +103,11 @@ export function ProductListCreateShared({ type, titleLabel }: ProductListCreateS
   const [serviceCardRadius, setServiceCardRadius] = useState<ServiceListCardRadius>(DEFAULT_SERVICE_LIST_CARD_RADIUS);
   const [serviceDesktopColumns, setServiceDesktopColumns] = useState<ServiceListDesktopColumns>(DEFAULT_SERVICE_LIST_DESKTOP_COLUMNS);
 
+  // Cart buttons settings
+  const [showAddToCartButton, setShowAddToCartButton] = useState(true);
+  const [showBuyNowButton, setShowBuyNowButton] = useState(true);
+  const [cartButtonsLayout, setCartButtonsLayout] = useState<'stack' | 'grid-2'>('stack');
+
   const productsData = useQuery(api.products.listAll, type === 'ProductList' ? { limit: 100 } : 'skip');
   const resolvedProductsData = useQuery(api.products.listPublicResolved, type === 'ProductList' ? { limit: 100 } : 'skip');
   const saleModeSetting = useQuery(api.admin.modules.getModuleSetting, type === 'ProductList' ? { moduleKey: 'products', settingKey: 'saleMode' } : 'skip');
@@ -280,6 +285,9 @@ export function ProductListCreateShared({ type, titleLabel }: ProductListCreateS
       config.cardRadius = cardRadius;
       config.desktopColumns = productDesktopColumns;
       config.lookbookDesktopColumns = productDesktopColumns;
+      config.showAddToCartButton = showAddToCartButton;
+      config.showBuyNowButton = showBuyNowButton;
+      config.cartButtonsLayout = cartButtonsLayout;
     }
 
     if (type === 'ServiceList') {
@@ -420,6 +428,50 @@ export function ProductListCreateShared({ type, titleLabel }: ProductListCreateS
                   <p className="text-xs text-slate-500 md:col-span-2">
                     Ảnh hưởng layout Commerce, Compact và Lookbook. 4 cột: tablet/mobile 2 cột. 3 cột: tablet 3 cột, mobile 1 cột.
                   </p>
+                  
+                  {saleMode === 'cart' && (
+                    <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-4 space-y-4 md:col-span-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Hiển thị nút Thêm vào giỏ</Label>
+                          <p className="text-xs text-slate-500">Cho phép khách hàng thêm nhanh sản phẩm vào giỏ</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={showAddToCartButton}
+                          onChange={(e) => setShowAddToCartButton(e.target.checked)}
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Hiển thị nút Mua ngay</Label>
+                          <p className="text-xs text-slate-500">Khách hàng có thể nhấn mua và đi thẳng tới trang checkout</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={showBuyNowButton}
+                          onChange={(e) => setShowBuyNowButton(e.target.checked)}
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      {showAddToCartButton && showBuyNowButton && (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Bố cục nút hiển thị</Label>
+                          <select
+                            className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                            value={cartButtonsLayout}
+                            onChange={(e) => setCartButtonsLayout(e.target.value as 'stack' | 'grid-2')}
+                          >
+                            <option value="stack">Xếp dọc (Stack)</option>
+                            <option value="grid-2">Xếp ngang (Grid 2)</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  )}
               </>
             )}
             {type === 'ServiceList' && (
@@ -1056,6 +1108,9 @@ export function ProductListCreateShared({ type, titleLabel }: ProductListCreateS
           cardRadius={cardRadius}
           desktopColumns={productDesktopColumns}
           lookbookDesktopColumns={productDesktopColumns}
+          showAddToCartButton={showAddToCartButton}
+          showBuyNowButton={showBuyNowButton}
+          cartButtonsLayout={cartButtonsLayout}
         />
       ))}
     </ComponentFormWrapper>

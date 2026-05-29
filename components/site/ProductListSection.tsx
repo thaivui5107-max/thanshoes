@@ -317,8 +317,8 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
     selectionMode === 'manual' && selectedProductIds.length > 0 ? { ids: selectedProductIds as Id<'products'>[] } : 'skip'
   );
 
-  const showAddToCartButton = config.showAddToCartButton !== false;
-  const showBuyNowButton = config.showBuyNowButton !== false;
+  const showAddToCartButton = saleMode === 'cart' && config.showAddToCartButton !== false;
+  const showBuyNowButton = saleMode === 'cart' && config.showBuyNowButton !== false;
   const cartButtonsLayout = (config.cartButtonsLayout as 'stack' | 'grid-2') || 'stack';
   const showStock = config.showStock !== false;
 

@@ -483,6 +483,19 @@ export const ProductListPreview = ({
     () => resolveProductImageAspectRatio(aspectRatioSetting?.value),
     [aspectRatioSetting?.value]
   );
+  
+  const saleModeSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'saleMode' });
+  const saleMode = React.useMemo<'cart' | 'contact' | 'affiliate'>(() => {
+    const value = saleModeSetting?.value;
+    if (value === 'contact' || value === 'affiliate') {
+      return value;
+    }
+    return 'cart';
+  }, [saleModeSetting?.value]);
+
+  const effectiveShowAddToCartButton = saleMode === 'cart' && showAddToCartButton;
+  const effectiveShowBuyNowButton = saleMode === 'cart' && showBuyNowButton;
+
   const imageAspectRatioStyle = React.useMemo(
     () => ({ aspectRatio: getProductImageAspectRatioCssValue(imageAspectRatio) }),
     [imageAspectRatio]
@@ -618,7 +631,7 @@ export const ProductListPreview = ({
                   )}
                 </div>
 
-                {isProduct && (showAddToCartButton || showBuyNowButton) ? (
+                {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) ? (
                   <div className="mt-auto">
                     <ProductCardActions
                       product={{
@@ -629,8 +642,8 @@ export const ProductListPreview = ({
                       }}
                       tokens={tokens}
                       showStock={false}
-                      showAddToCartButton={!!showAddToCartButton}
-                      showBuyNowButton={!!showBuyNowButton}
+                      showAddToCartButton={!!effectiveShowAddToCartButton}
+                      showBuyNowButton={!!effectiveShowBuyNowButton}
                       buyNowLabel="Mua ngay"
                       onAddToCart={() => {}}
                       onBuyNow={() => {}}
@@ -728,7 +741,7 @@ export const ProductListPreview = ({
                   )}
                 </div>
 
-                {isProduct && (showAddToCartButton || showBuyNowButton) ? (
+                {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) ? (
                   <div className="mt-auto">
                     <ProductCardActions
                       product={{
@@ -739,8 +752,8 @@ export const ProductListPreview = ({
                       }}
                       tokens={tokens}
                       showStock={false}
-                      showAddToCartButton={!!showAddToCartButton}
-                      showBuyNowButton={!!showBuyNowButton}
+                      showAddToCartButton={!!effectiveShowAddToCartButton}
+                      showBuyNowButton={!!effectiveShowBuyNowButton}
                       buyNowLabel="Mua ngay"
                       onAddToCart={() => {}}
                       onBuyNow={() => {}}
@@ -911,7 +924,7 @@ export const ProductListPreview = ({
     );
   };
 
-  const renderCarouselStyle = () => <CarouselPreviewInner displayItems={displayItems} device={device} brandColor={brandColor} secondary={secondary} subTitle={subTitle} displayTitle={displayTitle} displaySubtitle={displaySubtitle} imageAspectRatioStyle={imageAspectRatioStyle} getDiscount={getDiscount} effectiveShowBadge={effectiveShowBadge} effectiveShowTitle={effectiveShowTitle} effectiveShowSubtitle={effectiveShowSubtitle} effectiveHideHeader={effectiveHideHeader} titleStyle={titleStyle} uppercaseText={uppercaseText} headerAlign={headerAlign} subtitleAboveTitle={subtitleAboveTitle} cardRadiusClassName={cardRadiusClassName} showAddToCartButton={showAddToCartButton} showBuyNowButton={showBuyNowButton} cartButtonsLayout={cartButtonsLayout} tokens={tokens} isProduct={isProduct} />;
+  const renderCarouselStyle = () => <CarouselPreviewInner displayItems={displayItems} device={device} brandColor={brandColor} secondary={secondary} subTitle={subTitle} displayTitle={displayTitle} displaySubtitle={displaySubtitle} imageAspectRatioStyle={imageAspectRatioStyle} getDiscount={getDiscount} effectiveShowBadge={effectiveShowBadge} effectiveShowTitle={effectiveShowTitle} effectiveShowSubtitle={effectiveShowSubtitle} effectiveHideHeader={effectiveHideHeader} titleStyle={titleStyle} uppercaseText={uppercaseText} headerAlign={headerAlign} subtitleAboveTitle={subtitleAboveTitle} cardRadiusClassName={cardRadiusClassName} showAddToCartButton={effectiveShowAddToCartButton} showBuyNowButton={effectiveShowBuyNowButton} cartButtonsLayout={cartButtonsLayout} tokens={tokens} isProduct={isProduct} />;
 
   const renderWineCarouselStyle = () => (
     <WineCarouselPreviewInner
@@ -1321,7 +1334,7 @@ export const ProductListPreview = ({
                     )}
                   </div>
 
-                  {isProduct && (showAddToCartButton || showBuyNowButton) ? (
+                  {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) ? (
                     <div className="mt-auto">
                       <ProductCardActions
                         product={{
@@ -1332,8 +1345,8 @@ export const ProductListPreview = ({
                         }}
                         tokens={tokens}
                         showStock={false}
-                        showAddToCartButton={!!showAddToCartButton}
-                        showBuyNowButton={!!showBuyNowButton}
+                        showAddToCartButton={!!effectiveShowAddToCartButton}
+                        showBuyNowButton={!!effectiveShowBuyNowButton}
                         buyNowLabel="Mua ngay"
                         onAddToCart={() => {}}
                         onBuyNow={() => {}}
