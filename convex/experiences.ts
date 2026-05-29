@@ -111,6 +111,12 @@ export const systemExperiences: SystemExperience[] = [
     icon: "Ticket",
     title: "Khuyến mãi",
   },
+  {
+    description: "Cấu hình bố cục tìm kiếm, bộ lọc danh mục và hiển thị sản phẩm.",
+    href: "/system/experiences/search-filter",
+    icon: "Search",
+    title: "Tìm kiếm & Bộ lọc",
+  },
 ];
 
 export const search = query({

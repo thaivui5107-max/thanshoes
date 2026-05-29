@@ -39,6 +39,7 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; className?: s
   Mail,
   AlertTriangle,
   Ticket,
+  Search,
 };
 
 export default function ExperiencesPage() {
