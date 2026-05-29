@@ -140,6 +140,7 @@ export default function ProductsListExperiencePage() {
   const ordersModule = useQuery(api.admin.modules.getModuleByKey, { key: 'orders' });
   const promotionsModule = useQuery(api.admin.modules.getModuleByKey, { key: 'promotions' });
   const variantsSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'variantEnabled' });
+  const saleModeSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'saleMode' });
   const brandColors = useBrandColors();
   const [brandColor, setBrandColor] = useState(brandColors.primary);
   const [secondaryColor, setSecondaryColor] = useState(brandColors.secondary || '');
@@ -195,9 +196,10 @@ export default function ProductsListExperiencePage() {
     };
   }, [experienceSetting?.value]);
 
-  const isLoading = experienceSetting === undefined || productsModule === undefined || wishlistModule === undefined || cartModule === undefined || ordersModule === undefined || promotionsModule === undefined || variantsSetting === undefined;
+  const isLoading = experienceSetting === undefined || productsModule === undefined || wishlistModule === undefined || cartModule === undefined || ordersModule === undefined || promotionsModule === undefined || variantsSetting === undefined || saleModeSetting === undefined;
 
   const { config, setConfig, hasChanges } = useExperienceConfig(serverConfig, DEFAULT_CONFIG, isLoading);
+  const saleMode = (saleModeSetting?.value as string | undefined) ?? 'cart';
   const canUseProducts = productsModule?.enabled ?? false;
   const canUseWishlist = wishlistModule?.enabled ?? false;
   const canUseCart = (cartModule?.enabled ?? false) && (ordersModule?.enabled ?? false);
@@ -402,7 +404,7 @@ export default function ProductsListExperiencePage() {
               accentColor={brandColor}
               disabled={!canUsePromotions}
             />
-            {config.showAddToCartButton && (
+            {config.showAddToCartButton && saleMode === 'cart' && (
               <SelectRow
                 label="Bố cục nút"
                 value={config.cartButtonsLayout ?? 'stack'}
@@ -565,6 +567,7 @@ export default function ProductsListExperiencePage() {
                 showBuyNowButton={config.showBuyNowButton && (ordersModule?.enabled ?? false)}
                 showPromotionBadge={config.showPromotionBadge && (promotionsModule?.enabled ?? false)}
                 cornerRadius={config.cornerRadius}
+                cartButtonsLayout={config.cartButtonsLayout}
               />
             </BrowserFrame>
           </div>

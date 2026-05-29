@@ -500,6 +500,7 @@ export default function ProductDetailExperiencePage() {
   const legacyStyleSetting = useQuery(api.settings.getByKey, { key: LEGACY_DETAIL_STYLE_KEY });
   const legacyHighlightsSetting = useQuery(api.settings.getByKey, { key: LEGACY_HIGHLIGHTS_KEY });
   const highlightsSetting = useQuery(api.settings.getByKey, { key: CLASSIC_HIGHLIGHTS_KEY });
+  const saleModeSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'saleMode' });
   const moduleAspectRatioSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
   const commentsModule = useQuery(api.admin.modules.getModuleByKey, { key: 'comments' });
   const commentsLikesFeature = useQuery(api.admin.modules.getModuleFeature, { featureKey: 'enableLikes', moduleKey: 'comments' });
@@ -770,9 +771,10 @@ export default function ProductDetailExperiencePage() {
     };
   }, [experienceSetting?.value, legacyStyle, legacyHighlights]);
 
-  const isLoading = experienceSetting === undefined || legacyStyleSetting === undefined || legacyHighlightsSetting === undefined || highlightsSetting === undefined;
+  const isLoading = experienceSetting === undefined || legacyStyleSetting === undefined || legacyHighlightsSetting === undefined || highlightsSetting === undefined || saleModeSetting === undefined;
 
   const { config, setConfig, hasChanges } = useExperienceConfig(serverConfig, DEFAULT_CONFIG, isLoading);
+  const saleMode = (saleModeSetting?.value as string | undefined) ?? 'cart';
 
   const currentLayoutConfig = config.layouts[config.layoutStyle];
   const resolvedImageAspectRatio = config.imageAspectRatioSource === 'module'
@@ -956,6 +958,7 @@ export default function ProductDetailExperiencePage() {
       priceRightIcon: premiumLayoutConfig.priceRightIcon,
       showPriceLeftIcon: premiumLayoutConfig.showPriceLeftIcon,
       showPriceRightIcon: premiumLayoutConfig.showPriceRightIcon,
+      cartButtonsLayout: config.cartButtonsLayout,
     };
 
     return base;
@@ -1342,7 +1345,7 @@ export default function ProductDetailExperiencePage() {
               accentColor={brandColor}
               disabled={!canUseOrders}
             />
-            {currentLayoutConfig.showAddToCart && (
+            {currentLayoutConfig.showAddToCart && saleMode === 'cart' && (
               <SelectRow
                 label="Bố cục nút"
                 value={config.cartButtonsLayout ?? 'stack'}

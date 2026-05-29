@@ -653,6 +653,7 @@ type ProductsListPreviewProps = {
   showAddToCartButton?: boolean;
   showBuyNowButton?: boolean;
   showPromotionBadge?: boolean;
+  cartButtonsLayout?: 'stack' | 'grid-2';
 };
 
 const getProductListRadiusClass = (cornerRadius: ProductListCornerRadius) => {
@@ -786,6 +787,7 @@ export function ProductsListPreview({
   showAddToCartButton = true,
   showBuyNowButton = true,
   showPromotionBadge = true,
+  cartButtonsLayout = 'stack',
 }: ProductsListPreviewProps) {
   const categories = ['Tất cả', 'Điện thoại', 'Laptop', 'Tablet', 'Phụ kiện'];
   const isMobile = device === 'mobile';
@@ -860,7 +862,11 @@ export function ProductsListPreview({
           </div>
         </div>
         {(showAddToCartButton || showBuyNowButton) && (
-          <div className="mt-2.5 space-y-2">
+          <div className={
+            cartButtonsLayout === 'grid-2' && showAddToCartButton && showBuyNowButton
+              ? "mt-2.5 grid grid-cols-2 gap-2"
+              : "mt-2.5 space-y-2"
+          }>
             {showAddToCartButton && (
               <button
                 className="w-full py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"

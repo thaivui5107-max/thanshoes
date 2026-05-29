@@ -114,6 +114,7 @@ type ProductDetailPreviewProps = {
   priceRightIcon?: string;
   showPriceLeftIcon?: boolean;
   showPriceRightIcon?: boolean;
+  cartButtonsLayout?: 'stack' | 'grid-2';
 };
 
 const formatVND = (price: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -654,6 +655,7 @@ export function ProductDetailPreview({
   priceRightIcon = 'Gift',
   showPriceLeftIcon = true,
   showPriceRightIcon = true,
+  cartButtonsLayout = 'stack',
 }: ProductDetailPreviewProps) {
   const tokens = getProductDetailColors(brandColor, secondaryColor, colorMode);
   const categoryBadgeColors = resolveProductDetailElementColor(accentColors?.categoryBadge ?? 'secondary', tokens);
@@ -986,16 +988,19 @@ export function ProductDetailPreview({
                   </button>
                 </div>
 
-                <div className="flex flex-1 flex-col gap-2">
+                <div className={cn(
+                  "flex flex-1 gap-2",
+                  cartButtonsLayout === 'grid-2' && showAddToCart && showBuyNow ? "grid grid-cols-2" : "flex-col"
+                )}>
                   {showAddToCart && (
-                    <button className="py-3.5 px-8 rounded-xl font-semibold flex items-center justify-center gap-2" style={{ backgroundColor: primaryButtonColors.bg, color: primaryButtonColors.text }}>
+                    <button className="py-3.5 px-8 rounded-xl font-semibold flex items-center justify-center gap-2 w-full" style={{ backgroundColor: primaryButtonColors.bg, color: primaryButtonColors.text }}>
                       <ShoppingCart size={20} />
                       Thêm vào giỏ hàng
                     </button>
                   )}
                   {showBuyNow && (
                     <button
-                      className="py-3.5 px-8 rounded-xl font-semibold flex items-center justify-center gap-2 border transition-all cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]"
+                      className="py-3.5 px-8 rounded-xl font-semibold flex items-center justify-center gap-2 border transition-all cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)] w-full"
                       style={{
                         borderColor: primaryButtonColors.border,
                         color: primaryButtonColors.text,
@@ -1274,25 +1279,48 @@ export function ProductDetailPreview({
 
                 {(showAddToCart || showBuyNow || showWishlist) && (
                   <div className="space-y-2.5">
-                    {showAddToCart && (
-                      <button className="w-full h-12 text-base font-semibold" style={{ backgroundColor: primaryButtonColors.bg, color: primaryButtonColors.text }}>
-                        <ShoppingBag className="w-5 h-5 mr-2 inline-block" />
-                        Thêm vào giỏ hàng
-                      </button>
-                    )}
-                    {showBuyNow && (
-                      <button
-                        className="w-full h-12 text-base font-semibold border transition-all cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]"
-                        style={{
-                          borderColor: primaryButtonColors.border,
-                          color: primaryButtonColors.text,
-                          '--cta-secondary-bg': primaryButtonColors.bg,
-                          '--cta-secondary-hover-bg': primaryButtonColors.bg,
-                          '--cta-secondary-ring': tokens.inputRing,
-                        } as React.CSSProperties}
-                      >
-                        Mua ngay
-                      </button>
+                    {cartButtonsLayout === 'grid-2' && showAddToCart && showBuyNow ? (
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <button className="w-full h-12 text-base font-semibold" style={{ backgroundColor: primaryButtonColors.bg, color: primaryButtonColors.text }}>
+                          <ShoppingBag className="w-5 h-5 mr-2 inline-block" />
+                          Thêm vào giỏ
+                        </button>
+                        <button
+                          className="w-full h-12 text-base font-semibold border transition-all cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]"
+                          style={{
+                            borderColor: primaryButtonColors.border,
+                            color: primaryButtonColors.text,
+                            '--cta-secondary-bg': primaryButtonColors.bg,
+                            '--cta-secondary-hover-bg': primaryButtonColors.bg,
+                            '--cta-secondary-ring': tokens.inputRing,
+                          } as React.CSSProperties}
+                        >
+                          Mua ngay
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {showAddToCart && (
+                          <button className="w-full h-12 text-base font-semibold" style={{ backgroundColor: primaryButtonColors.bg, color: primaryButtonColors.text }}>
+                            <ShoppingBag className="w-5 h-5 mr-2 inline-block" />
+                            Thêm vào giỏ hàng
+                          </button>
+                        )}
+                        {showBuyNow && (
+                          <button
+                            className="w-full h-12 text-base font-semibold border transition-all cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]"
+                            style={{
+                              borderColor: primaryButtonColors.border,
+                              color: primaryButtonColors.text,
+                              '--cta-secondary-bg': primaryButtonColors.bg,
+                              '--cta-secondary-hover-bg': primaryButtonColors.bg,
+                              '--cta-secondary-ring': tokens.inputRing,
+                            } as React.CSSProperties}
+                          >
+                            Mua ngay
+                          </button>
+                        )}
+                      </>
                     )}
                     {showWishlist && (
                       <button className="w-full h-12 text-base border" style={{ borderColor: tokens.wishlistBorder, color: tokens.metaText, backgroundColor: tokens.wishlistBg }}>
@@ -1489,13 +1517,27 @@ export function ProductDetailPreview({
                           Thêm vào giỏ
                         </button>
                       )}
+                      {cartButtonsLayout === 'grid-2' && showAddToCart && showBuyNow && (
+                        <button
+                          className="flex-1 h-14 uppercase tracking-wider text-sm font-medium border transition-all cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]"
+                          style={{
+                            borderColor: primaryButtonColors.border,
+                            color: primaryButtonColors.text,
+                            '--cta-secondary-bg': primaryButtonColors.bg,
+                            '--cta-secondary-hover-bg': primaryButtonColors.bg,
+                            '--cta-secondary-ring': tokens.inputRing,
+                          } as React.CSSProperties}
+                        >
+                          Mua ngay
+                        </button>
+                      )}
                       {showWishlist && (
-                        <button className="w-14 h-14 border flex items-center justify-center" style={{ borderColor: tokens.wishlistBorder, backgroundColor: tokens.wishlistBg }}>
+                        <button className="w-14 h-14 border flex items-center justify-center shrink-0" style={{ borderColor: tokens.wishlistBorder, backgroundColor: tokens.wishlistBg }}>
                           <Heart size={20} style={{ color: tokens.wishlistIcon }} />
                         </button>
                       )}
                     </div>
-                    {showBuyNow && (
+                    {showBuyNow && !(cartButtonsLayout === 'grid-2' && showAddToCart) && (
                       <button
                         className="h-12 uppercase tracking-wider text-xs font-medium border transition-all cursor-pointer bg-[var(--cta-secondary-bg)] shadow-sm hover:bg-[var(--cta-secondary-hover-bg)] hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cta-secondary-ring)]"
                         style={{
