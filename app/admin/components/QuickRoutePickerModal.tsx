@@ -36,8 +36,17 @@ const MODULE_SITE_ROUTE_CATALOG: Record<string, { label: string; url: string }[]
     { label: 'Đơn hàng', url: '/account/orders' },
     { label: 'Checkout', url: '/checkout' },
   ],
+  posts: [
+    { label: 'Tất cả bài viết', url: '/posts' },
+  ],
+  products: [
+    { label: 'Tất cả sản phẩm', url: '/products' },
+  ],
   promotions: [
     { label: 'Khuyến mãi', url: '/promotions' },
+  ],
+  services: [
+    { label: 'Tất cả dịch vụ', url: '/services' },
   ],
   wishlist: [
     { label: 'Wishlist', url: '/wishlist' },

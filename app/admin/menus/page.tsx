@@ -52,12 +52,18 @@ const MODULE_SITE_ROUTE_CATALOG: Record<string, { label: string; url: string }[]
     { label: 'Đơn hàng', url: '/account/orders' },
     { label: 'Checkout', url: '/checkout' },
   ],
-  posts: [],
-  products: [],
+  posts: [
+    { label: 'Tất cả bài viết', url: '/posts' },
+  ],
+  products: [
+    { label: 'Tất cả sản phẩm', url: '/products' },
+  ],
   promotions: [
     { label: 'Khuyến mãi', url: '/promotions' },
   ],
-  services: [],
+  services: [
+    { label: 'Tất cả dịch vụ', url: '/services' },
+  ],
   wishlist: [
     { label: 'Wishlist', url: '/wishlist' },
   ],
@@ -488,7 +494,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
           `${productCategories?.length ?? 0} danh mục sản phẩm có thể làm menu con`,
         ],
         score: 96 + Math.min(12, productCategories?.length ?? 0),
-        url: '#',
+        url: '/products',
       });
       appendCategories(productCategories, 'products', 88);
     }
@@ -502,7 +508,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
           `${serviceCategories?.length ?? 0} danh mục dịch vụ có thể làm menu con`,
         ],
         score: 90 + Math.min(8, serviceCategories?.length ?? 0),
-        url: '#',
+        url: '/services',
       });
       appendCategories(serviceCategories, 'services', 78);
     }
@@ -516,7 +522,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
           `${postCategories?.length ?? 0} danh mục bài viết có thể làm menu con`,
         ],
         score: 82 + Math.min(6, postCategories?.length ?? 0),
-        url: '#',
+        url: '/posts',
       });
       appendCategories(postCategories, 'posts', 68);
     }
@@ -1059,93 +1065,135 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
           );
 
           return (
-            <div 
-              key={item.localId}
-              draggable
-              onDragStart={(e) =>{  handleDragStart(e, actualIndex); }}
-              onDragOver={(e) =>{  handleDragOver(e, actualIndex); }}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, actualIndex)}
-              onDragEnd={handleDragEnd}
-              className={cn(
-                "flex items-center gap-2 p-3 bg-white dark:bg-slate-900 border rounded-lg shadow-sm transition-all min-w-0 border-slate-200 dark:border-slate-700",
-                selectedIds.includes(item.localId) && "ring-2 ring-blue-500/40 border-blue-300 dark:border-blue-700",
-                !item.active && "opacity-50",
-                draggedIndex === actualIndex && "opacity-50 scale-[0.98]",
-                dragOverIndex === actualIndex && "border-orange-500 border-2 bg-orange-50 dark:bg-orange-900/20"
+            <div key={item.localId} className="relative" style={showNested ? { paddingLeft: Math.min(item.depth, MENU_MAX_LEVEL - 1) * 24 } : undefined}>
+              {/* Tree guide lines */}
+              {showNested && item.depth > 0 && (
+                <div className="absolute left-0 top-0 bottom-0 pointer-events-none" style={{ width: Math.min(item.depth, MENU_MAX_LEVEL - 1) * 24 }}>
+                  {Array.from({ length: Math.min(item.depth, MENU_MAX_LEVEL - 1) }).map((_, i) => {
+                    const isLast = i === Math.min(item.depth, MENU_MAX_LEVEL - 1) - 1;
+                    return (
+                      <div
+                        key={i}
+                        className="absolute top-0 bottom-0"
+                        style={{ left: i * 24, width: 24 }}
+                      >
+                        {/* Vertical line */}
+                        <div 
+                          className={cn(
+                            "absolute left-3 top-0 border-l-2 border-slate-200 dark:border-slate-800",
+                            isLast ? "h-1/2" : "h-full"
+                          )}
+                        />
+                        {/* Horizontal branch line */}
+                        {isLast && (
+                          <div className="absolute left-3 top-1/2 w-3 border-t-2 border-slate-200 dark:border-slate-800" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
-              style={showNested ? { marginLeft: Math.min(item.depth, MENU_MAX_LEVEL - 1) * 24 } : undefined}
-            >
-              <div className="flex items-center self-start pt-1">
-                <SelectCheckbox
-                  checked={selectedIds.includes(item.localId)}
-                  onChange={() => toggleSelectItem(item.localId)}
-                  title="Chọn menu item"
-                />
-              </div>
 
-              <div className="flex flex-col gap-1 text-slate-300 cursor-grab active:cursor-grabbing">
-                <button type="button" onClick={ async () => handleMove(actualIndex, 'up')} className="hover:text-orange-600 disabled:opacity-30" disabled={!canMoveUp}><ArrowUp size={14}/></button>
-                <GripVertical size={14} className="text-slate-400" />
-                <button type="button" onClick={ async () => handleMove(actualIndex, 'down')} className="hover:text-orange-600 disabled:opacity-30" disabled={!canMoveDown}><ArrowDown size={14}/></button>
-              </div>
-              
-              <div className="flex-1 grid grid-cols-2 gap-3 min-w-0">
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-500">Nhãn hiển thị</Label>
-                  <Input 
-                    value={item.label} 
-                    onChange={(e) =>{  handleUpdateField(item.localId, 'label', e.target.value); }} 
-                    className="h-8 text-sm min-w-0" 
+              {/* Main Menu Item */}
+              <div 
+                draggable
+                onDragStart={(e) =>{  handleDragStart(e, actualIndex); }}
+                onDragOver={(e) =>{  handleDragOver(e, actualIndex); }}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, actualIndex)}
+                onDragEnd={handleDragEnd}
+                className={cn(
+                  "flex items-center gap-2 p-3 border rounded-lg shadow-sm transition-all min-w-0 border-slate-200 dark:border-slate-700",
+                  item.depth === 0 && "bg-white dark:bg-slate-900",
+                  item.depth === 1 && "bg-slate-50/70 dark:bg-slate-900/60",
+                  item.depth >= 2 && "bg-slate-100/40 dark:bg-slate-950/40",
+                  selectedIds.includes(item.localId) && "ring-2 ring-blue-500/40 border-blue-300 dark:border-blue-700",
+                  !item.active && "opacity-50",
+                  draggedIndex === actualIndex && "opacity-50 scale-[0.98]",
+                  dragOverIndex === actualIndex && "border-orange-500 border-2 bg-orange-50 dark:bg-orange-900/20"
+                )}
+              >
+                <div className="flex items-center self-start pt-1">
+                  <SelectCheckbox
+                    checked={selectedIds.includes(item.localId)}
+                    onChange={() => toggleSelectItem(item.localId)}
+                    title="Chọn menu item"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-500">URL</Label>
-                  <div className="flex items-center gap-2">
+
+                <div className="flex flex-col gap-1 text-slate-300 cursor-grab active:cursor-grabbing">
+                  <button type="button" onClick={ async () => handleMove(actualIndex, 'up')} className="hover:text-orange-600 disabled:opacity-30" disabled={!canMoveUp}><ArrowUp size={14}/></button>
+                  <GripVertical size={14} className="text-slate-400" />
+                  <button type="button" onClick={ async () => handleMove(actualIndex, 'down')} className="hover:text-orange-600 disabled:opacity-30" disabled={!canMoveDown}><ArrowDown size={14}/></button>
+                </div>
+                
+                <div className="flex-1 grid grid-cols-2 gap-3 min-w-0">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500 flex items-center gap-1.5">
+                      Nhãn hiển thị
+                      <span className={cn(
+                        "rounded px-1.5 py-0.5 text-[9px] font-bold select-none",
+                        item.depth === 0 && "bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50",
+                        item.depth === 1 && "bg-purple-50 text-purple-600 border border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900/50",
+                        item.depth >= 2 && "bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50"
+                      )}>
+                        {`Cấp ${item.depth + 1}`}
+                      </span>
+                    </Label>
                     <Input 
-                      value={item.url} 
-                      onChange={(e) =>{  handleUpdateField(item.localId, 'url', e.target.value); }} 
-                      className="h-8 text-sm font-mono text-xs min-w-0" 
+                      value={item.label} 
+                      onChange={(e) =>{  handleUpdateField(item.localId, 'label', e.target.value); }} 
+                      className="h-8 text-sm min-w-0" 
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 whitespace-nowrap"
-                      onClick={() => handleOpenQuickPicker(item.localId)}
-                    >
-                      Gợi ý
-                    </Button>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">URL</Label>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        value={item.url} 
+                        onChange={(e) =>{  handleUpdateField(item.localId, 'url', e.target.value); }} 
+                        className="h-8 text-sm font-mono text-xs min-w-0" 
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 whitespace-nowrap"
+                        onClick={() => handleOpenQuickPicker(item.localId)}
+                      >
+                        Gợi ý
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-0.5 border-l border-slate-100 dark:border-slate-700 pl-2">
-                {showNested && (
-                  <>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleIndent(item, 'out')} disabled={!canIndentOut} title="Thụt lề trái">
-                      <ChevronRight size={14} className="rotate-180"/>
-                    </Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleIndent(item, 'in')} disabled={!canIndentIn} title={`Thụt lề phải (tối đa ${MENU_MAX_LEVEL} tầng)`}>
-                      <ChevronRight size={14}/>
-                    </Button>
-                  </>
-                )}
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAddBelow(item)} title="Thêm ngay bên dưới" disabled={isAtMenuLimit}>
-                  <Plus size={14}/>
-                </Button>
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopy(item)} title="Copy menu item" disabled={isAtMenuLimit}>
-                  <Copy size={14}/>
-                </Button>
-                {showNewTab && item.openInNewTab && (
-                  <span title="Mở tab mới"><ExternalLink size={14} className="text-slate-400" /></span>
-                )}
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleActive(item)} title={item.active ? 'Ẩn' : 'Hiện'}>
-                  {item.active ? <Eye size={14}/> : <EyeOff size={14} className="text-slate-400"/>}
-                </Button>
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50" onClick={() => handleDelete(item)}>
-                  <Trash2 size={14}/>
-                </Button>
+                <div className="flex items-center gap-0.5 border-l border-slate-100 dark:border-slate-700 pl-2">
+                  {showNested && (
+                    <>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleIndent(item, 'out')} disabled={!canIndentOut} title="Thụt lề trái">
+                        <ChevronRight size={14} className="rotate-180"/>
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleIndent(item, 'in')} disabled={!canIndentIn} title={`Thụt lề phải (tối đa ${MENU_MAX_LEVEL} tầng)`}>
+                        <ChevronRight size={14}/>
+                      </Button>
+                    </>
+                  )}
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAddBelow(item)} title="Thêm ngay bên dưới" disabled={isAtMenuLimit}>
+                    <Plus size={14}/>
+                  </Button>
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopy(item)} title="Copy menu item" disabled={isAtMenuLimit}>
+                    <Copy size={14}/>
+                  </Button>
+                  {showNewTab && item.openInNewTab && (
+                    <span title="Mở tab mới"><ExternalLink size={14} className="text-slate-400" /></span>
+                  )}
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleActive(item)} title={item.active ? 'Ẩn' : 'Hiện'}>
+                    {item.active ? <Eye size={14}/> : <EyeOff size={14} className="text-slate-400"/>}
+                  </Button>
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50" onClick={() => handleDelete(item)}>
+                    <Trash2 size={14}/>
+                  </Button>
+                </div>
               </div>
             </div>
           );
