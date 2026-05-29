@@ -462,15 +462,18 @@ export default function CategoryProductsEditPage({
             )}
             <CategoryProductsPreview
               config={{
-              columnsDesktop,
-              columnsMobile,
-              demoSections,
-              sections,
-              selectionMode,
-              showViewAll,
-              spacing,
-              style,
-              cornerRadius,
+                columnsDesktop,
+                columnsMobile,
+                demoSections,
+                sections,
+                selectionMode,
+                showViewAll,
+                spacing,
+                style,
+                cornerRadius,
+                showAddToCartButton,
+                showBuyNowButton,
+                cartButtonsLayout,
               }}
               brandColor={effectiveColors.primary}
               secondary={effectiveColors.secondary}

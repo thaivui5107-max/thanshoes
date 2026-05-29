@@ -642,6 +642,9 @@ export default function ProductListEditPage({
               cardRadius={cardRadius}
               desktopColumns={desktopColumns}
               lookbookDesktopColumns={desktopColumns}
+              showAddToCartButton={productListConfig.showAddToCartButton ?? true}
+              showBuyNowButton={productListConfig.showBuyNowButton ?? true}
+              cartButtonsLayout={productListConfig.cartButtonsLayout ?? 'stack'}
             />
           </div>
         </div>

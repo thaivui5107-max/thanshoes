@@ -23,6 +23,7 @@ interface ProductCardActionsProps {
   onAddToCart: (product: any) => void;
   onBuyNow: (product: any) => void;
   cartButtonsLayout?: 'stack' | 'grid-2';
+  device?: 'desktop' | 'tablet' | 'mobile';
 }
 
 export function ProductCardActions({
@@ -35,6 +36,7 @@ export function ProductCardActions({
   onAddToCart,
   onBuyNow,
   cartButtonsLayout,
+  device,
 }: ProductCardActionsProps) {
   if (!showAddToCartButton && !showBuyNowButton) {
     return null;
@@ -46,6 +48,9 @@ export function ProductCardActions({
   const actionHeightClass = showAddToCartButton && showBuyNowButton && !isGrid2 ? 'min-h-[76px]' : 'min-h-[36px]';
   const gridColsClass = isGrid2 ? 'grid-cols-2' : 'grid-cols-1';
 
+  const showShortOnly = device === 'mobile' || device === 'tablet';
+  const showLongOnly = device === 'desktop';
+
   return (
     <div className={`mt-2 sm:mt-3 grid ${gridColsClass} gap-1 sm:gap-2 ${actionHeightClass}`}>
       {showAddToCartButton && (
@@ -56,8 +61,14 @@ export function ProductCardActions({
           disabled={isOutOfStock}
         >
           <ShoppingCart size={12} className="sm:w-[14px] sm:h-[14px]" />
-          <span className="hidden sm:inline">Thêm vào giỏ</span>
-          <span className="sm:hidden">Thêm giỏ</span>
+          {showShortOnly && <span>Thêm giỏ</span>}
+          {showLongOnly && <span>Thêm vào giỏ</span>}
+          {!device && (
+            <>
+              <span className="hidden sm:inline">Thêm vào giỏ</span>
+              <span className="sm:hidden">Thêm giỏ</span>
+            </>
+          )}
         </button>
       )}
       {showBuyNowButton && (
@@ -71,8 +82,14 @@ export function ProductCardActions({
           onClick={(event) => { event.preventDefault(); onBuyNow(product); }}
           disabled={isOutOfStock}
         >
-          <span className="hidden sm:inline">{secondaryLabel}</span>
-          <span className="sm:hidden">{isOutOfStock ? 'Hết' : 'Mua'}</span>
+          {showShortOnly && <span>{isOutOfStock ? 'Hết' : 'Mua'}</span>}
+          {showLongOnly && <span>{secondaryLabel}</span>}
+          {!device && (
+            <>
+              <span className="hidden sm:inline">{secondaryLabel}</span>
+              <span className="sm:hidden">{isOutOfStock ? 'Hết' : 'Mua'}</span>
+            </>
+          )}
         </button>
       )}
     </div>

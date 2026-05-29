@@ -46,6 +46,9 @@ export const ProductGridPreview = ({
   showBadge,
   spacing = DEFAULT_SECTION_SPACING,
   cornerRadius,
+  showAddToCartButton,
+  showBuyNowButton,
+  cartButtonsLayout,
 }: {
   brandColor: string;
   secondary: string;
@@ -71,6 +74,9 @@ export const ProductGridPreview = ({
   showBadge?: boolean;
   spacing?: SectionSpacing;
   cornerRadius?: ProductListCardRadius;
+  showAddToCartButton?: boolean;
+  showBuyNowButton?: boolean;
+  cartButtonsLayout?: 'stack' | 'grid-2';
 }) => {
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const { device, setDevice } = usePreviewDevice();
@@ -482,6 +488,9 @@ export const ProductGridPreview = ({
       emptyMessage="Danh mục này chưa có sản phẩm."
       spacing={spacing}
       cardRadius={cornerRadius}
+      showAddToCartButton={showAddToCartButton}
+      showBuyNowButton={showBuyNowButton}
+      cartButtonsLayout={cartButtonsLayout}
     />
   );
 };

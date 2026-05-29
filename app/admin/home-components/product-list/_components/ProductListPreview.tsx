@@ -17,6 +17,8 @@ import { DEFAULT_SECTION_SPACING, getSectionSpacingClassName, type SectionSpacin
 import { PRODUCT_LIST_LOOKBOOK_BANNERS, PRODUCT_LIST_STYLES } from '../_lib/constants';
 import { getProductListCardRadiusClassName, getProductListImageRadiusClassName, normalizeProductListCardRadius, type ProductListCardRadius, type ProductListPreviewItem, type ProductListStyle } from '../_types';
 import { getProductImageAspectRatioCssValue, resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
+import { ProductCardActions } from '@/components/site/shared/ProductCardActions';
+import { getProductsListColors } from '@/components/site/products/colors';
 
 // Embla Carousel sub-component — tách riêng vì cần hooks
 function CarouselPreviewInner({
@@ -38,6 +40,11 @@ function CarouselPreviewInner({
   headerAlign = 'left' as const,
   subtitleAboveTitle = false,
   cardRadiusClassName,
+  showAddToCartButton,
+  showBuyNowButton,
+  cartButtonsLayout,
+  tokens,
+  isProduct = true,
 }: {
   displayItems: ProductListPreviewItem[];
   device: 'desktop' | 'tablet' | 'mobile';
@@ -57,6 +64,11 @@ function CarouselPreviewInner({
   headerAlign?: 'left' | 'center' | 'right';
   subtitleAboveTitle?: boolean;
   cardRadiusClassName: string;
+  showAddToCartButton?: boolean;
+  showBuyNowButton?: boolean;
+  cartButtonsLayout?: 'stack' | 'grid-2';
+  tokens?: any;
+  isProduct?: boolean;
 }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: 'start',
@@ -155,31 +167,54 @@ function CarouselPreviewInner({
             return (
               <div
                 key={item.id}
-                className="flex-shrink-0 group cursor-pointer min-w-0"
+                className="flex-shrink-0 group cursor-pointer min-w-0 flex flex-col justify-between"
                 style={{ flex: `0 0 ${slideWidth}` }}
               >
-                <div
-                  className={cn("relative overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 mb-3 border border-transparent transition-all", cardRadiusClassName)}
-                  onMouseEnter={(event) => { event.currentTarget.style.borderColor = `${secondary}20`; }}
-                  onMouseLeave={(event) => { event.currentTarget.style.borderColor = 'transparent'; }}
-                  style={imageAspectRatioStyle}
-                >
-                  {item.image ? (
-                    <PreviewImage src={item.image} alt={item.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center"><Package size={40} className="text-slate-300" /></div>
-                  )}
-                  {discount && (
-                    <div className="absolute top-2 left-2">
-                      <SaleBadge text={discount} className="text-[10px] px-2 py-1" />
-                    </div>
-                  )}
+                <div className="flex-1 flex flex-col">
+                  <div
+                    className={cn("relative overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 mb-3 border border-transparent transition-all", cardRadiusClassName)}
+                    onMouseEnter={(event) => { event.currentTarget.style.borderColor = `${secondary}20`; }}
+                    onMouseLeave={(event) => { event.currentTarget.style.borderColor = 'transparent'; }}
+                    style={imageAspectRatioStyle}
+                  >
+                    {item.image ? (
+                      <PreviewImage src={item.image} alt={item.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center"><Package size={40} className="text-slate-300" /></div>
+                    )}
+                    {discount && (
+                      <div className="absolute top-2 left-2">
+                        <SaleBadge text={discount} className="text-[10px] px-2 py-1" />
+                      </div>
+                    )}
+                  </div>
+                  <h3 className="font-medium text-slate-900 dark:text-slate-100 text-sm line-clamp-2 group-hover:opacity-80 transition-colors">{item.name}</h3>
+                  <div className="flex items-center gap-2 mt-1 mb-2">
+                    <span className="font-bold text-sm" style={{ color: brandColor }}>{item.price}</span>
+                    {item.originalPrice && <span className="text-xs text-slate-400 line-through">{item.originalPrice}</span>}
+                  </div>
                 </div>
-                <h3 className="font-medium text-slate-900 dark:text-slate-100 text-sm line-clamp-2 group-hover:opacity-80 transition-colors">{item.name}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="font-bold text-sm" style={{ color: brandColor }}>{item.price}</span>
-                  {item.originalPrice && <span className="text-xs text-slate-400 line-through">{item.originalPrice}</span>}
-                </div>
+                {isProduct && (showAddToCartButton || showBuyNowButton) && (
+                  <div className="mt-auto">
+                    <ProductCardActions
+                      product={{
+                        _id: String(item.id),
+                        name: item.name,
+                        price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                        salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                      }}
+                      tokens={tokens}
+                      showStock={false}
+                      showAddToCartButton={!!showAddToCartButton}
+                      showBuyNowButton={!!showBuyNowButton}
+                      buyNowLabel="Mua ngay"
+                      onAddToCart={() => {}}
+                      onBuyNow={() => {}}
+                      cartButtonsLayout={cartButtonsLayout}
+                      device={device}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
@@ -372,6 +407,9 @@ export const ProductListPreview = ({
   lookbookDesktopColumns = 3,
   forceEmpty = false,
   emptyMessage = 'Danh mục này chưa có sản phẩm.',
+  showAddToCartButton = true,
+  showBuyNowButton = true,
+  cartButtonsLayout = 'stack',
 }: {
   brandColor: string;
   secondary: string;
@@ -403,7 +441,14 @@ export const ProductListPreview = ({
   lookbookDesktopColumns?: 3 | 4;
   forceEmpty?: boolean;
   emptyMessage?: string;
+  showAddToCartButton?: boolean;
+  showBuyNowButton?: boolean;
+  cartButtonsLayout?: 'stack' | 'grid-2';
 }) => {
+  const tokens = React.useMemo(
+    () => getProductsListColors(brandColor, secondary, 'single'),
+    [brandColor, secondary]
+  );
   const displayTitle = sectionTitle ?? (componentType === 'ServiceList' ? 'Dịch vụ nổi bật' : 'Sản phẩm nổi bật');
   const displaySubtitle = subtitleProp ?? '';
   // Effective display flags
@@ -573,15 +618,37 @@ export const ProductListPreview = ({
                   )}
                 </div>
 
-                <button
-                  className="w-full gap-1 border-2 py-1.5 px-2 rounded-lg font-medium flex items-center justify-center transition-colors whitespace-nowrap text-xs"
-                  style={{ borderColor: `${brandColor}20`, color: brandColor }}
-                  onMouseEnter={(event) => { event.currentTarget.style.borderColor = brandColor; event.currentTarget.style.backgroundColor = `${brandColor}08`; }}
-                  onMouseLeave={(event) => { event.currentTarget.style.borderColor = `${brandColor}20`; event.currentTarget.style.backgroundColor = 'transparent'; }}
-                >
-                  Xem chi tiết
-                  <ArrowRight className="w-3 h-3 flex-shrink-0" />
-                </button>
+                {isProduct && (showAddToCartButton || showBuyNowButton) ? (
+                  <div className="mt-auto">
+                    <ProductCardActions
+                      product={{
+                        _id: String(item.id),
+                        name: item.name,
+                        price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                        salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                      }}
+                      tokens={tokens}
+                      showStock={false}
+                      showAddToCartButton={!!showAddToCartButton}
+                      showBuyNowButton={!!showBuyNowButton}
+                      buyNowLabel="Mua ngay"
+                      onAddToCart={() => {}}
+                      onBuyNow={() => {}}
+                      cartButtonsLayout={cartButtonsLayout}
+                      device={device}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    className="w-full gap-1 border-2 py-1.5 px-2 rounded-lg font-medium flex items-center justify-center transition-colors whitespace-nowrap text-xs"
+                    style={{ borderColor: `${brandColor}20`, color: brandColor }}
+                    onMouseEnter={(event) => { event.currentTarget.style.borderColor = brandColor; event.currentTarget.style.backgroundColor = `${brandColor}08`; }}
+                    onMouseLeave={(event) => { event.currentTarget.style.borderColor = `${brandColor}20`; event.currentTarget.style.backgroundColor = 'transparent'; }}
+                  >
+                    Xem chi tiết
+                    <ArrowRight className="w-3 h-3 flex-shrink-0" />
+                  </button>
+                )}
               </div>
             </div>
           );
@@ -661,15 +728,37 @@ export const ProductListPreview = ({
                   )}
                 </div>
 
-                <button
-                  className="w-full gap-1.5 md:gap-2 border-2 py-1.5 md:py-2 px-2 md:px-4 rounded-lg font-medium flex items-center justify-center transition-colors whitespace-nowrap text-xs md:text-sm"
-                  style={{ borderColor: `${brandColor}20`, color: brandColor }}
-                  onMouseEnter={(event) => { event.currentTarget.style.borderColor = brandColor; event.currentTarget.style.backgroundColor = `${brandColor}08`; }}
-                  onMouseLeave={(event) => { event.currentTarget.style.borderColor = `${brandColor}20`; event.currentTarget.style.backgroundColor = 'transparent'; }}
-                >
-                  Xem chi tiết
-                  <ArrowRight className="w-3 h-3 md:w-3.5 md:h-3.5 flex-shrink-0" />
-                </button>
+                {isProduct && (showAddToCartButton || showBuyNowButton) ? (
+                  <div className="mt-auto">
+                    <ProductCardActions
+                      product={{
+                        _id: String(item.id),
+                        name: item.name,
+                        price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                        salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                      }}
+                      tokens={tokens}
+                      showStock={false}
+                      showAddToCartButton={!!showAddToCartButton}
+                      showBuyNowButton={!!showBuyNowButton}
+                      buyNowLabel="Mua ngay"
+                      onAddToCart={() => {}}
+                      onBuyNow={() => {}}
+                      cartButtonsLayout={cartButtonsLayout}
+                      device={device}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    className="w-full gap-1.5 md:gap-2 border-2 py-1.5 md:py-2 px-2 md:px-4 rounded-lg font-medium flex items-center justify-center transition-colors whitespace-nowrap text-xs md:text-sm"
+                    style={{ borderColor: `${brandColor}20`, color: brandColor }}
+                    onMouseEnter={(event) => { event.currentTarget.style.borderColor = brandColor; event.currentTarget.style.backgroundColor = `${brandColor}08`; }}
+                    onMouseLeave={(event) => { event.currentTarget.style.borderColor = `${brandColor}20`; event.currentTarget.style.backgroundColor = 'transparent'; }}
+                  >
+                    Xem chi tiết
+                    <ArrowRight className="w-3 h-3 md:w-3.5 md:h-3.5 flex-shrink-0" />
+                  </button>
+                )}
               </div>
             </div>
           );
@@ -822,7 +911,7 @@ export const ProductListPreview = ({
     );
   };
 
-  const renderCarouselStyle = () => <CarouselPreviewInner displayItems={displayItems} device={device} brandColor={brandColor} secondary={secondary} subTitle={subTitle} displayTitle={displayTitle} displaySubtitle={displaySubtitle} imageAspectRatioStyle={imageAspectRatioStyle} getDiscount={getDiscount} effectiveShowBadge={effectiveShowBadge} effectiveShowTitle={effectiveShowTitle} effectiveShowSubtitle={effectiveShowSubtitle} effectiveHideHeader={effectiveHideHeader} titleStyle={titleStyle} uppercaseText={uppercaseText} headerAlign={headerAlign} subtitleAboveTitle={subtitleAboveTitle} cardRadiusClassName={cardRadiusClassName} />;
+  const renderCarouselStyle = () => <CarouselPreviewInner displayItems={displayItems} device={device} brandColor={brandColor} secondary={secondary} subTitle={subTitle} displayTitle={displayTitle} displaySubtitle={displaySubtitle} imageAspectRatioStyle={imageAspectRatioStyle} getDiscount={getDiscount} effectiveShowBadge={effectiveShowBadge} effectiveShowTitle={effectiveShowTitle} effectiveShowSubtitle={effectiveShowSubtitle} effectiveHideHeader={effectiveHideHeader} titleStyle={titleStyle} uppercaseText={uppercaseText} headerAlign={headerAlign} subtitleAboveTitle={subtitleAboveTitle} cardRadiusClassName={cardRadiusClassName} showAddToCartButton={showAddToCartButton} showBuyNowButton={showBuyNowButton} cartButtonsLayout={cartButtonsLayout} tokens={tokens} isProduct={isProduct} />;
 
   const renderWineCarouselStyle = () => (
     <WineCarouselPreviewInner
@@ -1232,15 +1321,37 @@ export const ProductListPreview = ({
                     )}
                   </div>
 
-                  <button
-                    className="w-full gap-1.5 border-2 py-1.5 px-2 rounded-lg font-medium flex items-center justify-center transition-colors whitespace-nowrap text-xs"
-                    style={{ borderColor: `${brandColor}20`, color: brandColor }}
-                    onMouseEnter={(event) => { event.currentTarget.style.borderColor = brandColor; event.currentTarget.style.backgroundColor = `${brandColor}08`; }}
-                    onMouseLeave={(event) => { event.currentTarget.style.borderColor = `${brandColor}20`; event.currentTarget.style.backgroundColor = 'transparent'; }}
-                  >
-                    Xem chi tiết
-                    <ArrowRight className="w-3 h-3 flex-shrink-0" />
-                  </button>
+                  {isProduct && (showAddToCartButton || showBuyNowButton) ? (
+                    <div className="mt-auto">
+                      <ProductCardActions
+                        product={{
+                          _id: String(item.id),
+                          name: item.name,
+                          price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                          salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                        }}
+                        tokens={tokens}
+                        showStock={false}
+                        showAddToCartButton={!!showAddToCartButton}
+                        showBuyNowButton={!!showBuyNowButton}
+                        buyNowLabel="Mua ngay"
+                        onAddToCart={() => {}}
+                        onBuyNow={() => {}}
+                        cartButtonsLayout={cartButtonsLayout}
+                        device={device}
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      className="w-full gap-1.5 border-2 py-1.5 px-2 rounded-lg font-medium flex items-center justify-center transition-colors whitespace-nowrap text-xs"
+                      style={{ borderColor: `${brandColor}20`, color: brandColor }}
+                      onMouseEnter={(event) => { event.currentTarget.style.borderColor = brandColor; event.currentTarget.style.backgroundColor = `${brandColor}08`; }}
+                      onMouseLeave={(event) => { event.currentTarget.style.borderColor = `${brandColor}20`; event.currentTarget.style.backgroundColor = 'transparent'; }}
+                    >
+                      Xem chi tiết
+                      <ArrowRight className="w-3 h-3 flex-shrink-0" />
+                    </button>
+                  )}
                 </div>
               </div>
             );
