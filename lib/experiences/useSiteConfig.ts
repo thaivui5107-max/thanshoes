@@ -189,6 +189,7 @@ type ProductsListConfig = {
   showPromotionBadge: boolean;
   enableQuickAddVariant: boolean;
   cartButtonsLayout?: 'stack' | 'grid-2';
+  isLoading: boolean;
 };
 
 export function useProductsListConfig(): ProductsListConfig {
@@ -228,6 +229,8 @@ export function useProductsListConfig(): ProductsListConfig {
     const wishlistEnabled = wishlistModule?.enabled ?? false;
     const promotionsEnabled = promotionsModule?.enabled ?? false;
 
+    const isLoading = experienceSetting === undefined || wishlistModule === undefined || promotionsModule === undefined;
+
     return {
       layoutStyle,
       paginationType: normalizePaginationType(layoutConfig?.paginationType ?? raw?.paginationType ?? layoutConfig?.showPagination ?? raw?.showPagination),
@@ -242,8 +245,9 @@ export function useProductsListConfig(): ProductsListConfig {
       showPromotionBadge: (raw?.showPromotionBadge ?? true) && promotionsEnabled,
       enableQuickAddVariant: (raw?.enableQuickAddVariant ?? true) && cartAvailable,
       cartButtonsLayout: raw?.cartButtonsLayout ?? 'stack',
+      isLoading,
     };
-  }, [experienceSetting?.value, cartAvailable, ordersEnabled, wishlistModule?.enabled, promotionsModule?.enabled]);
+  }, [experienceSetting, cartAvailable, ordersEnabled, wishlistModule, promotionsModule]);
 }
 
 type WishlistConfig = {

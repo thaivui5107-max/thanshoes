@@ -827,7 +827,7 @@ function ProductsContent(props: ProductsPageProps) {
   
   const isLoadingProducts = isSearching || (isSearchActive && paginatedProducts === undefined) || (listConfig.paginationType === 'pagination' ? paginatedProducts === undefined : infiniteStatus === 'LoadingFirstPage');
 
-  if (categories === undefined) {
+  if (categories === undefined || listConfig.isLoading) {
     return <ProductsListSkeleton />;
   }
 

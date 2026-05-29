@@ -423,11 +423,32 @@ export const listNonEmptyCategoryIds = query({
 
     const results = await Promise.all(
       categories.map(async (category) => {
-        const preview = await ctx.db
+        // 1. Kiểm tra sản phẩm gán chính
+        const primaryPreview = await ctx.db
           .query("products")
           .withIndex("by_category_status", (q) => q.eq("categoryId", category._id).eq("status", "Active"))
           .take(1);
-        return preview.length > 0 ? category._id : null;
+        if (primaryPreview.length > 0) {
+          return category._id;
+        }
+
+        // 2. Kiểm tra sản phẩm gán phụ (assignments)
+        const assignments = await ctx.db
+          .query("productCategoryAssignments")
+          .withIndex("by_category", (q) => q.eq("categoryId", category._id))
+          .take(20);
+
+        if (assignments.length > 0) {
+          const products = await Promise.all(
+            assignments.map((assign) => ctx.db.get(assign.productId))
+          );
+          const hasActive = products.some((prod) => prod && prod.status === "Active");
+          if (hasActive) {
+            return category._id;
+          }
+        }
+
+        return null;
       })
     );
 
