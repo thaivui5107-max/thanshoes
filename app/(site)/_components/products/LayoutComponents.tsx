@@ -249,14 +249,14 @@ function SmartDropdownFilter({
   };
 
   if (!priceStats) {
-    return <div className="text-xs text-slate-400">Đang tính khoảng giá...</div>;
+    return <div className="text-sm text-slate-400">Đang tính khoảng giá...</div>;
   }
 
   return (
     <select
       value={activeValue}
       onChange={handleChange}
-      className="w-full px-2.5 py-1.5 border rounded-lg text-xs font-semibold outline-none transition-all cursor-pointer"
+      className="w-full px-2.5 py-1.5 border rounded-lg text-sm font-semibold outline-none transition-all cursor-pointer"
       style={{
         borderColor: tokens.inputBorder,
         backgroundColor: tokens.inputBackground,
@@ -427,7 +427,7 @@ function DoubleRangeSlider({
         <div ref={rangeRef} className="slider-range" style={{ backgroundColor: brandColor }} />
       </div>
 
-      <div className="flex justify-between items-center text-xs font-semibold mt-1">
+      <div className="flex justify-between items-center text-sm font-semibold mt-1">
         <div className="px-2 py-1 rounded border" style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}>
           {formatK(minVal)}đ
         </div>
@@ -721,7 +721,7 @@ export function CatalogLayout({
                       value={minPriceInput}
                       onChange={(e) => setMinPriceInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
-                      className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                      className="w-[42%] px-2 py-1.5 border rounded-lg text-sm placeholder:text-[var(--placeholder-color)] outline-none"
                       style={{
                         borderColor: tokens.inputBorder,
                         backgroundColor: tokens.inputBackground,
@@ -736,7 +736,7 @@ export function CatalogLayout({
                       value={maxPriceInput}
                       onChange={(e) => setMaxPriceInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
-                      className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                      className="w-[42%] px-2 py-1.5 border rounded-lg text-sm placeholder:text-[var(--placeholder-color)] outline-none"
                       style={{
                         borderColor: tokens.inputBorder,
                         backgroundColor: tokens.inputBackground,
@@ -1085,7 +1085,7 @@ export function CatalogLayout({
                         value={minPriceInput}
                         onChange={(e) => setMinPriceInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
-                        className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                        className="w-[42%] px-2 py-1.5 border rounded-lg text-sm placeholder:text-[var(--placeholder-color)] outline-none"
                         style={{
                           borderColor: tokens.inputBorder,
                           backgroundColor: tokens.inputBackground,
@@ -1100,7 +1100,7 @@ export function CatalogLayout({
                         value={maxPriceInput}
                         onChange={(e) => setMaxPriceInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
-                        className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                        className="w-[42%] px-2 py-1.5 border rounded-lg text-sm placeholder:text-[var(--placeholder-color)] outline-none"
                         style={{
                           borderColor: tokens.inputBorder,
                           backgroundColor: tokens.inputBackground,
@@ -1494,7 +1494,7 @@ export function ListLayout({
                       value={minPriceInput}
                       onChange={(e) => setMinPriceInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
-                      className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                      className="w-[42%] px-2 py-1.5 border rounded-lg text-sm placeholder:text-[var(--placeholder-color)] outline-none"
                       style={{
                         borderColor: tokens.inputBorder,
                         backgroundColor: tokens.inputBackground,
@@ -1509,7 +1509,7 @@ export function ListLayout({
                       value={maxPriceInput}
                       onChange={(e) => setMaxPriceInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
-                      className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                      className="w-[42%] px-2 py-1.5 border rounded-lg text-sm placeholder:text-[var(--placeholder-color)] outline-none"
                       style={{
                         borderColor: tokens.inputBorder,
                         backgroundColor: tokens.inputBackground,
@@ -1859,7 +1859,7 @@ export function ListLayout({
                         value={minPriceInput}
                         onChange={(e) => setMinPriceInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
-                        className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                        className="w-[42%] px-2 py-1.5 border rounded-lg text-sm placeholder:text-[var(--placeholder-color)] outline-none"
                         style={{
                           borderColor: tokens.inputBorder,
                           backgroundColor: tokens.inputBackground,
@@ -1874,7 +1874,7 @@ export function ListLayout({
                         value={maxPriceInput}
                         onChange={(e) => setMaxPriceInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
-                        className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                        className="w-[42%] px-2 py-1.5 border rounded-lg text-sm placeholder:text-[var(--placeholder-color)] outline-none"
                         style={{
                           borderColor: tokens.inputBorder,
                           backgroundColor: tokens.inputBackground,

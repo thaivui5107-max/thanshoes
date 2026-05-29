@@ -762,14 +762,14 @@ function PreviewMobileProductsFilters({
                   <input
                     type="text"
                     placeholder="Từ"
-                    className="w-1/2 px-2 py-1 border rounded text-xs"
+                    className="w-1/2 px-2 py-1 border rounded text-sm"
                     style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}
                     disabled
                   />
                   <input
                     type="text"
                     placeholder="Đến"
-                    className="w-1/2 px-2 py-1 border rounded text-xs"
+                    className="w-1/2 px-2 py-1 border rounded text-sm"
                     style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}
                     disabled
                   />
@@ -777,7 +777,7 @@ function PreviewMobileProductsFilters({
               )}
               {priceFilterMode === 'smart_dropdown' && (
                 <select
-                  className="w-full px-2 py-1 border rounded text-xs"
+                  className="w-full px-2 py-1 border rounded text-sm"
                   style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}
                   disabled
                 >
@@ -795,7 +795,7 @@ function PreviewMobileProductsFilters({
                     <div className="absolute left-[20%] top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border bg-white" style={{ borderColor: brandColor }} />
                     <div className="absolute right-[30%] top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border bg-white" style={{ borderColor: brandColor }} />
                   </div>
-                  <div className="flex justify-between text-[8px] text-slate-400 mt-1.5">
+                  <div className="flex justify-between text-xs text-slate-400 mt-1.5">
                     <span>100kđ</span>
                     <span>3.5Mđ</span>
                   </div>

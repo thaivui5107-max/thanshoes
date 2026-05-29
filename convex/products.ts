@@ -886,20 +886,32 @@ export const listPublicResolved = query({
 export const getPriceRangeStats = query({
   args: {},
   handler: async (ctx) => {
-    const minProduct = await ctx.db
+    const products = await ctx.db
       .query("products")
-      .withIndex("by_status_price", (q) => q.eq("status", "Active"))
-      .order("asc")
-      .first();
-
-    const maxProduct = await ctx.db
-      .query("products")
-      .withIndex("by_status_price", (q) => q.eq("status", "Active"))
+      .withIndex("by_status_order", (q) => q.eq("status", "Active"))
       .order("desc")
-      .first();
+      .take(200);
 
-    const minPrice = minProduct ? Math.min(minProduct.price, minProduct.effectivePrice ?? minProduct.price, minProduct.salePrice ?? minProduct.price) : 0;
-    const maxPrice = maxProduct ? Math.max(maxProduct.price, maxProduct.effectivePrice ?? maxProduct.price, maxProduct.salePrice ?? maxProduct.price) : 0;
+    if (products.length === 0) {
+      return { minPrice: 0, maxPrice: 0 };
+    }
+
+    const settings = await getVariantSettings(ctx);
+    const resolvedProducts = await resolveVariantOverrides(ctx, products, settings);
+
+    let minPrice = Infinity;
+    let maxPrice = -Infinity;
+
+    for (const p of resolvedProducts) {
+      const price = p.effectivePrice ?? p.salePrice ?? p.price;
+      if (price > 0) {
+        if (price < minPrice) minPrice = price;
+        if (price > maxPrice) maxPrice = price;
+      }
+    }
+
+    if (minPrice === Infinity) minPrice = 0;
+    if (maxPrice === -Infinity) maxPrice = 0;
 
     return { minPrice, maxPrice };
   },
