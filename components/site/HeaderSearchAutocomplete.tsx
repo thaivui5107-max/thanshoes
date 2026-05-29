@@ -16,10 +16,15 @@ type SuggestionItem = {
   url: string;
 };
 
+type SuggestionGroup = {
+  items: SuggestionItem[];
+  total: number;
+};
+
 type AutocompleteResult = {
-  posts: SuggestionItem[];
-  products: SuggestionItem[];
-  services: SuggestionItem[];
+  posts: SuggestionGroup;
+  products: SuggestionGroup;
+  services: SuggestionGroup;
 };
 
 export type HeaderSearchAutocompleteProps = {
@@ -105,9 +110,9 @@ export function HeaderSearchAutocomplete({
   const data = results as AutocompleteResult | undefined;
 
   const sections = useMemo(() => ([
-    { key: 'products', label: 'Sản phẩm', icon: Package, items: data?.products ?? [] },
-    { key: 'posts', label: 'Bài viết', icon: FileText, items: data?.posts ?? [] },
-    { key: 'services', label: 'Dịch vụ', icon: Briefcase, items: data?.services ?? [] },
+    { key: 'products', label: 'Sản phẩm', icon: Package, items: data?.products?.items ?? [], total: data?.products?.total ?? 0 },
+    { key: 'posts', label: 'Bài viết', icon: FileText, items: data?.posts?.items ?? [], total: data?.posts?.total ?? 0 },
+    { key: 'services', label: 'Dịch vụ', icon: Briefcase, items: data?.services?.items ?? [], total: data?.services?.total ?? 0 },
   ]), [data?.posts, data?.products, data?.services]);
 
   const hasResults = sections.some(section => section.items.length > 0);
@@ -210,7 +215,7 @@ export function HeaderSearchAutocomplete({
                     >
                       <span>{section.label}</span>
                       <span className="text-[9px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 rounded px-1.5 py-0.5 tracking-normal normal-case">
-                        {section.items.length} gợi ý
+                        Hiển thị {section.items.length} / {section.total} kết quả
                       </span>
                     </div>
                     <div className="space-y-1">
@@ -253,7 +258,9 @@ export function HeaderSearchAutocomplete({
               className="w-full border-t border-slate-100 bg-slate-50/80 hover:bg-slate-100/80 px-4 py-3 text-[11px] text-slate-500 hover:text-slate-700 transition-colors flex items-center justify-center gap-1.5 font-semibold text-center mt-1"
               style={{ color: tokens.textSubtle }}
             >
-              <span>Nhấp vào đây hoặc nhấn 🔍 để xem đầy đủ kết quả cho "{query}"</span>
+              <span>
+                Nhấp vào đây hoặc nhấn <Search size={11} className="inline-block text-slate-500 align-middle -mt-0.5 mx-0.5 shrink-0" /> để xem đầy đủ kết quả cho "{query}"
+              </span>
               <span className="text-slate-400">→</span>
             </button>
           )}

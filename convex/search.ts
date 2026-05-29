@@ -10,10 +10,15 @@ const suggestionItem = v.object({
   url: v.string(),
 });
 
+const suggestionGroup = v.object({
+  items: v.array(suggestionItem),
+  total: v.number(),
+});
+
 const searchResult = v.object({
-  posts: v.array(suggestionItem),
-  products: v.array(suggestionItem),
-  services: v.array(suggestionItem),
+  posts: suggestionGroup,
+  products: suggestionGroup,
+  services: suggestionGroup,
 });
 
 
@@ -28,7 +33,11 @@ export const autocomplete = query({
   handler: async (ctx, args) => {
     const rawQuery = args.query.trim();
     if (!rawQuery) {
-      return { posts: [], products: [], services: [] };
+      return {
+        posts: { items: [], total: 0 },
+        products: { items: [], total: 0 },
+        services: { items: [], total: 0 },
+      };
     }
 
     const limit = Math.min(args.limit ?? 5, 10);
@@ -64,9 +73,11 @@ export const autocomplete = query({
         merged.push(item);
       }
 
-      return rankByFuzzyMatches(merged, rawQuery, getSearchTexts, 42)
-        .slice(0, limit)
-        .map((entry) => entry.item);
+      const ranked = rankByFuzzyMatches(merged, rawQuery, getSearchTexts, 42);
+      return {
+        items: ranked.slice(0, limit).map((entry) => entry.item),
+        total: ranked.length,
+      };
     };
 
     const [posts, products, services] = await Promise.all([
@@ -83,7 +94,7 @@ export const autocomplete = query({
             .take(200);
           return collectMatches(primary, fallback, (item) => [item.title ?? '', item.excerpt ?? '']);
         })()
-        : Promise.resolve([]),
+        : Promise.resolve({ items: [], total: 0 }),
       args.searchProducts
         ? (async () => {
           const primary = await ctx.db
@@ -97,7 +108,7 @@ export const autocomplete = query({
             .take(200);
           return collectMatches(primary, fallback, (item) => [item.name ?? '', item.sku ?? '']);
         })()
-        : Promise.resolve([]),
+        : Promise.resolve({ items: [], total: 0 }),
       args.searchServices
         ? (async () => {
           const primary = await ctx.db
@@ -111,7 +122,7 @@ export const autocomplete = query({
             .take(200);
           return collectMatches(primary, fallback, (item) => [item.title ?? '', item.excerpt ?? '']);
         })()
-        : Promise.resolve([]),
+        : Promise.resolve({ items: [], total: 0 }),
     ]);
 
     const routeModeSetting = await ctx.db
@@ -120,9 +131,9 @@ export const autocomplete = query({
       .unique();
     const routeMode = routeModeSetting?.value === "namespace" ? "namespace" : "unified";
 
-    const postCategories = await Promise.all(posts.map((item) => ctx.db.get(item.categoryId)));
-    const productCategories = await Promise.all(products.map((item) => ctx.db.get(item.categoryId)));
-    const serviceCategories = await Promise.all(services.map((item) => ctx.db.get(item.categoryId)));
+    const postCategories = await Promise.all(posts.items.map((item) => ctx.db.get(item.categoryId)));
+    const productCategories = await Promise.all(products.items.map((item) => ctx.db.get(item.categoryId)));
+    const serviceCategories = await Promise.all(services.items.map((item) => ctx.db.get(item.categoryId)));
 
     const postCategoryMap = new Map(postCategories.filter(Boolean).map((cat) => [cat!._id, cat!]));
     const productCategoryMap = new Map(productCategories.filter(Boolean).map((cat) => [cat!._id, cat!]));
@@ -140,39 +151,48 @@ export const autocomplete = query({
     };
 
     return {
-      posts: buildSuggestions(
-        posts,
-        'post',
-        (item) => item.title,
-        (item) => item.thumbnail ?? undefined,
-        (item) => buildDetailUrl({
-          moduleKey: "posts",
-          slug: item.slug,
-          categorySlug: postCategoryMap.get(item.categoryId)?.slug,
-        }),
-      ),
-      products: buildSuggestions(
-        products,
-        'product',
-        (item) => item.name,
-        (item) => item.image ?? item.images?.[0],
-        (item) => buildDetailUrl({
-          moduleKey: "products",
-          slug: item.slug,
-          categorySlug: productCategoryMap.get(item.categoryId)?.slug,
-        }),
-      ),
-      services: buildSuggestions(
-        services,
-        'service',
-        (item) => item.title,
-        (item) => item.thumbnail ?? undefined,
-        (item) => buildDetailUrl({
-          moduleKey: "services",
-          slug: item.slug,
-          categorySlug: serviceCategoryMap.get(item.categoryId)?.slug,
-        }),
-      ),
+      posts: {
+        items: buildSuggestions(
+          posts.items,
+          'post',
+          (item) => item.title,
+          (item) => item.thumbnail ?? undefined,
+          (item) => buildDetailUrl({
+            moduleKey: "posts",
+            slug: item.slug,
+            categorySlug: postCategoryMap.get(item.categoryId)?.slug,
+          }),
+        ),
+        total: posts.total,
+      },
+      products: {
+        items: buildSuggestions(
+          products.items,
+          'product',
+          (item) => item.name,
+          (item) => item.image ?? item.images?.[0],
+          (item) => buildDetailUrl({
+            moduleKey: "products",
+            slug: item.slug,
+            categorySlug: productCategoryMap.get(item.categoryId)?.slug,
+          }),
+        ),
+        total: products.total,
+      },
+      services: {
+        items: buildSuggestions(
+          services.items,
+          'service',
+          (item) => item.title,
+          (item) => item.thumbnail ?? undefined,
+          (item) => buildDetailUrl({
+            moduleKey: "services",
+            slug: item.slug,
+            categorySlug: serviceCategoryMap.get(item.categoryId)?.slug,
+          }),
+        ),
+        total: services.total,
+      },
     };
   },
   returns: searchResult,
