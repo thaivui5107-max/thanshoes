@@ -75,17 +75,17 @@ export function ProductCardActions({
     <div className={`mt-2 sm:mt-3 grid ${gridColsClass} gap-1 sm:gap-2 ${actionHeightClass}`}>
       {showAddToCartButton && (
         <button
-          className="w-full rounded-lg py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all duration-300 flex items-center justify-center gap-1 sm:gap-1.5 disabled:opacity-55 disabled:cursor-not-allowed hover:brightness-95 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md px-1"
+          className="w-full rounded-lg py-1.5 sm:py-2 text-[10px] xs:text-xs lg:text-[11px] xl:text-xs font-semibold tracking-tight transition-all duration-300 flex items-center justify-center disabled:opacity-55 disabled:cursor-not-allowed hover:brightness-95 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md px-1 whitespace-nowrap"
           style={{ backgroundColor: tokens.primaryActionBg, color: tokens.primaryActionText }}
           onClick={(event) => { event.preventDefault(); onAddToCart(product); }}
           disabled={isOutOfStock}
         >
-          <span className="truncate">Thêm giỏ</span>
+          <span>Thêm giỏ</span>
         </button>
       )}
       {showBuyNowButton && (
         <button
-          className="w-full rounded-lg py-1.5 sm:py-2 text-xs sm:text-sm font-medium border transition-all duration-300 disabled:opacity-55 disabled:cursor-not-allowed hover:bg-[var(--btn-hover-bg)] hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md px-1"
+          className="w-full rounded-lg py-1.5 sm:py-2 text-[10px] xs:text-xs lg:text-[11px] xl:text-xs font-semibold tracking-tight border transition-all duration-300 disabled:opacity-55 disabled:cursor-not-allowed hover:bg-[var(--btn-hover-bg)] hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md px-1 whitespace-nowrap"
           style={{
             borderColor: tokens.secondaryActionBorder,
             color: tokens.secondaryActionText,
@@ -94,7 +94,7 @@ export function ProductCardActions({
           onClick={(event) => { event.preventDefault(); onBuyNow(product); }}
           disabled={isOutOfStock}
         >
-          <span className="truncate">{isOutOfStock ? 'Hết hàng' : 'Mua ngay'}</span>
+          <span>{isOutOfStock ? 'Hết hàng' : 'Mua ngay'}</span>
         </button>
       )}
     </div>
