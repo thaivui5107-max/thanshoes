@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from 'convex/react';
-import { Search } from 'lucide-react';
+import { History, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/convex/_generated/api';
 import { systemExperiences } from '../experiences/_constants';
@@ -30,13 +30,26 @@ const isEditableTarget = (element: Element | null) => {
 };
 
 export function SystemGlobalSearch() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const modules = useQuery(api.admin.modules.listModules);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [recentSearches, setRecentSearches] = useState<SearchItem[]>([]);
+
+  // Đọc dữ liệu lịch sử từ localStorage một cách an toàn sau khi mount trên client
+  useEffect(() => {
+    const stored = localStorage.getItem('system_recent_searches');
+    if (stored) {
+      try {
+        setRecentSearches(JSON.parse(stored));
+      } catch (e) {
+        console.error('Lỗi khi parse lịch sử tìm kiếm:', e);
+      }
+    }
+  }, []);
 
   const items = useMemo<SearchItem[]>(() => {
     const moduleItems = (modules ?? []).map((moduleItem) => ({
@@ -60,7 +73,8 @@ export function SystemGlobalSearch() {
   const filteredItems = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) {
-      return items.slice(0, MAX_RESULTS);
+      // Nếu query rỗng, trả về mảng recentSearches nếu có lịch sử, ngược lại trả về gợi ý mặc định
+      return recentSearches.length > 0 ? recentSearches : items.slice(0, MAX_RESULTS);
     }
     return items.filter((item) => {
       const baseMatch = [item.title, item.subtitle, ...(item.keywords ?? [])]
@@ -68,12 +82,35 @@ export function SystemGlobalSearch() {
         .toLowerCase();
       return baseMatch.includes(normalized);
     }).slice(0, MAX_RESULTS);
-  }, [items, query]);
+  }, [items, query, recentSearches]);
 
-  const moduleResults = filteredItems.filter((item) => item.type === 'module');
-  const experienceResults = filteredItems.filter((item) => item.type === 'experience');
+  const showRecent = query.trim() === '' && recentSearches.length > 0;
+  const moduleResults = showRecent ? [] : filteredItems.filter((item) => item.type === 'module');
+  const experienceResults = showRecent ? [] : filteredItems.filter((item) => item.type === 'experience');
+
+  const addToRecentSearches = (item: SearchItem) => {
+    setRecentSearches((prev) => {
+      const filtered = prev.filter((i) => i.href !== item.href);
+      const updated = [item, ...filtered].slice(0, 5);
+      localStorage.setItem('system_recent_searches', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const removeFromRecentSearches = (href: string) => {
+    setRecentSearches((prev) => {
+      const updated = prev.filter((item) => item.href !== href);
+      localStorage.setItem('system_recent_searches', JSON.stringify(updated));
+      // Cập nhật lại selectedIndex nếu vượt quá chiều dài mảng mới
+      if (selectedIndex >= updated.length && updated.length > 0) {
+        setSelectedIndex(updated.length - 1);
+      }
+      return updated;
+    });
+  };
 
   const handleSelect = (item: SearchItem) => {
+    addToRecentSearches(item);
     setOpen(false);
     setQuery('');
     router.push(item.href);
@@ -140,6 +177,8 @@ export function SystemGlobalSearch() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [filteredItems, open, selectedIndex]);
 
+  const recentTitle = locale === 'vi' ? 'Tìm kiếm gần đây' : 'Recent Searches';
+
   return (
     <>
       <button
@@ -166,7 +205,7 @@ export function SystemGlobalSearch() {
             className="fixed inset-0 bg-black/40"
             onClick={() => setOpen(false)}
           />
-          <div className="relative z-50 w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-lg overflow-hidden">
+          <div className="relative z-50 w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
               <Search size={16} className="text-slate-400" />
               <input
@@ -181,19 +220,69 @@ export function SystemGlobalSearch() {
               </span>
             </div>
 
-            <div className="max-h-[360px] overflow-y-auto">
+            <div className="max-h-[360px] overflow-y-auto custom-scrollbar">
               {filteredItems.length === 0 && (
                 <div className="px-4 py-6 text-sm text-slate-500">
                   {t.header.globalSearchNoResult}
                 </div>
               )}
 
-              {moduleResults.length > 0 && (
+              {/* Render danh sách Lịch sử tìm kiếm gần đây */}
+              {showRecent && (
+                <div className="flex flex-col">
+                  <div className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500">
+                    {recentTitle}
+                  </div>
+                  {recentSearches.map((item, index) => (
+                    <div
+                      key={item.href}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                      onClick={() => handleSelect(item)}
+                      className={`w-full group flex items-center justify-between px-4 py-2.5 transition-colors cursor-pointer text-left ${
+                        selectedIndex === index
+                          ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300'
+                          : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <History
+                          size={14}
+                          className={`shrink-0 transition-colors ${
+                            selectedIndex === index
+                              ? 'text-cyan-600 dark:text-cyan-400'
+                              : 'text-slate-400 dark:text-slate-500'
+                          }`}
+                        />
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className="text-sm font-medium truncate">{item.title}</span>
+                          <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                            {item.subtitle}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeFromRecentSearches(item.href);
+                        }}
+                        className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0"
+                        title={locale === 'vi' ? 'Xóa lịch sử' : 'Remove history'}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Render danh sách kết quả thông thường */}
+              {!showRecent && moduleResults.length > 0 && (
                 <div className="px-4 pt-3 text-[10px] uppercase tracking-wider text-slate-400">
                   {t.header.globalSearchModules}
                 </div>
               )}
-              {moduleResults.map((item, index) => (
+              {!showRecent && moduleResults.map((item, index) => (
                 <button
                   key={item.href}
                   type="button"
@@ -210,12 +299,12 @@ export function SystemGlobalSearch() {
                 </button>
               ))}
 
-              {experienceResults.length > 0 && (
+              {!showRecent && experienceResults.length > 0 && (
                 <div className="px-4 pt-3 text-[10px] uppercase tracking-wider text-slate-400">
                   {t.header.globalSearchExperiences}
                 </div>
               )}
-              {experienceResults.map((item, index) => {
+              {!showRecent && experienceResults.map((item, index) => {
                 const itemIndex = moduleResults.length + index;
                 return (
                   <button
