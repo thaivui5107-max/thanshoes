@@ -527,7 +527,7 @@ export function CatalogLayout({
   try {
     searchParams = useSearchParams();
     router = useRouter();
-  } catch (e) {}
+  } catch {}
 
   const currentMinPrice = searchParams ? (searchParams.get('minPrice') || '') : '';
   const currentMaxPrice = searchParams ? (searchParams.get('maxPrice') || '') : '';
@@ -1300,7 +1300,7 @@ export function ListLayout({
   try {
     searchParams = useSearchParams();
     router = useRouter();
-  } catch (e) {}
+  } catch {}
 
   const currentMinPrice = searchParams ? (searchParams.get('minPrice') || '') : '';
   const currentMaxPrice = searchParams ? (searchParams.get('maxPrice') || '') : '';

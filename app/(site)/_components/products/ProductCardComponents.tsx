@@ -46,7 +46,7 @@ export function ProductCardActions({
   showStock,
   showAddToCartButton,
   showBuyNowButton,
-  buyNowLabel,
+  buyNowLabel: _buyNowLabel,
   onAddToCart,
   onBuyNow,
   cartButtonsLayout
@@ -66,7 +66,6 @@ export function ProductCardActions({
   }
 
   const isOutOfStock = showStock && product.stock <= 0;
-  const secondaryLabel = isOutOfStock ? 'Hết hàng' : buyNowLabel;
   const isGrid2 = cartButtonsLayout === 'grid-2' && showAddToCartButton && showBuyNowButton;
   const actionHeightClass = showAddToCartButton && showBuyNowButton && !isGrid2 ? 'min-h-[76px]' : 'min-h-[36px]';
   const gridColsClass = isGrid2 ? 'grid-cols-2' : 'grid-cols-1';
