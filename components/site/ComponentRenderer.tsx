@@ -4399,6 +4399,7 @@ function CategoryProductsSection({
                                     onAddToCart={handleAddToCart}
                                     onBuyNow={handleBuyNow}
                                     cartButtonsLayout={cartButtonsLayout}
+                                    isOnDarkBg={true}
                                   />
                                 </div>
                               )}
@@ -4445,6 +4446,7 @@ function CategoryProductsSection({
                                     onAddToCart={handleAddToCart}
                                     onBuyNow={handleBuyNow}
                                     cartButtonsLayout={cartButtonsLayout}
+                                    isOnDarkBg={true}
                                   />
                                 </div>
                               )}
@@ -4570,6 +4572,7 @@ function CategoryProductsSection({
                                     onAddToCart={handleAddToCart}
                                     onBuyNow={handleBuyNow}
                                     cartButtonsLayout={cartButtonsLayout}
+                                    isOnDarkBg={true}
                                   />
                                 </div>
                               )}

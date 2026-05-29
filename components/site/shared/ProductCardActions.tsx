@@ -24,6 +24,7 @@ interface ProductCardActionsProps {
   onBuyNow: (product: any) => void;
   cartButtonsLayout?: 'stack' | 'grid-2';
   device?: 'desktop' | 'tablet' | 'mobile';
+  isOnDarkBg?: boolean;
 }
 
 export function ProductCardActions({
@@ -37,6 +38,7 @@ export function ProductCardActions({
   onBuyNow,
   cartButtonsLayout,
   device,
+  isOnDarkBg = false,
 }: ProductCardActionsProps) {
   if (!showAddToCartButton && !showBuyNowButton) {
     return null;
@@ -71,9 +73,10 @@ export function ProductCardActions({
         <button
           className={`w-full rounded-lg ${paddingClass} ${fontSizeClass} border transition-all duration-300 flex items-center justify-center whitespace-nowrap disabled:opacity-55 disabled:cursor-not-allowed hover:bg-[var(--btn-hover-bg)] hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md`}
           style={{
-            borderColor: tokens.secondaryActionBorder,
+            backgroundColor: isOnDarkBg ? (tokens.secondaryActionHoverBg || '#f8fafc') : 'transparent',
+            borderColor: isOnDarkBg ? 'transparent' : tokens.secondaryActionBorder,
             color: tokens.secondaryActionText,
-            '--btn-hover-bg': tokens.secondaryActionHoverBg,
+            '--btn-hover-bg': isOnDarkBg ? '#ffffff' : tokens.secondaryActionHoverBg,
           } as React.CSSProperties}
           onClick={(event) => { event.preventDefault(); onBuyNow(product); }}
           disabled={isOutOfStock}

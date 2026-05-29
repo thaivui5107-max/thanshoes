@@ -657,6 +657,7 @@ export const CategoryProductsPreview = ({
                                 onBuyNow={() => {}}
                                 cartButtonsLayout={config.cartButtonsLayout || 'stack'}
                                 device={device}
+                                isOnDarkBg={true}
                               />
                             </div>
                           )}
@@ -698,6 +699,7 @@ export const CategoryProductsPreview = ({
                                   onBuyNow={() => {}}
                                   cartButtonsLayout={cartButtonsLayout}
                                   device={device}
+                                  isOnDarkBg={true}
                                 />
                               </div>
                             )}
@@ -822,6 +824,7 @@ export const CategoryProductsPreview = ({
                                 onBuyNow={() => {}}
                                 cartButtonsLayout={config.cartButtonsLayout || 'stack'}
                                 device={device}
+                                isOnDarkBg={true}
                               />
                             </div>
                           )}
