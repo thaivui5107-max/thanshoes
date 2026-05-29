@@ -213,42 +213,8 @@ export function OrdersConfigTab({
 
       <div className={cn("mt-4 space-y-4", isReadOnly && "pointer-events-none opacity-60")}>
         {activeTab === 'general' && (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="space-y-4">
-              <SettingsCard title="Cài đặt chung">
-                {config.settings
-                  ?.filter((setting) => (setting.group ?? 'general') === 'general')
-                  ?.filter((setting) => !['orderStatusPreset', 'orderStatuses'].includes(setting.key))
-                  .map((setting) => (
-                    <div key={setting.key}>
-                      <label className="text-xs text-slate-500 mb-1 block">{setting.label}</label>
-                      {setting.type === 'select' ? (
-                        <select
-                          className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700"
-                          value={String(localSettings[setting.key] ?? '')}
-                          onChange={(event) => onSettingChange(setting.key, event.target.value)}
-                        >
-                          {(setting.options ?? []).map((option) => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </select>
-                      ) : setting.type === 'json' ? (
-                        <textarea
-                          className="min-h-[180px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                          value={String(localSettings[setting.key] ?? '')}
-                          onChange={(event) => onSettingChange(setting.key, event.target.value)}
-                        />
-                      ) : (
-                        <Input
-                          type={setting.type === 'number' ? 'number' : 'text'}
-                          value={String(localSettings[setting.key] ?? '')}
-                          onChange={(event) => onSettingChange(setting.key, setting.type === 'number' ? Number(event.target.value || 0) : event.target.value)}
-                        />
-                      )}
-                    </div>
-                  ))}
-              </SettingsCard>
-
+          hideModuleStatus ? (
+            <div className="max-w-2xl">
               {config.features && config.features.length > 0 && (
                 <FeaturesCard
                   features={config.features.map((f) => ({
@@ -266,32 +232,89 @@ export function OrdersConfigTab({
                 />
               )}
             </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="space-y-4">
+                <SettingsCard title="Cài đặt chung">
+                  {config.settings
+                    ?.filter((setting) => (setting.group ?? 'general') === 'general')
+                    ?.filter((setting) => !['orderStatusPreset', 'orderStatuses'].includes(setting.key))
+                    .map((setting) => (
+                      <div key={setting.key}>
+                        <label className="text-xs text-slate-500 mb-1 block">{setting.label}</label>
+                        {setting.type === 'select' ? (
+                          <select
+                            className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700"
+                            value={String(localSettings[setting.key] ?? '')}
+                            onChange={(event) => onSettingChange(setting.key, event.target.value)}
+                          >
+                            {(setting.options ?? []).map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        ) : setting.type === 'json' ? (
+                          <textarea
+                            className="min-h-[180px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                            value={String(localSettings[setting.key] ?? '')}
+                            onChange={(event) => onSettingChange(setting.key, event.target.value)}
+                          >
+                          </textarea>
+                        ) : (
+                          <Input
+                            type={setting.type === 'number' ? 'number' : 'text'}
+                            value={String(localSettings[setting.key] ?? '')}
+                            onChange={(event) => onSettingChange(setting.key, setting.type === 'number' ? Number(event.target.value || 0) : event.target.value)}
+                          />
+                        )}
+                      </div>
+                    ))}
+                </SettingsCard>
 
-            <div className="space-y-4 lg:col-span-2">
-              <FieldsCard
-                title={`Trường ${config.name}`}
-                icon={config.icon}
-                iconColorClass={colorClasses.iconText}
-                fields={localFields}
-                onToggle={onToggleField}
-                fieldColorClass={colorClasses.fieldColor}
-                toggleColor={colorClasses.toggle}
-              />
+                {config.features && config.features.length > 0 && (
+                  <FeaturesCard
+                    features={config.features.map((f) => ({
+                      config: {
+                        key: f.key,
+                        label: f.label,
+                        icon: f.icon ?? Settings,
+                        linkedField: f.linkedField,
+                        description: f.description,
+                      },
+                      enabled: localFeatures[f.key] ?? false,
+                    }))}
+                    onToggle={onToggleFeature}
+                    toggleColor={colorClasses.toggle}
+                  />
+                )}
+              </div>
 
-              {config.categoryModuleKey && localCategoryFields.length > 0 && (
+              <div className="space-y-4 lg:col-span-2">
                 <FieldsCard
-                  title="Trường danh mục"
-                  icon={Settings}
-                  iconColorClass="text-slate-500"
-                  fields={localCategoryFields}
-                  onToggle={onToggleCategoryField}
+                  title={`Trường ${config.name}`}
+                  icon={config.icon}
+                  iconColorClass={colorClasses.iconText}
+                  fields={localFields}
+                  onToggle={onToggleField}
                   fieldColorClass={colorClasses.fieldColor}
                   toggleColor={colorClasses.toggle}
                 />
-              )}
+
+                {config.categoryModuleKey && localCategoryFields.length > 0 && (
+                  <FieldsCard
+                    title="Trường danh mục"
+                    icon={Settings}
+                    iconColorClass="text-slate-500"
+                    fields={localCategoryFields}
+                    onToggle={onToggleCategoryField}
+                    fieldColorClass={colorClasses.fieldColor}
+                    toggleColor={colorClasses.toggle}
+                  />
+                )}
+              </div>
             </div>
-          </div>
+          )
         )}
+
 
         {activeTab === 'shipping' && (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
