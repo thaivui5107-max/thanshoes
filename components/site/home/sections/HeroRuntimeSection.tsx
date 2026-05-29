@@ -247,7 +247,7 @@ export function HeroRuntimeSection({ config, brandColor, secondary, mode }: Home
     return renderWithSpacing(
       <section className="relative w-full bg-slate-900 overflow-hidden">
         <h1 className="sr-only">{content.heading || 'Trang chủ'}</h1>
-        <div className="relative w-full aspect-[16/9] md:aspect-[21/9] max-h-[400px] md:max-h-[550px] overflow-hidden" ref={heroEmblaRef}>
+        <div className="relative w-full aspect-[21/9] max-h-[400px] md:max-h-[550px] overflow-hidden" ref={heroEmblaRef}>
           <div className="flex h-full">
             {slides.map((slide, idx) => {
               const shouldLoad = isLikelyVisibleSlide(idx, emblaCurrentSlide, slides.length);
@@ -285,7 +285,7 @@ export function HeroRuntimeSection({ config, brandColor, secondary, mode }: Home
     return renderWithSpacing(
       <section className="relative w-full bg-slate-900 overflow-hidden">
         <h1 className="sr-only">{content.heading || 'Trang chủ'}</h1>
-        <div className="relative w-full aspect-[16/9] md:aspect-[21/9] max-h-[450px] md:max-h-[600px]" ref={heroEmblaRef}>
+        <div className="relative w-full aspect-[21/9] max-h-[450px] md:max-h-[600px]" ref={heroEmblaRef}>
           <div className="flex h-full w-full">
             {slides.map((slide, idx) => {
               const shouldLoad = isLikelyVisibleSlide(idx, emblaCurrentSlide, slides.length);

@@ -286,7 +286,7 @@ export const HeroPreview = ({
       <div
         className={cn(
           "relative w-full overflow-hidden",
-          device === 'mobile' ? 'aspect-[16/9] max-h-[200px]' : (device === 'tablet' ? 'aspect-[16/9] max-h-[250px]' : 'aspect-[21/9] max-h-[280px]')
+          device === 'mobile' ? 'aspect-[21/9] max-h-[200px]' : (device === 'tablet' ? 'aspect-[21/9] max-h-[250px]' : 'aspect-[21/9] max-h-[280px]')
         )}
         ref={heroEmblaRef}
       >
@@ -371,7 +371,7 @@ export const HeroPreview = ({
     <section className="relative w-full bg-slate-900 overflow-hidden">
       <div className={cn(
         "relative w-full",
-        device === 'mobile' ? 'aspect-[16/9] max-h-[220px]' : (device === 'tablet' ? 'aspect-[16/9] max-h-[270px]' : 'aspect-[21/9] max-h-[300px]')
+        device === 'mobile' ? 'aspect-[21/9] max-h-[220px]' : (device === 'tablet' ? 'aspect-[21/9] max-h-[270px]' : 'aspect-[21/9] max-h-[300px]')
       )}>
         {slides.length > 0 ? (
           <>
