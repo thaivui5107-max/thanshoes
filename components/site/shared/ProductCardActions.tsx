@@ -64,7 +64,7 @@ export function ProductCardActions({
           onClick={(event) => { event.preventDefault(); onAddToCart(product); }}
           disabled={isOutOfStock}
         >
-          thêm giỏ
+          Thêm giỏ
         </button>
       )}
       {showBuyNowButton && (
@@ -78,7 +78,7 @@ export function ProductCardActions({
           onClick={(event) => { event.preventDefault(); onBuyNow(product); }}
           disabled={isOutOfStock}
         >
-          {isOutOfStock ? 'hết hàng' : 'mua ngay'}
+          {isOutOfStock ? 'Hết hàng' : 'Mua ngay'}
         </button>
       )}
     </div>
