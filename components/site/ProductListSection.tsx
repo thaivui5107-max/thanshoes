@@ -999,10 +999,10 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
         className={cn("bg-transparent", sectionSpacingClassName)}
         style={{ fontFamily: 'Inter, sans-serif' }}
       >
-        <div className="mx-auto w-full max-w-6xl px-4 md:px-8">
-          {renderSiteHeader({ className: 'mb-4 md:mb-6' })}
+        <div className="mx-auto w-full max-w-[1440px] px-3">
+          {renderSiteHeader({ className: 'mb-6 md:mb-8' })}
           <div className={cn(
-            "-mx-3 grid gap-y-4 text-left",
+            "-mx-3 grid gap-y-6 text-left",
             lookbookDesktopColumns === 3
               ? 'grid-cols-1 md:grid-cols-3 lg:grid-cols-3'
               : 'grid-cols-2 md:grid-cols-2 lg:grid-cols-4',
