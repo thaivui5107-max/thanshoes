@@ -247,6 +247,11 @@ function WineCarouselPreviewInner({
   itemCount,
   getDiscount,
   cardRadiusClassName,
+  showAddToCartButton,
+  showBuyNowButton,
+  cartButtonsLayout,
+  tokens,
+  isProduct = true,
 }: {
   displayItems: ProductListPreviewItem[];
   device: 'desktop' | 'tablet' | 'mobile';
@@ -255,6 +260,11 @@ function WineCarouselPreviewInner({
   itemCount: number;
   getDiscount: (price?: string, originalPrice?: string) => string | null;
   cardRadiusClassName: string;
+  showAddToCartButton?: boolean;
+  showBuyNowButton?: boolean;
+  cartButtonsLayout?: 'stack' | 'grid-2';
+  tokens?: any;
+  isProduct?: boolean;
 }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: 'start',
@@ -353,16 +363,39 @@ function WineCarouselPreviewInner({
                       {item.name}
                     </h3>
                     <div className="mb-1.5 flex flex-col gap-0.5 sm:mb-2 sm:gap-1" />
-                    <div className="mt-auto flex items-end justify-between gap-2 border-t border-stone-100 pt-1.5 sm:pt-2">
-                      <div className="flex min-w-0 flex-col">
-                        {item.originalPrice ? (
-                          <span className="text-[10px] font-medium text-stone-400 line-through decoration-stone-400 decoration-1 sm:text-xs">{item.originalPrice}</span>
-                        ) : null}
-                        <span className="text-base font-bold sm:text-lg" style={{ color: brandColor }}>{item.price}</span>
+                    <div className="mt-auto flex flex-col gap-1.5 border-t border-stone-100 pt-1.5 sm:pt-2">
+                      <div className="flex items-end justify-between gap-2">
+                        <div className="flex min-w-0 flex-col">
+                          {item.originalPrice ? (
+                            <span className="text-[10px] font-medium text-stone-400 line-through decoration-stone-400 decoration-1 sm:text-xs">{item.originalPrice}</span>
+                          ) : null}
+                          <span className="text-base font-bold sm:text-lg" style={{ color: brandColor }}>{item.price}</span>
+                        </div>
+                        {(!isProduct || (!showAddToCartButton && !showBuyNowButton)) && (
+                          <button type="button" className="shrink-0 rounded px-2 py-1 text-[10px] font-medium text-white transition-colors sm:px-3 sm:py-1.5 sm:text-xs" style={{ backgroundColor: brandColor }}>
+                            Xem
+                          </button>
+                        )}
                       </div>
-                      <button type="button" className="shrink-0 rounded px-2 py-1 text-[10px] font-medium text-white transition-colors sm:px-3 sm:py-1.5 sm:text-xs" style={{ backgroundColor: brandColor }}>
-                        Xem
-                      </button>
+                      {isProduct && (showAddToCartButton || showBuyNowButton) && (
+                        <ProductCardActions
+                          product={{
+                            _id: String(item.id),
+                            name: item.name,
+                            price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                            salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                          }}
+                          tokens={tokens}
+                          showStock={false}
+                          showAddToCartButton={!!showAddToCartButton}
+                          showBuyNowButton={!!showBuyNowButton}
+                          buyNowLabel="Mua ngay"
+                          onAddToCart={() => {}}
+                          onBuyNow={() => {}}
+                          cartButtonsLayout={cartButtonsLayout}
+                          device={device}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -814,6 +847,22 @@ export const ProductListPreview = ({
                   </div>
                   <h4 className="font-medium text-sm text-slate-900 dark:text-slate-100 line-clamp-2 group-hover:opacity-80 transition-colors">{item.name}</h4>
                   <span className="text-sm font-bold mt-1" style={{ color: brandColor }}>{item.price}</span>
+                  {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) && (
+                    <div className="mt-2">
+                      <ProductCardActions
+                        product={{ _id: String(item.id), name: item.name, price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined, salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined }}
+                        tokens={tokens}
+                        showStock={false}
+                        showAddToCartButton={!!effectiveShowAddToCartButton}
+                        showBuyNowButton={!!effectiveShowBuyNowButton}
+                        buyNowLabel="Mua ngay"
+                        onAddToCart={() => {}}
+                        onBuyNow={() => {}}
+                        cartButtonsLayout={cartButtonsLayout}
+                        device={device}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -914,6 +963,22 @@ export const ProductListPreview = ({
                         </span>
                       )}
                     </div>
+                    {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) && (
+                      <div className="mt-2">
+                        <ProductCardActions
+                          product={{ _id: String(item.id), name: item.name, price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined, salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined }}
+                          tokens={tokens}
+                          showStock={false}
+                          showAddToCartButton={!!effectiveShowAddToCartButton}
+                          showBuyNowButton={!!effectiveShowBuyNowButton}
+                          buyNowLabel="Mua ngay"
+                          onAddToCart={() => {}}
+                          onBuyNow={() => {}}
+                          cartButtonsLayout={cartButtonsLayout}
+                          device={device}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -935,6 +1000,11 @@ export const ProductListPreview = ({
       itemCount={itemCount}
       getDiscount={getDiscount}
       cardRadiusClassName={cardRadiusClassName}
+      showAddToCartButton={effectiveShowAddToCartButton}
+      showBuyNowButton={effectiveShowBuyNowButton}
+      cartButtonsLayout={cartButtonsLayout}
+      tokens={tokens}
+      isProduct={isProduct}
     />
   );
 
@@ -969,6 +1039,22 @@ export const ProductListPreview = ({
               </div>
               <h3 className="font-medium text-xs text-slate-900 dark:text-slate-100 line-clamp-2 group-hover:opacity-80 transition-colors">{item.name}</h3>
               <span className="font-bold text-xs mt-0.5 block" style={{ color: brandColor }}>{item.price}</span>
+              {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) && (
+                <div className="mt-1.5">
+                  <ProductCardActions
+                    product={{ _id: String(item.id), name: item.name, price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined, salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined }}
+                    tokens={tokens}
+                    showStock={false}
+                    showAddToCartButton={!!effectiveShowAddToCartButton}
+                    showBuyNowButton={!!effectiveShowBuyNowButton}
+                    buyNowLabel="Mua ngay"
+                    onAddToCart={() => {}}
+                    onBuyNow={() => {}}
+                    cartButtonsLayout={cartButtonsLayout}
+                    device={device}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
@@ -1001,6 +1087,22 @@ export const ProductListPreview = ({
                   </div>
                   <h4 className="font-medium text-sm text-slate-900 dark:text-slate-100 line-clamp-2">{item.name}</h4>
                   <span className="text-sm font-bold mt-1" style={{ color: brandColor }}>{item.price}</span>
+                  {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) && (
+                    <div className="mt-2">
+                      <ProductCardActions
+                        product={{ _id: String(item.id), name: item.name, price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined, salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined }}
+                        tokens={tokens}
+                        showStock={false}
+                        showAddToCartButton={!!effectiveShowAddToCartButton}
+                        showBuyNowButton={!!effectiveShowBuyNowButton}
+                        buyNowLabel="Mua ngay"
+                        onAddToCart={() => {}}
+                        onBuyNow={() => {}}
+                        cartButtonsLayout={cartButtonsLayout}
+                        device={device}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1047,6 +1149,22 @@ export const ProductListPreview = ({
                       <span className="text-sm font-bold" style={{ color: brandColor }}>{item.price}</span>
                       {item.originalPrice && <span className="text-[10px] text-slate-400 line-through">{item.originalPrice}</span>}
                     </div>
+                    {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) && (
+                      <div className="mt-2">
+                        <ProductCardActions
+                          product={{ _id: String(item.id), name: item.name, price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined, salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined }}
+                          tokens={tokens}
+                          showStock={false}
+                          showAddToCartButton={!!effectiveShowAddToCartButton}
+                          showBuyNowButton={!!effectiveShowBuyNowButton}
+                          buyNowLabel="Mua ngay"
+                          onAddToCart={() => {}}
+                          onBuyNow={() => {}}
+                          cartButtonsLayout={cartButtonsLayout}
+                          device={device}
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1217,9 +1335,26 @@ export const ProductListPreview = ({
                             </span>
                           )}
                         </div>
-                        <div className="inline-flex items-center justify-center rounded-full px-5 py-2 text-xs font-bold text-white shadow-lg transition duration-300 group-hover:scale-105" style={{ backgroundColor: secondary }}>
-                          Xem chi tiết <ArrowRight size={14} className="ml-1.5" />
-                        </div>
+                        {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) ? (
+                          <div className="mt-2">
+                            <ProductCardActions
+                              product={{ _id: String(item.id), name: item.name, price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined, salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined }}
+                              tokens={tokens}
+                              showStock={false}
+                              showAddToCartButton={!!effectiveShowAddToCartButton}
+                              showBuyNowButton={!!effectiveShowBuyNowButton}
+                              buyNowLabel="Mua ngay"
+                              onAddToCart={() => {}}
+                              onBuyNow={() => {}}
+                              cartButtonsLayout={cartButtonsLayout}
+                              device={device}
+                            />
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center justify-center rounded-full px-5 py-2 text-xs font-bold text-white shadow-lg transition duration-300 group-hover:scale-105" style={{ backgroundColor: secondary }}>
+                            Xem chi tiết <ArrowRight size={14} className="ml-1.5" />
+                          </div>
+                        )}
                       </div>
                     </div>
                     {hoverImage && (
