@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Globe, Facebook, Github, Instagram, Linkedin, Twitter, Youtube, X } from 'lucide-react';
 import { getIconNode } from '../../speed-dial/_components/SpeedDialSectionShared';
 import { cn } from '../../../components/ui';
 import { PreviewWrapper } from '../../_shared/components/PreviewWrapper';

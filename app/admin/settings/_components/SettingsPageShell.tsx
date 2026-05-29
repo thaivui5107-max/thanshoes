@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { LayoutTemplate, Loader2, Palette, Save, ShoppingBag } from 'lucide-react';
+import { LayoutTemplate, Loader2, Palette, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMutation, useQuery } from 'convex/react';
 import { useRouter, useSearchParams } from 'next/navigation';

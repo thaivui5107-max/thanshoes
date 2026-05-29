@@ -426,7 +426,7 @@ function SearchContent() {
       });
       router.push(path);
     } else {
-      addItem(product._id, 1);
+      void addItem(product._id, 1);
       notifyAddToCart();
       openDrawer();
     }

@@ -1,4 +1,4 @@
-import { Globe, LayoutTemplate, Mail, MapPin, Settings, Share2, Sparkles, Store } from 'lucide-react';
+import { Globe, LayoutTemplate, Mail, MapPin, Settings, Share2, Sparkles } from 'lucide-react';
 import { defineModuleWithRuntime } from '../define-module';
  
 export const settingsModule = defineModuleWithRuntime({

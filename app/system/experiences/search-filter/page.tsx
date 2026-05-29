@@ -7,7 +7,6 @@ import { api } from '@/convex/_generated/api';
 import { 
   Eye, 
   Heart, 
-  LayoutTemplate, 
   Loader2, 
   Package, 
   Save, 
@@ -144,13 +143,11 @@ export default function SearchFilterExperiencePage() {
 
   const { config, setConfig, hasChanges } = useExperienceConfig(serverConfig, DEFAULT_CONFIG, isLoading);
   const saleMode = (saleModeSetting?.value as string | undefined) ?? 'cart';
-  const canUseProducts = productsModule?.enabled ?? false;
   const canUseWishlist = wishlistModule?.enabled ?? false;
   const canUseCart = (cartModule?.enabled ?? false) && (ordersModule?.enabled ?? false);
   const canUseOrders = ordersModule?.enabled ?? false;
   const canUsePromotions = promotionsModule?.enabled ?? false;
   const variantsEnabled = (variantsSetting?.value as boolean | undefined) ?? false;
-  const canUseQuickAddVariant = canUseCart && variantsEnabled;
 
   const beforeSaveTransform = (rawConfig: unknown) => {
     const configValue = rawConfig as SearchFilterExperienceConfig;

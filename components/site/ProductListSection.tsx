@@ -1191,7 +1191,7 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
                       type="button"
                       className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-white shadow-lg transition-all hover:opacity-90 whitespace-nowrap"
                       style={{ backgroundColor: brandColor }}
-                      onClick={(e) => { e.stopPropagation(); handleAddToCart(featured); }}
+                      onClick={(e) => { e.stopPropagation(); void handleAddToCart(featured); }}
                     >
                       Thêm giỏ
                     </button>

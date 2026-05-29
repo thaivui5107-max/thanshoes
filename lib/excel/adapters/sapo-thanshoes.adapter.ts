@@ -3,11 +3,13 @@ import { ExcelImportAdapter, CompatibilityIssue } from "./excel-adapter.interfac
 import type { ProductModuleConfig, ExcelOptionDef } from "@/lib/excel/product-schema-builder";
 import type { ParsedProductRecord } from "@/app/admin/products/actions/excel-actions";
 
-// Helper an toàn để lấy text từ Cell của ExcelJS, tránh lỗi no-base-to-string và hỗ trợ Rich Text / Hyperlink
 function getCellText(cell: ExcelJS.Cell): string {
   const val = cell.value;
   if (val === null || val === undefined) return "";
   if (typeof val === "object") {
+    if (val instanceof Date) {
+      return val.toISOString();
+    }
     if ("richText" in val && Array.isArray(val.richText)) {
       return val.richText.map((t: any) => t.text || "").join("").trim();
     }
@@ -17,6 +19,7 @@ function getCellText(cell: ExcelJS.Cell): string {
     if ("hyperlink" in val) {
       return String(val.hyperlink).trim();
     }
+    return "";
   }
   return String(val).trim();
 }
@@ -113,8 +116,6 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
     const skuCol = getColIndex(["mã sku", "sku"], 14);      // N
     const nameCol = getColIndex(["tên sản phẩm"], 1);       // A
     const typeCol = getColIndex(["loại sản phẩm", "loại"], 3); // C
-    const brandCol = getColIndex(["nhãn hiệu", "thương hiệu"], 5); // E
-    const descCol = getColIndex(["mô tả", "mô tả sản phẩm"], 4); // D
     const opt1NameCol = getColIndex(["thuộc tính 1"], 7); // G
     const opt1ValueCol = getColIndex(["giá trị thuộc tính 1", "thuộc tính 1", "size", "kích cỡ"], 8); // H
     const opt2NameCol = getColIndex(["thuộc tính 2"], 9); // I
@@ -124,9 +125,7 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
     const imageCol = getColIndex(["ảnh đại diện", "đường dẫn ảnh", "ảnh biến thể"], 18); // R
 
     let currentProductName = "";
-    let currentBrand = "";
     let currentType = "";
-    let currentDesc = "";
     let currentOpt1Name = "";
     let currentOpt2Name = "";
 
@@ -143,8 +142,6 @@ export const SapoThanShoesAdapter: ExcelImportAdapter = {
       if (nameVal) {
         currentProductName = nameVal;
         currentType = getCellText(row.getCell(typeCol));
-        currentBrand = getCellText(row.getCell(brandCol));
-        currentDesc = getCellText(row.getCell(descCol));
       }
 
       // Cập nhật tên thuộc tính động khi có giá trị mới xuất hiện ở dòng cha/con

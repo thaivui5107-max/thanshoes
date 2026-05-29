@@ -11,7 +11,6 @@ import { getFooterCornerRadiusClassName, getFooterLogoBackgroundClassName, getFo
 import type { FooterBrandMode, FooterCornerRadius, FooterLogoBackgroundStyle, FooterStyle } from '@/app/admin/home-components/footer/_types';
 import { resolveTypeOverrideColors } from '@/app/admin/home-components/_shared/lib/typeColorOverride';
 import { resolveTypeOverrideFont } from '@/app/admin/home-components/_shared/lib/typeFontOverride';
-import { Facebook, Github, Globe, Instagram, Linkedin, Mail, MapPin, Phone, Send, Twitter, X, Youtube } from 'lucide-react';
 import { getIconNode } from '@/app/admin/home-components/speed-dial/_components/SpeedDialSectionShared';
 import { useSnapshotDemoContext } from '@/components/modules/homepage/SnapshotDemoProvider';
 

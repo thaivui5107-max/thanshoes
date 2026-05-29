@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { ShoppingCart } from 'lucide-react';
 import { type ProductsListColors } from '@/components/site/products/colors';
 
 interface ProductCardActionsProps {
@@ -33,7 +32,7 @@ export function ProductCardActions({
   showStock,
   showAddToCartButton,
   showBuyNowButton,
-  buyNowLabel,
+  buyNowLabel: _buyNowLabel,
   onAddToCart,
   onBuyNow,
   cartButtonsLayout,

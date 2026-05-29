@@ -32,7 +32,6 @@ export function ImportExportModal() {
 
   // State quản lý việc detect adapter và các vấn đề cấu hình lệch
   const [compatibilityIssues, setCompatibilityIssues] = useState<CompatibilityIssue[]>([]);
-  const [detectedAdapter, setDetectedAdapter] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
   const settings = useQuery(api.admin.modules.listModuleSettings, { moduleKey: "products" }) || [];
@@ -82,7 +81,6 @@ export function ImportExportModal() {
     const selectedFile = e.target.files?.[0] || null;
     setFile(selectedFile);
     setCompatibilityIssues([]);
-    setDetectedAdapter(null);
 
     if (selectedFile) {
       try {
@@ -90,7 +88,6 @@ export function ImportExportModal() {
         const base64 = await toBase64(selectedFile);
         const checkResult = await checkFileAdapterAndCompatibility(base64, configData);
         if (checkResult.adapterId) {
-          setDetectedAdapter(checkResult.adapterName);
           setCompatibilityIssues(checkResult.issues);
         }
       } catch (err) {
@@ -146,7 +143,7 @@ export function ImportExportModal() {
 
       console.log("Parsed Data:", result.data);
       const optionNames = result.optionNames || excelOptions.map((opt) => opt.name);
-      const cleanProducts = result.data?.map(({ detectedOptionNames, ...rest }: any) => rest) || [];
+      const cleanProducts = result.data?.map(({ detectedOptionNames: _, ...rest }: any) => rest) || [];
       const importResult = await upsertBulk({ 
         products: cleanProducts as any,
         optionNames: optionNames.length > 0 ? optionNames : undefined,
@@ -160,7 +157,6 @@ export function ImportExportModal() {
       setIsOpen(false);
       setFile(null);
       setCompatibilityIssues([]);
-      setDetectedAdapter(null);
     } catch (error: any) {
       toast.error("Lỗi Import: " + error.message);
     } finally {
@@ -240,7 +236,7 @@ export function ImportExportModal() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsOpen(false); setFile(null); setCompatibilityIssues([]); setDetectedAdapter(null); }}>Hủy</Button>
+            <Button variant="outline" onClick={() => { setIsOpen(false); setFile(null); setCompatibilityIssues([]); }}>Hủy</Button>
             <Button onClick={handleImport} disabled={!file || isLoading || compatibilityIssues.length > 0}>
               {isLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Tiến hành Import
