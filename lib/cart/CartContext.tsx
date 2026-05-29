@@ -80,7 +80,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     !isAuthenticated && sessionId ? { sessionId } : 'skip'
   );
 
-  const cart = isAuthenticated ? (customerCart ?? null) : (sessionCart ?? null);
+  const cart = isAuthenticated ? customerCart : sessionCart;
 
   const items = useQuery(
     api.cart.listCartItems,
