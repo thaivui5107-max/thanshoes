@@ -1053,26 +1053,28 @@ function ProductCardActions({ product, tokens, showStock, showAddToCartButton, s
   const gridColsClass = isGrid2 ? 'grid-cols-2' : 'grid-cols-1';
 
   return (
-    <div className={`mt-3 grid ${gridColsClass} gap-2 ${actionHeightClass}`}>
+    <div className={`mt-2 sm:mt-3 grid ${gridColsClass} gap-1 sm:gap-2 ${actionHeightClass}`}>
       {showAddToCartButton && (
         <button
-          className="w-full rounded-lg py-2 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 disabled:opacity-55 disabled:cursor-not-allowed"
+          className="w-full rounded-lg py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1 sm:gap-1.5 disabled:opacity-55 disabled:cursor-not-allowed"
           style={{ backgroundColor: tokens.primaryActionBg, color: tokens.primaryActionText }}
           onClick={(event) => { event.preventDefault(); onAddToCart(product); }}
           disabled={isOutOfStock}
         >
-          <ShoppingCart size={14} />
-          Thêm vào giỏ
+          <ShoppingCart size={12} className="sm:w-[14px] sm:h-[14px]" />
+          <span className="hidden sm:inline">Thêm vào giỏ</span>
+          <span className="sm:hidden">Thêm giỏ</span>
         </button>
       )}
       {showBuyNowButton && (
         <button
-          className="w-full rounded-lg py-2 text-sm font-medium border transition-colors disabled:opacity-55 disabled:cursor-not-allowed"
+          className="w-full rounded-lg py-1.5 sm:py-2 text-xs sm:text-sm font-medium border transition-colors disabled:opacity-55 disabled:cursor-not-allowed"
           style={{ borderColor: tokens.secondaryActionBorder, color: tokens.secondaryActionText }}
           onClick={(event) => { event.preventDefault(); onBuyNow(product); }}
           disabled={isOutOfStock}
         >
-          {secondaryLabel}
+          <span className="hidden sm:inline">{secondaryLabel}</span>
+          <span className="sm:hidden">{isOutOfStock ? 'Hết' : 'Mua'}</span>
         </button>
       )}
     </div>
@@ -1122,22 +1124,22 @@ function ProductGrid({ products, categoryMap, tokens, showPrice, showSalePrice, 
               </button>
             )}
           </ProductImageWithOverlay>
-          <div className="p-4 flex flex-1 flex-col">
-            <p className="text-xs mb-1" style={{ color: tokens.metaText }}>{categoryMap.get(product.categoryId) ?? 'Sản phẩm'}</p>
-            <h3 className="font-medium line-clamp-2 transition-colors mb-2" style={{ color: tokens.bodyText }}>{product.name}</h3>
+          <div className="p-3 sm:p-4 flex flex-1 flex-col">
+            <p className="text-[10px] sm:text-xs mb-0.5 sm:mb-1" style={{ color: tokens.metaText }}>{categoryMap.get(product.categoryId) ?? 'Sản phẩm'}</p>
+            <h3 className="text-xs sm:text-sm font-medium line-clamp-2 transition-colors mb-1 sm:mb-2" style={{ color: tokens.bodyText }}>{product.name}</h3>
             {showPrice && (
-              <div className="flex items-center gap-2">
-                <span className="font-bold" style={{ color: tokens.priceColor }}>{priceDisplay.label}</span>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <span className="text-sm sm:text-base font-bold" style={{ color: tokens.priceColor }}>{priceDisplay.label}</span>
                 {showSalePrice && priceDisplay.comparePrice && (
-                  <span className="text-sm line-through" style={{ color: tokens.priceOriginalText }}>
+                  <span className="text-[10px] sm:text-xs line-through" style={{ color: tokens.priceOriginalText }}>
                     {getPublicPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label}
                   </span>
                 )}
               </div>
             )}
-            <div className="min-h-[20px] mt-2">
-              {showStock && product.stock <= 5 && product.stock > 0 && <p className="text-xs" style={{ color: tokens.stockLowText }}>Chỉ còn {product.stock} sản phẩm</p>}
-              {showStock && product.stock === 0 && <p className="text-xs" style={{ color: tokens.stockOutText }}>Hết hàng</p>}
+            <div className="min-h-[16px] sm:min-h-[20px] mt-1 sm:mt-2">
+              {showStock && product.stock <= 5 && product.stock > 0 && <p className="text-[10px] sm:text-xs" style={{ color: tokens.stockLowText }}>Chỉ còn {product.stock} SP</p>}
+              {showStock && product.stock === 0 && <p className="text-[10px] sm:text-xs" style={{ color: tokens.stockOutText }}>Hết hàng</p>}
             </div>
             <div className="mt-auto">
               <ProductCardActions
