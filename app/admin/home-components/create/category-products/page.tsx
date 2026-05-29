@@ -40,6 +40,11 @@ export default function CategoryProductsCreatePage() {
   const [spacing, setSpacing] = useState<SectionSpacing>(DEFAULT_SECTION_SPACING);
   const [cornerRadius, setCornerRadius] = useState<CategoryProductsCornerRadius>(DEFAULT_CATEGORY_PRODUCTS_CORNER_RADIUS);
 
+  // Cart buttons settings
+  const [showAddToCartButton, setShowAddToCartButton] = useState(true);
+  const [showBuyNowButton, setShowBuyNowButton] = useState(true);
+  const [cartButtonsLayout, setCartButtonsLayout] = useState<'stack' | 'grid-2'>('stack');
+
   const categoriesData = useQuery(api.productCategories.listActiveCategoriesWithProductCounts);
   
   const categoryIdsForQuery = useMemo(() => {
@@ -69,6 +74,9 @@ export default function CategoryProductsCreatePage() {
       spacing,
       style,
       cornerRadius,
+      showAddToCartButton,
+      showBuyNowButton,
+      cartButtonsLayout,
     });
   };
 
@@ -108,6 +116,12 @@ export default function CategoryProductsCreatePage() {
         cornerRadius={cornerRadius}
         setCornerRadius={setCornerRadius}
         productImageCropAspectRatio={productImageCropAspectRatio}
+        showAddToCartButton={showAddToCartButton}
+        setShowAddToCartButton={setShowAddToCartButton}
+        showBuyNowButton={showBuyNowButton}
+        setShowBuyNowButton={setShowBuyNowButton}
+        cartButtonsLayout={cartButtonsLayout}
+        setCartButtonsLayout={setCartButtonsLayout}
         className="mb-3"
       />
 
@@ -122,6 +136,9 @@ export default function CategoryProductsCreatePage() {
           spacing,
           style,
           cornerRadius,
+          showAddToCartButton,
+          showBuyNowButton,
+          cartButtonsLayout,
         }}
         brandColor={primary}
         secondary={secondary}
