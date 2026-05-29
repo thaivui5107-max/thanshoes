@@ -27,6 +27,7 @@ import { useCartConfig } from '@/lib/experiences';
 import { getProductsListColors } from '@/components/site/products/colors';
 import { ProductCardActions } from '@/components/site/shared/ProductCardActions';
 import { QuickAddVariantModal } from '@/components/products/QuickAddVariantModal';
+import { CategoryTabSlider } from '@/components/shared/CategoryTabSlider';
 
 
 interface ProductGridSectionProps {
@@ -41,12 +42,18 @@ interface ProductGridSectionProps {
 export function ProductGridSection({ config, brandColor, secondary, mode, title, snapshotComponentKey }: ProductGridSectionProps) {
   const snapshotDemo = useSnapshotDemoContext();
   const style = resolveGridStyle(config.style as string | undefined);
-  const itemCount = (config.itemCount as number) || 8;
+  const desktopColumns: 3 | 4 | 5 | 6 = (config.desktopColumns === 3 || config.desktopColumns === 5 || config.desktopColumns === 6) ? config.desktopColumns : 4;
+  const desktopRows = (config.desktopRows as number) || 2;
+  const selectionMode = (config.selectionMode as 'category' | 'auto' | 'manual' | 'demo') || 'category';
+  const itemCount = selectionMode === 'category' || selectionMode === 'auto'
+    ? (desktopColumns * desktopRows)
+    : ((config.itemCount as number) || 8);
+
   const sectionSpacingClassName = getSectionSpacingClassName(config.noVerticalMargin === true ? 'none' : normalizeSectionSpacing(config.spacing));
   const cardRadius = normalizeProductListCardRadius(config.cornerRadius ?? config.cardRadius, config.noBorderRadius);
   const cardRadiusClassName = getProductListCardRadiusClassName(cardRadius);
   const imageRadiusClassName = getProductListImageRadiusClassName(cardRadius);
-  const desktopColumns: 3 | 4 | 5 | 6 = (config.desktopColumns === 3 || config.desktopColumns === 5 || config.desktopColumns === 6) ? config.desktopColumns : 4;
+
   // Responsive grid class based on desktopColumns
   const gridColsClass = desktopColumns === 3
     ? 'grid-cols-1 md:grid-cols-3 lg:grid-cols-3'
@@ -55,7 +62,7 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
       : desktopColumns === 6
         ? 'grid-cols-3 md:grid-cols-3 lg:grid-cols-6'
         : 'grid-cols-2 md:grid-cols-2 lg:grid-cols-4';
-  const selectionMode = (config.selectionMode as 'auto' | 'manual' | 'demo') || 'auto';
+
   const selectedProductIds = React.useMemo(() => (config.selectedProductIds as string[]) || [], [config.selectedProductIds]);
   const demoProducts = React.useMemo(() => (config.demoProducts as Array<{ id: string; name: string; image?: string; price?: string; originalPrice?: string; description?: string; category?: string; tag?: string }>) || [], [config.demoProducts]);
 
@@ -196,10 +203,12 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
     setQuickAddTarget(null);
   };
 
-  // Query products based on selection mode (skip for demo mode and manual mode)
+  // Query products based on selection mode
+  // Nếu chọn theo danh mục: query các sản phẩm có category nằm trong config. categoryTabIds (hoặc activeTabId).
+  // Để tối ưu và nhất quán, storefront query tối đa 50 sản phẩm public để hiển thị.
   const productsData = useQuery(
     api.products.listPublicResolved,
-    selectionMode === 'demo' || selectionMode === 'manual' ? 'skip' : { limit: Math.min(itemCount, 20) }
+    selectionMode === 'demo' || selectionMode === 'manual' ? 'skip' : { limit: 50 }
   );
 
   const manualProductsData = useQuery(
@@ -258,53 +267,67 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
 
     if (!productsData) return [];
 
+    // Lọc theo chế độ 'category' (chỉ lấy các sản phẩm thuộc danh mục được chọn)
+    if (selectionMode === 'category' && categoryTabIds.length > 0) {
+      return productsData
+        .filter(p => p.status === 'Active' && p.categoryId && categoryTabIds.includes(p.categoryId))
+        .map(p => ({ ...p, categoryName: categoryNameMap.get(p.categoryId ?? '') ?? '' }));
+    }
+
     return productsData
       .filter(p => p.status === 'Active')
-      .slice(0, itemCount)
       .map(p => ({ ...p, categoryName: categoryNameMap.get(p.categoryId ?? '') ?? '' }));
-  }, [productsData, manualProductsData, selectionMode, selectedProductIds, itemCount, snapshotData, demoProducts, categoryNameMap]);
+  }, [productsData, manualProductsData, selectionMode, selectedProductIds, itemCount, snapshotData, demoProducts, categoryNameMap, categoryTabIds]);
 
-  // Category tabs to render
+  // Category tabs to render: Lọc theo danh mục hoặc Tự động gôm tab
   const displayTabs = React.useMemo(() => {
     if (!showCategoryTabs) return [];
+    
+    // Chế độ lọc theo danh mục
+    if (selectionMode === 'category') {
+      if (categoryTabIds.length > 0 && categories) {
+        return categoryTabIds
+          .map(id => categories.find(c => c._id === id))
+          .filter(Boolean)
+          .map(c => ({ id: c!._id, name: c!.name }));
+      }
+      if (categories) {
+        return categories.map(c => ({ id: c._id, name: c.name }));
+      }
+    }
+    
     // Demo mode: derive tabs from product categories
     if (selectionMode === 'demo') {
       const uniqueCats = [...new Set(demoProducts.map(p => p.category).filter(Boolean))] as string[];
       return uniqueCats.slice(0, 5).map(name => ({ id: name, name }));
     }
-    // From config categoryTabIds
-    if (categoryTabIds.length > 0 && categories) {
-      return categoryTabIds
-        .map(id => categories.find(c => c._id === id))
-        .filter(Boolean)
-        .slice(0, 5)
-        .map(c => ({ id: c!._id, name: c!.name }));
+
+    // Chế độ Chọn thủ công hoặc Tự động: Quét và gôm tab tự động từ các sản phẩm được chọn
+    if (allProducts && allProducts.length > 0) {
+      const uniqueCats = [...new Set(allProducts.map(p => p.categoryName).filter(Boolean))] as string[];
+      return uniqueCats.map(name => {
+        const catId = categories?.find(c => c.name === name)?._id ?? name;
+        return { id: catId, name };
+      });
     }
-    // Fallback: show all active categories
-    if (categories) {
-      return categories.slice(0, 5).map(c => ({ id: c._id, name: c.name }));
-    }
+
     return [];
-  }, [showCategoryTabs, categoryTabIds, categories, selectionMode, demoProducts]);
+  }, [showCategoryTabs, selectionMode, categoryTabIds, categories, demoProducts, allProducts]);
 
   // Filter products by active tab
   const products = React.useMemo(() => {
-    if (!activeTabId) return allProducts;
-    // Demo mode: filter by category name
-    if (selectionMode === 'demo') {
-      return allProducts.filter(p => p.categoryName === activeTabId || p.categoryId === activeTabId);
-    }
-    // Normal: filter by categoryId
-    return allProducts.filter(p => p.categoryId === activeTabId);
-  }, [allProducts, activeTabId, selectionMode]);
+    const source = activeTabId 
+      ? allProducts.filter(p => p.categoryId === activeTabId || p.categoryName === activeTabId)
+      : allProducts;
+    return source.slice(0, itemCount);
+  }, [allProducts, activeTabId, itemCount]);
 
   const showViewAll = allProducts.length >= 3;
 
-  // Loading
-  // Loading state (skip for demo mode)
+  // Loading state
   const isLoading = selectionMode !== 'demo' && !snapshotData && (
     (selectionMode === 'manual' && manualProductsData === undefined) ||
-    (selectionMode === 'auto' && productsData === undefined)
+    ((selectionMode === 'auto' || selectionMode === 'category') && productsData === undefined)
   );
 
   if (isLoading) {
@@ -317,12 +340,27 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
     );
   }
 
+  const renderEmptyCategoryState = () => (
+    <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
+      <Package size={44} className="mx-auto mb-4 text-slate-300 animate-bounce" />
+      <p className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-2">Chưa có sản phẩm nào trong mục này</p>
+      <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto">Chúng tôi đang cập nhật các sản phẩm mới nhất. Vui lòng quay lại sau hoặc khám phá các sản phẩm khác.</p>
+      <Link 
+        href="/products"
+        className="inline-flex items-center justify-center px-6 py-3 text-sm font-bold text-white rounded-full transition-transform hover:scale-[1.02] active:scale-[0.98] shadow-md"
+        style={{ backgroundColor: brandColor }}
+      >
+        Khám phá sản phẩm khác
+      </Link>
+    </div>
+  );
+
   if (allProducts.length === 0) {
     return (
       <section className={cn(sectionSpacingClassName, 'px-4')}>
         <div className="max-w-6xl mx-auto text-center">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 mb-4">{title}</h2>
-          <p className="text-slate-500">Chưa có sản phẩm nào.</p>
+          {renderEmptyCategoryState()}
         </div>
       </section>
     );
@@ -343,22 +381,15 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
   const renderCategoryTabs = () => {
     if (displayTabs.length === 0) return null;
     return (
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide mb-3 md:mb-4 -mx-1 px-1">
-        {displayTabs.map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTabId(tab.id === activeTabId ? null : tab.id)}
-            className="shrink-0 px-3.5 py-1 rounded-full text-xs md:text-sm font-semibold border transition-all whitespace-nowrap"
-            style={
-              activeTabId === tab.id
-                ? { backgroundColor: brandColor, color: '#fff', borderColor: brandColor }
-                : { backgroundColor: 'transparent', color: brandColor, borderColor: `${brandColor}40` }
-            }
-          >
-            {tab.name}
-          </button>
-        ))}
+      <div className="mb-4">
+        <CategoryTabSlider
+          tabs={displayTabs}
+          activeTabId={activeTabId}
+          onTabChange={setActiveTabId}
+          brandColor={brandColor}
+          showAllTab={true}
+          allTabLabel="Tất cả"
+        />
       </div>
     );
   };
@@ -371,22 +402,15 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
           <SectionHeader title={displayTitle} brandColor={brandColor} {...headerConfig} className="mb-0" />
         )}
         {displayTabs.length > 0 && (
-          <div className="flex justify-end gap-5 overflow-x-auto pb-1 scrollbar-hide mt-4">
-            {displayTabs.map(tab => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTabId(tab.id === activeTabId ? null : tab.id)}
-                className="shrink-0 pb-1.5 text-sm font-semibold uppercase tracking-wide transition-all whitespace-nowrap border-b-2"
-                style={
-                  activeTabId === tab.id
-                    ? { color: brandColor, borderColor: brandColor }
-                    : { color: '#64748b', borderColor: 'transparent' }
-                }
-              >
-                {tab.name}
-              </button>
-            ))}
+          <div className="flex justify-end mt-4 max-w-[280px] md:max-w-[420px] ml-auto overflow-hidden">
+            <CategoryTabSlider
+              tabs={displayTabs}
+              activeTabId={activeTabId}
+              onTabChange={setActiveTabId}
+              brandColor={brandColor}
+              showAllTab={true}
+              allTabLabel="Tất cả"
+            />
           </div>
         )}
       </div>
@@ -478,39 +502,32 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
             </div>
           </Link>
 
-          {/* Buttons */}
-          {showAddToCartButton || showBuyNowButton ? (
-            <ProductCardActions
-              product={product as any}
-              tokens={tokens}
-              showStock={showStock}
-              showAddToCartButton={showAddToCartButton}
-              showBuyNowButton={showBuyNowButton}
-              buyNowLabel="Mua ngay"
-              onAddToCart={handleAddToCart}
-              onBuyNow={handleBuyNow}
-              cartButtonsLayout={cartButtonsLayout}
-            />
-          ) : opts?.showButton ? (
-            <Link
-              href={href}
-              className="w-full gap-1.5 border-2 py-1.5 px-4 rounded-lg font-medium flex items-center justify-center transition-colors hover:bg-opacity-10 whitespace-nowrap text-xs md:text-sm"
-              style={{ borderColor: `${brandColor}30`, color: brandColor }}
-            >
-              Xem chi tiết <ArrowRight className="w-3 h-3 flex-shrink-0" />
-            </Link>
-          ) : null}
-        </div>
+        {/* Buttons */}
+        {showAddToCartButton || showBuyNowButton ? (
+          <ProductCardActions
+            product={product as any}
+            tokens={tokens}
+            showStock={showStock}
+            showAddToCartButton={showAddToCartButton}
+            showBuyNowButton={showBuyNowButton}
+            buyNowLabel="Mua ngay"
+            onAddToCart={handleAddToCart}
+            onBuyNow={handleBuyNow}
+            cartButtonsLayout={cartButtonsLayout}
+          />
+        ) : opts?.showButton ? (
+          <Link
+            href={href}
+            className="w-full gap-1.5 border-2 py-1.5 px-4 rounded-lg font-medium flex items-center justify-center transition-colors hover:bg-opacity-10 whitespace-nowrap text-xs md:text-sm"
+            style={{ borderColor: `${brandColor}30`, color: brandColor }}
+          >
+            Xem chi tiết <ArrowRight className="w-3 h-3 flex-shrink-0" />
+          </Link>
+        ) : null}
       </div>
-    );
-  };
-
-  const renderEmptyCategoryState = () => (
-    <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center">
-      <Package size={40} className="mx-auto mb-3 text-slate-300" />
-      <p className="text-sm font-medium text-slate-500">Danh mục này chưa có sản phẩm.</p>
     </div>
   );
+};
 
   // ── Layout Renders ──
 
@@ -707,21 +724,16 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
 
           {/* Category tabs */}
           {displayTabs.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-6">
-              {displayTabs.map(tab => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTabId(tab.id === activeTabId ? null : tab.id)}
-                  className="px-4 py-2 rounded-md text-sm font-bold transition-colors hover:opacity-90 whitespace-nowrap"
-                  style={{
-                    ...brandTabStyle,
-                    boxShadow: activeTabId === tab.id ? brandTabActiveShadow : undefined,
-                  }}
-                >
-                  {tab.name}
-                </button>
-              ))}
+            <div className="mb-6">
+              <CategoryTabSlider
+                tabs={displayTabs}
+                activeTabId={activeTabId}
+                onTabChange={setActiveTabId}
+                brandColor={brandColor}
+                brandBgColor={brandColor}
+                showAllTab={true}
+                allTabLabel="Tất cả"
+              />
             </div>
           )}
 
@@ -761,30 +773,25 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
           <SectionHeader title={displayTitle} brandColor={brandColor} {...headerConfig} className="mb-6" />
 
           {/* Header bar */}
-          <div
-            className="flex items-center gap-3 px-4 md:px-6 py-3 overflow-x-auto rounded-t-lg"
-            style={{ backgroundColor: brandColor }}
-          >
-            <span className="font-bold text-sm whitespace-nowrap" style={{ color: textOnBrand }}>Chọn danh mục</span>
-            {displayTabs.length > 0 && (
-              <>
-                {displayTabs.map(tab => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTabId(tab.id === activeTabId ? null : tab.id)}
-                    className="px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-colors hover:opacity-90"
-                    style={{
-                      ...brandTabStyle,
-                      boxShadow: activeTabId === tab.id ? brandTabActiveShadow : undefined,
-                    }}
-                  >
-                    {tab.name}
-                  </button>
-                ))}
-              </>
-            )}
-          </div>
+          {displayTabs.length > 0 && (
+            <div
+              className="flex items-center gap-3 px-4 md:px-6 py-2 overflow-x-auto rounded-t-lg mb-4"
+              style={{ backgroundColor: brandColor }}
+            >
+              <span className="font-bold text-sm whitespace-nowrap text-white" style={{ color: textOnBrand }}>Danh mục:</span>
+              <div className="flex-1 overflow-hidden">
+                <CategoryTabSlider
+                  tabs={displayTabs}
+                  activeTabId={activeTabId}
+                  onTabChange={setActiveTabId}
+                  brandColor={brandColor}
+                  brandBgColor={brandColor}
+                  showAllTab={true}
+                  allTabLabel="Tất cả"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Product grid — same card style as Catalog */}
           <div className="py-8">

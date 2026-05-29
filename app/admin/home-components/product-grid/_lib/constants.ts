@@ -18,9 +18,10 @@ export const PRODUCT_GRID_STYLES: { id: ProductGridStyle; label: string }[] = [
 
 export const DEFAULT_PRODUCT_GRID_CONFIG: ProductGridConfig = {
   itemCount: 8,
+  desktopRows: 2,
   sectionTitle: 'Sản phẩm nổi bật',
   selectedProductIds: [],
-  selectionMode: 'auto',
+  selectionMode: 'category',
   sortBy: 'newest',
   spacing: DEFAULT_SECTION_SPACING,
   style: 'commerce',

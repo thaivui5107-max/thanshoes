@@ -22,11 +22,13 @@ import { SaleBadge } from '@/components/site/shared/BrandColorHelpers';
 import { getProductImageAspectRatioCssValue, resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
 import { ProductCardActions } from '@/components/site/shared/ProductCardActions';
 import { getProductsListColors } from '@/components/site/products/colors';
+import { CategoryTabSlider } from '@/components/shared/CategoryTabSlider';
 
 export const ProductGridPreview = ({
   brandColor,
   secondary,
   itemCount,
+  desktopRows = 2,
   selectedStyle,
   onStyleChange,
   items,
@@ -55,6 +57,7 @@ export const ProductGridPreview = ({
   brandColor: string;
   secondary: string;
   itemCount: number;
+  desktopRows?: number;
   selectedStyle?: ProductGridStyle;
   onStyleChange?: (style: ProductGridStyle) => void;
   items?: ProductListPreviewItem[];
@@ -84,7 +87,6 @@ export const ProductGridPreview = ({
   const { device, setDevice } = usePreviewDevice();
   const aspectRatioSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
   const visibleCategoryTabs = categoryTabs ?? [];
-  const hasTabs = visibleCategoryTabs.length > 0;
   const isMinimalStyle = (selectedStyle ?? 'commerce') === 'minimal';
   const previewStyle = selectedStyle ?? 'commerce';
   const sectionSpacingClassName = getSectionSpacingClassName(normalizeSectionSpacing(spacing));
@@ -102,10 +104,25 @@ export const ProductGridPreview = ({
     [brandColor, secondary]
   );
 
-  // Filter items by active tab (match by category name or _id)
+  // Dynamic Tabs resolution: Lọc theo danh mục hoặc Tự động gôm tab
+  const resolvedTabs = useMemo(() => {
+    if (visibleCategoryTabs.length > 0) {
+      return visibleCategoryTabs.map(t => ({ id: t._id || t.name, name: t.name }));
+    }
+    if (items && items.length > 0) {
+      const uniqueCats = [...new Set(items.map(item => item.category).filter(Boolean))] as string[];
+      return uniqueCats.slice(0, 5).map(name => ({ id: name, name }));
+    }
+    return [];
+  }, [visibleCategoryTabs, items]);
+
+  const hasTabs = resolvedTabs.length > 0;
+
+  // Filter items by active tab (match by category name or id)
   const filteredItems = useMemo(() => {
-    if (!items || !activeTab) return items;
-    return items.filter(item => item.category === activeTab);
+    if (!items) return [];
+    if (!activeTab) return items;
+    return items.filter(item => item.category === activeTab || (item as any).categoryId === activeTab);
   }, [items, activeTab]);
 
   const fallbackItems: ProductListPreviewItem[] = [
@@ -119,8 +136,8 @@ export const ProductGridPreview = ({
     { category: 'Camera', id: 8, image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=500&h=500&fit=crop&q=80', name: 'Fujifilm X-T5', originalPrice: '45.000.000đ', price: '42.990.000đ' },
   ];
 
-  const displayItems = filteredItems ?? fallbackItems.slice(0, Math.max(itemCount, 8));
-  const selectedCategoryEmpty = activeTab !== null && filteredItems?.length === 0;
+  const displayItems = filteredItems.length > 0 ? filteredItems : (items && items.length > 0 ? items : fallbackItems.slice(0, Math.max(itemCount, 8)));
+  const selectedCategoryEmpty = (activeTab !== null && filteredItems.length === 0) || (items && items.length === 0);
 
   const getDiscount = (price?: string, originalPrice?: string) => {
     if (!price || !originalPrice) return null;
@@ -145,12 +162,24 @@ export const ProductGridPreview = ({
   };
   const brandTabActiveShadow = '0 0 0 2px rgba(255,255,255,0.65)';
 
-  const renderEmptyCategoryState = () => (
-    <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center">
-      <Package size={36} className="mx-auto mb-3 text-slate-300" />
-      <p className="text-sm font-medium text-slate-500">Danh mục này chưa có sản phẩm.</p>
-    </div>
-  );
+  const renderEmptyCategoryState = () => {
+    const adminProductsUrl = '/admin/products';
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+        <Package size={40} className="mx-auto mb-3 text-slate-300 animate-pulse" />
+        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-4">Danh mục này hiện chưa có sản phẩm nào.</p>
+        <a
+          href={adminProductsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-white rounded-lg transition-transform hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+          style={{ backgroundColor: brandColor }}
+        >
+          Quản lý sản phẩm ngay
+        </a>
+      </div>
+    );
+  };
 
   const renderPreviewHeader = (className = 'mb-6') => (
     <SectionHeader
@@ -207,21 +236,16 @@ export const ProductGridPreview = ({
                   {renderPreviewHeader('mb-6')}
 
                   {hasTabs && (
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {visibleCategoryTabs.slice(0, 5).map(tab => (
-                        <button
-                          key={tab._id}
-                          type="button"
-                          onClick={() => setActiveTab(tab._id === activeTab ? null : tab._id)}
-                          className="px-4 py-2 rounded-md text-sm font-bold transition-colors hover:opacity-90 whitespace-nowrap"
-                          style={{
-                            ...brandTabStyle,
-                            boxShadow: activeTab === tab._id ? brandTabActiveShadow : undefined,
-                          }}
-                        >
-                          {tab.name}
-                        </button>
-                      ))}
+                    <div className="mb-6">
+                      <CategoryTabSlider
+                        tabs={resolvedTabs}
+                        activeTabId={activeTab}
+                        onTabChange={setActiveTab}
+                        brandColor={brandColor}
+                        brandBgColor={brandColor}
+                        showAllTab={true}
+                        allTabLabel="Tất cả"
+                      />
                     </div>
                   )}
 
@@ -336,32 +360,27 @@ export const ProductGridPreview = ({
             <div className="max-w-7xl mx-auto">
               {renderPreviewHeader('mb-6')}
 
-              <div
-                className="flex items-center gap-3 px-4 md:px-6 py-3 overflow-x-auto rounded-t-lg"
-                style={{ backgroundColor: brandColor }}
-              >
-                <span className="font-bold text-sm whitespace-nowrap" style={{ color: textOnBrand }}>Chọn danh mục</span>
-                {hasTabs && (
-                  <>
-                    {visibleCategoryTabs.slice(0, 5).map(tab => (
-                      <button
-                        key={tab._id}
-                        type="button"
-                        onClick={() => setActiveTab(tab._id === activeTab ? null : tab._id)}
-                        className="px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-colors hover:opacity-90"
-                        style={{
-                          ...brandTabStyle,
-                          boxShadow: activeTab === tab._id ? brandTabActiveShadow : undefined,
-                        }}
-                      >
-                        {tab.name}
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
+              {hasTabs && (
+                <div
+                  className="flex items-center gap-3 px-4 md:px-6 py-2 overflow-x-auto rounded-t-lg mb-4"
+                  style={{ backgroundColor: brandColor }}
+                >
+                  <span className="font-bold text-sm whitespace-nowrap text-white" style={{ color: textOnBrand }}>Danh mục:</span>
+                  <div className="flex-1 overflow-hidden">
+                    <CategoryTabSlider
+                      tabs={resolvedTabs}
+                      activeTabId={activeTab}
+                      onTabChange={setActiveTab}
+                      brandColor={brandColor}
+                      brandBgColor={brandColor}
+                      showAllTab={true}
+                      allTabLabel="Tất cả"
+                    />
+                  </div>
+                </div>
+              )}
 
-              <div className="py-8">
+              <div className="py-2">
                 {selectedCategoryEmpty ? renderEmptyCategoryState() : (
                   <div className={`grid ${gridColsClass} gap-4 md:gap-6`}>
                     {displayItems.slice(0, itemCount).map((item) => {
@@ -463,43 +482,29 @@ export const ProductGridPreview = ({
 
   // Pill tabs — for non-minimal layouts
   const pillTabsSlot = hasTabs ? (
-    <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide mb-3 md:mb-4 -mx-1 px-1">
-      {visibleCategoryTabs.map(tab => (
-        <button
-          key={tab._id}
-          type="button"
-          onClick={() => setActiveTab(tab._id === activeTab ? null : tab._id)}
-          className="shrink-0 px-3.5 py-1 rounded-full text-xs md:text-sm font-semibold border transition-all whitespace-nowrap"
-          style={
-            activeTab === tab._id
-              ? { backgroundColor: brandColor, color: '#fff', borderColor: brandColor }
-              : { backgroundColor: 'transparent', color: brandColor, borderColor: `${brandColor}40` }
-          }
-        >
-          {tab.name}
-        </button>
-      ))}
+    <div className="mb-3 md:mb-4">
+      <CategoryTabSlider
+        tabs={resolvedTabs}
+        activeTabId={activeTab}
+        onTabChange={setActiveTab}
+        brandColor={brandColor}
+        showAllTab={true}
+        allTabLabel="Tất cả"
+      />
     </div>
   ) : undefined;
 
   // Text+underline tabs — for minimal/E-commerce (inline with header right)
   const minimalTabsSlot = hasTabs ? (
-    <div className="flex gap-5 overflow-x-auto pb-1 scrollbar-hide shrink-0">
-      {visibleCategoryTabs.map(tab => (
-        <button
-          key={tab._id}
-          type="button"
-          onClick={() => setActiveTab(tab._id === activeTab ? null : tab._id)}
-          className="shrink-0 pb-1.5 text-sm font-semibold uppercase tracking-wide transition-all whitespace-nowrap border-b-2"
-          style={
-            activeTab === tab._id
-              ? { color: brandColor, borderColor: brandColor }
-              : { color: '#64748b', borderColor: 'transparent' }
-          }
-        >
-          {tab.name}
-        </button>
-      ))}
+    <div className="max-w-[280px] md:max-w-[400px] overflow-hidden shrink-0">
+      <CategoryTabSlider
+        tabs={resolvedTabs}
+        activeTabId={activeTab}
+        onTabChange={setActiveTab}
+        brandColor={brandColor}
+        showAllTab={true}
+        allTabLabel="Tất cả"
+      />
     </div>
   ) : undefined;
 

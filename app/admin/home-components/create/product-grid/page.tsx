@@ -26,8 +26,9 @@ function ProductGridCreateContent() {
   const fontStyle = { '--font-active': `var(${effectiveFont.fontVariable})` } as React.CSSProperties;
 
   const [itemCount, setItemCount] = useState(8);
+  const [desktopRows, setDesktopRows] = useState(2);
   const [sortBy, setSortBy] = useState<'newest' | 'bestseller' | 'random'>('newest');
-  const [selectionMode, setSelectionMode] = useState<ProductGridSelectionMode>('auto');
+  const [selectionMode, setSelectionMode] = useState<ProductGridSelectionMode>('category');
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [demoProducts, setDemoProducts] = useState<DemoProductItem[]>([]);
   const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -71,6 +72,20 @@ function ProductGridCreateContent() {
     (resolvedProductsData ?? []).map((product) => [product._id, product])
   ), [resolvedProductsData]);
 
+  const allActiveProducts = useMemo<ProductGridProductItem[]>(() => {
+    if (!productsData) return [];
+    return productsData
+      .filter(p => p.status === 'Active')
+      .map(p => ({
+        _id: p._id,
+        name: p.name,
+        image: p.image,
+        price: p.price,
+        categoryId: p.categoryId,
+        stock: p.stock,
+      }));
+  }, [productsData]);
+
   const filteredProducts = useMemo<ProductGridProductItem[]>(() => {
     if (!productsData) {return [];}
     return productsData
@@ -81,6 +96,8 @@ function ProductGridCreateContent() {
         image: product.image,
         name: product.name,
         price: product.price,
+        categoryId: product.categoryId,
+        stock: product.stock,
       }));
   }, [productsData, productSearchTerm]);
 
@@ -95,52 +112,62 @@ function ProductGridCreateContent() {
         image: product.image,
         name: product.name,
         price: product.price,
+        categoryId: product.categoryId,
+        stock: product.stock,
       }));
   }, [productsData, selectedProductIds]);
 
-  const productPreviewItems: ProductListPreviewItem[] = useMemo(() => selectedProducts.map((p) => {
-    const resolvedProduct = resolvedProductMap.get(p._id as Id<'products'>);
-    const priceValue = resolvedProduct?.price ?? p.price ?? undefined;
-    const salePriceValue = resolvedProduct?.salePrice ?? undefined;
-    const priceDisplay = getHomeComponentPriceLabel({ saleMode, price: priceValue, salePrice: salePriceValue, isRangeFromVariant: resolvedProduct?.hasVariants ?? p.hasVariants });
-    const hasBasePrice = priceValue != null || salePriceValue != null;
-    return {
-      description: p.name,
-      id: p._id,
-      image: p.image ?? undefined,
-      name: p.name,
-      price: !hasBasePrice && saleMode === 'cart' ? undefined : priceDisplay.label,
-      originalPrice: priceDisplay.comparePrice
-        ? getHomeComponentPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label
-        : undefined,
-    };
-  }), [resolvedProductMap, selectedProducts, saleMode]);
+  const effectiveItemCount = useMemo(() => {
+    if (selectionMode === 'category' || selectionMode === 'auto') {
+      return desktopColumns * desktopRows;
+    }
+    return selectionMode === 'demo' ? demoProducts.length : (selectionMode === 'manual' ? selectedProductIds.length : itemCount);
+  }, [selectionMode, desktopColumns, desktopRows, demoProducts.length, selectedProductIds.length, itemCount]);
 
-  const autoProductPreviewItems: ProductListPreviewItem[] = useMemo(() => {
-    const source = resolvedProductsData ?? productsData;
-    if (!source) {return [];} 
-    return source
-      .filter(product => product.status === 'Active')
-      .slice(0, itemCount)
-      .map(product => {
-        const priceDisplay = getHomeComponentPriceLabel({ saleMode, price: product.price ?? undefined, salePrice: product.salePrice ?? undefined, isRangeFromVariant: product.hasVariants });
-        const hasBasePrice = product.price != null || product.salePrice != null;
-        return {
-          description: product.name,
-          id: product._id,
-          image: product.image ?? undefined,
-          name: product.name,
-          price: !hasBasePrice && saleMode === 'cart' ? undefined : priceDisplay.label,
-          originalPrice: priceDisplay.comparePrice
-            ? getHomeComponentPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label
-            : undefined,
-        };
+  const previewItems: ProductListPreviewItem[] = useMemo(() => {
+    if (selectionMode === 'demo' && demoProducts.length > 0) {
+      return demoProducts.map(d => ({
+        id: d.id,
+        name: d.name,
+        image: d.image ?? undefined,
+        price: d.price,
+        originalPrice: d.originalPrice,
+        category: d.category,
+      }));
+    }
+
+    const source = selectionMode === 'manual' ? selectedProducts : allActiveProducts;
+    if (!source || source.length === 0) return [];
+
+    return source.map((p) => {
+      const resolvedProduct = resolvedProductMap.get(p._id as Id<'products'>);
+      const priceValue = resolvedProduct?.price ?? p.price ?? undefined;
+      const salePriceValue = resolvedProduct?.salePrice ?? undefined;
+      const priceDisplay = getHomeComponentPriceLabel({
+        saleMode,
+        price: priceValue,
+        salePrice: salePriceValue,
+        isRangeFromVariant: resolvedProduct?.hasVariants ?? p.hasVariants,
       });
-  }, [productsData, resolvedProductsData, itemCount, saleMode]);
+      const hasBasePrice = priceValue != null || salePriceValue != null;
+      return {
+        description: p.name,
+        id: p._id,
+        image: p.image ?? undefined,
+        name: p.name,
+        price: !hasBasePrice && saleMode === 'cart' ? undefined : priceDisplay.label,
+        originalPrice: priceDisplay.comparePrice
+          ? getHomeComponentPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label
+          : undefined,
+        category: p.categoryId ? (allCategories?.find(c => c._id === p.categoryId)?.name ?? '') : undefined,
+      };
+    });
+  }, [selectionMode, demoProducts, selectedProducts, allActiveProducts, resolvedProductMap, saleMode, allCategories]);
 
   const onSubmit = (e: React.FormEvent) => {
     void handleSubmit(e, {
-      itemCount,
+      itemCount: effectiveItemCount,
+      desktopRows,
       sectionTitle,
       selectedProductIds: selectionMode === 'manual' ? selectedProductIds : [],
       demoProducts: selectionMode === 'demo' ? demoProducts : undefined,
@@ -223,6 +250,8 @@ function ProductGridCreateContent() {
       <ProductGridForm
         itemCount={itemCount}
         setItemCount={setItemCount}
+        desktopRows={desktopRows}
+        setDesktopRows={setDesktopRows}
         sortBy={sortBy}
         setSortBy={setSortBy}
         selectionMode={selectionMode}
@@ -233,6 +262,7 @@ function ProductGridCreateContent() {
         setProductSearchTerm={setProductSearchTerm}
         selectedProducts={selectedProducts}
         filteredProducts={filteredProducts}
+        allActiveProducts={allActiveProducts}
         isLoading={productsData === undefined}
         demoProducts={demoProducts}
         setDemoProducts={setDemoProducts}
@@ -260,16 +290,11 @@ function ProductGridCreateContent() {
           <ProductGridPreview
             brandColor={primary}
             secondary={secondary}
-            itemCount={selectionMode === 'demo' ? demoProducts.length : (selectionMode === 'manual' ? selectedProductIds.length : itemCount)}
+            itemCount={effectiveItemCount}
+            desktopRows={desktopRows}
             selectedStyle={style}
             onStyleChange={setStyle}
-            items={
-              selectionMode === 'demo' && demoProducts.length > 0
-                ? demoProducts.map(d => ({ id: d.id, name: d.name, image: d.image, price: d.price, originalPrice: d.originalPrice, category: d.category, tag: d.tag || undefined }))
-                : selectionMode === 'manual' && productPreviewItems.length > 0
-                  ? productPreviewItems
-                  : (autoProductPreviewItems.length > 0 ? autoProductPreviewItems : undefined)
-            }
+            items={previewItems}
             subTitle={subTitle}
             sectionTitle={title}
             subtitle={sectionTitle}
