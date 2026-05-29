@@ -128,65 +128,77 @@ interface LayoutProps {
   priceFilterMode?: 'disabled' | 'custom' | 'smart_dropdown' | 'slider';
 }
 
+function roundDownToNiceNumber(num: number) {
+  if (num <= 10000) return 0;
+  if (num <= 100000) return Math.floor(num / 10000) * 10000;
+  if (num <= 1000000) return Math.floor(num / 50000) * 50000;
+  return Math.floor(num / 100000) * 100000;
+}
+
+function roundUpToNiceNumber(num: number) {
+  if (num <= 10000) return 10000;
+  if (num <= 100000) return Math.ceil(num / 10000) * 10000;
+  if (num <= 1000000) return Math.ceil(num / 50000) * 50000;
+  return Math.ceil(num / 100000) * 100000;
+}
+
 function generateSmartPriceRanges(min: number, max: number) {
   if (min >= max) return [];
-  const range = max - min;
   
-  if (range <= 100000) {
-    const mid = Math.round((min + max) / 2 / 10000) * 10000;
+  const niceMin = roundDownToNiceNumber(min);
+  const niceMax = roundUpToNiceNumber(max);
+  const range = niceMax - niceMin;
+
+  let step = 10000;
+  const targetSegments = 4;
+  const rawStep = range / targetSegments;
+  
+  if (rawStep > 5000000) step = 5000000;
+  else if (rawStep > 2000000) step = 2000000;
+  else if (rawStep > 1000000) step = 1000000;
+  else if (rawStep > 500000) step = 500000;
+  else if (rawStep > 200000) step = 200000;
+  else if (rawStep > 100000) step = 100000;
+  else if (rawStep > 50000) step = 50000;
+  else if (rawStep > 20000) step = 20000;
+  else step = 10000;
+
+  const milestones: number[] = [];
+  const start = Math.ceil(niceMin / step) * step;
+  const end = Math.floor(niceMax / step) * step;
+  
+  for (let val = start + step; val < end; val += step) {
+    milestones.push(val);
+  }
+
+  // Fallback nếu không sinh ra được milestone nào ở giữa
+  if (milestones.length === 0) {
+    const mid = Math.round((niceMin + niceMax) / 2 / 50000) * 50000;
     return [
       { label: `Dưới ${mid.toLocaleString()}đ`, minPrice: undefined, maxPrice: mid },
       { label: `Trên ${mid.toLocaleString()}đ`, minPrice: mid, maxPrice: undefined }
     ];
   }
 
-  let milestones: number[] = [];
-  if (max <= 500000) {
-    milestones = [100000, 200000, 300000, 400000];
-  } else if (max <= 2000000) {
-    milestones = [200000, 500000, 1000000, 1500000];
-  } else if (max <= 5000000) {
-    milestones = [500000, 1000000, 2000000, 3000000, 4000000];
-  } else if (max <= 10000000) {
-    milestones = [1000000, 2000000, 4000000, 6000000, 8000000];
-  } else if (max <= 30000000) {
-    milestones = [2000000, 5000000, 10000000, 15000000, 20000000];
-  } else {
-    milestones = [5000000, 10000000, 20000000, 40000000, 60000000];
-  }
-
-  const validMilestones = milestones.filter(m => m > min && m < max);
-
-  if (validMilestones.length === 0) {
-    const step = Math.round(range / 3 / 50000) * 50000;
-    const m1 = min + step;
-    const m2 = min + step * 2;
-    return [
-      { label: `Dưới ${m1.toLocaleString()}đ`, minPrice: undefined, maxPrice: m1 },
-      { label: `${m1.toLocaleString()}đ - ${m2.toLocaleString()}đ`, minPrice: m1, maxPrice: m2 },
-      { label: `Trên ${m2.toLocaleString()}đ`, minPrice: m2, maxPrice: undefined }
-    ];
-  }
-
   const options: { label: string; minPrice?: number; maxPrice?: number }[] = [];
   
   options.push({
-    label: `Dưới ${validMilestones[0].toLocaleString()}đ`,
+    label: `Dưới ${milestones[0].toLocaleString()}đ`,
     minPrice: undefined,
-    maxPrice: validMilestones[0]
+    maxPrice: milestones[0]
   });
 
-  for (let i = 0; i < validMilestones.length - 1; i++) {
+  for (let i = 0; i < milestones.length - 1; i++) {
     options.push({
-      label: `${validMilestones[i].toLocaleString()}đ - ${validMilestones[i+1].toLocaleString()}đ`,
-      minPrice: validMilestones[i],
-      maxPrice: validMilestones[i+1]
+      label: `${milestones[i].toLocaleString()}đ - ${milestones[i+1].toLocaleString()}đ`,
+      minPrice: milestones[i],
+      maxPrice: milestones[i+1]
     });
   }
 
   options.push({
-    label: `Trên ${validMilestones[validMilestones.length - 1].toLocaleString()}đ`,
-    minPrice: validMilestones[validMilestones.length - 1],
+    label: `Trên ${milestones[milestones.length - 1].toLocaleString()}đ`,
+    minPrice: milestones[milestones.length - 1],
     maxPrice: undefined
   });
 

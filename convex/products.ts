@@ -951,6 +951,13 @@ export const listPublishedPaginated = query({
       if (args.productTypeId) {
         query = query.filter((q) => q.eq(q.field("productTypeId"), args.productTypeId));
       }
+
+      if (args.minPrice !== undefined) {
+        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
+      }
+      if (args.maxPrice !== undefined) {
+        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
+      }
       
       result = await query
         .order(sortBy === "oldest" ? "asc" : "desc")
@@ -964,23 +971,50 @@ export const listPublishedPaginated = query({
         };
       }
     } else if (args.productTypeId) {
-      result = await ctx.db
+      let query = ctx.db
         .query("products")
         .withIndex("by_type_status_effectivePrice", (q) =>
           q.eq("productTypeId", args.productTypeId!).eq("status", "Active")
-        )
+        );
+
+      if (args.minPrice !== undefined) {
+        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
+      }
+      if (args.maxPrice !== undefined) {
+        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
+      }
+
+      result = await query
         .order(sortBy === "oldest" ? "asc" : "desc")
         .paginate(args.paginationOpts);
     } else if (sortBy === "popular") {
-      result = await ctx.db
+      let query = ctx.db
         .query("products")
-        .withIndex("by_status_sales", (q) => q.eq("status", "Active"))
+        .withIndex("by_status_sales", (q) => q.eq("status", "Active"));
+
+      if (args.minPrice !== undefined) {
+        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
+      }
+      if (args.maxPrice !== undefined) {
+        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
+      }
+
+      result = await query
         .order("desc")
         .paginate(args.paginationOpts);
     } else {
-      result = await ctx.db
+      let query = ctx.db
         .query("products")
-        .withIndex("by_status_order", (q) => q.eq("status", "Active"))
+        .withIndex("by_status_order", (q) => q.eq("status", "Active"));
+
+      if (args.minPrice !== undefined) {
+        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
+      }
+      if (args.maxPrice !== undefined) {
+        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
+      }
+
+      result = await query
         .order(sortBy === "oldest" ? "asc" : "desc")
         .paginate(args.paginationOpts);
     }
@@ -1078,6 +1112,13 @@ export const listPublishedWithOffset = query({
       if (args.productTypeId) {
         query = query.filter((q) => q.eq(q.field("productTypeId"), args.productTypeId));
       }
+
+      if (args.minPrice !== undefined) {
+        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
+      }
+      if (args.maxPrice !== undefined) {
+        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
+      }
       
       products = await query.take(fetchLimit);
       if (await isMultiCategoryEnabled(ctx, "products")) {
@@ -1085,23 +1126,46 @@ export const listPublishedWithOffset = query({
         products = products.filter((product) => product.status === "Active" && (!args.productTypeId || product.productTypeId === args.productTypeId));
       }
     } else if (args.productTypeId) {
-      products = await ctx.db
+      let query = ctx.db
         .query("products")
         .withIndex("by_type_status_effectivePrice", (q) =>
           q.eq("productTypeId", args.productTypeId!).eq("status", "Active")
-        )
-        .take(fetchLimit);
+        );
+
+      if (args.minPrice !== undefined) {
+        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
+      }
+      if (args.maxPrice !== undefined) {
+        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
+      }
+
+      products = await query.take(fetchLimit);
     } else if (sortBy === "popular") {
-      products = await ctx.db
+      let query = ctx.db
         .query("products")
-        .withIndex("by_status_sales", (q) => q.eq("status", "Active"))
-        .order("desc")
-        .take(fetchLimit);
+        .withIndex("by_status_sales", (q) => q.eq("status", "Active"));
+
+      if (args.minPrice !== undefined) {
+        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
+      }
+      if (args.maxPrice !== undefined) {
+        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
+      }
+
+      products = await query.order("desc").take(fetchLimit);
     } else {
-      products = await ctx.db
+      let query = ctx.db
         .query("products")
-        .withIndex("by_status_order", (q) => q.eq("status", "Active"))
-        .take(fetchLimit);
+        .withIndex("by_status_order", (q) => q.eq("status", "Active"));
+
+      if (args.minPrice !== undefined) {
+        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
+      }
+      if (args.maxPrice !== undefined) {
+        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
+      }
+
+      products = await query.take(fetchLimit);
     }
 
     if (args.search?.trim() && products.length > 0) {
@@ -1311,6 +1375,13 @@ export const countPublished = query({
       if (args.productTypeId) {
         query = query.filter((q) => q.eq(q.field("productTypeId"), args.productTypeId));
       }
+
+      if (args.minPrice !== undefined) {
+        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
+      }
+      if (args.maxPrice !== undefined) {
+        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
+      }
       
       products = await query.collect();
       if (await isMultiCategoryEnabled(ctx, "products")) {
@@ -1318,17 +1389,33 @@ export const countPublished = query({
         products = products.filter((product) => product.status === "Active" && (!args.productTypeId || product.productTypeId === args.productTypeId));
       }
     } else if (args.productTypeId) {
-      products = await ctx.db
+      let query = ctx.db
         .query("products")
         .withIndex("by_type_status_effectivePrice", (q) =>
           q.eq("productTypeId", args.productTypeId!).eq("status", "Active")
-        )
-        .collect();
+        );
+
+      if (args.minPrice !== undefined) {
+        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
+      }
+      if (args.maxPrice !== undefined) {
+        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
+      }
+
+      products = await query.collect();
     } else {
-      products = await ctx.db
+      let query = ctx.db
         .query("products")
-        .withIndex("by_status_order", (q) => q.eq("status", "Active"))
-        .collect();
+        .withIndex("by_status_order", (q) => q.eq("status", "Active"));
+
+      if (args.minPrice !== undefined) {
+        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
+      }
+      if (args.maxPrice !== undefined) {
+        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
+      }
+
+      products = await query.collect();
     }
 
     if (args.search?.trim() && products.length > 0) {
@@ -2672,4 +2759,17 @@ export const countActiveByCategory = query({
     return counts;
   },
   returns: v.any(),
+});
+
+export const backfillEffectivePrices = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const products = await ctx.db.query("products").collect();
+    let count = 0;
+    for (const p of products) {
+      await recalculateProductEffectivePrice(ctx, p._id);
+      count++;
+    }
+    return count;
+  },
 });
