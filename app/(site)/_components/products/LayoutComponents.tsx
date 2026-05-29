@@ -120,6 +120,8 @@ interface LayoutProps {
   radiusClass: string;
   productAttributesMap?: Map<string, any[]>;
   cartButtonsLayout?: 'stack' | 'grid-2';
+  showSearch?: boolean;
+  showCategories?: boolean;
 }
 
 export function CatalogLayout({
@@ -171,7 +173,9 @@ export function CatalogLayout({
   onClearFilters,
   radiusClass,
   productAttributesMap,
-  cartButtonsLayout
+  cartButtonsLayout,
+  showSearch = true,
+  showCategories = true
 }: LayoutProps) {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
@@ -180,14 +184,75 @@ export function CatalogLayout({
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col lg:flex-row gap-6 md:gap-8">
           {/* Sidebar Filters - Desktop */}
-          <aside className="hidden lg:block w-64 shrink-0 space-y-6">
+          <aside className="hidden lg:block w-64 shrink-0 space-y-4">
+            {showSearch && (
+              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                <h3 className="font-semibold text-sm mb-2 flex items-center gap-2" style={{ color: tokens.bodyText }}>
+                  <Search size={14} style={{ color: tokens.inputIcon }} />
+                  Tìm kiếm
+                </h3>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Nhập từ khóa..."
+                    value={searchQuery}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                    className="w-full pl-3 pr-8 py-2 border rounded-lg text-sm outline-none"
+                    style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}
+                  />
+                  {searchQuery && (
+                    <button onClick={() => onSearchChange('')} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: tokens.inputIcon }}>
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {showCategories && (
+              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                <h3 className="font-semibold text-sm mb-2" style={{ color: tokens.bodyText }}>
+                  Danh mục sản phẩm
+                </h3>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => onCategoryChange(null)}
+                    className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${!selectedCategory ? 'font-semibold' : ''}`}
+                    style={!selectedCategory
+                      ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                      : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                    }
+                  >
+                    Tất cả danh mục
+                  </button>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat._id}
+                      onClick={() => onCategoryChange(cat._id)}
+                      className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${selectedCategory === cat._id ? 'font-semibold' : ''}`}
+                      style={selectedCategory === cat._id
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                      }
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {enableProductTypes && productTypes && productTypes.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">Nhóm sản phẩm</h3>
+              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                <h3 className="font-bold text-sm mb-2" style={{ color: tokens.bodyText }}>Nhóm sản phẩm</h3>
                 <div className="space-y-1">
                   <button
                     onClick={() => onProductTypeChange?.(null)}
-                    className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${!productType ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}
+                    className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${!productType ? 'font-semibold' : ''}`}
+                    style={!productType
+                      ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                      : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                    }
                   >
                     Tất cả nhóm
                   </button>
@@ -195,7 +260,11 @@ export function CatalogLayout({
                     <button
                       key={t._id}
                       onClick={() => onProductTypeChange?.(t.slug)}
-                      className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${productType?.slug === t.slug ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}
+                      className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${productType?.slug === t.slug ? 'font-semibold' : ''}`}
+                      style={productType?.slug === t.slug
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                      }
                     >
                       {t.name}
                     </button>
@@ -204,34 +273,17 @@ export function CatalogLayout({
               </div>
             )}
 
-            <div className="space-y-3">
-              <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">Danh mục sản phẩm</h3>
-              <div className="space-y-1">
-                <button
-                  onClick={() => onCategoryChange(null)}
-                  className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${!selectedCategory ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}
-                >
-                  Tất cả danh mục
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat._id}
-                    onClick={() => onCategoryChange(cat._id)}
-                    className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${selectedCategory === cat._id ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {enableProductTypes && productType?.priceRanges && productType.priceRanges.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">Khoảng giá</h3>
+              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                <h3 className="font-bold text-sm mb-2" style={{ color: tokens.bodyText }}>Khoảng giá</h3>
                 <div className="space-y-1">
                   <button
                     onClick={() => onPriceRangeChange?.(null)}
-                    className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${!selectedPriceRange ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}
+                    className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${!selectedPriceRange ? 'font-semibold' : ''}`}
+                    style={!selectedPriceRange
+                      ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                      : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                    }
                   >
                     Tất cả khoảng giá
                   </button>
@@ -239,7 +291,11 @@ export function CatalogLayout({
                     <button
                       key={range.slug}
                       onClick={() => onPriceRangeChange?.(range)}
-                      className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${selectedPriceRange?.slug === range.slug ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}
+                      className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${selectedPriceRange?.slug === range.slug ? 'font-semibold' : ''}`}
+                      style={selectedPriceRange?.slug === range.slug
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                      }
                     >
                       {range.label}
                     </button>
@@ -248,11 +304,42 @@ export function CatalogLayout({
               </div>
             )}
 
+            {/* Khung Khoảng giá Tĩnh giống preview ở admin */}
+            <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+              <h3 className="font-semibold text-sm mb-2 text-slate-800 dark:text-slate-200">Khoảng giá</h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Từ"
+                  className="w-1/2 px-2 py-1.5 border rounded text-sm placeholder:text-[var(--placeholder-color)]"
+                  style={{
+                    borderColor: tokens.inputBorder,
+                    backgroundColor: tokens.inputBackground,
+                    color: tokens.inputText,
+                    '--placeholder-color': tokens.inputPlaceholder,
+                  } as React.CSSProperties}
+                  disabled
+                />
+                <input
+                  type="text"
+                  placeholder="Đến"
+                  className="w-1/2 px-2 py-1.5 border rounded text-sm placeholder:text-[var(--placeholder-color)]"
+                  style={{
+                    borderColor: tokens.inputBorder,
+                    backgroundColor: tokens.inputBackground,
+                    color: tokens.inputText,
+                    '--placeholder-color': tokens.inputPlaceholder,
+                  } as React.CSSProperties}
+                  disabled
+                />
+              </div>
+            </div>
+
             {filterableGroups && filterableGroups.length > 0 && (
-              <div className="space-y-6 pt-4 border-t">
+              <div className="space-y-4">
                 {filterableGroups.map((group) => (
-                  <div key={group._id} className="space-y-3">
-                    <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">{group.name}</h3>
+                  <div key={group._id} className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                    <h3 className="font-bold text-sm mb-2" style={{ color: tokens.bodyText }}>{group.name}</h3>
                     <AttributeFilterGroupWidget
                       group={group}
                       selectedAttributes={selectedAttributes}
@@ -284,22 +371,24 @@ export function CatalogLayout({
               className={`flex flex-col sm:flex-row gap-3 p-3 mb-5 border ${radiusClass}`}
               style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}
             >
-              <div className="relative flex-1">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: tokens.inputIcon }} />
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm sản phẩm..."
-                  value={searchQuery}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  className="w-full h-10 pl-10 pr-9 rounded-lg border outline-none text-sm"
-                  style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}
-                />
-                {searchQuery && (
-                  <button onClick={() => onSearchChange('')} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: tokens.inputIcon }}>
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
+              {showSearch && (
+                <div className="relative flex-1 lg:hidden">
+                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: tokens.inputIcon }} />
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm sản phẩm..."
+                    value={searchQuery}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                    className="w-full h-10 pl-10 pr-9 rounded-lg border outline-none text-sm"
+                    style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}
+                  />
+                  {searchQuery && (
+                    <button onClick={() => onSearchChange('')} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: tokens.inputIcon }}>
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Trigger filters sidebar on mobile */}
               <button
@@ -561,7 +650,9 @@ export function ListLayout({
   onClearFilters,
   radiusClass,
   productAttributesMap,
-  cartButtonsLayout
+  cartButtonsLayout,
+  showSearch = true,
+  showCategories = true
 }: LayoutProps) {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
@@ -570,14 +661,75 @@ export function ListLayout({
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col lg:flex-row gap-6 md:gap-8">
           {/* Sidebar Filters - Desktop */}
-          <aside className="hidden lg:block w-64 shrink-0 space-y-6">
+          <aside className="hidden lg:block w-64 shrink-0 space-y-4">
+            {showSearch && (
+              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                <h3 className="font-semibold text-sm mb-2 flex items-center gap-2" style={{ color: tokens.bodyText }}>
+                  <Search size={14} style={{ color: tokens.inputIcon }} />
+                  Tìm kiếm
+                </h3>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Nhập từ khóa..."
+                    value={searchQuery}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                    className="w-full pl-3 pr-8 py-2 border rounded-lg text-sm outline-none"
+                    style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}
+                  />
+                  {searchQuery && (
+                    <button onClick={() => onSearchChange('')} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: tokens.inputIcon }}>
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {showCategories && (
+              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                <h3 className="font-semibold text-sm mb-2" style={{ color: tokens.bodyText }}>
+                  Danh mục sản phẩm
+                </h3>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => onCategoryChange(null)}
+                    className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${!selectedCategory ? 'font-semibold' : ''}`}
+                    style={!selectedCategory
+                      ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                      : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                    }
+                  >
+                    Tất cả danh mục
+                  </button>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat._id}
+                      onClick={() => onCategoryChange(cat._id)}
+                      className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${selectedCategory === cat._id ? 'font-semibold' : ''}`}
+                      style={selectedCategory === cat._id
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                      }
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {enableProductTypes && productTypes && productTypes.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">Nhóm sản phẩm</h3>
+              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                <h3 className="font-bold text-sm mb-2" style={{ color: tokens.bodyText }}>Nhóm sản phẩm</h3>
                 <div className="space-y-1">
                   <button
                     onClick={() => onProductTypeChange?.(null)}
-                    className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${!productType ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}
+                    className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${!productType ? 'font-semibold' : ''}`}
+                    style={!productType
+                      ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                      : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                    }
                   >
                     Tất cả nhóm
                   </button>
@@ -585,7 +737,11 @@ export function ListLayout({
                     <button
                       key={t._id}
                       onClick={() => onProductTypeChange?.(t.slug)}
-                      className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${productType?.slug === t.slug ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}
+                      className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${productType?.slug === t.slug ? 'font-semibold' : ''}`}
+                      style={productType?.slug === t.slug
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                      }
                     >
                       {t.name}
                     </button>
@@ -594,34 +750,17 @@ export function ListLayout({
               </div>
             )}
 
-            <div className="space-y-3">
-              <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">Danh mục sản phẩm</h3>
-              <div className="space-y-1">
-                <button
-                  onClick={() => onCategoryChange(null)}
-                  className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${!selectedCategory ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}
-                >
-                  Tất cả danh mục
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat._id}
-                    onClick={() => onCategoryChange(cat._id)}
-                    className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${selectedCategory === cat._id ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {enableProductTypes && productType?.priceRanges && productType.priceRanges.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">Khoảng giá</h3>
+              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                <h3 className="font-bold text-sm mb-2" style={{ color: tokens.bodyText }}>Khoảng giá</h3>
                 <div className="space-y-1">
                   <button
                     onClick={() => onPriceRangeChange?.(null)}
-                    className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${!selectedPriceRange ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}
+                    className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${!selectedPriceRange ? 'font-semibold' : ''}`}
+                    style={!selectedPriceRange
+                      ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                      : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                    }
                   >
                     Tất cả khoảng giá
                   </button>
@@ -629,7 +768,11 @@ export function ListLayout({
                     <button
                       key={range.slug}
                       onClick={() => onPriceRangeChange?.(range)}
-                      className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${selectedPriceRange?.slug === range.slug ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}
+                      className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${selectedPriceRange?.slug === range.slug ? 'font-semibold' : ''}`}
+                      style={selectedPriceRange?.slug === range.slug
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                      }
                     >
                       {range.label}
                     </button>
@@ -638,11 +781,42 @@ export function ListLayout({
               </div>
             )}
 
+            {/* Khung Khoảng giá Tĩnh giống preview ở admin */}
+            <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+              <h3 className="font-semibold text-sm mb-2 text-slate-800 dark:text-slate-200">Khoảng giá</h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Từ"
+                  className="w-1/2 px-2 py-1.5 border rounded text-sm placeholder:text-[var(--placeholder-color)]"
+                  style={{
+                    borderColor: tokens.inputBorder,
+                    backgroundColor: tokens.inputBackground,
+                    color: tokens.inputText,
+                    '--placeholder-color': tokens.inputPlaceholder,
+                  } as React.CSSProperties}
+                  disabled
+                />
+                <input
+                  type="text"
+                  placeholder="Đến"
+                  className="w-1/2 px-2 py-1.5 border rounded text-sm placeholder:text-[var(--placeholder-color)]"
+                  style={{
+                    borderColor: tokens.inputBorder,
+                    backgroundColor: tokens.inputBackground,
+                    color: tokens.inputText,
+                    '--placeholder-color': tokens.inputPlaceholder,
+                  } as React.CSSProperties}
+                  disabled
+                />
+              </div>
+            </div>
+
             {filterableGroups && filterableGroups.length > 0 && (
-              <div className="space-y-6 pt-4 border-t">
+              <div className="space-y-4">
                 {filterableGroups.map((group) => (
-                  <div key={group._id} className="space-y-3">
-                    <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">{group.name}</h3>
+                  <div key={group._id} className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                    <h3 className="font-bold text-sm mb-2" style={{ color: tokens.bodyText }}>{group.name}</h3>
                     <AttributeFilterGroupWidget
                       group={group}
                       selectedAttributes={selectedAttributes}
@@ -674,22 +848,24 @@ export function ListLayout({
               className={`flex flex-col sm:flex-row gap-3 p-3 mb-5 border ${radiusClass}`}
               style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}
             >
-              <div className="relative flex-1">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: tokens.inputIcon }} />
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm sản phẩm..."
-                  value={searchQuery}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  className="w-full h-10 pl-10 pr-9 rounded-lg border outline-none text-sm"
-                  style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}
-                />
-                {searchQuery && (
-                  <button onClick={() => onSearchChange('')} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: tokens.inputIcon }}>
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
+              {showSearch && (
+                <div className="relative flex-1 lg:hidden">
+                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: tokens.inputIcon }} />
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm sản phẩm..."
+                    value={searchQuery}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                    className="w-full h-10 pl-10 pr-9 rounded-lg border outline-none text-sm"
+                    style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}
+                  />
+                  {searchQuery && (
+                    <button onClick={() => onSearchChange('')} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: tokens.inputIcon }}>
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Trigger filters sidebar on mobile */}
               <button

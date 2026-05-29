@@ -146,3 +146,12 @@ Dưới đây là danh sách các Debt & Issues được tổng hợp dưới d�
 * **Vấn đề**: Tùy chọn "Ẩn danh mục rỗng" không hoạt động do backend Convex trả về cả những danh mục chứa sản phẩm ở trạng thái `"Draft"` hoặc `"Archived"`.
 * **Giải pháp**: Cập nhật logic `listNonEmptyCategoryIds` để chỉ đếm sản phẩm có trạng thái `"Active"`.
 * **Tiêu chí nghiệm thu**: Danh mục không có sản phẩm đang hoạt động bán sẽ không xuất hiện trên thanh sidebar site thực.
+
+### 🎫 TICKET-005: Design & UX Debt - Lệch layout Sidebar storefront so với Preview admin
+* **Loại**: Design & UX Debt (Nợ thiết kế & Trải nghiệm)
+* **Vấn đề**: Layout Sidebar ngoài storefront (`CatalogLayout` và `ListLayout`) không đồng bộ với Preview trong trang quản trị. Ô Tìm kiếm hiển thị sai vị trí (Toolbar ngang thay vì Sidebar bên trái) và các bộ lọc hiển thị không đúng định dạng khung viền box.
+* **Giải pháp**:
+  * Truyền cấu hình `showSearch` và `showCategories` vào `CatalogLayout` và `ListLayout`.
+  * Đưa ô Tìm kiếm vào Sidebar bên trái trên desktop, ẩn ô tìm kiếm ở Toolbar ngang trên desktop (chỉ hiện trên mobile).
+  * Định dạng lại danh sách Danh mục ở Sidebar theo dạng khung viền box giống Preview admin.
+* **Tiêu chí nghiệm thu**: Giao diện Sidebar storefront khớp với giao diện Preview trong trang quản trị `/system/experiences/products-list`.

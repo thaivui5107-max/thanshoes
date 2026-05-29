@@ -1143,6 +1143,8 @@ function ProductsContent(props: ProductsPageProps) {
           onClearFilters={handleClearAllFilters}
           radiusClass={radiusClass}
           productAttributesMap={productAttributesMap}
+          showSearch={listConfig.showSearch}
+          showCategories={listConfig.showCategories}
           cartButtonsLayout={listConfig.cartButtonsLayout}
         />
         {quickAddModal}
@@ -1203,6 +1205,8 @@ function ProductsContent(props: ProductsPageProps) {
           onClearFilters={handleClearAllFilters}
           radiusClass={radiusClass}
           productAttributesMap={productAttributesMap}
+          showSearch={listConfig.showSearch}
+          showCategories={listConfig.showCategories}
           cartButtonsLayout={listConfig.cartButtonsLayout}
         />
         {quickAddModal}
