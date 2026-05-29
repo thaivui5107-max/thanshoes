@@ -205,10 +205,13 @@ export function HeaderSearchAutocomplete({
                 section.items.length > 0 ? (
                   <div key={section.key} className="pb-2 last:pb-0">
                     <div
-                      className="px-4 py-1 text-[11px] font-semibold uppercase tracking-wider"
+                      className="px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider flex items-center justify-between"
                       style={{ color: tokens.dropdownSectionLabel }}
                     >
-                      {section.label}
+                      <span>{section.label}</span>
+                      <span className="text-[9px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 rounded px-1.5 py-0.5 tracking-normal normal-case">
+                        {section.items.length} gợi ý
+                      </span>
                     </div>
                     <div className="space-y-1">
                       {section.items.map((item) => {
@@ -242,6 +245,17 @@ export function HeaderSearchAutocomplete({
                 ) : null
               ))}
             </div>
+          )}
+          {hasResults && (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="w-full border-t border-slate-100 bg-slate-50/80 hover:bg-slate-100/80 px-4 py-3 text-[11px] text-slate-500 hover:text-slate-700 transition-colors flex items-center justify-center gap-1.5 font-semibold text-center mt-1"
+              style={{ color: tokens.textSubtle }}
+            >
+              <span>Nhấp vào đây hoặc nhấn 🔍 để xem đầy đủ kết quả cho "{query}"</span>
+              <span className="text-slate-400">→</span>
+            </button>
           )}
         </div>
       )}
