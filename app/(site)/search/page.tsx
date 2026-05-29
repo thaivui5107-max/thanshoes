@@ -28,6 +28,7 @@ import {
   Compass
 } from 'lucide-react';
 import type { Id } from '@/convex/_generated/dataModel';
+import { CategoryCombobox } from './_components/CategoryCombobox';
 
 // Helper format price
 const formatPrice = (value: number) => {
@@ -292,9 +293,8 @@ function SearchContent() {
   };
 
   // Category filter handler
-  const handleCategoryFilter = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleCategoryFilter = (val: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    const val = e.target.value;
     
     if (activeTab === 'product') {
       if (val) params.set('p_cat', val);
@@ -510,19 +510,12 @@ function SearchContent() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 bg-slate-50/50 p-3 sm:p-4 rounded-2xl border border-slate-100">
           <div className="flex flex-wrap items-center gap-3">
             {/* Category Filter */}
-            <div className="relative">
-              <select
-                value={activeCategoryVal}
-                onChange={handleCategoryFilter}
-                className="appearance-none bg-white border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-slate-100 min-w-[160px] font-medium"
-              >
-                <option value="">Tất cả danh mục</option>
-                {activeCategoriesOptions.map((cat) => (
-                  <option key={cat._id} value={cat._id}>{cat.name}</option>
-                ))}
-              </select>
-              <ChevronRight size={14} className="absolute right-3 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none text-slate-400" />
-            </div>
+            <CategoryCombobox
+              categories={activeCategoriesOptions}
+              value={activeCategoryVal}
+              onChange={handleCategoryFilter}
+              primaryColor={primaryColor}
+            />
 
             {/* Sort Dropdown */}
             <div className="relative">

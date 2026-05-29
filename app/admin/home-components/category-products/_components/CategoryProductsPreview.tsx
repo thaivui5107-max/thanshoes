@@ -207,8 +207,8 @@ export const CategoryProductsPreview = ({
 
   // Product Card Component with Equal Height (line-clamp + min-height)
   const ProductCard = ({ product }: { product: CategoryProductsProduct }) => {
-    const showAddToCartButton = config.showAddToCartButton !== false;
-    const showBuyNowButton = config.showBuyNowButton !== false;
+    const showAddToCartButton = saleMode === 'cart' && config.showAddToCartButton !== false;
+    const showBuyNowButton = saleMode === 'cart' && config.showBuyNowButton !== false;
     const cartButtonsLayout = config.cartButtonsLayout || 'stack';
 
     return (
@@ -407,8 +407,8 @@ export const CategoryProductsPreview = ({
             <div className="overflow-hidden px-4" ref={emblaRef}>
               <div className="flex gap-4 backface-hidden touch-pan-y">
                 {section.products.map((product) => {
-                  const showAddToCartButton = config.showAddToCartButton !== false;
-                  const showBuyNowButton = config.showBuyNowButton !== false;
+                  const showAddToCartButton = saleMode === 'cart' && config.showAddToCartButton !== false;
+                  const showBuyNowButton = saleMode === 'cart' && config.showBuyNowButton !== false;
                   const cartButtonsLayout = config.cartButtonsLayout || 'stack';
                   return (
                     <div 
@@ -644,14 +644,14 @@ export const CategoryProductsPreview = ({
                               return <span className="font-bold text-base">{priceDisplay.label}</span>;
                             })()}
                           </div>
-                          {(config.showAddToCartButton !== false || config.showBuyNowButton !== false) && (
+                          {(saleMode === 'cart' && (config.showAddToCartButton !== false || config.showBuyNowButton !== false)) && (
                             <div className="mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                               <ProductCardActions
                                 product={featured as any}
                                 tokens={listTokens}
                                 showStock={false}
-                                showAddToCartButton={config.showAddToCartButton !== false}
-                                showBuyNowButton={config.showBuyNowButton !== false}
+                                showAddToCartButton={saleMode === 'cart' && config.showAddToCartButton !== false}
+                                showBuyNowButton={saleMode === 'cart' && config.showBuyNowButton !== false}
                                 buyNowLabel="Mua ngay"
                                 onAddToCart={() => {}}
                                 onBuyNow={() => {}}
@@ -665,8 +665,8 @@ export const CategoryProductsPreview = ({
                     )}
 
                     {others.map((product) => {
-                      const showAddToCartButton = config.showAddToCartButton !== false;
-                      const showBuyNowButton = config.showBuyNowButton !== false;
+                      const showAddToCartButton = saleMode === 'cart' && config.showAddToCartButton !== false;
+                      const showBuyNowButton = saleMode === 'cart' && config.showBuyNowButton !== false;
                       const cartButtonsLayout = config.cartButtonsLayout || 'stack';
                       return (
                         <div key={product._id} className={cn('group cursor-pointer relative overflow-hidden bg-slate-100 dark:bg-slate-800', imageRadiusClassName)}>
@@ -809,14 +809,14 @@ export const CategoryProductsPreview = ({
                               return <span className="font-bold text-2xl">{priceDisplay.label}</span>;
                             })()}
                           </div>
-                          {(config.showAddToCartButton !== false || config.showBuyNowButton !== false) && (
+                          {(saleMode === 'cart' && (config.showAddToCartButton !== false || config.showBuyNowButton !== false)) && (
                             <div className="mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                               <ProductCardActions
                                 product={featured as any}
                                 tokens={listTokens}
                                 showStock={false}
-                                showAddToCartButton={config.showAddToCartButton !== false}
-                                showBuyNowButton={config.showBuyNowButton !== false}
+                                showAddToCartButton={saleMode === 'cart' && config.showAddToCartButton !== false}
+                                showBuyNowButton={saleMode === 'cart' && config.showBuyNowButton !== false}
                                 buyNowLabel="Mua ngay"
                                 onAddToCart={() => {}}
                                 onBuyNow={() => {}}
@@ -831,8 +831,8 @@ export const CategoryProductsPreview = ({
 
                     <div className="grid grid-cols-2 gap-4">
                       {gridItems.map((product) => {
-                        const showAddToCartButton = config.showAddToCartButton !== false;
-                        const showBuyNowButton = config.showBuyNowButton !== false;
+                        const showAddToCartButton = saleMode === 'cart' && config.showAddToCartButton !== false;
+                        const showBuyNowButton = saleMode === 'cart' && config.showBuyNowButton !== false;
                         const cartButtonsLayout = config.cartButtonsLayout || 'stack';
                         return (
                           <div key={product._id} className="group cursor-pointer">
@@ -985,8 +985,8 @@ export const CategoryProductsPreview = ({
                   getGridCols()
                 )}>
                   {section.products.map((product) => {
-                    const showAddToCartButton = config.showAddToCartButton !== false;
-                    const showBuyNowButton = config.showBuyNowButton !== false;
+                    const showAddToCartButton = saleMode === 'cart' && config.showAddToCartButton !== false;
+                    const showBuyNowButton = saleMode === 'cart' && config.showBuyNowButton !== false;
                     const cartButtonsLayout = config.cartButtonsLayout || 'stack';
                     return (
                       <div key={product._id} className="cursor-pointer group block">
@@ -1150,8 +1150,8 @@ export const CategoryProductsPreview = ({
                     {section.products.map((product) => {
                       const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
                       const discount = getProductDiscount(product);
-                      const showAddToCartButton = config.showAddToCartButton !== false;
-                      const showBuyNowButton = config.showBuyNowButton !== false;
+                      const showAddToCartButton = saleMode === 'cart' && config.showAddToCartButton !== false;
+                      const showBuyNowButton = saleMode === 'cart' && config.showBuyNowButton !== false;
                       const cartButtonsLayout = config.cartButtonsLayout || 'stack';
 
                       return (

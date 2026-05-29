@@ -3878,8 +3878,8 @@ function CategoryProductsSection({
   }), [categorySlugMap, resolveProductHref]);
 
   // Product Card Component with Equal Height (line-clamp + min-height)
-  const showAddToCartButton = config.showAddToCartButton !== false;
-  const showBuyNowButton = config.showBuyNowButton !== false;
+  const showAddToCartButton = saleMode === 'cart' && config.showAddToCartButton !== false;
+  const showBuyNowButton = saleMode === 'cart' && config.showBuyNowButton !== false;
   const cartButtonsLayout = (config.cartButtonsLayout as 'stack' | 'grid-2') || 'stack';
   const showStock = config.showStock !== false;
 

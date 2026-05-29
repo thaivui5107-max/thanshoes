@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Bot, GripVertical, Package, Plus, Settings2, Trash2 } from 'lucide-react';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { Button, Input, Label, cn } from '../../../components/ui';
 import { SettingsImageUploader } from '../../../components/SettingsImageUploader';
 import { DEFAULT_DEMO_CATEGORY_PRODUCTS_SECTIONS } from '../_lib/constants';
@@ -73,6 +75,9 @@ export const CategoryProductsForm = ({
 }: CategoryProductsFormProps) => {
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
+
+  const saleModeSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'saleMode' });
+  const isCartMode = saleModeSetting?.value === 'cart';
 
   const handleQuickGenerate = (type: 'largest' | 'newest' | 'non-empty' | 'all') => {
     let selected: typeof categoriesData = [];
@@ -271,7 +276,7 @@ export const CategoryProductsForm = ({
             </div>
 
             {/* Cấu hình hiển thị nút mua hàng & giỏ hàng */}
-            {setShowAddToCartButton && setShowBuyNowButton && setCartButtonsLayout && (
+            {isCartMode && setShowAddToCartButton && setShowBuyNowButton && setCartButtonsLayout && (
               <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
