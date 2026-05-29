@@ -149,6 +149,22 @@ function ProductsContent(props: ProductsPageProps) {
     rootMargin: '100px',
   });
 
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [categorySearchQuery, setCategorySearchQuery] = useState('');
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
@@ -219,6 +235,13 @@ function ProductsContent(props: ProductsPageProps) {
     const assignedSet = new Set(assignedCategories.map((category) => category._id));
     return baseCategories.filter((category) => assignedSet.has(category._id));
   }, [assignedCategories, categories, enableProductTypes, props.productTypeId, visibleCategories]);
+
+  const filteredCategories = useMemo(() => {
+    if (!categorySearchQuery) return categoryOptions;
+    return categoryOptions.filter((cat) =>
+      cat.name.toLowerCase().includes(categorySearchQuery.toLowerCase())
+    );
+  }, [categoryOptions, categorySearchQuery]);
 
   const categorySlugFromPath = useMemo(() => {
     if (routeMode !== 'unified') {return null;}
@@ -1282,23 +1305,98 @@ function ProductsContent(props: ProductsPageProps) {
               )}
 
               <div className="hidden lg:flex items-center gap-2">
-                <div className="relative">
-                  <select
-                    value={activeCategory ?? ''}
-                    onChange={(e) => { handleCategoryChange(e.target.value ? e.target.value as Id<"productCategories"> : null); }}
-                    className="h-10 w-[220px] pl-3 pr-8 rounded-lg border text-sm outline-none appearance-none truncate"
+                <div className="relative" ref={categoryDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                    className="h-10 w-[220px] px-3 flex items-center justify-between rounded-lg border text-sm outline-none truncate"
                     style={{
                       borderColor: tokens.inputBorder,
                       backgroundColor: tokens.inputBackground,
                       color: tokens.inputText,
                     }}
                   >
-                    <option value="">Tất cả danh mục</option>
-                    {categoryOptions.map((cat) => (
-                      <option key={cat._id} value={cat._id}>{cat.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: tokens.inputIcon }} />
+                    <span className="truncate">
+                      {activeCategory
+                        ? categoryOptions.find((cat) => cat._id === activeCategory)?.name ?? 'Tất cả danh mục'
+                        : 'Tất cả danh mục'}
+                    </span>
+                    <ChevronDown size={16} style={{ color: tokens.inputIcon }} className={`transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isCategoryDropdownOpen && (
+                    <div
+                      className="absolute top-full left-0 mt-1 w-[260px] p-2 rounded-lg border shadow-xl z-50 flex flex-col gap-1.5"
+                      style={{
+                        borderColor: tokens.inputBorder,
+                        backgroundColor: tokens.inputBackground,
+                        color: tokens.inputText,
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border" style={{ borderColor: tokens.inputBorder }}>
+                        <Search size={14} style={{ color: tokens.inputIcon }} className="shrink-0" />
+                        <input
+                          type="text"
+                          placeholder="Tìm danh mục..."
+                          value={categorySearchQuery}
+                          onChange={(e) => setCategorySearchQuery(e.target.value)}
+                          className="w-full bg-transparent text-xs outline-none"
+                          style={{ color: tokens.inputText }}
+                        />
+                        {categorySearchQuery && (
+                          <button type="button" onClick={() => setCategorySearchQuery('')} className="hover:opacity-80">
+                            <X size={12} style={{ color: tokens.inputIcon }} />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-[220px] overflow-y-auto pr-1 flex flex-col gap-0.5" style={{ scrollbarWidth: 'thin' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleCategoryChange(null);
+                            setIsCategoryDropdownOpen(false);
+                            setCategorySearchQuery('');
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded-md text-left text-xs transition-colors hover:opacity-80"
+                          style={{
+                            backgroundColor: !activeCategory ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                            color: !activeCategory ? '#3b82f6' : tokens.inputText,
+                            fontWeight: !activeCategory ? 'bold' : 'normal',
+                          }}
+                        >
+                          Tất cả danh mục
+                        </button>
+
+                        {filteredCategories.length === 0 ? (
+                          <p className="text-xs text-center py-4 opacity-60">Không tìm thấy danh mục</p>
+                        ) : (
+                          filteredCategories.map((cat) => {
+                            const isSelected = activeCategory === cat._id;
+                            return (
+                              <button
+                                key={cat._id}
+                                type="button"
+                                onClick={() => {
+                                  handleCategoryChange(cat._id);
+                                  setIsCategoryDropdownOpen(false);
+                                  setCategorySearchQuery('');
+                                }}
+                                className="w-full px-2.5 py-1.5 rounded-md text-left text-xs transition-colors hover:opacity-80"
+                                style={{
+                                  backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                  color: isSelected ? '#3b82f6' : tokens.inputText,
+                                  fontWeight: isSelected ? 'bold' : 'normal',
+                                }}
+                              >
+                                {cat.name}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

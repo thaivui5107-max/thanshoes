@@ -6,7 +6,7 @@ import { Check, GripVertical, Layers, Package, Plus, RotateCcw, Search, X } from
 import { useDemoItemList } from '../../_shared/hooks/useDemoItemList';
 import { DemoItemRowShell } from '../../_shared/components/DemoItemRowShell';
 import { DemoPrimaryFields } from '../../_shared/components/DemoPrimaryFields';
-import { Button, Input, Label, cn } from '../../../components/ui';
+import { Button, Input, Label, cn, Popover, PopoverTrigger, PopoverContent, ScrollArea, Checkbox } from '../../../components/ui';
 import { SettingsImageUploader } from '../../../components/SettingsImageUploader';
 import type { ProductGridSortBy, ProductGridSelectionMode } from '../_types';
 import type { SectionSpacing } from '../../_shared/types/sectionSpacing';
@@ -120,6 +120,8 @@ export const ProductGridForm = ({
   );
 
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
+  const [categorySearch, setCategorySearch] = useState('');
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
   const selectedCategories = useMemo(() => {
     if (!allCategories) return [];
@@ -165,6 +167,13 @@ export const ProductGridForm = ({
         return countB - countA;
       });
   }, [allCategories, categoryProductCounts]);
+
+  const filteredCategories = useMemo(() => {
+    if (!sortedCategories) return [];
+    return sortedCategories.filter(cat => 
+      cat.name.toLowerCase().includes(categorySearch.toLowerCase())
+    );
+  }, [sortedCategories, categorySearch]);
 
   // Bộ lọc sản phẩm thủ công theo danh mục chọn nhanh
   const finalFilteredProducts = useMemo(() => {
@@ -419,33 +428,77 @@ export const ProductGridForm = ({
                 ) : allCategories.length === 0 ? (
                   <p className="text-xs text-slate-400">Chưa có danh mục sản phẩm nào</p>
                 ) : (
-                  <div className="flex flex-wrap gap-2 max-h-[220px] overflow-y-auto p-1 border rounded-lg bg-slate-50/50 dark:bg-slate-900/30">
-                    {sortedCategories.map(cat => {
-                      const isSelected = categoryTabIds.includes(cat._id);
-                      const count = categoryProductCounts.get(cat._id) ?? 0;
-                      return (
-                        <button
-                          key={cat._id}
+                  <div className="relative">
+                    <Popover open={isCategoryDropdownOpen} onOpenChange={setIsCategoryDropdownOpen}>
+                      <PopoverTrigger>
+                        <Button
                           type="button"
-                          onClick={() => {
-                            if (isSelected) {
-                              setCategoryTabIds(prev => prev.filter(id => id !== cat._id));
-                            } else {
-                              setCategoryTabIds(prev => [...prev, cat._id]);
-                            }
-                          }}
-                          className={cn(
-                            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
-                            isSelected
-                              ? 'bg-blue-500 text-white border-blue-500 shadow-sm'
-                              : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:border-blue-600'
-                          )}
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={isCategoryDropdownOpen}
+                          className="w-full justify-between text-left font-normal bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50"
+                          onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
                         >
-                          {isSelected && <Check size={12} />}
-                          {cat.name} ({count})
-                        </button>
-                      );
-                    })}
+                          <span className="truncate">
+                            {categoryTabIds.length === 0
+                              ? "Chọn danh mục hiển thị..."
+                              : `Đã chọn ${categoryTabIds.length} danh mục`}
+                          </span>
+                          <span className="text-slate-400 text-xs shrink-0 ml-2">▼</span>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[340px] p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg z-50" align="start">
+                        <div className="flex items-center gap-2 mb-2 px-1">
+                          <Search size={14} className="text-slate-400 shrink-0" />
+                          <Input
+                            placeholder="Tìm danh mục..."
+                            value={categorySearch}
+                            onChange={(e) => setCategorySearch(e.target.value)}
+                            className="h-8 text-xs w-full bg-slate-50 dark:bg-slate-800 border-0 focus-visible:ring-1 focus-visible:ring-blue-500"
+                          />
+                        </div>
+                        <ScrollArea className="max-h-[220px] overflow-y-auto pr-1 space-y-0.5" style={{ scrollbarWidth: 'thin' }}>
+                          {filteredCategories.length === 0 ? (
+                            <p className="text-xs text-slate-400 text-center py-4">Không tìm thấy danh mục</p>
+                          ) : (
+                            filteredCategories.map(cat => {
+                              const isSelected = categoryTabIds.includes(cat._id);
+                              const count = categoryProductCounts.get(cat._id) ?? 0;
+                              return (
+                                <button
+                                  key={cat._id}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      setCategoryTabIds(prev => prev.filter(id => id !== cat._id));
+                                    } else {
+                                      setCategoryTabIds(prev => [...prev, cat._id]);
+                                    }
+                                  }}
+                                  className={cn(
+                                    "w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-left text-xs transition-colors hover:bg-slate-100 dark:hover:bg-slate-800",
+                                    isSelected ? "bg-blue-500/5 text-blue-600 dark:text-blue-400 font-semibold" : "text-slate-700 dark:text-slate-300"
+                                  )}
+                                >
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={() => {}}
+                                    className={cn(
+                                      "h-3.5 w-3.5 shrink-0 border-slate-300",
+                                      isSelected ? "border-blue-500 text-blue-600" : ""
+                                    )}
+                                  />
+                                  <span className="flex-1 truncate">{cat.name}</span>
+                                  <span className="text-[10px] text-slate-400 shrink-0 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
+                                    {count} sp
+                                  </span>
+                                </button>
+                              );
+                            })
+                          )}
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 )}
               </div>

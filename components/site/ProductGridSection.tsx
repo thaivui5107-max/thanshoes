@@ -206,10 +206,17 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
   // Query products based on selection mode
   // Nếu chọn theo danh mục: query các sản phẩm có category nằm trong config. categoryTabIds (hoặc activeTabId).
   // Để tối ưu và nhất quán, storefront query tối đa 50 sản phẩm public để hiển thị.
-  const productsData = useQuery(
-    api.products.listPublicResolved,
-    selectionMode === 'demo' || selectionMode === 'manual' ? 'skip' : { limit: 50 }
+  const categoryProductsData = useQuery(
+    api.products.listProductsForCategories,
+    selectionMode === 'category' && categoryTabIds.length > 0 ? { categoryIds: categoryTabIds as Id<"productCategories">[] } : 'skip'
   );
+
+  const publicProductsData = useQuery(
+    api.products.listPublicResolved,
+    selectionMode === 'demo' || selectionMode === 'manual' || selectionMode === 'category' ? 'skip' : { limit: 50 }
+  );
+
+  const productsData = selectionMode === 'category' ? categoryProductsData : publicProductsData;
 
   const manualProductsData = useQuery(
     api.products.listByIds,
@@ -268,10 +275,12 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
     if (!productsData) return [];
 
     // Lọc theo chế độ 'category' (chỉ lấy các sản phẩm thuộc danh mục được chọn)
-    if (selectionMode === 'category' && categoryTabIds.length > 0) {
-      return productsData
-        .filter(p => p.status === 'Active' && p.categoryId && categoryTabIds.includes(p.categoryId))
-        .map(p => ({ ...p, categoryName: categoryNameMap.get(p.categoryId ?? '') ?? '' }));
+    if (selectionMode === 'category') {
+      if (!productsData) return [];
+      return productsData.map(p => ({
+        ...p,
+        categoryName: categoryNameMap.get(p.categoryId ?? '') ?? ''
+      }));
     }
 
     return productsData

@@ -2609,11 +2609,27 @@ export const countActiveByCategory = query({
       .collect();
 
     const counts: Record<string, number> = {};
+    const activeProductsMap = new Map<string, any>();
+    
     products.forEach((p) => {
+      activeProductsMap.set(p._id, p);
       if (p.categoryId) {
         counts[p.categoryId] = (counts[p.categoryId] ?? 0) + 1;
       }
     });
+
+    // Lấy thêm các gán phụ từ productCategoryAssignments
+    const assignments = await ctx.db
+      .query("productCategoryAssignments")
+      .collect();
+
+    assignments.forEach((a) => {
+      const product = activeProductsMap.get(a.productId);
+      if (product && product.categoryId !== a.categoryId) {
+        counts[a.categoryId] = (counts[a.categoryId] ?? 0) + 1;
+      }
+    });
+
     return counts;
   },
   returns: v.any(),
