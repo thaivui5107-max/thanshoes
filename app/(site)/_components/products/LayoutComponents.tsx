@@ -365,18 +365,20 @@ function DoubleRangeSlider({
         .thumb,
         .thumb::-webkit-slider-thumb {
           -webkit-appearance: none;
+          appearance: none;
           -webkit-tap-highlight-color: transparent;
         }
         .thumb {
           pointer-events: none;
           position: absolute;
-          height: 0;
+          height: 24px;
           width: 100%;
           outline: none;
+          background: transparent;
         }
         .thumb::-webkit-slider-thumb {
           background-color: #ffffff;
-          border: 2.5px solid ${brandColor};
+          border: 3px solid ${brandColor};
           border-radius: 50%;
           box-shadow: 0 2px 4px rgba(0,0,0,0.15);
           cursor: pointer;
@@ -384,10 +386,11 @@ function DoubleRangeSlider({
           width: 16px;
           pointer-events: all;
           position: relative;
+          box-sizing: border-box;
         }
         .thumb::-moz-range-thumb {
           background-color: #ffffff;
-          border: 2.5px solid ${brandColor};
+          border: 3px solid ${brandColor};
           border-radius: 50%;
           box-shadow: 0 2px 4px rgba(0,0,0,0.15);
           cursor: pointer;
@@ -395,6 +398,7 @@ function DoubleRangeSlider({
           width: 16px;
           pointer-events: all;
           position: relative;
+          box-sizing: border-box;
         }
         .slider-track {
           position: absolute;
@@ -421,7 +425,7 @@ function DoubleRangeSlider({
           onTouchEnd={handleMouseUp}
           className="thumb thumb--left"
           style={{
-            zIndex: minVal > max - 100 ? 5 : undefined,
+            zIndex: minVal > max - 100 ? 5 : 3,
           }}
         />
         <input
@@ -433,6 +437,9 @@ function DoubleRangeSlider({
           onMouseUp={handleMouseUp}
           onTouchEnd={handleMouseUp}
           className="thumb thumb--right"
+          style={{
+            zIndex: 4,
+          }}
         />
 
         <div className="slider-track" style={{ backgroundColor: tokens.filterChipBg }} />
