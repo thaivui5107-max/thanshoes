@@ -999,10 +999,10 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
         className={cn("bg-transparent", sectionSpacingClassName)}
         style={{ fontFamily: 'Inter, sans-serif' }}
       >
-        <div className="mx-auto w-full max-w-[1440px] px-3">
-          {renderSiteHeader({ className: 'mb-6 md:mb-8' })}
+        <div className="mx-auto w-full max-w-6xl px-4 md:px-8">
+          {renderSiteHeader({ className: 'mb-4 md:mb-6' })}
           <div className={cn(
-            "-mx-3 grid gap-y-6 text-left",
+            "-mx-3 grid gap-y-4 text-left",
             lookbookDesktopColumns === 3
               ? 'grid-cols-1 md:grid-cols-3 lg:grid-cols-3'
               : 'grid-cols-2 md:grid-cols-2 lg:grid-cols-4',
@@ -1106,9 +1106,9 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
                     </div>
                   </Link>
 
-                  {/* Cart buttons đặt NGOÀI Link/card 3D — rộng rãi, dễ nhìn */}
+                  {/* Cart buttons bên ngoài Link/card 3D — gọn, dễ nhìn */}
                   {(showAddToCartButton || showBuyNowButton) && (
-                    <div className="mt-3 px-1">
+                    <div className="mt-2 px-1">
                       <ProductCardActions
                         product={product as any}
                         tokens={tokens}
