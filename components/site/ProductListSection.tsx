@@ -1108,7 +1108,7 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
 
                   {/* Cart buttons bên ngoài Link/card 3D — gọn, dễ nhìn */}
                   {(showAddToCartButton || showBuyNowButton) && (
-                    <div className="mt-2 px-1">
+                    <div className="mt-0.5 px-1">
                       <ProductCardActions
                         product={product as any}
                         tokens={tokens}
