@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { CreditCard, ListChecks, MapPin, Settings, Truck } from 'lucide-react';
+import Link from 'next/link';
+import { CreditCard, ListChecks, MapPin, Settings, Truck, ArrowRight } from 'lucide-react';
 import type { ModuleConfigTabRenderProps } from '@/components/modules/ModuleConfigPage';
 import { ModuleStatus, FeaturesCard, FieldsCard, SettingsCard } from '@/components/modules/shared';
 import { Input, cn } from '@/app/admin/components/ui';
@@ -57,7 +58,8 @@ export function OrdersConfigTab({
   onToggleField,
   onToggleCategoryField,
   onSettingChange,
-}: ModuleConfigTabRenderProps) {
+  hideModuleStatus = false,
+}: ModuleConfigTabRenderProps & { hideModuleStatus?: boolean }) {
   const [activeTab, setActiveTab] = useState<ConfigTabKey>('general');
   const [banks, setBanks] = useState<BankOption[]>([]);
   const [bankQuery, setBankQuery] = useState('');
@@ -164,12 +166,32 @@ export function OrdersConfigTab({
 
   return (
     <>
-      <ModuleStatus
-        isCore={moduleData?.isCore ?? false}
-        enabled={moduleData?.enabled ?? true}
-        toggleColor={colorClasses.toggle}
-        disabled={isReadOnly}
-      />
+      {!hideModuleStatus && (
+        <div className="mb-6 p-4 rounded-xl border border-orange-100 dark:border-orange-900/30 bg-orange-50/50 dark:bg-orange-950/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Giao diện cấu hình cho Admin</h4>
+            <p className="text-xs text-slate-500">
+              Bạn có thể cấu hình chi tiết cửa hàng (trạng thái đơn hàng, vận chuyển, thanh toán, địa chỉ) trực tiếp tại trang Cài đặt nâng cao của Admin.
+            </p>
+          </div>
+          <Link
+            href="/admin/settings/advanced?tab=shop-config"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold shadow-sm transition-colors whitespace-nowrap"
+          >
+            Đi đến Cấu hình Admin
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+      )}
+
+      {!hideModuleStatus && (
+        <ModuleStatus
+          isCore={moduleData?.isCore ?? false}
+          enabled={moduleData?.enabled ?? true}
+          toggleColor={colorClasses.toggle}
+          disabled={isReadOnly}
+        />
+      )}
       <div className={cn("mt-4 flex flex-wrap gap-2 border-b border-slate-200 pb-2", isReadOnly && "pointer-events-none opacity-60")}>
         {tabs.map(({ key, label, icon: Icon }) => (
           <button

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { LayoutTemplate, Loader2, Palette, Save } from 'lucide-react';
+import { LayoutTemplate, Loader2, Palette, Save, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMutation, useQuery } from 'convex/react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -17,10 +17,13 @@ import { HomeComponentStickyFooter } from '@/app/admin/home-components/_shared/c
 import { AiSeoImportDialog } from './AiSeoImportDialog';
 import { SeoBuilderDialog } from './SeoBuilderDialog';
 import { ProductSupplementalContentManager } from './ProductSupplementalContentManager';
+import { ordersModule } from '@/lib/modules/configs/orders.config';
+import { OrdersConfigTab } from '@/components/modules/orders/OrdersConfigTab';
+import { useModuleConfig } from '@/lib/modules/hooks/useModuleConfig';
 
 type SettingsSection = 'site' | 'contact' | 'seo' | 'advanced';
 type SettingsFormValue = string | boolean;
-type AdvancedTab = 'product-placeholder' | 'product-frame' | 'watermark' | 'header' | 'product-supplemental';
+type AdvancedTab = 'product-placeholder' | 'product-frame' | 'watermark' | 'header' | 'product-supplemental' | 'shop-config';
 type HeaderConfig = {
   showBrandName?: boolean;
   logoSizeLevel?: number;
@@ -137,6 +140,7 @@ const REMOVED_CONTACT_KEYS = new Set([
 
 const SETTING_STORAGE_ID_SUFFIX = '__storageId';
 const HEADER_MENU_ADVANCED_FEATURE = 'enableHeaderMenuAdvanced';
+const SHOP_CONFIG_ADVANCED_FEATURE = 'enableShopConfigAdvanced';
 const DEFAULT_HEADER_CONFIG: HeaderConfig = {
   showBrandName: true,
   logoSizeLevel: 2,
@@ -226,7 +230,23 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const defaultImageAspectRatio = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
   const productsSettings = useQuery(api.admin.modules.listModuleSettings, { moduleKey: 'products' });
   const [selectedFrameAR, setSelectedFrameAR] = useState<string>('');
-
+  const ordersModuleConfig = useModuleConfig(ordersModule);
+ 
+  // Parse enabled features
+  const enabledFeatures = useMemo(() => {
+    const features: Record<string, boolean> = {};
+    featuresData?.forEach(f => { features[f.featureKey] = f.enabled; });
+    return features;
+  }, [featuresData]);
+ 
+  const canEditHeaderMenu = featuresData?.some(feature => feature.featureKey === HEADER_MENU_ADVANCED_FEATURE)
+    ? Boolean(enabledFeatures[HEADER_MENU_ADVANCED_FEATURE])
+    : false;
+ 
+  const canEditShopConfig = featuresData?.some(feature => feature.featureKey === SHOP_CONFIG_ADVANCED_FEATURE)
+    ? Boolean(enabledFeatures[SHOP_CONFIG_ADVANCED_FEATURE])
+    : false;
+ 
   const enableSupplementalContent = useMemo(
     () => productsSettings?.find(s => s.settingKey === 'enableProductSupplementalContent')?.value === true,
     [productsSettings]
@@ -237,6 +257,12 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       setAdvancedTab('product-supplemental');
     }
   }, [tabParam, enableSupplementalContent]);
+ 
+  useEffect(() => {
+    if (tabParam === 'shop-config' && canEditShopConfig) {
+      setAdvancedTab('shop-config');
+    }
+  }, [tabParam, canEditShopConfig]);
 
   const handlePreviewPointerDown = (e: React.PointerEvent<HTMLDivElement>, type: 'image-move' | 'image-resize' | 'text-move') => {
     e.preventDefault();
@@ -293,16 +319,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const isLoading = settingsData === undefined
     || featuresData === undefined
     || fieldsData === undefined;
-
-  // Parse enabled features
-  const enabledFeatures = useMemo(() => {
-    const features: Record<string, boolean> = {};
-    featuresData?.forEach(f => { features[f.featureKey] = f.enabled; });
-    return features;
-  }, [featuresData]);
-  const canEditHeaderMenu = featuresData?.some(feature => feature.featureKey === HEADER_MENU_ADVANCED_FEATURE)
-    ? Boolean(enabledFeatures[HEADER_MENU_ADVANCED_FEATURE])
-    : false;
 
   const isSectionEnabled = section === 'site'
     ? true
@@ -502,16 +518,29 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       setAdvancedTab('product-placeholder');
     }
   }, [advancedTab, canEditHeaderMenu]);
+ 
+  useEffect(() => {
+    if (!canEditShopConfig && advancedTab === 'shop-config') {
+      setAdvancedTab('product-placeholder');
+    }
+  }, [advancedTab, canEditShopConfig]);
 
   // Detect changes
   const headerConfigHasChanges = useMemo(
     () => stableStringify(headerConfigDraft) !== stableStringify(initialHeaderConfig),
     [headerConfigDraft, initialHeaderConfig]
   );
-  const hasChanges = useMemo(
-    () => Object.keys(form).some(key => form[key] !== initialForm[key]) || (canEditHeaderMenu && headerConfigHasChanges),
-    [form, initialForm, canEditHeaderMenu, headerConfigHasChanges]
-  );
+  
+  const isShopConfigTab = section === 'advanced' && advancedTab === 'shop-config' && canEditShopConfig;
+ 
+  const hasChanges = useMemo(() => {
+    if (isShopConfigTab) {
+      return ordersModuleConfig.hasChanges;
+    }
+    return Object.keys(form).some(key => form[key] !== initialForm[key]) || (canEditHeaderMenu && headerConfigHasChanges);
+  }, [isShopConfigTab, ordersModuleConfig.hasChanges, form, initialForm, canEditHeaderMenu, headerConfigHasChanges]);
+ 
+  const isCurrentlySaving = isSaving || (isShopConfigTab && ordersModuleConfig.isSaving);
 
   const updateField = (key: string, value: string | boolean) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -587,8 +616,13 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   };
 
   const handleSave = async () => {
+    if (isShopConfigTab) {
+      await ordersModuleConfig.handleSave();
+      return;
+    }
+ 
     if (!validateForm()) {return;}
-
+ 
     setIsSaving(true);
     try {
       // Get all enabled fields and their groups
@@ -1344,6 +1378,20 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                         Nội dung mô tả SP
                       </button>
                     )}
+                    {canEditShopConfig && (
+                      <button
+                        type="button"
+                        onClick={() => setAdvancedTab('shop-config')}
+                        className={cn(
+                          'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                          advancedTab === 'shop-config'
+                            ? 'border-orange-500 text-slate-900 dark:text-slate-100'
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                        )}
+                      >
+                        Cấu hình cửa hàng
+                      </button>
+                    )}
                   </div>
 
                   {advancedTab === 'product-placeholder' && (
@@ -1928,6 +1976,30 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                   {advancedTab === 'product-supplemental' && enableSupplementalContent && (
                     <ProductSupplementalContentManager />
                   )}
+                  {advancedTab === 'shop-config' && canEditShopConfig && (
+                    <OrdersConfigTab
+                      config={ordersModule}
+                      moduleData={ordersModuleConfig.moduleData}
+                      isReadOnly={ordersModuleConfig.moduleData?.enabled === false}
+                      localFeatures={ordersModuleConfig.localFeatures}
+                      localFields={ordersModuleConfig.localFields}
+                      localSettings={ordersModuleConfig.localSettings}
+                      localCategoryFields={ordersModuleConfig.localCategoryFields}
+                      colorClasses={{
+                        iconBg: 'bg-emerald-500/10',
+                        iconText: 'text-emerald-600 dark:text-emerald-400',
+                        button: 'bg-emerald-600 hover:bg-emerald-500',
+                        toggle: 'bg-emerald-500',
+                        tab: 'border-emerald-500',
+                        fieldColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+                      }}
+                      onToggleFeature={ordersModuleConfig.handleToggleFeature}
+                      onToggleField={ordersModuleConfig.handleToggleField}
+                      onToggleCategoryField={ordersModuleConfig.handleToggleCategoryField}
+                      onSettingChange={ordersModuleConfig.handleSettingChange}
+                      hideModuleStatus={true}
+                    />
+                  )}
                 </div>
               ) : (
                 currentFields.map(field => renderField(field))
@@ -1955,7 +2027,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
 
       {!(section === 'advanced' && advancedTab === 'product-supplemental' && enableSupplementalContent) && (
         <HomeComponentStickyFooter
-          isSubmitting={isSaving}
+          isSubmitting={isCurrentlySaving}
           submitLabel="Lưu thay đổi"
           hasChanges={hasChanges}
           submitType="button"
@@ -1990,17 +2062,17 @@ function SettingsContent({ section }: { section: SettingsSection }) {
             type="button"
             variant="accent"
             onClick={handleSave}
-            disabled={isSaving || !hasChanges}
-            className={!hasChanges && !isSaving
+            disabled={isCurrentlySaving || !hasChanges}
+            className={!hasChanges && !isCurrentlySaving
               ? 'bg-slate-300 hover:bg-slate-300 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-800 dark:text-slate-400'
               : undefined}
           >
-            {isSaving ? (
+            {isCurrentlySaving ? (
               <Loader2 size={16} className="mr-2 animate-spin" />
             ) : (
               <Save size={16} className="mr-2" />
             )}
-            {isSaving ? 'Đang lưu...' : hasChanges ? 'Lưu thay đổi' : 'Đã lưu'}
+            {isCurrentlySaving ? 'Đang lưu...' : hasChanges ? 'Lưu thay đổi' : 'Đã lưu'}
           </Button>
         </div>
       </HomeComponentStickyFooter>
