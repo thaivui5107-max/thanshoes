@@ -40,7 +40,6 @@ export interface CategoryTabItem {
 }
 
 export const ProductGridForm = ({
-  itemCount,
   setItemCount,
   desktopRows = 2,
   setDesktopRows,

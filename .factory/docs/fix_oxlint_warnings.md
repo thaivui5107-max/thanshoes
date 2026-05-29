@@ -1,111 +1,91 @@
 # I. Primer
 
 ## 1. TL;DR kiểu Feynman
-* **Vấn đề**: Dự án đang có 35 cảnh báo (warnings) linter từ `oxlint --type-aware --type-check`. Các cảnh báo này bao gồm: biến/import không sử dụng (unused vars/imports), Promise không được await (no-floating-promises), và chuyển đổi kiểu dữ liệu Object sang String có nguy cơ lỗi (no-base-to-string).
-* **Giải pháp**: 
-  1. Loại bỏ các dòng import không sử dụng của `lucide-react` trong các file UI và file cấu hình.
-  2. Bỏ các biến cục bộ khai báo nhưng không dùng đến, sử dụng alias `_` hoặc dấu gạch dưới `_` cho các tham số destructuring không được tham chiếu.
-  3. Bổ sung toán tử `void` trước các lệnh gọi Promise không cần `await` trong các sự kiện click React (`onClick`).
-  4. Cải tiến hàm xử lý chuyển đổi dữ liệu của ExcelJS để cô lập kiểu dữ liệu trước khi ép sang `String`, ngăn chặn cảnh báo `no-base-to-string` và tránh trả về `"[object Object]"`.
+* Công cụ `oxlint` quét mã nguồn dự án và phát hiện ra 6 cảnh báo (warnings) liên quan đến các biến hoặc tham số được khai báo nhưng không bao giờ sử dụng (`no-unused-vars`).
+* Có 3 file chứa các cảnh báo này trong các component hiển thị lưới sản phẩm (`ProductGridSection`, `ProductGridForm`, `ProductGridPreview`).
+* Hướng xử lý: Xóa bỏ các khai báo biến thừa và loại bỏ các tham số không sử dụng trong destructuring của React props.
+* Sau khi xóa, chạy lại `oxlint` để đảm bảo hệ thống hoàn toàn sạch lỗi và cảnh báo.
 
 ## 2. Elaboration & Self-Explanation
-Hệ thống `oxlint` tích hợp kiểm tra kiểu dữ liệu tĩnh rất nghiêm ngặt để đảm bảo code sạch sẽ và tối ưu bộ nhớ.
-* **Import/Variable không sử dụng**: Các file được refactor qua nhiều phiên bản thường để lại các dòng import thư viện biểu tượng như `lucide-react` mà thực tế không dùng đến. Việc xóa các import này giúp giảm dung lượng bundle và làm sạch không gian tên (namespace).
-* **Floating Promises**: Trong Next.js và React, khi ta gọi các hàm bất đồng bộ (async functions như `addItem` hoặc `handleAddToCart`) trong các sự kiện đồng bộ (`onClick`), trình biên dịch TypeScript cảnh báo nếu Promise đó không được xử lý bằng `await` hoặc bắt lỗi `.catch()`. Việc thêm từ khóa `void` trước lệnh gọi là cách báo cho trình biên dịch biết ta chủ động bỏ qua Promise này một cách an toàn.
-* **Định dạng String của Object**: ExcelJS Cell chứa giá trị thuộc kiểu `ExcelJS.CellValue` có thể là `object`. Ép kiểu bằng `String(val)` trực tiếp trên một object có thể sinh ra `"[object Object]"`. Bằng cách phân tách kiểu rõ ràng bằng `typeof val !== "object"` và giải quyết riêng các trường hợp object (như `Date`), ta loại bỏ được lỗ hổng logic này.
+Trong quá trình phát triển mã nguồn, đôi khi chúng ta khai báo biến hoặc tham số (props) để phục vụ cho một tính năng, nhưng sau đó cấu trúc code thay đổi (refactor) khiến các biến này không còn được dùng tới. Trình linter `oxlint` sẽ phát hiện ra các biến "mồ côi" này và cảnh báo.
+Việc loại bỏ các biến và tham số thừa giúp:
+* Làm sạch mã nguồn, dễ đọc, tránh gây hiểu lầm cho lập trình viên khác rằng biến đó vẫn còn tác dụng.
+* Tránh rác bộ nhớ (mặc dù rất nhỏ) và tối ưu hóa quá trình biên dịch (bundle size).
+* Vượt qua các bước kiểm tra tự động (CI/CD, Git Hooks) một cách trơn tru.
+
+Chúng ta sẽ lần lượt mở từng file bị báo cảnh báo, xác định chính xác các dòng khai báo biến/tham số không dùng, xóa bỏ chúng và lưu lại.
 
 ## 3. Concrete Examples & Analogies
-* **Ví dụ floating promise**:
-  * *Trước*: `onClick={() => handleAddToCart(product)}` (Báo cảnh báo vì `handleAddToCart` là async)
-  * *Sau*: `onClick={() => void handleAddToCart(product)}` (An toàn, tắt cảnh báo linter)
-* **Ví dụ no-base-to-string**:
-  * *Trước*: `return String(val).trim();` với `val` có kiểu phức tạp.
-  * *Sau*: `if (typeof val !== "object") { return String(val).trim(); } return "";` (Đảm bảo giá trị truyền vào `String()` chỉ là kiểu nguyên bản nguyên thủy như number, boolean, string).
-* **Ẩn dụ**: Giống như việc dọn dẹp một căn bếp. Xóa import thừa giống như vứt vỏ hộp rỗng; thêm `void` giống như dán nhãn "đã tắt bếp" để không ai phải lo lắng kiểm tra lại; sửa đổi hàm convert Excel giống như phân loại rác hữu cơ và vô cơ trước khi xử lý để tránh tắc nghẽn.
+* **Ví dụ thực tế**: Giống như việc bạn dọn dẹp nhà bếp. Bạn chuẩn bị sẵn một cái thớt và một cái dao (khai báo biến) nhưng cuối cùng chỉ dùng dao để cắt bánh mà không đụng tới cái thớt. Cái thớt để không trên bàn bếp chỉ làm chật chỗ (biến thừa). Việc cất chiếc thớt thừa đi giúp bàn bếp sạch sẽ hơn.
+* **Ví dụ trong code**:
+  * Trước khi sửa:
+    ```typescript
+    const brandTabStyle = { backgroundColor: '#ffffff' }; // Khai báo nhưng không dùng ở dưới
+    return <div className="tabs">Tab Content</div>;
+    ```
+  * Sau khi sửa:
+    ```typescript
+    // Xóa brandTabStyle
+    return <div className="tabs">Tab Content</div>;
+    ```
 
 # II. Audit Summary (Tóm tắt kiểm tra)
-* Chúng tôi đã định vị chính xác toàn bộ 10 file chứa các cảnh báo linter:
-  1. `app/system/experiences/search-filter/page.tsx`
-  2. `app/admin/home-components/footer/_components/FooterPreview.tsx`
-  3. `components/site/DynamicFooter.tsx`
-  4. `lib/excel/adapters/sapo-thanshoes.adapter.ts`
-  5. `app/admin/settings/_components/SettingsPageShell.tsx`
-  6. `app/admin/products/components/import-modal.tsx`
-  7. `components/site/shared/ProductCardActions.tsx`
-  8. `lib/modules/configs/settings.config.ts`
-  9. `components/site/ProductListSection.tsx`
-  10. `app/(site)/search/page.tsx`
-* Đã xác định phương án sửa tối ưu nhất cho từng file mà hoàn toàn không thay đổi logic nghiệp vụ (business logic) của hệ thống.
+* Đã chạy lệnh kiểm tra tĩnh: `bunx oxlint --type-aware --type-check --fix`.
+* Kết quả: Phát hiện 6 cảnh báo linter về biến và tham số chưa được sử dụng (`no-unused-vars`). Cụ thể:
+  1. `components/site/ProductGridSection.tsx:L718` - Biến `brandTabStyle` không dùng.
+  2. `components/site/ProductGridSection.tsx:L722` - Biến `brandTabActiveShadow` không dùng.
+  3. `app/admin/home-components/product-grid/_components/ProductGridForm.tsx:L43` - Tham số prop `itemCount` trong destructuring không dùng.
+  4. `app/admin/home-components/product-grid/_components/ProductGridPreview.tsx:L31` - Tham số prop `desktopRows` trong destructuring không dùng.
+  5. `app/admin/home-components/product-grid/_components/ProductGridPreview.tsx:L159` - Biến `brandTabStyle` không dùng.
+  6. `app/admin/home-components/product-grid/_components/ProductGridPreview.tsx:L163` - Biến `brandTabActiveShadow` không dùng.
 
 # III. Root Cause & Counter-Hypothesis (Nguyên nhân gốc & Giả thuyết đối chứng)
-* **Nguyên nhân gốc**:
-  1. Các file component thay đổi cấu trúc qua các đợt refactor nhưng chưa dọn dẹp các thư viện import thừa và biến cục bộ.
-  2. Sự kiện `onClick` gọi hàm async mà không có `void` hoặc `await`.
-  3. Sử dụng `String(val)` trên kiểu dữ liệu phức tạp của `exceljs` dẫn đến cảnh báo `no-base-to-string`.
-* **Giả thuyết đối chứng**: 
-  * Nếu giữ nguyên không sửa, code vẫn hoạt động bình thường ở runtime nhưng sẽ làm ô nhiễm log kiểm thử tĩnh (static analysis) và có nguy cơ phát sinh lỗi runtime nếu `exceljs` trả về một object phức tạp ngoài dự kiến. Việc dọn dẹp này cải thiện đáng kể độ tin cậy của mã nguồn.
+* **Nguyên nhân gốc**: Do quá trình refactor hoặc sao chép mã nguồn từ các component cũ sang component mới. Các biến (`brandTabStyle`, `brandTabActiveShadow`) và các props (`itemCount`, `desktopRows`) trước đó được dự định dùng cho việc tùy biến giao diện tab hoặc điều chỉnh lưới, nhưng thiết kế cuối cùng đã chuyển sang dùng các helper khác (như `CategoryTabSlider` hoặc dùng trực tiếp tính toán grid từ CSS/itemCount) khiến chúng bị bỏ quên.
+* **Độ tin cậy của nguyên nhân (Root Cause Confidence)**: **High (Cao)**. Mã nguồn hiện tại thực sự không tham chiếu đến các biến này, việc xóa đi hoàn toàn không làm thay đổi logic hoạt động hay hiển thị của giao diện.
 
 # IV. Proposal (Đề xuất)
-* Thực hiện chỉnh sửa trực tiếp trên 10 file bị ảnh hưởng để loại bỏ hoàn toàn các warnings.
-* Chạy lại công cụ `oxlint` sau khi sửa để đảm bảo không còn lỗi/cảnh báo nào sót lại.
+* Thực hiện chỉnh sửa mã nguồn để xóa bỏ các khai báo biến thừa và tham số thừa đã liệt kê ở phần Audit.
+* Không thêm bất kỳ logic nghiệp vụ (business logic) mới nào.
+* Giữ nguyên các định nghĩa kiểu dữ liệu (TypeScript type/interface) nếu chúng còn cần thiết cho việc tương thích API bên ngoài, chỉ xóa biến thực tế trong code thực thi của component.
 
 # V. Files Impacted (Tệp bị ảnh hưởng)
-### UI / Client Components:
-1. `app/system/experiences/search-filter/page.tsx`
-   * *Sửa*: Loại bỏ import `LayoutTemplate`, xóa các biến unused `canUseProducts` và `canUseQuickAddVariant`.
-2. `app/admin/home-components/footer/_components/FooterPreview.tsx`
-   * *Sửa*: Xóa import biểu tượng không sử dụng của `lucide-react` ở đầu file.
-3. `components/site/DynamicFooter.tsx`
-   * *Sửa*: Xóa import biểu tượng không sử dụng của `lucide-react`.
-4. `app/admin/settings/_components/SettingsPageShell.tsx`
-   * *Sửa*: Loại bỏ import `ShoppingBag`.
-5. `app/admin/products/components/import-modal.tsx`
-   * *Sửa*: Loại bỏ state `detectedAdapter`, đổi `detectedOptionNames` sang `detectedOptionNames: _detectedOptionNames` trong destructuring.
-6. `components/site/shared/ProductCardActions.tsx`
-   * *Sửa*: Xóa import `ShoppingCart`, đổi alias `buyNowLabel: _buyNowLabel` trong destructuring tham số.
-7. `components/site/ProductListSection.tsx`
-   * *Sửa*: Thêm `void` trước cuộc gọi `handleAddToCart` và `handleBuyNow`.
-8. `app/(site)/search/page.tsx`
-   * *Sửa*: Thêm `void` trước cuộc gọi `addItem` ở dòng 429.
-
-### Shared / Server / Data Adapters:
-9. `lib/excel/adapters/sapo-thanshoes.adapter.ts`
-   * *Sửa*: Cập nhật hàm `getCellText` kiểm tra type an toàn, loại bỏ khai báo và các lệnh gán của `currentBrand` và `currentDesc`.
-10. `lib/modules/configs/settings.config.ts`
-    * *Sửa*: Xóa import `Store` từ `lucide-react`.
+* **Sửa:** [ProductGridSection.tsx](file:///e:/NextJS/job/job_from_system_vietadmin/system_thanshoes/components/site/ProductGridSection.tsx)
+  * Vai trò hiện tại: Component hiển thị danh sách sản phẩm theo dạng lưới ngoài trang chủ (Client-facing).
+  * Thay đổi: Xóa bỏ 2 biến không sử dụng là `brandTabStyle` (dòng 718) và `brandTabActiveShadow` (dòng 722).
+* **Sửa:** [ProductGridForm.tsx](file:///e:/NextJS/job/job_from_system_vietadmin/system_thanshoes/app/admin/home-components/product-grid/_components/ProductGridForm.tsx)
+  * Vai trò hiện tại: Form cấu hình component lưới sản phẩm trong trang quản trị admin.
+  * Thay đổi: Loại bỏ `itemCount` khỏi phần destructuring các tham số đầu vào của component `ProductGridForm` (dòng 43).
+* **Sửa:** [ProductGridPreview.tsx](file:///e:/NextJS/job/job_from_system_vietadmin/system_thanshoes/app/admin/home-components/product-grid/_components/ProductGridPreview.tsx)
+  * Vai trò hiện tại: Component xem trước (preview) lưới sản phẩm trong trang quản trị admin.
+  * Thay đổi: Loại bỏ `desktopRows` khỏi phần destructuring tham số đầu vào (dòng 31) và xóa 2 biến không sử dụng `brandTabStyle` (dòng 159), `brandTabActiveShadow` (dòng 163).
 
 # VI. Execution Preview (Xem trước thực thi)
-1. Đọc và chỉnh sửa các file UI để dọn dẹp imports và variables.
-2. Cập nhật các file có lỗi Promise trôi nổi (floating-promises) bằng toán tử `void`.
-3. Sửa adapter Excel để giải quyết triệt để lỗi chuyển đổi string và biến thừa.
-4. Kích hoạt lệnh lint để kiểm tra kết quả cuối cùng.
+1. Tiến hành sửa file `ProductGridSection.tsx`: định vị dòng 718-723 và xóa bỏ khai báo biến.
+2. Tiến hành sửa file `ProductGridForm.tsx`: định vị dòng 43 và xóa `itemCount,`.
+3. Tiến hành sửa file `ProductGridPreview.tsx`: định vị dòng 31 và xóa `desktopRows = 2,`, định vị dòng 159-163 và xóa khai báo.
+4. Chạy lại `bunx oxlint --type-aware --type-check --fix` để xác nhận toàn bộ lỗi/cảnh báo linter đã được giải quyết sạch sẽ.
 
 # VII. Verification Plan (Kế hoạch kiểm chứng)
-* **Kiểm tra tự động**: Chạy `bunx oxlint --type-aware --type-check` trên toàn bộ dự án để đảm bảo số lượng cảnh báo giảm về 0 (hoặc tối thiểu liên quan đến độ dài file `ProductsPage.tsx`).
-* **Kiểm tra biên dịch**: Chạy `bunx tsc --noEmit` để đảm bảo kiểu dữ liệu vẫn hoàn toàn chính xác.
+* **Kiểm tra tĩnh (Static Check)**:
+  * Chạy lệnh `bunx oxlint --type-aware --type-check` trên toàn bộ dự án.
+  * Kết quả mong đợi: `Found 0 warnings and 0 errors.` hoặc không còn bất kỳ cảnh báo nào liên quan đến 3 file trên.
+  * Chạy `bunx tsc --noEmit` để đảm bảo việc thay đổi destructuring props không làm gãy type-check của TypeScript.
 
 # VIII. Todo
-- [ ] Cập nhật `app/system/experiences/search-filter/page.tsx`
-- [ ] Cập nhật `app/admin/home-components/footer/_components/FooterPreview.tsx`
-- [ ] Cập nhật `components/site/DynamicFooter.tsx`
-- [ ] Cập nhật `lib/excel/adapters/sapo-thanshoes.adapter.ts`
-- [ ] Cập nhật `app/admin/settings/_components/SettingsPageShell.tsx`
-- [ ] Cập nhật `app/admin/products/components/import-modal.tsx`
-- [ ] Cập nhật `components/site/shared/ProductCardActions.tsx`
-- [ ] Cập nhật `lib/modules/configs/settings.config.ts`
-- [ ] Cập nhật `components/site/ProductListSection.tsx`
-- [ ] Cập nhật `app/(site)/search/page.tsx`
-- [ ] Chạy `bunx oxlint --type-aware --type-check` để đối chiếu kết quả.
+* [ ] Xóa khai báo biến unused `brandTabStyle` và `brandTabActiveShadow` trong `ProductGridSection.tsx`
+* [ ] Xóa tham số unused `itemCount` trong destructuring của `ProductGridForm.tsx`
+* [ ] Xóa tham số unused `desktopRows` trong destructuring của `ProductGridPreview.tsx`
+* [ ] Xóa khai báo biến unused `brandTabStyle` và `brandTabActiveShadow` trong `ProductGridPreview.tsx`
+* [ ] Chạy kiểm tra linter `oxlint` và type-check `tsc` để verify thành công
 
 # IX. Acceptance Criteria (Tiêu chí chấp nhận)
-* Toàn bộ 35 warnings được giải quyết triệt để.
-* Không phát sinh lỗi biên dịch TypeScript mới.
-* Ứng dụng hoạt động bình thường, các sự kiện click giỏ hàng và import Excel hoạt động ổn định.
+* Lệnh `bunx oxlint --type-aware --type-check` hoàn thành thành công và báo cáo `0 warnings and 0 errors` đối với các file được chỉnh sửa.
+* Dự án biên dịch thành công, không gặp lỗi TypeScript.
 
 # X. Risk / Rollback (Rủi ro / Hoàn tác)
-* **Rủi ro**: Rất thấp vì đây hoàn toàn là các thay đổi dọn dẹp mã nguồn tĩnh và cú pháp chuẩn hóa.
-* **Hoàn tác**: Sử dụng `git checkout` để rollback nhanh chóng bất kỳ file nào có dấu hiệu bất thường.
+* **Rủi ro**: Hầu như bằng không vì đây chỉ là dọn dẹp các biến/tham số chết.
+* **Hoàn tác**: Sử dụng `git checkout -- <file>` để phục hồi trạng thái cũ nếu cần.
 
 # XI. Out of Scope (Ngoài phạm vi)
-* Thay đổi cấu trúc dữ liệu của các adapter hoặc thiết kế lại giao diện UI.
-* Refactor các hàm xử lý logic nghiệp vụ chính.
+* Không thay đổi logic hiển thị, giao diện hay các tính năng khác của các component trên.
+* Không refactor hoặc tối ưu hóa hiệu năng sâu cho các component.

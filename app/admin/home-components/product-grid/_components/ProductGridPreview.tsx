@@ -28,7 +28,6 @@ export const ProductGridPreview = ({
   brandColor,
   secondary,
   itemCount,
-  desktopRows = 2,
   selectedStyle,
   onStyleChange,
   items,
@@ -156,11 +155,6 @@ export const ProductGridPreview = ({
     return (0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)) > 0.4 ? '#1e293b' : '#ffffff';
   };
   const textOnBrand = getTextOnBrand(brandColor);
-  const brandTabStyle = {
-    backgroundColor: '#ffffff',
-    color: '#020617',
-  };
-  const brandTabActiveShadow = '0 0 0 2px rgba(255,255,255,0.65)';
 
   const renderEmptyCategoryState = () => {
     const adminProductsUrl = '/admin/products';
