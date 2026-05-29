@@ -1081,9 +1081,12 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
                               </span>
                             )}
                           </div>
-                          <div className="inline-flex items-center justify-center rounded-full px-5 py-2 text-xs font-bold text-white shadow-lg transition duration-300 group-hover:scale-105" style={{ backgroundColor: secondary }}>
-                            Xem chi tiết <ArrowRight size={14} className="ml-1.5" />
-                          </div>
+                          {/* Chỉ show nút Xem chi tiết khi không có cart mode */}
+                          {(!showAddToCartButton && !showBuyNowButton) && (
+                            <div className="inline-flex items-center justify-center rounded-full px-5 py-2 text-xs font-bold text-white shadow-lg transition duration-300 group-hover:scale-105" style={{ backgroundColor: secondary }}>
+                              Xem chi tiết <ArrowRight size={14} className="ml-1.5" />
+                            </div>
+                          )}
                         </div>
                       </div>
                       {hoverImage && (
@@ -1102,6 +1105,23 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
                       )}
                     </div>
                   </Link>
+
+                  {/* Cart buttons đặt NGOÀI Link/card 3D — rộng rãi, dễ nhìn */}
+                  {(showAddToCartButton || showBuyNowButton) && (
+                    <div className="mt-3 px-1">
+                      <ProductCardActions
+                        product={product as any}
+                        tokens={tokens}
+                        showStock={showStock}
+                        showAddToCartButton={showAddToCartButton}
+                        showBuyNowButton={showBuyNowButton}
+                        buyNowLabel="Mua ngay"
+                        onAddToCart={handleAddToCart}
+                        onBuyNow={handleBuyNow}
+                        cartButtonsLayout={cartButtonsLayout}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1127,11 +1147,11 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
         {/* Bento Grid - Desktop */}
         <div className="hidden md:grid grid-cols-4 grid-rows-2 gap-4 h-auto">
           {/* Hero Item (Span 2x2) */}
-          <Link 
-            href={getProductDetailHref(featured)}
+          <div
             className={cn("col-span-2 row-span-2 relative group overflow-hidden cursor-pointer min-h-[400px] border border-transparent hover:border-slate-300 transition-colors", cardRadiusClassName)}
             style={{ ...imageAspectRatioStyle, backgroundColor: `${secondary}10` }}
           >
+            <Link href={getProductDetailHref(featured)} className="absolute inset-0 z-10" tabIndex={-1} aria-hidden />
             <ProductImageWithOverlay className="absolute inset-0" frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
               {featured?.image ? (
                 <Image
@@ -1149,27 +1169,54 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
               )}
             </ProductImageWithOverlay>
             {/* Overlay gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-30" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-20" />
             
             {/* Discount Badge */}
             {featuredDiscount && (
-              <div className="absolute top-4 right-4">
+              <div className="absolute top-4 right-4 z-30">
                 <SaleBadge text={featuredDiscount} className="text-sm px-3 py-1" />
               </div>
             )}
 
-            <div className="absolute bottom-0 left-0 p-6 md:p-8 w-full">
-              <h3 className="text-2xl md:text-4xl font-bold mb-3 leading-tight text-white">{featured?.name}</h3>
+            <div className="absolute bottom-0 left-0 p-6 md:p-8 w-full z-30">
+              <Link href={getProductDetailHref(featured)}>
+                <h3 className="text-2xl md:text-4xl font-bold mb-2 leading-tight text-white hover:opacity-85 transition-colors">{featured?.name}</h3>
+              </Link>
+              <span className="text-2xl font-bold text-white block mb-3">{featuredPriceDisplay?.label ?? ''}</span>
               
-              <div className="flex flex-row items-center justify-between gap-4 mt-2">
-                <span className="text-2xl font-bold text-white">{featuredPriceDisplay?.label ?? ''}</span>
-                
-                <span className="rounded-full px-6 py-2 text-white border-0 shadow-lg" style={{ backgroundColor: brandColor, boxShadow: `0 4px 6px ${brandColor}20` }}>
+              {showAddToCartButton || showBuyNowButton ? (
+                <div className="flex gap-2">
+                  {showAddToCartButton && (
+                    <button
+                      type="button"
+                      className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-white shadow-lg transition-all hover:opacity-90 whitespace-nowrap"
+                      style={{ backgroundColor: brandColor }}
+                      onClick={(e) => { e.stopPropagation(); handleAddToCart(featured); }}
+                    >
+                      Thêm giỏ
+                    </button>
+                  )}
+                  {showBuyNowButton && (
+                    <button
+                      type="button"
+                      className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-slate-900 bg-white/90 hover:bg-white shadow-lg transition-all whitespace-nowrap"
+                      onClick={(e) => { e.stopPropagation(); handleBuyNow(featured); }}
+                    >
+                      Mua ngay
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  href={getProductDetailHref(featured)}
+                  className="inline-block rounded-full px-6 py-2 text-white border-0 shadow-lg hover:opacity-90 transition-colors"
+                  style={{ backgroundColor: brandColor, boxShadow: `0 4px 6px ${brandColor}20` }}
+                >
                   Xem chi tiết
-                </span>
-              </div>
+                </Link>
+              )}
             </div>
-          </Link>
+          </div>
 
           {/* Small Grid Items */}
           {others.slice(0, 4).map((product) => renderSingleProductCard(product))}
