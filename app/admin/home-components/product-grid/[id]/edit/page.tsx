@@ -69,6 +69,7 @@ export default function ProductGridEditPage({
   const updateMutation = useMutation(api.homeComponents.update);
   const saleMode = useMemo(() => resolveSaleMode(saleModeSetting?.value), [saleModeSetting?.value]);
   const categoriesData = useQuery(api.productCategories.listActive);
+  const categoryProductCountsMap = useQuery(api.products.countActiveByCategory);
 
   const allCategories: CategoryTabItem[] | undefined = useMemo(() => {
     if (!categoriesData) return undefined;
@@ -547,6 +548,7 @@ export default function ProductGridEditPage({
           categoryTabIds={categoryTabIds}
           setCategoryTabIds={setCategoryTabIds}
           allCategories={allCategories}
+          categoryProductCountsMap={categoryProductCountsMap}
           desktopColumns={desktopColumns}
           onDesktopColumnsChange={setDesktopColumns}
           spacing={spacing}

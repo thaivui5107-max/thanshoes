@@ -122,6 +122,19 @@ export const ProductGridForm = ({
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
   const [categorySearch, setCategorySearch] = useState('');
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const selectedCategories = useMemo(() => {
     if (!allCategories) return [];
@@ -428,7 +441,7 @@ export const ProductGridForm = ({
                 ) : allCategories.length === 0 ? (
                   <p className="text-xs text-slate-400">Chưa có danh mục sản phẩm nào</p>
                 ) : (
-                  <div className="relative">
+                  <div className="relative" ref={categoryDropdownRef}>
                     <Popover open={isCategoryDropdownOpen} onOpenChange={setIsCategoryDropdownOpen}>
                       <PopoverTrigger>
                         <Button

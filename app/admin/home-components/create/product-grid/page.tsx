@@ -62,6 +62,7 @@ function ProductGridCreateContent() {
   const saleModeSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'saleMode' });
   const saleMode = useMemo(() => resolveSaleMode(saleModeSetting?.value), [saleModeSetting?.value]);
   const categoriesData = useQuery(api.productCategories.listActive);
+  const categoryProductCountsMap = useQuery(api.products.countActiveByCategory);
 
   const allCategories: CategoryTabItem[] | undefined = useMemo(() => {
     if (!categoriesData) return undefined;
@@ -269,6 +270,7 @@ function ProductGridCreateContent() {
         categoryTabIds={categoryTabIds}
         setCategoryTabIds={setCategoryTabIds}
         allCategories={allCategories}
+        categoryProductCountsMap={categoryProductCountsMap}
         desktopColumns={desktopColumns}
         onDesktopColumnsChange={setDesktopColumns}
         spacing={spacing}

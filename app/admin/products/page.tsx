@@ -43,6 +43,19 @@ function ProductsContent() {
   const [filterCategory, setFilterCategory] = useState<Id<"productCategories"> | ''>('');
   const [categorySearch, setCategorySearch] = useState('');
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const filteredCategories = useMemo(() => {
     if (!categoriesData) return [];
@@ -477,7 +490,7 @@ function ProductsContent() {
                 <span className="font-medium">Tìm chính xác</span>
               </label>
             </div>
-            <div className="relative">
+            <div className="relative" ref={categoryDropdownRef}>
               <Popover open={isCategoryDropdownOpen} onOpenChange={setIsCategoryDropdownOpen}>
                 <PopoverTrigger>
                   <Button
