@@ -3899,11 +3899,6 @@ function CategoryProductsSection({
       return;
     }
 
-    if (!isAuthenticated) {
-      openLoginModal();
-      return;
-    }
-
     if (product.hasVariants) {
       setQuickAddTarget({ product, action: 'addToCart' });
       return;
@@ -3920,11 +3915,6 @@ function CategoryProductsSection({
 
   const handleBuyNow = (product: any) => {
     if (showStock && (product.stock ?? 0) <= 0) {
-      return;
-    }
-
-    if (!isAuthenticated) {
-      openLoginModal();
       return;
     }
 

@@ -148,11 +148,6 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
       return;
     }
 
-    if (!isAuthenticated) {
-      openLoginModal();
-      return;
-    }
-
     if (product.hasVariants) {
       setQuickAddTarget({ product, action: 'addToCart' });
       return;
@@ -169,11 +164,6 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
 
   const handleBuyNow = (product: any) => {
     if (showStock && (product.stock ?? 0) <= 0) {
-      return;
-    }
-
-    if (!isAuthenticated) {
-      openLoginModal();
       return;
     }
 
