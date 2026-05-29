@@ -7,7 +7,6 @@ import { useQuery } from 'convex/react';
 import { Briefcase, FileText, History, Package, Search, X } from 'lucide-react';
 import { api } from '@/convex/_generated/api';
 import type { MenuColors } from './header/colors';
-import { useI18n } from '@/app/system/i18n/context';
 
 type SuggestionItem = {
   id: string;
@@ -62,13 +61,13 @@ export function HeaderSearchAutocomplete({
   autoFocus = false,
 }: HeaderSearchAutocompleteProps) {
   const router = useRouter();
-  const { locale } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
+  const [locale, setLocale] = useState('vi');
 
   // Đồng bộ lịch sử tìm kiếm gần đây từ localStorage
   useEffect(() => {
@@ -79,6 +78,12 @@ export function HeaderSearchAutocomplete({
       } catch (e) {
         console.error('Lỗi khi parse lịch sử tìm kiếm:', e);
       }
+    }
+
+    // Đọc locale của trình duyệt/localStorage một cách an toàn
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('system-locale') || localStorage.getItem('locale') || 'vi';
+      setLocale(saved);
     }
   }, []);
 
@@ -174,6 +179,8 @@ export function HeaderSearchAutocomplete({
     '--menu-search-hover-text': tokens.dropdownItemHoverText,
   } as React.CSSProperties;
 
+  const recentTitle = locale === 'en' ? 'Recent Searches' : 'Tìm kiếm gần đây';
+
   return (
     <div ref={containerRef} className={cn('relative', className)}>
       <input
@@ -240,7 +247,7 @@ export function HeaderSearchAutocomplete({
                 className="px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider flex items-center justify-between"
                 style={{ color: tokens.dropdownSectionLabel }}
               >
-                <span>{locale === 'vi' ? 'Tìm kiếm gần đây' : 'Recent Searches'}</span>
+                <span>{recentTitle}</span>
               </div>
               <div className="space-y-0.5">
                 {recentQueries.map((item) => (
