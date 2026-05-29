@@ -52,6 +52,9 @@ function ProductGridCreateContent() {
   const { openSections: headerOpenSections, toggleSection: toggleHeaderSection } = useFormSectionsState(['header'], true);
   const [spacing, setSpacing] = useState<SectionSpacing>(DEFAULT_SECTION_SPACING);
   const [cardRadius, setCardRadius] = useState<ProductListCardRadius>(DEFAULT_PRODUCT_LIST_CARD_RADIUS);
+  const [showAddToCartButton, setShowAddToCartButton] = useState(true);
+  const [showBuyNowButton, setShowBuyNowButton] = useState(true);
+  const [cartButtonsLayout, setCartButtonsLayout] = useState<'stack' | 'grid-2'>('stack');
 
   const productsData = useQuery(api.products.listAll, { limit: 100 });
   const resolvedProductsData = useQuery(api.products.listPublicResolved, { limit: 100 });
@@ -164,6 +167,9 @@ function ProductGridCreateContent() {
       cornerRadius: cardRadius,
       cardRadius,
       noBorderRadius: cardRadius === 'none',
+      showAddToCartButton,
+      showBuyNowButton,
+      cartButtonsLayout,
     });
   };
 
@@ -239,6 +245,12 @@ function ProductGridCreateContent() {
         setSpacing={setSpacing}
         cardRadius={cardRadius}
         setCardRadius={setCardRadius}
+        showAddToCartButton={showAddToCartButton}
+        setShowAddToCartButton={setShowAddToCartButton}
+        showBuyNowButton={showBuyNowButton}
+        setShowBuyNowButton={setShowBuyNowButton}
+        cartButtonsLayout={cartButtonsLayout}
+        setCartButtonsLayout={setCartButtonsLayout}
         className="mb-3"
       />
 
@@ -283,6 +295,9 @@ function ProductGridCreateContent() {
             showBadge={showBadge}
             spacing={spacing}
             cornerRadius={cardRadius}
+            showAddToCartButton={showAddToCartButton}
+            showBuyNowButton={showBuyNowButton}
+            cartButtonsLayout={cartButtonsLayout}
           />
         </div>
       </div>

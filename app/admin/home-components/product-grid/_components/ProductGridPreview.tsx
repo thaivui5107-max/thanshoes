@@ -20,6 +20,8 @@ import { SectionHeader } from '../../_shared/components/SectionHeader';
 import { deviceWidths, usePreviewDevice } from '../../_shared/hooks/usePreviewDevice';
 import { SaleBadge } from '@/components/site/shared/BrandColorHelpers';
 import { getProductImageAspectRatioCssValue, resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
+import { ProductCardActions } from '@/components/site/shared/ProductCardActions';
+import { getProductsListColors } from '@/components/site/products/colors';
 
 export const ProductGridPreview = ({
   brandColor,
@@ -94,6 +96,10 @@ export const ProductGridPreview = ({
   const imageAspectRatioStyle = useMemo(
     () => ({ aspectRatio: getProductImageAspectRatioCssValue(imageAspectRatio) }),
     [imageAspectRatio]
+  );
+  const tokens = React.useMemo(
+    () => getProductsListColors(brandColor, secondary, 'single'),
+    [brandColor, secondary]
   );
 
   // Filter items by active tab (match by category name or _id)
@@ -259,13 +265,33 @@ export const ProductGridPreview = ({
                               </span>
                             )}
                           </div>
-                          <button
-                            type="button"
-                            className="w-full gap-1.5 border-2 py-1.5 px-4 rounded-lg font-medium flex items-center justify-center transition-colors hover:bg-opacity-10 whitespace-nowrap text-xs md:text-sm"
-                            style={{ borderColor: `${brandColor}30`, color: brandColor }}
-                          >
-                            Xem chi tiết <ArrowRight className="w-3 h-3 flex-shrink-0" />
-                          </button>
+                          {showAddToCartButton || showBuyNowButton ? (
+                            <ProductCardActions
+                              product={{
+                                _id: String(item.id),
+                                name: item.name,
+                                price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                                salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                              }}
+                              tokens={tokens}
+                              showStock={false}
+                              showAddToCartButton={!!showAddToCartButton}
+                              showBuyNowButton={!!showBuyNowButton}
+                              buyNowLabel="Mua ngay"
+                              onAddToCart={() => {}}
+                              onBuyNow={() => {}}
+                              cartButtonsLayout={cartButtonsLayout}
+                              device={device}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className="w-full gap-1.5 border-2 py-1.5 px-4 rounded-lg font-medium flex items-center justify-center transition-colors hover:bg-opacity-10 whitespace-nowrap text-xs md:text-sm"
+                              style={{ borderColor: `${brandColor}30`, color: brandColor }}
+                            >
+                              Xem chi tiết <ArrowRight className="w-3 h-3 flex-shrink-0" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -376,13 +402,33 @@ export const ProductGridPreview = ({
                               </span>
                             )}
                           </div>
-                          <button
-                            type="button"
-                            className="w-full gap-1.5 border-2 py-1.5 px-4 rounded-lg font-medium flex items-center justify-center transition-colors hover:bg-opacity-10 whitespace-nowrap text-xs md:text-sm"
-                            style={{ borderColor: `${brandColor}30`, color: brandColor }}
-                          >
-                            Xem chi tiết <ArrowRight className="w-3 h-3 flex-shrink-0" />
-                          </button>
+                          {showAddToCartButton || showBuyNowButton ? (
+                            <ProductCardActions
+                              product={{
+                                _id: String(item.id),
+                                name: item.name,
+                                price: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                                salePrice: item.price ? Number(item.price.replace(/\D/g, '')) : undefined,
+                              }}
+                              tokens={tokens}
+                              showStock={false}
+                              showAddToCartButton={!!showAddToCartButton}
+                              showBuyNowButton={!!showBuyNowButton}
+                              buyNowLabel="Mua ngay"
+                              onAddToCart={() => {}}
+                              onBuyNow={() => {}}
+                              cartButtonsLayout={cartButtonsLayout}
+                              device={device}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className="w-full gap-1.5 border-2 py-1.5 px-4 rounded-lg font-medium flex items-center justify-center transition-colors hover:bg-opacity-10 whitespace-nowrap text-xs md:text-sm"
+                              style={{ borderColor: `${brandColor}30`, color: brandColor }}
+                            >
+                              Xem chi tiết <ArrowRight className="w-3 h-3 flex-shrink-0" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     );

@@ -607,6 +607,9 @@ export default function ProductGridEditPage({
               showBadge={showBadge}
               spacing={spacing}
               cornerRadius={cardRadius}
+              showAddToCartButton={showAddToCartButton}
+              showBuyNowButton={showBuyNowButton}
+              cartButtonsLayout={cartButtonsLayout}
             />
           </div>
         </div>
