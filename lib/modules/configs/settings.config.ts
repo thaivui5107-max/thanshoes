@@ -1,4 +1,4 @@
-import { Globe, LayoutTemplate, Mail, MapPin, Settings, Share2, Sparkles, ShoppingBag } from 'lucide-react';
+import { Globe, LayoutTemplate, Mail, MapPin, Settings, Share2, Sparkles, Store } from 'lucide-react';
 import { defineModuleWithRuntime } from '../define-module';
  
 export const settingsModule = defineModuleWithRuntime({
@@ -14,7 +14,7 @@ export const settingsModule = defineModuleWithRuntime({
      { key: 'enableSocial', label: 'Mạng xã hội', icon: Share2 },
      { key: 'enableMail', label: 'Cấu hình Email', icon: Mail },
      { key: 'enableHeaderMenuAdvanced', label: 'Admin chỉnh Header Menu', icon: LayoutTemplate, enabled: true },
-     { key: 'enableShopConfigAdvanced', label: 'Cấu hình Shop nâng cao (Đơn hàng, Vận chuyển, Thanh toán, Địa chỉ)', icon: ShoppingBag, enabled: true },
+     { key: 'enableShopConfigAdvanced', label: 'Cấu hình Shop nâng cao (Đơn hàng, Vận chuyển, Thanh toán, Địa chỉ)', icon: Store, enabled: true },
      { key: 'enableTrustPages', label: 'Trang tin cậy', icon: Globe },
      { key: 'enableTrustPagesAutoGenerate', label: 'Tự sinh Trust Pages', icon: Sparkles },
    ],
