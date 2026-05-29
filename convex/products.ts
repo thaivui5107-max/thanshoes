@@ -133,6 +133,7 @@ const productDoc = v.object({
   stock: v.number(),
   combos: v.optional(v.array(comboItemDoc)),
   productTypeId: v.optional(v.id("productTypes")),
+  effectivePrice: v.optional(v.number()),
 });
 
 const productAdminDoc = v.object({
@@ -187,6 +188,7 @@ const productAdminDoc = v.object({
   hasInvalidVariantComparePrice: v.optional(v.boolean()),
   combos: v.optional(v.array(comboItemDoc)),
   productTypeId: v.optional(v.id("productTypes")),
+  effectivePrice: v.optional(v.number()),
 });
 
 const paginatedProducts = v.object({
