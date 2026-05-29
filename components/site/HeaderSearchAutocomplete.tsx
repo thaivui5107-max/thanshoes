@@ -190,7 +190,7 @@ export function HeaderSearchAutocomplete({
       )}
       {showDropdown && (
         <div
-          className="absolute right-0 mt-2 min-w-[320px] rounded-xl border z-50 overflow-hidden"
+          className="absolute left-0 md:left-auto right-0 mt-2 w-full md:w-[380px] rounded-xl border z-50 overflow-hidden shadow-2xl animate-in fade-in-50 slide-in-from-top-1 duration-200"
           style={dropdownStyle}
         >
           {isLoading && (
@@ -222,7 +222,7 @@ export function HeaderSearchAutocomplete({
                             style={{ color: tokens.dropdownItemText }}
                           >
                             <div
-                              className="relative w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden"
+                              className="relative w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden shrink-0"
                               style={{ backgroundColor: tokens.surfaceMuted }}
                             >
                               {item.thumbnail ? (

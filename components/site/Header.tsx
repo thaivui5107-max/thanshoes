@@ -1424,9 +1424,10 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
               searchPosts={canSearchPosts}
               searchServices={canSearchServices}
               tokens={tokens}
-              showButton={false}
+              showButton={true}
               className="w-full"
-              inputClassName="w-full px-3 py-2 rounded-full border text-sm focus:outline-none"
+              inputClassName="w-full pl-4 pr-10 py-2 rounded-full border text-sm focus:outline-none"
+              buttonClassName="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full"
               inputStyle={{
                 backgroundColor: tokens.searchInputBg,
                 borderColor: tokens.searchInputBorder,
@@ -1606,9 +1607,10 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
               searchPosts={canSearchPosts}
               searchServices={canSearchServices}
               tokens={tokens}
-              showButton={false}
+              showButton={true}
               className="w-full"
-              inputClassName="w-full px-3 py-2 rounded-full border text-sm focus:outline-none"
+              inputClassName="w-full pl-4 pr-10 py-2 rounded-full border text-sm focus:outline-none"
+              buttonClassName="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full"
               inputStyle={{
                 backgroundColor: tokens.searchInputBg,
                 borderColor: tokens.searchInputBorder,
@@ -2163,9 +2165,10 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
               searchPosts={canSearchPosts}
               searchServices={canSearchServices}
               tokens={tokens}
-              showButton={false}
+              showButton={true}
               className="w-full"
-              inputClassName="w-full px-3 py-2 rounded-full border text-sm focus:outline-none"
+              inputClassName="w-full pl-4 pr-10 py-2 rounded-full border text-sm focus:outline-none"
+              buttonClassName="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full"
               inputStyle={{
                 backgroundColor: tokens.searchInputBg,
                 borderColor: tokens.searchInputBorder,
