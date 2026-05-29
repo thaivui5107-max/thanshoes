@@ -775,7 +775,7 @@ export const ServicesSectionCore = ({
             return (
               <article
                 key={getServiceKey(item, idx)}
-                className="relative flex min-h-[54px] flex-col justify-center rounded-md py-2.5 pl-[76px] pr-4 text-left shadow-sm"
+                className="relative flex min-h-[54px] flex-col justify-center rounded-md py-2.5 pl-4 pr-4 md:pl-[76px] text-left shadow-sm"
                 style={{ backgroundColor: cardBg }}
               >
                 <div
@@ -820,10 +820,10 @@ export const ServicesSectionCore = ({
                 </div>
 
                 <div className="relative z-0">
-                  <h3 className={serviceTitleClassName} style={{ ...serviceTitleFontStyle, color: cardTitleColor }}>
+                  <h3 className={cn(serviceTitleClassName, "pl-[56px] md:pl-0 min-h-[42px] md:min-h-0")} style={{ ...serviceTitleFontStyle, color: cardTitleColor }}>
                     {item.title || 'Tiêu đề'}
                   </h3>
-                  <p className={serviceBodyClassName} style={{ ...serviceBodyFontStyle, color: cardDescColor }}>
+                  <p className={cn(serviceBodyClassName, "pl-0 mt-2 md:mt-0.5")} style={{ ...serviceBodyFontStyle, color: cardDescColor }}>
                     {item.description || 'Mô tả dịch vụ...'}
                   </p>
                 </div>
