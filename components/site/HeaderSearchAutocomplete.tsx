@@ -4,9 +4,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PublicImage as Image } from '@/components/shared/PublicImage';
 import { useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
-import { Briefcase, FileText, Package, Search, X } from 'lucide-react';
+import { Briefcase, FileText, History, Package, Search, X } from 'lucide-react';
 import { api } from '@/convex/_generated/api';
 import type { MenuColors } from './header/colors';
+import { useI18n } from '@/app/system/i18n/context';
 
 type SuggestionItem = {
   id: string;
@@ -61,11 +62,25 @@ export function HeaderSearchAutocomplete({
   autoFocus = false,
 }: HeaderSearchAutocompleteProps) {
   const router = useRouter();
+  const { locale } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [recentQueries, setRecentQueries] = useState<string[]>([]);
+
+  // Đồng bộ lịch sử tìm kiếm gần đây từ localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('site_recent_queries');
+    if (stored) {
+      try {
+        setRecentQueries(JSON.parse(stored));
+      } catch (e) {
+        console.error('Lỗi khi parse lịch sử tìm kiếm:', e);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -116,13 +131,33 @@ export function HeaderSearchAutocomplete({
   ]), [data?.posts, data?.products, data?.services]);
 
   const hasResults = sections.some(section => section.items.length > 0);
-  const showDropdown = isOpen && shouldSearch && !disabled;
+  
+  const showRecent = isOpen && !disabled && query.trim() === '' && recentQueries.length > 0;
+  const showDropdown = isOpen && !disabled && (shouldSearch || (query.trim() === '' && recentQueries.length > 0));
 
-  const handleSubmit = () => {
-    const value = query.trim();
+  const addToRecentQueries = (q: string) => {
+    setRecentQueries((prev) => {
+      const filtered = prev.filter((item) => item.toLowerCase() !== q.toLowerCase());
+      const updated = [q, ...filtered].slice(0, 5);
+      localStorage.setItem('site_recent_queries', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const removeFromRecentQueries = (q: string) => {
+    setRecentQueries((prev) => {
+      const updated = prev.filter((item) => item.toLowerCase() !== q.toLowerCase());
+      localStorage.setItem('site_recent_queries', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleSubmit = (targetValue?: string) => {
+    const value = (targetValue ?? query).trim();
     if (!value) {
       return;
     }
+    addToRecentQueries(value);
     setIsOpen(false);
     router.push(`/search?q=${encodeURIComponent(value)}`);
   };
@@ -145,12 +180,12 @@ export function HeaderSearchAutocomplete({
         ref={inputRef}
         type="text"
         value={query}
-        onFocus={() => { if (!disabled && query.trim()) { setIsOpen(true); } }}
+        onFocus={() => { if (!disabled) { setIsOpen(true); } }}
         onChange={(event) => {
           const value = event.target.value;
           setQuery(value);
           if (!disabled) {
-            setIsOpen(Boolean(value.trim()));
+            setIsOpen(true);
           }
         }}
         onKeyDown={(event) => {
@@ -186,7 +221,7 @@ export function HeaderSearchAutocomplete({
       {showButton && (
         <button
           type="button"
-          onClick={handleSubmit}
+          onClick={() => handleSubmit()}
           className={buttonClassName}
           style={{ backgroundColor: tokens.searchButtonBg, color: tokens.searchButtonText }}
         >
@@ -198,13 +233,58 @@ export function HeaderSearchAutocomplete({
           className="absolute left-0 md:left-auto right-0 mt-2 w-full md:w-[380px] rounded-xl border z-50 overflow-hidden shadow-2xl animate-in fade-in-50 slide-in-from-top-1 duration-200"
           style={dropdownStyle}
         >
-          {isLoading && (
+          {/* Render Lịch sử tìm kiếm gần đây */}
+          {showRecent && (
+            <div className="py-2">
+              <div
+                className="px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider flex items-center justify-between"
+                style={{ color: tokens.dropdownSectionLabel }}
+              >
+                <span>{locale === 'vi' ? 'Tìm kiếm gần đây' : 'Recent Searches'}</span>
+              </div>
+              <div className="space-y-0.5">
+                {recentQueries.map((item) => (
+                  <div
+                    key={item}
+                    onClick={() => {
+                      setQuery(item);
+                      handleSubmit(item);
+                    }}
+                    className="w-full group flex items-center justify-between px-4 py-2 transition-colors cursor-pointer text-left hover:bg-[var(--menu-search-hover-bg)] hover:text-[var(--menu-search-hover-text)]"
+                    style={{ color: tokens.dropdownItemText }}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <History
+                        size={14}
+                        className="text-slate-400 group-hover:text-[var(--menu-search-hover-text)] transition-colors shrink-0"
+                      />
+                      <span className="text-sm font-medium truncate">{item}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFromRecentQueries(item);
+                      }}
+                      className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0"
+                      title={locale === 'vi' ? 'Xóa lịch sử' : 'Remove history'}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Render autocomplete tìm kiếm */}
+          {!showRecent && isLoading && (
             <div className="px-4 py-3 text-sm" style={{ color: tokens.textSubtle }}>Đang tìm kiếm...</div>
           )}
-          {!isLoading && !hasResults && (
+          {!showRecent && !isLoading && !hasResults && (
             <div className="px-4 py-3 text-sm" style={{ color: tokens.textSubtle }}>Không có kết quả phù hợp.</div>
           )}
-          {!isLoading && hasResults && (
+          {!showRecent && !isLoading && hasResults && (
             <div className="py-2">
               {sections.map((section) => (
                 section.items.length > 0 ? (
@@ -251,10 +331,10 @@ export function HeaderSearchAutocomplete({
               ))}
             </div>
           )}
-          {hasResults && (
+          {!showRecent && hasResults && (
             <button
               type="button"
-              onClick={handleSubmit}
+              onClick={() => handleSubmit()}
               className="w-full border-t border-slate-100 bg-slate-50/80 hover:bg-slate-100/80 px-4 py-3 text-[11px] text-slate-500 hover:text-slate-700 transition-colors flex items-center justify-center gap-1.5 font-semibold text-center mt-1"
               style={{ color: tokens.textSubtle }}
             >
