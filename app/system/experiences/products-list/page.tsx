@@ -48,6 +48,7 @@ type ProductsListExperienceConfig = {
   hideEmptyCategories: boolean;
   cornerRadius: ProductListCornerRadius;
   cartButtonsLayout?: 'stack' | 'grid-2';
+  priceFilterMode: 'disabled' | 'custom' | 'smart_dropdown' | 'slider';
 };
 
 type LayoutConfig = {
@@ -87,6 +88,7 @@ const DEFAULT_CONFIG: ProductsListExperienceConfig = {
   hideEmptyCategories: true,
   cornerRadius: 'lg',
   cartButtonsLayout: 'stack',
+  priceFilterMode: 'custom',
 };
 
 const HINTS = [
@@ -159,6 +161,7 @@ export default function ProductsListExperiencePage() {
       hideEmptyCategories?: boolean;
       cornerRadius?: ProductListCornerRadius;
       cartButtonsLayout?: 'stack' | 'grid-2';
+      priceFilterMode?: 'disabled' | 'custom' | 'smart_dropdown' | 'slider';
     } | undefined;
     
     const normalizePaginationType = (value?: string | boolean): PaginationType => {
@@ -193,6 +196,7 @@ export default function ProductsListExperiencePage() {
       hideEmptyCategories: raw?.hideEmptyCategories ?? true,
       cornerRadius: raw?.cornerRadius ?? 'lg',
       cartButtonsLayout: raw?.cartButtonsLayout ?? 'stack',
+      priceFilterMode: raw?.priceFilterMode ?? 'custom',
     };
   }, [experienceSetting?.value]);
 
@@ -444,6 +448,25 @@ export default function ProductsListExperiencePage() {
               </Button>
             </div>
           </ControlCard>
+
+          <ControlCard title="Bộ lọc khoảng giá">
+            <div className="space-y-3">
+              <SelectRow
+                label="Chế độ lọc"
+                value={config.priceFilterMode ?? 'custom'}
+                options={[
+                  { value: 'disabled', label: 'Tắt bộ lọc' },
+                  { value: 'custom', label: 'Tự nhập (Từ - Đến)' },
+                  { value: 'smart_dropdown', label: 'Dropdown thông minh (SaaS)' },
+                  { value: 'slider', label: 'Slider 2 đầu (Range Slider)' },
+                ]}
+                onChange={(v) => setConfig(prev => ({ ...prev, priceFilterMode: v as any }))}
+              />
+              <p className="text-[10px] text-slate-400 leading-relaxed mt-1">
+                Lọc khoảng giá thông minh và Slider sẽ tự động tính toán khoảng biên từ cơ sở dữ liệu thực tế bằng index tối ưu O(1).
+              </p>
+            </div>
+          </ControlCard>
         </CardContent>
       </Card>
 
@@ -568,6 +591,7 @@ export default function ProductsListExperiencePage() {
                 showPromotionBadge={config.showPromotionBadge && (promotionsModule?.enabled ?? false)}
                 cornerRadius={config.cornerRadius}
                 cartButtonsLayout={config.cartButtonsLayout}
+                priceFilterMode={config.priceFilterMode}
               />
             </BrowserFrame>
           </div>

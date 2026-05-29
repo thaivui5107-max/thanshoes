@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, X, SlidersHorizontal } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Id } from '@/convex/_generated/dataModel';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import type { ProductsListColors } from '@/components/site/products/colors';
 import { RichContent } from '@/components/common/RichContent';
 import { toRichTextContent } from '@/lib/products/product-supplemental-content';
@@ -123,6 +125,319 @@ interface LayoutProps {
   cartButtonsLayout?: 'stack' | 'grid-2';
   showSearch?: boolean;
   showCategories?: boolean;
+  priceFilterMode?: 'disabled' | 'custom' | 'smart_dropdown' | 'slider';
+}
+
+function generateSmartPriceRanges(min: number, max: number) {
+  if (min >= max) return [];
+  const range = max - min;
+  
+  if (range <= 100000) {
+    const mid = Math.round((min + max) / 2 / 10000) * 10000;
+    return [
+      { label: `Dưới ${mid.toLocaleString()}đ`, minPrice: undefined, maxPrice: mid },
+      { label: `Trên ${mid.toLocaleString()}đ`, minPrice: mid, maxPrice: undefined }
+    ];
+  }
+
+  let milestones: number[] = [];
+  if (max <= 500000) {
+    milestones = [100000, 200000, 300000, 400000];
+  } else if (max <= 2000000) {
+    milestones = [200000, 500000, 1000000, 1500000];
+  } else if (max <= 5000000) {
+    milestones = [500000, 1000000, 2000000, 3000000, 4000000];
+  } else if (max <= 10000000) {
+    milestones = [1000000, 2000000, 4000000, 6000000, 8000000];
+  } else if (max <= 30000000) {
+    milestones = [2000000, 5000000, 10000000, 15000000, 20000000];
+  } else {
+    milestones = [5000000, 10000000, 20000000, 40000000, 60000000];
+  }
+
+  const validMilestones = milestones.filter(m => m > min && m < max);
+
+  if (validMilestones.length === 0) {
+    const step = Math.round(range / 3 / 50000) * 50000;
+    const m1 = min + step;
+    const m2 = min + step * 2;
+    return [
+      { label: `Dưới ${m1.toLocaleString()}đ`, minPrice: undefined, maxPrice: m1 },
+      { label: `${m1.toLocaleString()}đ - ${m2.toLocaleString()}đ`, minPrice: m1, maxPrice: m2 },
+      { label: `Trên ${m2.toLocaleString()}đ`, minPrice: m2, maxPrice: undefined }
+    ];
+  }
+
+  const options: { label: string; minPrice?: number; maxPrice?: number }[] = [];
+  
+  options.push({
+    label: `Dưới ${validMilestones[0].toLocaleString()}đ`,
+    minPrice: undefined,
+    maxPrice: validMilestones[0]
+  });
+
+  for (let i = 0; i < validMilestones.length - 1; i++) {
+    options.push({
+      label: `${validMilestones[i].toLocaleString()}đ - ${validMilestones[i+1].toLocaleString()}đ`,
+      minPrice: validMilestones[i],
+      maxPrice: validMilestones[i+1]
+    });
+  }
+
+  options.push({
+    label: `Trên ${validMilestones[validMilestones.length - 1].toLocaleString()}đ`,
+    minPrice: validMilestones[validMilestones.length - 1],
+    maxPrice: undefined
+  });
+
+  return options;
+}
+
+function SmartDropdownFilter({
+  priceStats,
+  searchParams,
+  router,
+  tokens,
+}: {
+  priceStats: { minPrice: number; maxPrice: number } | undefined;
+  searchParams: any;
+  router: any;
+  tokens: any;
+}) {
+  const currentMin = searchParams?.get('minPrice') || '';
+  const currentMax = searchParams?.get('maxPrice') || '';
+
+  const options = useMemo(() => {
+    if (!priceStats) return [];
+    return generateSmartPriceRanges(priceStats.minPrice, priceStats.maxPrice);
+  }, [priceStats]);
+
+  const activeValue = useMemo(() => {
+    if (!currentMin && !currentMax) return 'all';
+    const match = options.find(
+      opt => 
+        (opt.minPrice === undefined ? '' : String(opt.minPrice)) === currentMin &&
+        (opt.maxPrice === undefined ? '' : String(opt.maxPrice)) === currentMax
+    );
+    return match ? `${match.minPrice ?? ''}-${match.maxPrice ?? ''}` : 'custom';
+  }, [currentMin, currentMax, options]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (!router) return;
+    const value = e.target.value;
+    const params = new URLSearchParams(window.location.search);
+    
+    if (value === 'all') {
+      params.delete('minPrice');
+      params.delete('maxPrice');
+    } else {
+      const [minStr, maxStr] = value.split('-');
+      if (minStr) {
+        params.set('minPrice', minStr);
+      } else {
+        params.delete('minPrice');
+      }
+      if (maxStr) {
+        params.set('maxPrice', maxStr);
+      } else {
+        params.delete('maxPrice');
+      }
+    }
+    params.delete('page');
+    params.delete('priceRange');
+    router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  if (!priceStats) {
+    return <div className="text-xs text-slate-400">Đang tính khoảng giá...</div>;
+  }
+
+  return (
+    <select
+      value={activeValue}
+      onChange={handleChange}
+      className="w-full px-2.5 py-1.5 border rounded-lg text-xs font-semibold outline-none transition-all cursor-pointer"
+      style={{
+        borderColor: tokens.inputBorder,
+        backgroundColor: tokens.inputBackground,
+        color: tokens.inputText,
+      }}
+    >
+      <option value="all">Tất cả khoảng giá</option>
+      {options.map((opt) => (
+        <option key={opt.label} value={`${opt.minPrice ?? ''}-${opt.maxPrice ?? ''}`}>
+          {opt.label}
+        </option>
+      ))}
+      {activeValue === 'custom' && (
+        <option value="custom" disabled>Khoảng giá tự chọn</option>
+      )}
+    </select>
+  );
+}
+
+function DoubleRangeSlider({
+  min,
+  max,
+  onChange,
+  initialMin,
+  initialMax,
+  tokens,
+  brandColor,
+}: {
+  min: number;
+  max: number;
+  onChange: (min: number, max: number) => void;
+  initialMin: number;
+  initialMax: number;
+  tokens: any;
+  brandColor: string;
+}) {
+  const [minVal, setMinVal] = useState(initialMin);
+  const [maxVal, setMaxVal] = useState(initialMax);
+  const minValRef = useRef(initialMin);
+  const maxValRef = useRef(initialMax);
+  const rangeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMinVal(initialMin);
+    minValRef.current = initialMin;
+  }, [initialMin]);
+
+  useEffect(() => {
+    setMaxVal(initialMax);
+    maxValRef.current = initialMax;
+  }, [initialMax]);
+
+  const getPercent = (value: number) => Math.round(((value - min) / (max - min)) * 100);
+
+  useEffect(() => {
+    const minPercent = getPercent(minVal);
+    const maxPercent = getPercent(maxVal);
+
+    if (rangeRef.current) {
+      rangeRef.current.style.left = `${minPercent}%`;
+      rangeRef.current.style.width = `${maxPercent - minPercent}%`;
+    }
+  }, [minVal, maxVal, min, max]);
+
+  const handleMinChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Math.min(Number(event.target.value), maxVal - 1);
+    setMinVal(value);
+    minValRef.current = value;
+  };
+
+  const handleMaxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Math.max(Number(event.target.value), minVal + 1);
+    setMaxVal(value);
+    maxValRef.current = value;
+  };
+
+  const handleMouseUp = () => {
+    onChange(minVal, maxVal);
+  };
+
+  const formatK = (num: number) => {
+    if (num >= 1000000) {
+      return `${(num / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+    }
+    if (num >= 1000) {
+      return `${(num / 1000).toFixed(0)}k`;
+    }
+    return String(num);
+  };
+
+  return (
+    <div className="flex flex-col gap-4 py-2">
+      <style>{`
+        .thumb,
+        .thumb::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .thumb {
+          pointer-events: none;
+          position: absolute;
+          height: 0;
+          width: 100%;
+          outline: none;
+        }
+        .thumb::-webkit-slider-thumb {
+          background-color: #ffffff;
+          border: 2.5px solid ${brandColor};
+          border-radius: 50%;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+          cursor: pointer;
+          height: 16px;
+          width: 16px;
+          pointer-events: all;
+          position: relative;
+        }
+        .thumb::-moz-range-thumb {
+          background-color: #ffffff;
+          border: 2.5px solid ${brandColor};
+          border-radius: 50%;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+          cursor: pointer;
+          height: 16px;
+          width: 16px;
+          pointer-events: all;
+          position: relative;
+        }
+        .slider-track {
+          position: absolute;
+          border-radius: 3px;
+          height: 4px;
+          width: 100%;
+          z-index: 1;
+        }
+        .slider-range {
+          position: absolute;
+          border-radius: 3px;
+          height: 4px;
+          z-index: 2;
+        }
+      `}</style>
+      <div className="relative w-full h-6 flex items-center">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          value={minVal}
+          onChange={handleMinChange}
+          onMouseUp={handleMouseUp}
+          onTouchEnd={handleMouseUp}
+          className="thumb thumb--left"
+          style={{
+            zIndex: minVal > max - 100 ? 5 : undefined,
+          }}
+        />
+        <input
+          type="range"
+          min={min}
+          max={max}
+          value={maxVal}
+          onChange={handleMaxChange}
+          onMouseUp={handleMouseUp}
+          onTouchEnd={handleMouseUp}
+          className="thumb thumb--right"
+        />
+
+        <div className="slider-track" style={{ backgroundColor: tokens.filterChipBg }} />
+        <div ref={rangeRef} className="slider-range" style={{ backgroundColor: brandColor }} />
+      </div>
+
+      <div className="flex justify-between items-center text-xs font-semibold mt-1">
+        <div className="px-2 py-1 rounded border" style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}>
+          {formatK(minVal)}đ
+        </div>
+        <span className="text-slate-400 dark:text-slate-500 font-bold">-</span>
+        <div className="px-2 py-1 rounded border" style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}>
+          {formatK(maxVal)}đ
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function CatalogLayout({
@@ -176,7 +491,8 @@ export function CatalogLayout({
   productAttributesMap,
   cartButtonsLayout,
   showSearch = true,
-  showCategories = true
+  showCategories = true,
+  priceFilterMode = 'custom'
 }: LayoutProps) {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [categoryQuery, setCategoryQuery] = useState('');
@@ -199,6 +515,8 @@ export function CatalogLayout({
 
   const [minPriceInput, setMinPriceInput] = useState(currentMinPrice);
   const [maxPriceInput, setMaxPriceInput] = useState(currentMaxPrice);
+
+  const priceStats = useQuery(api.products.getPriceRangeStats);
 
   useEffect(() => {
     setMinPriceInput(currentMinPrice);
@@ -390,53 +708,87 @@ export function CatalogLayout({
               </div>
             )}
 
-            {/* Khung Khoảng giá tự chọn hoạt động thực tế */}
-            <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
-              <h3 className="font-semibold text-sm mb-2 text-slate-800 dark:text-slate-200">Khoảng giá (đ)</h3>
-              <div className="flex gap-1.5 items-center">
-                <input
-                  type="number"
-                  placeholder="Từ"
-                  value={minPriceInput}
-                  onChange={(e) => setMinPriceInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
-                  className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
-                  style={{
-                    borderColor: tokens.inputBorder,
-                    backgroundColor: tokens.inputBackground,
-                    color: tokens.inputText,
-                    '--placeholder-color': tokens.inputPlaceholder,
-                  } as React.CSSProperties}
-                />
-                <span className="text-slate-400 dark:text-slate-500 font-bold">-</span>
-                <input
-                  type="number"
-                  placeholder="Đến"
-                  value={maxPriceInput}
-                  onChange={(e) => setMaxPriceInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
-                  className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
-                  style={{
-                    borderColor: tokens.inputBorder,
-                    backgroundColor: tokens.inputBackground,
-                    color: tokens.inputText,
-                    '--placeholder-color': tokens.inputPlaceholder,
-                  } as React.CSSProperties}
-                />
-                <button
-                  type="button"
-                  onClick={handleApplyPrice}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all hover:opacity-90 active:scale-95 text-sm shrink-0"
-                  style={{
-                    backgroundColor: tokens.filterChipActiveBg,
-                    color: tokens.filterChipActiveText,
-                  }}
-                  title="Áp dụng lọc giá"
-                >
-                  ✓
-                </button>
+            {/* Khung Khoảng giá tự chọn hoặc nâng cao */}
+            {priceFilterMode !== 'disabled' && (
+              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                <h3 className="font-semibold text-sm mb-2 text-slate-800 dark:text-slate-200">Khoảng giá (đ)</h3>
+                
+                {priceFilterMode === 'custom' && (
+                  <div className="flex gap-1.5 items-center">
+                    <input
+                      type="number"
+                      placeholder="Từ"
+                      value={minPriceInput}
+                      onChange={(e) => setMinPriceInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
+                      className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                      style={{
+                        borderColor: tokens.inputBorder,
+                        backgroundColor: tokens.inputBackground,
+                        color: tokens.inputText,
+                        '--placeholder-color': tokens.inputPlaceholder,
+                      } as React.CSSProperties}
+                    />
+                    <span className="text-slate-400 dark:text-slate-500 font-bold">-</span>
+                    <input
+                      type="number"
+                      placeholder="Đến"
+                      value={maxPriceInput}
+                      onChange={(e) => setMaxPriceInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
+                      className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                      style={{
+                        borderColor: tokens.inputBorder,
+                        backgroundColor: tokens.inputBackground,
+                        color: tokens.inputText,
+                        '--placeholder-color': tokens.inputPlaceholder,
+                      } as React.CSSProperties}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyPrice}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all hover:opacity-90 active:scale-95 text-sm shrink-0"
+                      style={{
+                        backgroundColor: tokens.filterChipActiveBg,
+                        color: tokens.filterChipActiveText,
+                      }}
+                      title="Áp dụng lọc giá"
+                    >
+                      ✓
+                    </button>
+                  </div>
+                )}
+
+                {priceFilterMode === 'smart_dropdown' && (
+                  <SmartDropdownFilter
+                    priceStats={priceStats}
+                    searchParams={searchParams}
+                    router={router}
+                    tokens={tokens}
+                  />
+                )}
+
+                {priceFilterMode === 'slider' && priceStats && priceStats.maxPrice > priceStats.minPrice && (
+                  <DoubleRangeSlider
+                    min={priceStats.minPrice}
+                    max={priceStats.maxPrice}
+                    initialMin={currentMinPrice ? Number(currentMinPrice) : priceStats.minPrice}
+                    initialMax={currentMaxPrice ? Number(currentMaxPrice) : priceStats.maxPrice}
+                    tokens={tokens}
+                    brandColor={tokens.filterChipActiveBg}
+                    onChange={(minVal, maxVal) => {
+                      if (!router) return;
+                      const params = new URLSearchParams(window.location.search);
+                      params.set('minPrice', String(minVal));
+                      params.set('maxPrice', String(maxVal));
+                      params.delete('page');
+                      params.delete('priceRange');
+                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                    }}
+                  />
+                )}
               </div>
-            </div>
+            )}
 
             {filterableGroups && filterableGroups.length > 0 && (
               <div className="space-y-4">
@@ -721,6 +1073,87 @@ export function CatalogLayout({
                 </div>
               </div>
 
+              {/* Bộ lọc khoảng giá nâng cao di động */}
+              {priceFilterMode !== 'disabled' && (
+                <div className="space-y-3 pt-3 border-t">
+                  <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Khoảng giá (đ)</h4>
+                  {priceFilterMode === 'custom' && (
+                    <div className="flex gap-1.5 items-center">
+                      <input
+                        type="number"
+                        placeholder="Từ"
+                        value={minPriceInput}
+                        onChange={(e) => setMinPriceInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
+                        className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                        style={{
+                          borderColor: tokens.inputBorder,
+                          backgroundColor: tokens.inputBackground,
+                          color: tokens.inputText,
+                          '--placeholder-color': tokens.inputPlaceholder,
+                        } as React.CSSProperties}
+                      />
+                      <span className="text-slate-400 dark:text-slate-500 font-bold">-</span>
+                      <input
+                        type="number"
+                        placeholder="Đến"
+                        value={maxPriceInput}
+                        onChange={(e) => setMaxPriceInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
+                        className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                        style={{
+                          borderColor: tokens.inputBorder,
+                          backgroundColor: tokens.inputBackground,
+                          color: tokens.inputText,
+                          '--placeholder-color': tokens.inputPlaceholder,
+                        } as React.CSSProperties}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyPrice}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all hover:opacity-90 active:scale-95 text-sm shrink-0"
+                        style={{
+                          backgroundColor: tokens.filterChipActiveBg,
+                          color: tokens.filterChipActiveText,
+                        }}
+                        title="Áp dụng lọc giá"
+                      >
+                        ✓
+                      </button>
+                    </div>
+                  )}
+
+                  {priceFilterMode === 'smart_dropdown' && (
+                    <SmartDropdownFilter
+                      priceStats={priceStats}
+                      searchParams={searchParams}
+                      router={router}
+                      tokens={tokens}
+                    />
+                  )}
+
+                  {priceFilterMode === 'slider' && priceStats && priceStats.maxPrice > priceStats.minPrice && (
+                    <DoubleRangeSlider
+                      min={priceStats.minPrice}
+                      max={priceStats.maxPrice}
+                      initialMin={currentMinPrice ? Number(currentMinPrice) : priceStats.minPrice}
+                      initialMax={currentMaxPrice ? Number(currentMaxPrice) : priceStats.maxPrice}
+                      tokens={tokens}
+                      brandColor={tokens.filterChipActiveBg}
+                      onChange={(minVal, maxVal) => {
+                        if (!router) return;
+                        const params = new URLSearchParams(window.location.search);
+                        params.set('minPrice', String(minVal));
+                        params.set('maxPrice', String(maxVal));
+                        params.delete('page');
+                        params.delete('priceRange');
+                        router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+
               {enableProductTypes && productType?.priceRanges && productType.priceRanges.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Khoảng giá</h4>
@@ -831,7 +1264,8 @@ export function ListLayout({
   productAttributesMap,
   cartButtonsLayout,
   showSearch = true,
-  showCategories = true
+  showCategories = true,
+  priceFilterMode = 'custom'
 }: LayoutProps) {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [categoryQuery, setCategoryQuery] = useState('');
@@ -854,6 +1288,8 @@ export function ListLayout({
 
   const [minPriceInput, setMinPriceInput] = useState(currentMinPrice);
   const [maxPriceInput, setMaxPriceInput] = useState(currentMaxPrice);
+
+  const priceStats = useQuery(api.products.getPriceRangeStats);
 
   useEffect(() => {
     setMinPriceInput(currentMinPrice);
@@ -1045,53 +1481,87 @@ export function ListLayout({
               </div>
             )}
 
-            {/* Khung Khoảng giá tự chọn hoạt động thực tế */}
-            <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
-              <h3 className="font-semibold text-sm mb-2 text-slate-800 dark:text-slate-200">Khoảng giá (đ)</h3>
-              <div className="flex gap-1.5 items-center">
-                <input
-                  type="number"
-                  placeholder="Từ"
-                  value={minPriceInput}
-                  onChange={(e) => setMinPriceInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
-                  className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
-                  style={{
-                    borderColor: tokens.inputBorder,
-                    backgroundColor: tokens.inputBackground,
-                    color: tokens.inputText,
-                    '--placeholder-color': tokens.inputPlaceholder,
-                  } as React.CSSProperties}
-                />
-                <span className="text-slate-400 dark:text-slate-500 font-bold">-</span>
-                <input
-                  type="number"
-                  placeholder="Đến"
-                  value={maxPriceInput}
-                  onChange={(e) => setMaxPriceInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
-                  className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
-                  style={{
-                    borderColor: tokens.inputBorder,
-                    backgroundColor: tokens.inputBackground,
-                    color: tokens.inputText,
-                    '--placeholder-color': tokens.inputPlaceholder,
-                  } as React.CSSProperties}
-                />
-                <button
-                  type="button"
-                  onClick={handleApplyPrice}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all hover:opacity-90 active:scale-95 text-sm shrink-0"
-                  style={{
-                    backgroundColor: tokens.filterChipActiveBg,
-                    color: tokens.filterChipActiveText,
-                  }}
-                  title="Áp dụng lọc giá"
-                >
-                  ✓
-                </button>
+            {/* Khung Khoảng giá tự chọn hoặc nâng cao */}
+            {priceFilterMode !== 'disabled' && (
+              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                <h3 className="font-semibold text-sm mb-2 text-slate-800 dark:text-slate-200">Khoảng giá (đ)</h3>
+                
+                {priceFilterMode === 'custom' && (
+                  <div className="flex gap-1.5 items-center">
+                    <input
+                      type="number"
+                      placeholder="Từ"
+                      value={minPriceInput}
+                      onChange={(e) => setMinPriceInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
+                      className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                      style={{
+                        borderColor: tokens.inputBorder,
+                        backgroundColor: tokens.inputBackground,
+                        color: tokens.inputText,
+                        '--placeholder-color': tokens.inputPlaceholder,
+                      } as React.CSSProperties}
+                    />
+                    <span className="text-slate-400 dark:text-slate-500 font-bold">-</span>
+                    <input
+                      type="number"
+                      placeholder="Đến"
+                      value={maxPriceInput}
+                      onChange={(e) => setMaxPriceInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
+                      className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                      style={{
+                        borderColor: tokens.inputBorder,
+                        backgroundColor: tokens.inputBackground,
+                        color: tokens.inputText,
+                        '--placeholder-color': tokens.inputPlaceholder,
+                      } as React.CSSProperties}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyPrice}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all hover:opacity-90 active:scale-95 text-sm shrink-0"
+                      style={{
+                        backgroundColor: tokens.filterChipActiveBg,
+                        color: tokens.filterChipActiveText,
+                      }}
+                      title="Áp dụng lọc giá"
+                    >
+                      ✓
+                    </button>
+                  </div>
+                )}
+
+                {priceFilterMode === 'smart_dropdown' && (
+                  <SmartDropdownFilter
+                    priceStats={priceStats}
+                    searchParams={searchParams}
+                    router={router}
+                    tokens={tokens}
+                  />
+                )}
+
+                {priceFilterMode === 'slider' && priceStats && priceStats.maxPrice > priceStats.minPrice && (
+                  <DoubleRangeSlider
+                    min={priceStats.minPrice}
+                    max={priceStats.maxPrice}
+                    initialMin={currentMinPrice ? Number(currentMinPrice) : priceStats.minPrice}
+                    initialMax={currentMaxPrice ? Number(currentMaxPrice) : priceStats.maxPrice}
+                    tokens={tokens}
+                    brandColor={tokens.filterChipActiveBg}
+                    onChange={(minVal, maxVal) => {
+                      if (!router) return;
+                      const params = new URLSearchParams(window.location.search);
+                      params.set('minPrice', String(minVal));
+                      params.set('maxPrice', String(maxVal));
+                      params.delete('page');
+                      params.delete('priceRange');
+                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                    }}
+                  />
+                )}
               </div>
-            </div>
+            )}
 
             {filterableGroups && filterableGroups.length > 0 && (
               <div className="space-y-4">
@@ -1376,6 +1846,87 @@ export function ListLayout({
                   )}
                 </div>
               </div>
+
+              {/* Bộ lọc khoảng giá nâng cao di động */}
+              {priceFilterMode !== 'disabled' && (
+                <div className="space-y-3 pt-3 border-t">
+                  <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Khoảng giá (đ)</h4>
+                  {priceFilterMode === 'custom' && (
+                    <div className="flex gap-1.5 items-center">
+                      <input
+                        type="number"
+                        placeholder="Từ"
+                        value={minPriceInput}
+                        onChange={(e) => setMinPriceInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
+                        className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                        style={{
+                          borderColor: tokens.inputBorder,
+                          backgroundColor: tokens.inputBackground,
+                          color: tokens.inputText,
+                          '--placeholder-color': tokens.inputPlaceholder,
+                        } as React.CSSProperties}
+                      />
+                      <span className="text-slate-400 dark:text-slate-500 font-bold">-</span>
+                      <input
+                        type="number"
+                        placeholder="Đến"
+                        value={maxPriceInput}
+                        onChange={(e) => setMaxPriceInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
+                        className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
+                        style={{
+                          borderColor: tokens.inputBorder,
+                          backgroundColor: tokens.inputBackground,
+                          color: tokens.inputText,
+                          '--placeholder-color': tokens.inputPlaceholder,
+                        } as React.CSSProperties}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyPrice}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all hover:opacity-90 active:scale-95 text-sm shrink-0"
+                        style={{
+                          backgroundColor: tokens.filterChipActiveBg,
+                          color: tokens.filterChipActiveText,
+                        }}
+                        title="Áp dụng lọc giá"
+                      >
+                        ✓
+                      </button>
+                    </div>
+                  )}
+
+                  {priceFilterMode === 'smart_dropdown' && (
+                    <SmartDropdownFilter
+                      priceStats={priceStats}
+                      searchParams={searchParams}
+                      router={router}
+                      tokens={tokens}
+                    />
+                  )}
+
+                  {priceFilterMode === 'slider' && priceStats && priceStats.maxPrice > priceStats.minPrice && (
+                    <DoubleRangeSlider
+                      min={priceStats.minPrice}
+                      max={priceStats.maxPrice}
+                      initialMin={currentMinPrice ? Number(currentMinPrice) : priceStats.minPrice}
+                      initialMax={currentMaxPrice ? Number(currentMaxPrice) : priceStats.maxPrice}
+                      tokens={tokens}
+                      brandColor={tokens.filterChipActiveBg}
+                      onChange={(minVal, maxVal) => {
+                        if (!router) return;
+                        const params = new URLSearchParams(window.location.search);
+                        params.set('minPrice', String(minVal));
+                        params.set('maxPrice', String(maxVal));
+                        params.delete('page');
+                        params.delete('priceRange');
+                        router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                      }}
+                    />
+                  )}
+                </div>
+              )}
 
               {enableProductTypes && productType?.priceRanges && productType.priceRanges.length > 0 && (
                 <div className="space-y-3">

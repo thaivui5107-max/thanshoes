@@ -1148,6 +1148,7 @@ function ProductsContent(props: ProductsPageProps) {
           showSearch={listConfig.showSearch}
           showCategories={listConfig.showCategories}
           cartButtonsLayout={listConfig.cartButtonsLayout}
+          priceFilterMode={listConfig.priceFilterMode}
         />
         {quickAddModal}
       </>
@@ -1210,6 +1211,7 @@ function ProductsContent(props: ProductsPageProps) {
           showSearch={listConfig.showSearch}
           showCategories={listConfig.showCategories}
           cartButtonsLayout={listConfig.cartButtonsLayout}
+          priceFilterMode={listConfig.priceFilterMode}
         />
         {quickAddModal}
       </>

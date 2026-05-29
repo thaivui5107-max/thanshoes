@@ -883,6 +883,33 @@ export const listPublicResolved = query({
   returns: v.array(productDoc),
 });
 
+export const getPriceRangeStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const minProduct = await ctx.db
+      .query("products")
+      .withIndex("by_status_price", (q) => q.eq("status", "Active"))
+      .order("asc")
+      .first();
+
+    const maxProduct = await ctx.db
+      .query("products")
+      .withIndex("by_status_price", (q) => q.eq("status", "Active"))
+      .order("desc")
+      .first();
+
+    const minPrice = minProduct ? Math.min(minProduct.price, minProduct.effectivePrice ?? minProduct.price, minProduct.salePrice ?? minProduct.price) : 0;
+    const maxPrice = maxProduct ? Math.max(maxProduct.price, maxProduct.effectivePrice ?? maxProduct.price, maxProduct.salePrice ?? maxProduct.price) : 0;
+
+    return { minPrice, maxPrice };
+  },
+  returns: v.object({
+    minPrice: v.number(),
+    maxPrice: v.number(),
+  }),
+});
+
+
 // Paginated published products for usePaginatedQuery hook (infinite scroll)
 export const listPublishedPaginated = query({
   args: {
