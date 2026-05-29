@@ -1130,13 +1130,6 @@ export const CategoryProductsPreview = ({
         fontClassName={fontClassName}
       >
         <BrowserFrame>
-          <div className="bg-red-500 text-white p-2 text-xs font-mono select-all">
-            DEBUG config: {JSON.stringify({ 
-              showAddToCartButton: config.showAddToCartButton, 
-              showBuyNowButton: config.showBuyNowButton,
-              cartButtonsLayout: config.cartButtonsLayout
-            })}
-          </div>
           {previewStyle === 'grid' && renderGridStyle()}
           {previewStyle === 'carousel' && renderCarouselStyle()}
           {previewStyle === 'cards' && renderCardsStyle()}
