@@ -509,7 +509,8 @@ function ProductsContent() {
                     <span className="text-slate-400 text-xs shrink-0 ml-2">▼</span>
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[240px] p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg z-50" align="start">
+                {isCategoryDropdownOpen && (
+                  <PopoverContent className="w-[240px] p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg z-50" align="start">
                   <div className="flex items-center gap-2 mb-2 px-1">
                     <Search size={14} className="text-slate-400 shrink-0" />
                     <Input
@@ -558,6 +559,7 @@ function ProductsContent() {
                     )}
                   </ScrollArea>
                 </PopoverContent>
+              )}
               </Popover>
             </div>
             <select className="h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm" value={filterStatus} onChange={(e) =>{  handleFilterChange('status', e.target.value); }}>
