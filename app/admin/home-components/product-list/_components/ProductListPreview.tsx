@@ -900,30 +900,27 @@ export const ProductListPreview = ({
               <div className="absolute bottom-0 left-0 p-6 md:p-8 w-full">
                 <h3 className="text-2xl md:text-4xl font-bold mb-3 leading-tight text-white">{featured?.name}</h3>
 
-                <div className="flex flex-row items-center justify-between gap-4 mt-2">
-                  <span className="text-2xl font-bold text-white">{featured?.price}</span>
-
                   {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) ? (
-                    <div className="shrink-0 min-w-[140px]">
-                      <ProductCardActions
-                        product={{ _id: String(featured?.id ?? 0), name: featured?.name ?? '', price: featured?.price ? Number(featured.price.replace(/\D/g, '')) : undefined, salePrice: featured?.price ? Number(featured.price.replace(/\D/g, '')) : undefined }}
-                        tokens={tokens}
-                        showStock={false}
-                        showAddToCartButton={!!effectiveShowAddToCartButton}
-                        showBuyNowButton={!!effectiveShowBuyNowButton}
-                        buyNowLabel="Mua ngay"
-                        onAddToCart={() => {}}
-                        onBuyNow={() => {}}
-                        cartButtonsLayout="grid-2"
-                        device={device}
-                      />
+                    <div className="flex gap-2 mt-3">
+                      {effectiveShowAddToCartButton && (
+                        <button type="button" className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-white shadow-lg transition-all hover:opacity-90 whitespace-nowrap" style={{ backgroundColor: brandColor }}>
+                          Thêm giỏ
+                        </button>
+                      )}
+                      {effectiveShowBuyNowButton && (
+                        <button type="button" className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-slate-900 bg-white/90 hover:bg-white shadow-lg transition-all whitespace-nowrap">
+                          Mua ngay
+                        </button>
+                      )}
                     </div>
                   ) : (
-                    <button type="button" className="rounded-full px-6 py-2 text-white border-0 shadow-lg transition-all hover:scale-105" style={{ backgroundColor: brandColor, boxShadow: `0 4px 6px ${brandColor}20` }}>
-                      Xem chi tiết
-                    </button>
+                    <div className="flex flex-row items-center justify-between gap-4 mt-2">
+                      <span className="text-2xl font-bold text-white">{featured?.price}</span>
+                      <button type="button" className="rounded-full px-6 py-2 text-white border-0 shadow-lg transition-all hover:scale-105" style={{ backgroundColor: brandColor, boxShadow: `0 4px 6px ${brandColor}20` }}>
+                        Xem chi tiết
+                      </button>
+                    </div>
                   )}
-                </div>
               </div>
             </div>
 
@@ -1142,19 +1139,17 @@ export const ProductListPreview = ({
                 <BrandBadge text="Nổi bật" variant="solid" brandColor={brandColor} secondary={secondary} className="mb-2" />
                 <h3 className="text-xl md:text-2xl font-bold text-white mb-2 line-clamp-2">{showcaseFeatured?.name}</h3>
                 {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) ? (
-                  <div className="mt-2">
-                    <ProductCardActions
-                      product={{ _id: String(showcaseFeatured?.id ?? 0), name: showcaseFeatured?.name ?? '', price: showcaseFeatured?.price ? Number(showcaseFeatured.price.replace(/\D/g, '')) : undefined, salePrice: showcaseFeatured?.price ? Number(showcaseFeatured.price.replace(/\D/g, '')) : undefined }}
-                      tokens={tokens}
-                      showStock={false}
-                      showAddToCartButton={!!effectiveShowAddToCartButton}
-                      showBuyNowButton={!!effectiveShowBuyNowButton}
-                      buyNowLabel="Mua ngay"
-                      onAddToCart={() => {}}
-                      onBuyNow={() => {}}
-                      cartButtonsLayout="grid-2"
-                      device={device}
-                    />
+                  <div className="flex gap-2 mt-2">
+                    {effectiveShowAddToCartButton && (
+                      <button type="button" className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-white shadow-lg transition-all hover:opacity-90 whitespace-nowrap" style={{ backgroundColor: brandColor }}>
+                        Thêm giỏ
+                      </button>
+                    )}
+                    {effectiveShowBuyNowButton && (
+                      <button type="button" className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-slate-900 bg-white/90 hover:bg-white shadow-lg transition-all whitespace-nowrap">
+                        Mua ngay
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center justify-between">
