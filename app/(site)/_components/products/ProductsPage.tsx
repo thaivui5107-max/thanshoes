@@ -353,8 +353,10 @@ function ProductsContent(props: ProductsPageProps) {
   const paginatedSortBy = sortBy === 'popular' ? 'popular' : (sortBy === 'oldest' ? 'oldest' : 'newest');
 
   // Lấy giá trị min/max price thực tế
-  const minPrice = selectedPriceRange?.minPrice ?? props.priceRangeFilter?.minPrice ?? undefined;
-  const maxPrice = selectedPriceRange?.maxPrice ?? props.priceRangeFilter?.maxPrice ?? undefined;
+  const urlMinPrice = searchParams.get('minPrice') ? parseInt(searchParams.get('minPrice')!) : undefined;
+  const urlMaxPrice = searchParams.get('maxPrice') ? parseInt(searchParams.get('maxPrice')!) : undefined;
+  const minPrice = urlMinPrice ?? selectedPriceRange?.minPrice ?? props.priceRangeFilter?.minPrice ?? undefined;
+  const maxPrice = urlMaxPrice ?? selectedPriceRange?.maxPrice ?? props.priceRangeFilter?.maxPrice ?? undefined;
   const queryProductTypeId = props.productTypeId;
 
   const {

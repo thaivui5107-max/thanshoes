@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, X, SlidersHorizontal } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { Id } from '@/convex/_generated/dataModel';
 import type { ProductsListColors } from '@/components/site/products/colors';
 import { RichContent } from '@/components/common/RichContent';
@@ -178,6 +179,52 @@ export function CatalogLayout({
   showCategories = true
 }: LayoutProps) {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [categoryQuery, setCategoryQuery] = useState('');
+
+  const filteredCategories = useMemo(() => {
+    const query = categoryQuery.trim().toLowerCase();
+    if (!query) return categories;
+    return categories.filter((cat) => cat.name.toLowerCase().includes(query));
+  }, [categories, categoryQuery]);
+
+  let searchParams: any = null;
+  let router: any = null;
+  try {
+    searchParams = useSearchParams();
+    router = useRouter();
+  } catch (e) {}
+
+  const currentMinPrice = searchParams ? (searchParams.get('minPrice') || '') : '';
+  const currentMaxPrice = searchParams ? (searchParams.get('maxPrice') || '') : '';
+
+  const [minPriceInput, setMinPriceInput] = useState(currentMinPrice);
+  const [maxPriceInput, setMaxPriceInput] = useState(currentMaxPrice);
+
+  useEffect(() => {
+    setMinPriceInput(currentMinPrice);
+  }, [currentMinPrice]);
+
+  useEffect(() => {
+    setMaxPriceInput(currentMaxPrice);
+  }, [currentMaxPrice]);
+
+  const handleApplyPrice = () => {
+    if (!router) return;
+    const params = new URLSearchParams(window.location.search);
+    if (minPriceInput) {
+      params.set('minPrice', minPriceInput);
+    } else {
+      params.delete('minPrice');
+    }
+    if (maxPriceInput) {
+      params.set('maxPrice', maxPriceInput);
+    } else {
+      params.delete('maxPrice');
+    }
+    params.delete('page');
+    params.delete('priceRange');
+    router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+  };
 
   return (
     <div className="py-6 md:py-10 px-3 md:px-4">
@@ -214,30 +261,69 @@ export function CatalogLayout({
                 <h3 className="font-semibold text-sm mb-2" style={{ color: tokens.bodyText }}>
                   Danh mục sản phẩm
                 </h3>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => onCategoryChange(null)}
-                    className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${!selectedCategory ? 'font-semibold' : ''}`}
-                    style={!selectedCategory
-                      ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
-                      : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
-                    }
-                  >
-                    Tất cả danh mục
-                  </button>
-                  {categories.map((cat) => (
+                {categories.length > 8 && (
+                  <div className="relative mb-2">
+                    <input
+                      type="text"
+                      placeholder="Tìm nhanh danh mục..."
+                      value={categoryQuery}
+                      onChange={(e) => setCategoryQuery(e.target.value)}
+                      className="w-full pl-8 pr-8 py-1.5 border rounded-md text-xs outline-none"
+                      style={{
+                        borderColor: tokens.inputBorder,
+                        backgroundColor: tokens.inputBackground,
+                        color: tokens.inputText,
+                      }}
+                    />
+                    <Search
+                      size={12}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2"
+                      style={{ color: tokens.inputIcon }}
+                    />
+                    {categoryQuery && (
+                      <button
+                        onClick={() => setCategoryQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100"
+                        style={{ color: tokens.inputIcon }}
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div 
+                  className={`space-y-1 ${categories.length > 8 ? 'max-h-72 overflow-y-auto pr-1' : ''}`}
+                >
+                  {(!categoryQuery || 'tất cả danh mục'.includes(categoryQuery.toLowerCase())) && (
+                    <button
+                      onClick={() => onCategoryChange(null)}
+                      className={`w-full py-2 px-3 rounded-lg text-left text-sm transition-colors border border-transparent ${!selectedCategory ? 'font-semibold' : ''}`}
+                      style={!selectedCategory
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText }
+                      }
+                    >
+                      Tất cả danh mục
+                    </button>
+                  )}
+                  {filteredCategories.map((cat) => (
                     <button
                       key={cat._id}
                       onClick={() => onCategoryChange(cat._id)}
-                      className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${selectedCategory === cat._id ? 'font-semibold' : ''}`}
+                      className={`w-full py-2 px-3 rounded-lg text-left text-sm transition-colors border border-transparent ${selectedCategory === cat._id ? 'font-semibold' : ''}`}
                       style={selectedCategory === cat._id
-                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
-                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText }
                       }
                     >
                       {cat.name}
                     </button>
                   ))}
+                  {categories.length > 8 && filteredCategories.length === 0 && (!categoryQuery || !'tất cả danh mục'.includes(categoryQuery.toLowerCase())) && (
+                    <div className="px-2.5 py-2 text-xs opacity-60" style={{ color: tokens.metaText }}>
+                      Không tìm thấy kết quả.
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -304,34 +390,51 @@ export function CatalogLayout({
               </div>
             )}
 
-            {/* Khung Khoảng giá Tĩnh giống preview ở admin */}
+            {/* Khung Khoảng giá tự chọn hoạt động thực tế */}
             <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
-              <h3 className="font-semibold text-sm mb-2 text-slate-800 dark:text-slate-200">Khoảng giá</h3>
-              <div className="flex gap-2">
+              <h3 className="font-semibold text-sm mb-2 text-slate-800 dark:text-slate-200">Khoảng giá (đ)</h3>
+              <div className="flex gap-1.5 items-center">
                 <input
-                  type="text"
+                  type="number"
                   placeholder="Từ"
-                  className="w-1/2 px-2 py-1.5 border rounded text-sm placeholder:text-[var(--placeholder-color)]"
+                  value={minPriceInput}
+                  onChange={(e) => setMinPriceInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
+                  className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
                   style={{
                     borderColor: tokens.inputBorder,
                     backgroundColor: tokens.inputBackground,
                     color: tokens.inputText,
                     '--placeholder-color': tokens.inputPlaceholder,
                   } as React.CSSProperties}
-                  disabled
                 />
+                <span className="text-slate-400 dark:text-slate-500 font-bold">-</span>
                 <input
-                  type="text"
+                  type="number"
                   placeholder="Đến"
-                  className="w-1/2 px-2 py-1.5 border rounded text-sm placeholder:text-[var(--placeholder-color)]"
+                  value={maxPriceInput}
+                  onChange={(e) => setMaxPriceInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
+                  className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
                   style={{
                     borderColor: tokens.inputBorder,
                     backgroundColor: tokens.inputBackground,
                     color: tokens.inputText,
                     '--placeholder-color': tokens.inputPlaceholder,
                   } as React.CSSProperties}
-                  disabled
                 />
+                <button
+                  type="button"
+                  onClick={handleApplyPrice}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all hover:opacity-90 active:scale-95 text-sm shrink-0"
+                  style={{
+                    backgroundColor: tokens.filterChipActiveBg,
+                    color: tokens.filterChipActiveText,
+                  }}
+                  title="Áp dụng lọc giá"
+                >
+                  ✓
+                </button>
               </div>
             </div>
 
@@ -366,13 +469,13 @@ export function CatalogLayout({
               )}
             </div>
 
-            {/* Toolbar Filters Mobile & Desktop Controls */}
+            {/* Toolbar Filters Mobile Controls - Chỉ hiện dưới lg */}
             <div
-              className={`flex flex-col sm:flex-row gap-3 p-3 mb-5 border ${radiusClass}`}
+              className={`flex lg:hidden flex-col sm:flex-row gap-3 p-3 mb-5 border ${radiusClass}`}
               style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}
             >
               {showSearch && (
-                <div className="relative flex-1 lg:hidden">
+                <div className="relative flex-1">
                   <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: tokens.inputIcon }} />
                   <input
                     type="text"
@@ -390,22 +493,21 @@ export function CatalogLayout({
                 </div>
               )}
 
-              {/* Trigger filters sidebar on mobile */}
-              <button
-                type="button"
-                onClick={() => setMobileFilterOpen(true)}
-                className="lg:hidden h-10 px-4 rounded-lg border flex items-center justify-center gap-2 text-sm font-semibold transition-colors bg-white dark:bg-slate-800"
-                style={{ borderColor: tokens.inputBorder }}
-              >
-                <SlidersHorizontal size={16} />
-                <span>Bộ lọc</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setMobileFilterOpen(true)}
+                  className="h-10 px-4 rounded-lg border flex items-center justify-center gap-2 text-sm font-semibold transition-colors bg-white dark:bg-slate-800 flex-1 sm:flex-initial"
+                  style={{ borderColor: tokens.inputBorder }}
+                >
+                  <SlidersHorizontal size={16} />
+                  <span>Bộ lọc</span>
+                </button>
 
-              <div className="flex items-center gap-2">
                 <select
                   value={sortBy}
                   onChange={(e) => onSortChange(e.target.value as ProductSortOption)}
-                  className="h-10 px-3 rounded-lg border text-sm outline-none font-medium appearance-none min-w-[140px] text-center"
+                  className="h-10 px-3 rounded-lg border text-sm outline-none font-medium appearance-none min-w-[140px] text-center flex-1 sm:flex-initial"
                   style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}
                 >
                   <option value="newest">Mới nhất</option>
@@ -417,15 +519,45 @@ export function CatalogLayout({
               </div>
             </div>
 
-            {/* Results Count & Clear Button */}
-            <div className="flex items-center justify-between mb-4">
+            {/* Results Count & Desktop Sort Controls */}
+            <div className="flex items-center justify-between mb-5 gap-4">
               <p className="text-xs sm:text-sm" style={{ color: tokens.metaText }}>
                 Hiển thị <span className="font-medium" style={{ color: tokens.bodyText }}>{products.length}</span>
                 {totalCount !== undefined && products.length > 0 && totalCount > products.length && <> / {totalCount}</>} sản phẩm
               </p>
-              {hasActiveFilters && onClearFilters && (
-                <ClearFiltersButton tokens={tokens} onClear={onClearFilters} />
-              )}
+              
+              <div className="flex items-center gap-4">
+                {/* Desktop Sort Control */}
+                <div className="hidden lg:flex items-center gap-2">
+                  <span className="text-sm font-medium" style={{ color: tokens.metaText }}>Sắp xếp:</span>
+                  <div className="relative">
+                    <select
+                      value={sortBy}
+                      onChange={(e) => onSortChange(e.target.value as ProductSortOption)}
+                      className="h-9 pl-3 pr-8 rounded-lg border text-sm outline-none font-medium appearance-none min-w-[130px]"
+                      style={{ 
+                        borderColor: tokens.inputBorder, 
+                        backgroundColor: tokens.inputBackground, 
+                        color: tokens.inputText,
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E")`,
+                        backgroundPosition: 'right 8px center',
+                        backgroundSize: '12px',
+                        backgroundRepeat: 'no-repeat'
+                      }}
+                    >
+                      <option value="newest">Mới nhất</option>
+                      <option value="popular">Bán chạy</option>
+                      <option value="price_asc">Giá thấp → cao</option>
+                      <option value="price_desc">Giá cao → thấp</option>
+                      <option value="name">Tên A-Z</option>
+                    </select>
+                  </div>
+                </div>
+
+                {hasActiveFilters && onClearFilters && (
+                  <ClearFiltersButton tokens={tokens} onClear={onClearFilters} />
+                )}
+              </div>
             </div>
 
             {/* Products Grid list */}
@@ -523,22 +655,69 @@ export function CatalogLayout({
 
               <div className="space-y-3">
                 <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Danh mục sản phẩm</h4>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => { onCategoryChange(null); setMobileFilterOpen(false); }}
-                    className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${!selectedCategory ? 'bg-slate-100 font-semibold' : ''}`}
-                  >
-                    Tất cả danh mục
-                  </button>
-                  {categories.map((cat) => (
+                {categories.length > 8 && (
+                  <div className="relative mb-2">
+                    <input
+                      type="text"
+                      placeholder="Tìm nhanh danh mục..."
+                      value={categoryQuery}
+                      onChange={(e) => setCategoryQuery(e.target.value)}
+                      className="w-full pl-8 pr-8 py-1.5 border rounded-md text-xs outline-none"
+                      style={{
+                        borderColor: tokens.inputBorder,
+                        backgroundColor: tokens.inputBackground,
+                        color: tokens.inputText,
+                      }}
+                    />
+                    <Search
+                      size={12}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2"
+                      style={{ color: tokens.inputIcon }}
+                    />
+                    {categoryQuery && (
+                      <button
+                        onClick={() => setCategoryQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100"
+                        style={{ color: tokens.inputIcon }}
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div 
+                  className={`space-y-1 ${categories.length > 8 ? 'max-h-72 overflow-y-auto pr-1' : ''}`}
+                >
+                  {(!categoryQuery || 'tất cả danh mục'.includes(categoryQuery.toLowerCase())) && (
+                    <button
+                      onClick={() => { onCategoryChange(null); setMobileFilterOpen(false); }}
+                      className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium transition-colors border border-transparent ${!selectedCategory ? 'font-semibold' : ''}`}
+                      style={!selectedCategory
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText }
+                      }
+                    >
+                      Tất cả danh mục
+                    </button>
+                  )}
+                  {filteredCategories.map((cat) => (
                     <button
                       key={cat._id}
                       onClick={() => { onCategoryChange(cat._id); setMobileFilterOpen(false); }}
-                      className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${selectedCategory === cat._id ? 'bg-slate-100 font-semibold' : ''}`}
+                      className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium transition-colors border border-transparent ${selectedCategory === cat._id ? 'font-semibold' : ''}`}
+                      style={selectedCategory === cat._id
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText }
+                      }
                     >
                       {cat.name}
                     </button>
                   ))}
+                  {categories.length > 8 && filteredCategories.length === 0 && (!categoryQuery || !'tất cả danh mục'.includes(categoryQuery.toLowerCase())) && (
+                    <div className="px-2.5 py-2 text-xs opacity-60">
+                      Không tìm thấy kết quả.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -655,6 +834,52 @@ export function ListLayout({
   showCategories = true
 }: LayoutProps) {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [categoryQuery, setCategoryQuery] = useState('');
+
+  const filteredCategories = useMemo(() => {
+    const query = categoryQuery.trim().toLowerCase();
+    if (!query) return categories;
+    return categories.filter((cat) => cat.name.toLowerCase().includes(query));
+  }, [categories, categoryQuery]);
+
+  let searchParams: any = null;
+  let router: any = null;
+  try {
+    searchParams = useSearchParams();
+    router = useRouter();
+  } catch (e) {}
+
+  const currentMinPrice = searchParams ? (searchParams.get('minPrice') || '') : '';
+  const currentMaxPrice = searchParams ? (searchParams.get('maxPrice') || '') : '';
+
+  const [minPriceInput, setMinPriceInput] = useState(currentMinPrice);
+  const [maxPriceInput, setMaxPriceInput] = useState(currentMaxPrice);
+
+  useEffect(() => {
+    setMinPriceInput(currentMinPrice);
+  }, [currentMinPrice]);
+
+  useEffect(() => {
+    setMaxPriceInput(currentMaxPrice);
+  }, [currentMaxPrice]);
+
+  const handleApplyPrice = () => {
+    if (!router) return;
+    const params = new URLSearchParams(window.location.search);
+    if (minPriceInput) {
+      params.set('minPrice', minPriceInput);
+    } else {
+      params.delete('minPrice');
+    }
+    if (maxPriceInput) {
+      params.set('maxPrice', maxPriceInput);
+    } else {
+      params.delete('maxPrice');
+    }
+    params.delete('page');
+    params.delete('priceRange');
+    router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+  };
 
   return (
     <div className="py-6 md:py-10 px-3 md:px-4">
@@ -691,30 +916,69 @@ export function ListLayout({
                 <h3 className="font-semibold text-sm mb-2" style={{ color: tokens.bodyText }}>
                   Danh mục sản phẩm
                 </h3>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => onCategoryChange(null)}
-                    className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${!selectedCategory ? 'font-semibold' : ''}`}
-                    style={!selectedCategory
-                      ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
-                      : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
-                    }
-                  >
-                    Tất cả danh mục
-                  </button>
-                  {categories.map((cat) => (
+                {categories.length > 8 && (
+                  <div className="relative mb-2">
+                    <input
+                      type="text"
+                      placeholder="Tìm nhanh danh mục..."
+                      value={categoryQuery}
+                      onChange={(e) => setCategoryQuery(e.target.value)}
+                      className="w-full pl-8 pr-8 py-1.5 border rounded-md text-xs outline-none"
+                      style={{
+                        borderColor: tokens.inputBorder,
+                        backgroundColor: tokens.inputBackground,
+                        color: tokens.inputText,
+                      }}
+                    />
+                    <Search
+                      size={12}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2"
+                      style={{ color: tokens.inputIcon }}
+                    />
+                    {categoryQuery && (
+                      <button
+                        onClick={() => setCategoryQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100"
+                        style={{ color: tokens.inputIcon }}
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div 
+                  className={`space-y-1 ${categories.length > 8 ? 'max-h-72 overflow-y-auto pr-1' : ''}`}
+                >
+                  {(!categoryQuery || 'tất cả danh mục'.includes(categoryQuery.toLowerCase())) && (
+                    <button
+                      onClick={() => onCategoryChange(null)}
+                      className={`w-full py-2 px-3 rounded-lg text-left text-sm transition-colors border border-transparent ${!selectedCategory ? 'font-semibold' : ''}`}
+                      style={!selectedCategory
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText }
+                      }
+                    >
+                      Tất cả danh mục
+                    </button>
+                  )}
+                  {filteredCategories.map((cat) => (
                     <button
                       key={cat._id}
                       onClick={() => onCategoryChange(cat._id)}
-                      className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${selectedCategory === cat._id ? 'font-semibold' : ''}`}
+                      className={`w-full py-2 px-3 rounded-lg text-left text-sm transition-colors border border-transparent ${selectedCategory === cat._id ? 'font-semibold' : ''}`}
                       style={selectedCategory === cat._id
-                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
-                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText }
                       }
                     >
                       {cat.name}
                     </button>
                   ))}
+                  {categories.length > 8 && filteredCategories.length === 0 && (!categoryQuery || !'tất cả danh mục'.includes(categoryQuery.toLowerCase())) && (
+                    <div className="px-2.5 py-2 text-xs opacity-60" style={{ color: tokens.metaText }}>
+                      Không tìm thấy kết quả.
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -781,34 +1045,51 @@ export function ListLayout({
               </div>
             )}
 
-            {/* Khung Khoảng giá Tĩnh giống preview ở admin */}
+            {/* Khung Khoảng giá tự chọn hoạt động thực tế */}
             <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
-              <h3 className="font-semibold text-sm mb-2 text-slate-800 dark:text-slate-200">Khoảng giá</h3>
-              <div className="flex gap-2">
+              <h3 className="font-semibold text-sm mb-2 text-slate-800 dark:text-slate-200">Khoảng giá (đ)</h3>
+              <div className="flex gap-1.5 items-center">
                 <input
-                  type="text"
+                  type="number"
                   placeholder="Từ"
-                  className="w-1/2 px-2 py-1.5 border rounded text-sm placeholder:text-[var(--placeholder-color)]"
+                  value={minPriceInput}
+                  onChange={(e) => setMinPriceInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
+                  className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
                   style={{
                     borderColor: tokens.inputBorder,
                     backgroundColor: tokens.inputBackground,
                     color: tokens.inputText,
                     '--placeholder-color': tokens.inputPlaceholder,
                   } as React.CSSProperties}
-                  disabled
                 />
+                <span className="text-slate-400 dark:text-slate-500 font-bold">-</span>
                 <input
-                  type="text"
+                  type="number"
                   placeholder="Đến"
-                  className="w-1/2 px-2 py-1.5 border rounded text-sm placeholder:text-[var(--placeholder-color)]"
+                  value={maxPriceInput}
+                  onChange={(e) => setMaxPriceInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleApplyPrice()}
+                  className="w-[42%] px-2 py-1.5 border rounded-lg text-xs placeholder:text-[var(--placeholder-color)] outline-none"
                   style={{
                     borderColor: tokens.inputBorder,
                     backgroundColor: tokens.inputBackground,
                     color: tokens.inputText,
                     '--placeholder-color': tokens.inputPlaceholder,
                   } as React.CSSProperties}
-                  disabled
                 />
+                <button
+                  type="button"
+                  onClick={handleApplyPrice}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all hover:opacity-90 active:scale-95 text-sm shrink-0"
+                  style={{
+                    backgroundColor: tokens.filterChipActiveBg,
+                    color: tokens.filterChipActiveText,
+                  }}
+                  title="Áp dụng lọc giá"
+                >
+                  ✓
+                </button>
               </div>
             </div>
 
@@ -843,13 +1124,13 @@ export function ListLayout({
               )}
             </div>
 
-            {/* Toolbar Filters Mobile & Desktop Controls */}
+            {/* Toolbar Filters Mobile Controls - Chỉ hiện dưới lg */}
             <div
-              className={`flex flex-col sm:flex-row gap-3 p-3 mb-5 border ${radiusClass}`}
+              className={`flex lg:hidden flex-col sm:flex-row gap-3 p-3 mb-5 border ${radiusClass}`}
               style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}
             >
               {showSearch && (
-                <div className="relative flex-1 lg:hidden">
+                <div className="relative flex-1">
                   <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: tokens.inputIcon }} />
                   <input
                     type="text"
@@ -867,22 +1148,21 @@ export function ListLayout({
                 </div>
               )}
 
-              {/* Trigger filters sidebar on mobile */}
-              <button
-                type="button"
-                onClick={() => setMobileFilterOpen(true)}
-                className="lg:hidden h-10 px-4 rounded-lg border flex items-center justify-center gap-2 text-sm font-semibold transition-colors bg-white dark:bg-slate-800"
-                style={{ borderColor: tokens.inputBorder }}
-              >
-                <SlidersHorizontal size={16} />
-                <span>Bộ lọc</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setMobileFilterOpen(true)}
+                  className="h-10 px-4 rounded-lg border flex items-center justify-center gap-2 text-sm font-semibold transition-colors bg-white dark:bg-slate-800 flex-1 sm:flex-initial"
+                  style={{ borderColor: tokens.inputBorder }}
+                >
+                  <SlidersHorizontal size={16} />
+                  <span>Bộ lọc</span>
+                </button>
 
-              <div className="flex items-center gap-2">
                 <select
                   value={sortBy}
                   onChange={(e) => onSortChange(e.target.value as ProductSortOption)}
-                  className="h-10 px-3 rounded-lg border text-sm outline-none font-medium appearance-none min-w-[140px] text-center"
+                  className="h-10 px-3 rounded-lg border text-sm outline-none font-medium appearance-none min-w-[140px] text-center flex-1 sm:flex-initial"
                   style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}
                 >
                   <option value="newest">Mới nhất</option>
@@ -894,15 +1174,45 @@ export function ListLayout({
               </div>
             </div>
 
-            {/* Results Count & Clear Button */}
-            <div className="flex items-center justify-between mb-4">
+            {/* Results Count & Desktop Sort Controls */}
+            <div className="flex items-center justify-between mb-5 gap-4">
               <p className="text-xs sm:text-sm" style={{ color: tokens.metaText }}>
                 Hiển thị <span className="font-medium" style={{ color: tokens.bodyText }}>{products.length}</span>
                 {totalCount !== undefined && products.length > 0 && totalCount > products.length && <> / {totalCount}</>} sản phẩm
               </p>
-              {hasActiveFilters && onClearFilters && (
-                <ClearFiltersButton tokens={tokens} onClear={onClearFilters} />
-              )}
+              
+              <div className="flex items-center gap-4">
+                {/* Desktop Sort Control */}
+                <div className="hidden lg:flex items-center gap-2">
+                  <span className="text-sm font-medium" style={{ color: tokens.metaText }}>Sắp xếp:</span>
+                  <div className="relative">
+                    <select
+                      value={sortBy}
+                      onChange={(e) => onSortChange(e.target.value as ProductSortOption)}
+                      className="h-9 pl-3 pr-8 rounded-lg border text-sm outline-none font-medium appearance-none min-w-[130px]"
+                      style={{ 
+                        borderColor: tokens.inputBorder, 
+                        backgroundColor: tokens.inputBackground, 
+                        color: tokens.inputText,
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E")`,
+                        backgroundPosition: 'right 8px center',
+                        backgroundSize: '12px',
+                        backgroundRepeat: 'no-repeat'
+                      }}
+                    >
+                      <option value="newest">Mới nhất</option>
+                      <option value="popular">Bán chạy</option>
+                      <option value="price_asc">Giá thấp → cao</option>
+                      <option value="price_desc">Giá cao → thấp</option>
+                      <option value="name">Tên A-Z</option>
+                    </select>
+                  </div>
+                </div>
+
+                {hasActiveFilters && onClearFilters && (
+                  <ClearFiltersButton tokens={tokens} onClear={onClearFilters} />
+                )}
+              </div>
             </div>
 
             {/* Products List View */}
@@ -1001,22 +1311,69 @@ export function ListLayout({
 
               <div className="space-y-3">
                 <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Danh mục sản phẩm</h4>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => { onCategoryChange(null); setMobileFilterOpen(false); }}
-                    className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${!selectedCategory ? 'bg-slate-100 font-semibold' : ''}`}
-                  >
-                    Tất cả danh mục
-                  </button>
-                  {categories.map((cat) => (
+                {categories.length > 8 && (
+                  <div className="relative mb-2">
+                    <input
+                      type="text"
+                      placeholder="Tìm nhanh danh mục..."
+                      value={categoryQuery}
+                      onChange={(e) => setCategoryQuery(e.target.value)}
+                      className="w-full pl-8 pr-8 py-1.5 border rounded-md text-xs outline-none"
+                      style={{
+                        borderColor: tokens.inputBorder,
+                        backgroundColor: tokens.inputBackground,
+                        color: tokens.inputText,
+                      }}
+                    />
+                    <Search
+                      size={12}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2"
+                      style={{ color: tokens.inputIcon }}
+                    />
+                    {categoryQuery && (
+                      <button
+                        onClick={() => setCategoryQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100"
+                        style={{ color: tokens.inputIcon }}
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div 
+                  className={`space-y-1 ${categories.length > 8 ? 'max-h-72 overflow-y-auto pr-1' : ''}`}
+                >
+                  {(!categoryQuery || 'tất cả danh mục'.includes(categoryQuery.toLowerCase())) && (
+                    <button
+                      onClick={() => { onCategoryChange(null); setMobileFilterOpen(false); }}
+                      className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium transition-colors border border-transparent ${!selectedCategory ? 'font-semibold' : ''}`}
+                      style={!selectedCategory
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText }
+                      }
+                    >
+                      Tất cả danh mục
+                    </button>
+                  )}
+                  {filteredCategories.map((cat) => (
                     <button
                       key={cat._id}
                       onClick={() => { onCategoryChange(cat._id); setMobileFilterOpen(false); }}
-                      className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium ${selectedCategory === cat._id ? 'bg-slate-100 font-semibold' : ''}`}
+                      className={`w-full py-2 px-3 rounded-lg text-left text-sm font-medium transition-colors border border-transparent ${selectedCategory === cat._id ? 'font-semibold' : ''}`}
+                      style={selectedCategory === cat._id
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText }
+                      }
                     >
                       {cat.name}
                     </button>
                   ))}
+                  {categories.length > 8 && filteredCategories.length === 0 && (!categoryQuery || !'tất cả danh mục'.includes(categoryQuery.toLowerCase())) && (
+                    <div className="px-2.5 py-2 text-xs opacity-60">
+                      Không tìm thấy kết quả.
+                    </div>
+                  )}
                 </div>
               </div>
 
