@@ -775,7 +775,12 @@ export const ServicesSectionCore = ({
             return (
               <article
                 key={getServiceKey(item, idx)}
-                className="relative flex min-h-[54px] flex-col justify-center rounded-md py-2.5 pl-4 pr-4 md:pl-[76px] text-left shadow-sm"
+                className={cn(
+                  "relative flex min-h-[54px] flex-col justify-center rounded-md py-2.5 pr-4 text-left shadow-sm",
+                  isPreview
+                    ? (device === 'mobile' ? 'pl-4' : 'pl-[76px]')
+                    : 'pl-4 md:pl-[76px]'
+                )}
                 style={{ backgroundColor: cardBg }}
               >
                 <div
@@ -820,10 +825,27 @@ export const ServicesSectionCore = ({
                 </div>
 
                 <div className="relative z-0">
-                  <h3 className={cn(serviceTitleClassName, "pl-[56px] md:pl-0 min-h-[42px] md:min-h-0")} style={{ ...serviceTitleFontStyle, color: cardTitleColor }}>
+                  <h3
+                    className={cn(
+                      serviceTitleClassName,
+                      isPreview
+                        ? (device === 'mobile' ? 'pl-[56px] min-h-[42px] text-[11px]' : 'pl-0 min-h-0 text-[13px]')
+                        : 'pl-[56px] md:pl-0 min-h-[42px] md:min-h-0 text-[11px] md:text-[13px]'
+                    )}
+                    style={{ ...serviceTitleFontStyle, color: cardTitleColor }}
+                  >
                     {item.title || 'Tiêu đề'}
                   </h3>
-                  <p className={cn(serviceBodyClassName, "pl-0 mt-2 md:mt-0.5")} style={{ ...serviceBodyFontStyle, color: cardDescColor }}>
+                  <p
+                    className={cn(
+                      serviceBodyClassName,
+                      "pl-0",
+                      isPreview
+                        ? (device === 'mobile' ? 'mt-2 text-[10px]' : 'mt-0.5 text-[12px]')
+                        : 'mt-2 md:mt-0.5 text-[10px] md:text-[12px]'
+                    )}
+                    style={{ ...serviceBodyFontStyle, color: cardDescColor }}
+                  >
                     {item.description || 'Mô tả dịch vụ...'}
                   </p>
                 </div>
