@@ -392,11 +392,6 @@ export const remove = mutation({
     const notif = await ctx.db.get(args.id);
     if (!notif) {throw new Error("Notification not found");}
     
-    // MED-002: Không cho xóa thông báo đã gửi (để giữ audit trail)
-    if (notif.status === "Sent") {
-      throw new Error("Không thể xóa thông báo đã gửi");
-    }
-    
     await ctx.db.delete(args.id);
     
     // Update counters
