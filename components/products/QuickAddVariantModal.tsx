@@ -158,7 +158,7 @@ export function QuickAddVariantModal({ isOpen, product, brandColor, actionLabel,
       .filter((option) => option.values.length > 0);
   }, [variantOptionsSource, variantValuesSource]);
 
-  const hasVariantData = Boolean(product?.hasVariants && variants && variants.length > 0);
+  const hasVariantData = Boolean(variants && variants.length > 0);
   const hasVariants = hasVariantData && variantOptions.length > 0;
 
   const baseSelection = useMemo(
@@ -167,12 +167,6 @@ export function QuickAddVariantModal({ isOpen, product, brandColor, actionLabel,
   );
   const resolvedSelection = Object.keys(selectedOptions).length > 0 ? selectedOptions : baseSelection;
   const selectedVariant = hasVariants ? findExactVariant(variants!, resolvedSelection) : null;
-  if (!isOpen || !product) {
-    return null;
-  }
-  const basePrice = selectedVariant?.price ?? product.price;
-  const salePrice = selectedVariant ? selectedVariant.salePrice : product.salePrice;
-  const isRangeFromVariant = Boolean(product.hasVariants && !selectedVariant);
   const saleMode = useMemo<'cart' | 'contact' | 'affiliate'>(() => {
     const value = saleModeSetting?.value;
     if (value === 'contact' || value === 'affiliate') {
@@ -180,6 +174,14 @@ export function QuickAddVariantModal({ isOpen, product, brandColor, actionLabel,
     }
     return 'cart';
   }, [saleModeSetting?.value]);
+
+  if (!isOpen || !product) {
+    return null;
+  }
+
+  const basePrice = selectedVariant?.price ?? product.price;
+  const salePrice = selectedVariant ? selectedVariant.salePrice : product.salePrice;
+  const isRangeFromVariant = Boolean(hasVariantData && !selectedVariant);
   const showStock = stockFeature?.enabled ?? true;
   const priceDisplay = getPublicPriceLabel({ saleMode, price: basePrice, salePrice, isRangeFromVariant });
   const stockValue = selectedVariant?.stock ?? product.stock;

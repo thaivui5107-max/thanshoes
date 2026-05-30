@@ -193,6 +193,17 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
     setQuickAddTarget(null);
   };
 
+  const renderQuickAddModal = () => (
+    <QuickAddVariantModal
+      isOpen={quickAddTarget !== null}
+      product={quickAddTarget?.product ?? null}
+      brandColor={brandColor}
+      actionLabel={quickAddTarget?.action === 'addToCart' ? 'Thêm vào giỏ' : 'Mua ngay'}
+      onClose={() => setQuickAddTarget(null)}
+      onConfirm={handleQuickAddConfirm}
+    />
+  );
+
   // Query products based on selection mode
   // Nếu chọn theo danh mục: query các sản phẩm có category nằm trong config. categoryTabIds (hoặc activeTabId).
   // Để tối ưu và nhất quán, storefront query tối đa 50 sản phẩm public để hiển thị.
@@ -751,6 +762,7 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
             </div>
           )}
         </div>
+        {renderQuickAddModal()}
       </section>
     );
   };
@@ -810,6 +822,7 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
           )}
         </div>
         </div>
+        {renderQuickAddModal()}
       </section>
     );
   };
@@ -844,14 +857,7 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
         {renderGrid()}
       </div>
 
-      <QuickAddVariantModal
-        isOpen={quickAddTarget !== null}
-        product={quickAddTarget?.product ?? null}
-        brandColor={brandColor}
-        actionLabel={quickAddTarget?.action === 'addToCart' ? 'Thêm vào giỏ' : 'Mua ngay'}
-        onClose={() => setQuickAddTarget(null)}
-        onConfirm={handleQuickAddConfirm}
-      />
+      {renderQuickAddModal()}
     </section>
   );
 }
