@@ -3944,6 +3944,17 @@ function CategoryProductsSection({
     setQuickAddTarget(null);
   };
 
+  const renderQuickAddModal = () => (
+    <QuickAddVariantModal
+      isOpen={quickAddTarget !== null}
+      product={quickAddTarget?.product ?? null}
+      brandColor={brandColor}
+      actionLabel={quickAddTarget?.action === 'addToCart' ? 'Thêm vào giỏ' : 'Mua ngay'}
+      onClose={() => setQuickAddTarget(null)}
+      onConfirm={handleQuickAddConfirm}
+    />
+  );
+
   const ProductCard = ({ product, categoryId }: { product: { _id: string; name: string; image?: string; price?: number; salePrice?: number; slug?: string; hasVariants?: boolean }; categoryId: string }) => {
     const href = resolveProductHrefByCategory({ categoryId, product });
     const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
@@ -4034,39 +4045,42 @@ function CategoryProductsSection({
   // Style 1: Grid
   if (style === 'grid') {
     return (
-      <div className={cn('space-y-10 md:space-y-16', sectionSpacingClassName)}>
-        {resolvedSections.map((section, idx) => (
-          <section key={idx} className="px-4">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl md:text-2xl font-bold" style={{ color: colors.heading }}>{section.category.name}</h2>
-                {showViewAll && (
-                  <a 
-                    href={buildCategoryPath({ categorySlug: section.category.slug ?? section.category._id, mode: routeMode, moduleKey: 'products' })}
-                    className="text-sm font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg border transition-colors"
-                    style={{ borderColor: colors.buttonBorder, color: colors.buttonText }}
-                  >
-                    Xem danh mục
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                    </svg>
-                  </a>
+      <>
+        <div className={cn('space-y-10 md:space-y-16', sectionSpacingClassName)}>
+          {resolvedSections.map((section, idx) => (
+            <section key={idx} className="px-4">
+              <div className="max-w-7xl mx-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl md:text-2xl font-bold" style={{ color: colors.heading }}>{section.category.name}</h2>
+                  {showViewAll && (
+                    <a 
+                      href={buildCategoryPath({ categorySlug: section.category.slug ?? section.category._id, mode: routeMode, moduleKey: 'products' })}
+                      className="text-sm font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg border transition-colors"
+                      style={{ borderColor: colors.buttonBorder, color: colors.buttonText }}
+                    >
+                      Xem danh mục
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                      </svg>
+                    </a>
+                  )}
+                </div>
+                
+                {section.products.length > 0 ? (
+                  <div className={cn('grid gap-4', getGridCols())}>
+                    {section.products.map((product) => (
+                      <ProductCard key={product._id} product={product} categoryId={section.category._id} />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyProductsState message="Chưa có sản phẩm trong danh mục này" />
                 )}
               </div>
-              
-              {section.products.length > 0 ? (
-                <div className={cn('grid gap-4', getGridCols())}>
-                  {section.products.map((product) => (
-                    <ProductCard key={product._id} product={product} categoryId={section.category._id} />
-                  ))}
-                </div>
-              ) : (
-                <EmptyProductsState message="Chưa có sản phẩm trong danh mục này" />
-              )}
-            </div>
-          </section>
-        ))}
-      </div>
+            </section>
+          ))}
+        </div>
+        {renderQuickAddModal()}
+      </>
     );
   }
 
@@ -4215,81 +4229,88 @@ function CategoryProductsSection({
     };
 
     return (
-      <div className={cn('space-y-8 md:space-y-12', sectionSpacingClassName)}>
-        {resolvedSections.map((section, idx) => (
-          <CarouselSection key={idx} section={section} />
-        ))}
-      </div>
+      <>
+        <div className={cn('space-y-8 md:space-y-12', sectionSpacingClassName)}>
+          {resolvedSections.map((section, idx) => (
+            <CarouselSection key={idx} section={section} />
+          ))}
+        </div>
+        {renderQuickAddModal()}
+      </>
     );
   }
 
   // Style 3: Cards - Modern cards with category header
   if (style === 'cards') {
     return (
-      <div className={cn('space-y-10 md:space-y-16', sectionSpacingClassName)}>
-        {resolvedSections.map((section, idx) => (
-          <section key={idx} className="px-4">
-            <div className="max-w-7xl mx-auto">
-              <div 
-                className={cn('overflow-hidden', cardRadiusClassName)}
-                style={{ border: `1px solid ${colors.cardBorder}` }}
-              >
-                {/* Category Header */}
+      <>
+        <div className={cn('space-y-10 md:space-y-16', sectionSpacingClassName)}>
+          {resolvedSections.map((section, idx) => (
+            <section key={idx} className="px-4">
+              <div className="max-w-7xl mx-auto">
                 <div 
-                  className="px-4 py-3 flex items-center justify-between"
-                  style={{ backgroundColor: colors.neutralBackground }}
+                  className={cn('overflow-hidden', cardRadiusClassName)}
+                  style={{ border: `1px solid ${colors.cardBorder}` }}
                 >
-                  <div className="flex items-center gap-3">
-                    {section.category.image && (
-                      <div className={cn('w-10 h-10 overflow-hidden bg-white', imageRadiusClassName)}>
-                        <SiteImage 
-                          src={section.category.image} 
-                          alt={section.category.name} 
-                          className="w-full h-full object-cover" 
-                        />
-                      </div>
-                    )}
-                    <h2 className="text-lg font-bold" style={{ color: colors.heading }}>{section.category.name}</h2>
-                  </div>
-                  {showViewAll && (
-                    <a 
-                      href={buildCategoryPath({ categorySlug: section.category.slug ?? section.category._id, mode: routeMode, moduleKey: 'products' })}
-                      className="text-sm font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors"
-                      style={{ backgroundColor: colors.buttonBackground, border: `1px solid ${colors.buttonBorder}`, color: colors.buttonText }}
-                    >
-                      Xem danh mục
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                      </svg>
-                    </a>
-                  )}
-                </div>
-                
-                {/* Products Grid */}
-                <div className="p-4" style={{ backgroundColor: colors.cardBackground }}>
-                  {section.products.length > 0 ? (
-                    <div className={cn('grid gap-4', getGridCols())}>
-                      {section.products.map((product) => (
-                        <ProductCard key={product._id} product={product} categoryId={section.category._id} />
-                      ))}
+                  {/* Category Header */}
+                  <div 
+                    className="px-4 py-3 flex items-center justify-between"
+                    style={{ backgroundColor: colors.neutralBackground }}
+                  >
+                    <div className="flex items-center gap-3">
+                      {section.category.image && (
+                        <div className={cn('w-10 h-10 overflow-hidden bg-white', imageRadiusClassName)}>
+                          <SiteImage 
+                            src={section.category.image} 
+                            alt={section.category.name} 
+                            className="w-full h-full object-cover" 
+                          />
+                        </div>
+                      )}
+                      <h2 className="text-lg font-bold" style={{ color: colors.heading }}>{section.category.name}</h2>
                     </div>
-                  ) : (
-                    <EmptyProductsState message="Chưa có sản phẩm" />
-                  )}
+                    {showViewAll && (
+                      <a 
+                        href={buildCategoryPath({ categorySlug: section.category.slug ?? section.category._id, mode: routeMode, moduleKey: 'products' })}
+                        className="text-sm font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors"
+                        style={{ backgroundColor: colors.buttonBackground, border: `1px solid ${colors.buttonBorder}`, color: colors.buttonText }}
+                      >
+                        Xem danh mục
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                        </svg>
+                      </a>
+                    )}
+                  </div>
+                  
+                  {/* Products Grid */}
+                  <div className="p-4" style={{ backgroundColor: colors.cardBackground }}>
+                    {section.products.length > 0 ? (
+                      <div className={cn('grid gap-4', getGridCols())}>
+                        {section.products.map((product) => (
+                          <ProductCard key={product._id} product={product} categoryId={section.category._id} />
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyProductsState message="Chưa có sản phẩm" />
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
-        ))}
-      </div>
+            </section>
+          ))}
+        </div>
+        {renderQuickAddModal()}
+      </>
     );
   }
 
   // Style 4: Bento - Featured product với bento grid
   if (style === 'bento') {
     return (
-      <div className={cn('space-y-10 md:space-y-16', sectionSpacingClassName)}>
-        {resolvedSections.map((section, idx) => {
+      <>
+        <div className={cn('space-y-10 md:space-y-16', sectionSpacingClassName)}>
+          {resolvedSections.map((section, idx) => {
           const featured = section.products[0];
           const others = section.products.slice(1, 5);
           
@@ -4452,14 +4473,17 @@ function CategoryProductsSection({
           );
         })}
       </div>
+      {renderQuickAddModal()}
+      </>
     );
   }
 
   // Style 5: Magazine - Editorial Grid với Featured Item + Grid nhỏ
   if (style === 'magazine') {
     return (
-      <div className={cn('space-y-12 md:space-y-16', sectionSpacingClassName)}>
-        {resolvedSections.map((section, sectionIdx) => {
+      <>
+        <div className={cn('space-y-12 md:space-y-16', sectionSpacingClassName)}>
+          {resolvedSections.map((section, sectionIdx) => {
           const featured = section.products[0];
           const gridItems = section.products.slice(1, 5);
           
@@ -4660,11 +4684,14 @@ function CategoryProductsSection({
           );
         })}
       </div>
+      {renderQuickAddModal()}
+      </>
     );
   }
 
   if (style === 'wine-grid') {
     return (
+      <>
       <div className={cn('w-full bg-white px-2', sectionSpacingClassName)}>
         <div className="mx-auto flex w-full max-w-[1152px] flex-col gap-6">
           {resolvedSections.map((section, idx) => {
@@ -4814,6 +4841,8 @@ function CategoryProductsSection({
           })}
         </div>
       </div>
+      {renderQuickAddModal()}
+      </>
     );
   }
 
@@ -4968,14 +4997,7 @@ function CategoryProductsSection({
         </section>
       ))}
       
-      <QuickAddVariantModal
-        isOpen={quickAddTarget !== null}
-        product={quickAddTarget?.product ?? null}
-        brandColor={brandColor}
-        actionLabel={quickAddTarget?.action === 'addToCart' ? 'Thêm vào giỏ' : 'Mua ngay'}
-        onClose={() => setQuickAddTarget(null)}
-        onConfirm={handleQuickAddConfirm}
-      />
+      {renderQuickAddModal()}
     </div>
   );
 }

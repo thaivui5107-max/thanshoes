@@ -383,6 +383,17 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
     setQuickAddTarget(null);
   };
 
+  const renderQuickAddModal = () => (
+    <QuickAddVariantModal
+      isOpen={quickAddTarget !== null}
+      product={quickAddTarget?.product ?? null}
+      brandColor={brandColor}
+      actionLabel={quickAddTarget?.action === 'addToCart' ? 'Thêm vào giỏ' : 'Mua ngay'}
+      onClose={() => setQuickAddTarget(null)}
+      onConfirm={handleQuickAddConfirm}
+    />
+  );
+
   const renderSingleProductCard = (product: any, size: 'sm' | 'md' | 'lg' = 'md') => {
     const priceDisplay = getPriceDisplay(product.price, product.salePrice, product.hasVariants);
     const discount = getDiscount(product.price, priceDisplay.comparePrice, priceDisplay.isContactPrice);
@@ -570,28 +581,31 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
   // Style 1: E-commerce Clean — flat cards, circular discount badge, cart icon, "Xem thêm" CTA
   if (style === 'minimal') {
     return (
-      <section className={cn(sectionSpacingClassName, 'px-4 md:px-6')}>
-        <div className="max-w-7xl mx-auto">
-          {renderSiteHeader()}
-          
-          {/* Grid */}
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-5 lg:gap-5">
-            {products.slice(0, 10).map((product) => renderSingleProductCard(product))}
-          </div>
-
-          {/* "Xem thêm" button */}
-          {showViewAll && (
-            <div className="flex justify-center mt-8">
-              <Link
-                href="/products"
-                className="px-8 py-2.5 rounded-full text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 transition-colors"
-              >
-                Xem thêm
-              </Link>
+      <>
+        <section className={cn(sectionSpacingClassName, 'px-4 md:px-6')}>
+          <div className="max-w-7xl mx-auto">
+            {renderSiteHeader()}
+            
+            {/* Grid */}
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-5 lg:gap-5">
+              {products.slice(0, 10).map((product) => renderSingleProductCard(product))}
             </div>
-          )}
-        </div>
-      </section>
+
+            {/* "Xem thêm" button */}
+            {showViewAll && (
+              <div className="flex justify-center mt-8">
+                <Link
+                  href="/products"
+                  className="px-8 py-2.5 rounded-full text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 transition-colors"
+                >
+                  Xem thêm
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+        {renderQuickAddModal()}
+      </>
     );
   }
 
@@ -599,16 +613,19 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
   // Style 2: Commerce Card - Cards với button Xem chi tiết và hover effects
   if (style === 'commerce') {
     return (
-      <section className={cn(sectionSpacingClassName, 'px-4 md:px-6')}>
-        <div className="max-w-7xl mx-auto">
-          {renderSiteHeader()}
-          
-          {/* Grid */}
-          <div className={productGridClassName}>
-            {products.slice(0, 4).map((product) => renderSingleProductCard(product))}
+      <>
+        <section className={cn(sectionSpacingClassName, 'px-4 md:px-6')}>
+          <div className="max-w-7xl mx-auto">
+            {renderSiteHeader()}
+            
+            {/* Grid */}
+            <div className={productGridClassName}>
+              {products.slice(0, 4).map((product) => renderSingleProductCard(product))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+        {renderQuickAddModal()}
+      </>
     );
   }
 
@@ -622,6 +639,7 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
     const showArrowsMobile = displayedProducts.length > 2;
 
     return (
+      <>
       <section className={cn(sectionSpacingClassName, 'px-4 md:px-6')}>
         <div className="max-w-7xl mx-auto">
           {/* Section Header + navigation arrows below */}
@@ -774,47 +792,55 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
           `}</style>
         </div>
       </section>
+      {renderQuickAddModal()}
+      </>
     );
   }
 
   // Style: Wine Carousel - horizontal cards matching premium wine catalog references
   if (style === 'wine-carousel') {
     return (
-      <WineCarouselSiteSection
-        products={products}
-        itemCount={itemCount}
-        brandColor={brandColor}
-        header={renderSiteHeader({ className: 'mb-1 md:mb-2' })}
-        getProductDetailHref={getProductDetailHref}
-        getPriceDisplay={getPriceDisplay}
-        getDiscount={getDiscount}
-        formatComparePrice={formatComparePrice}
-        cardRadiusClassName={cardRadiusClassName}
-        sectionSpacingClassName={sectionSpacingClassName}
-        tokens={tokens}
-        showStock={showStock}
-        showAddToCartButton={showAddToCartButton}
-        showBuyNowButton={showBuyNowButton}
-        cartButtonsLayout={cartButtonsLayout}
-        onAddToCart={handleAddToCart}
-        onBuyNow={handleBuyNow}
-      />
+      <>
+        <WineCarouselSiteSection
+          products={products}
+          itemCount={itemCount}
+          brandColor={brandColor}
+          header={renderSiteHeader({ className: 'mb-1 md:mb-2' })}
+          getProductDetailHref={getProductDetailHref}
+          getPriceDisplay={getPriceDisplay}
+          getDiscount={getDiscount}
+          formatComparePrice={formatComparePrice}
+          cardRadiusClassName={cardRadiusClassName}
+          sectionSpacingClassName={sectionSpacingClassName}
+          tokens={tokens}
+          showStock={showStock}
+          showAddToCartButton={showAddToCartButton}
+          showBuyNowButton={showBuyNowButton}
+          cartButtonsLayout={cartButtonsLayout}
+          onAddToCart={handleAddToCart}
+          onBuyNow={handleBuyNow}
+        />
+        {renderQuickAddModal()}
+      </>
     );
   }
 
   // Style 5: Compact - Dense grid với smaller cards, nhiều sản phẩm hơn
   if (style === 'compact') {
     return (
-      <section className={cn(sectionSpacingClassName, 'px-4 md:px-6')}>
-        <div className="max-w-7xl mx-auto">
-          {renderSiteHeader()}
-          
-          {/* Compact Grid - More items, smaller cards */}
-          <div className={cn(productGridClassName, 'gap-3 md:gap-3')}>
-            {products.slice(0, 8).map((product) => renderSingleProductCard(product, 'sm'))}
+      <>
+        <section className={cn(sectionSpacingClassName, 'px-4 md:px-6')}>
+          <div className="max-w-7xl mx-auto">
+            {renderSiteHeader()}
+            
+            {/* Compact Grid - More items, smaller cards */}
+            <div className={cn(productGridClassName, 'gap-3 md:gap-3')}>
+              {products.slice(0, 8).map((product) => renderSingleProductCard(product, 'sm'))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+        {renderQuickAddModal()}
+      </>
     );
   }
 
@@ -828,85 +854,88 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
     const showcaseDiscount = getDiscount(showcaseFeatured?.price, showcasePriceDisplay?.comparePrice, showcasePriceDisplay?.isContactPrice);
 
     return (
-      <section className={cn(sectionSpacingClassName, 'px-4 md:px-6')}>
-        <div className="max-w-7xl mx-auto">
-          {renderSiteHeader()}
-          
-          {/* Showcase Layout - Mobile */}
-          <div className="grid md:hidden grid-cols-2 gap-3">
-            {products.slice(0, 4).map((product) => renderSingleProductCard(product, 'sm'))}
-          </div>
+      <>
+        <section className={cn(sectionSpacingClassName, 'px-4 md:px-6')}>
+          <div className="max-w-7xl mx-auto">
+            {renderSiteHeader()}
+            
+            {/* Showcase Layout - Mobile */}
+            <div className="grid md:hidden grid-cols-2 gap-3">
+              {products.slice(0, 4).map((product) => renderSingleProductCard(product, 'sm'))}
+            </div>
 
-          {/* Showcase Layout - Desktop */}
-          <div className="hidden md:grid grid-cols-3 gap-4">
-            {/* Featured Large Item */}
-            <div
-              className={cn("relative group overflow-hidden cursor-pointer min-h-[450px] border border-slate-200 hover:border-slate-300 transition-colors flex flex-col justify-end", cardRadiusClassName)}
-              style={{ backgroundColor: `${secondary}05` }}
-            >
-              <Link href={getProductDetailHref(showcaseFeatured)} className="absolute inset-0 z-10">
-                <ProductImageWithOverlay className="absolute inset-0" frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
-                  {showcaseFeatured?.image ? (
-                    <Image
-                      mode="thumb"
-                      src={showcaseFeatured.image}
-                      alt={showcaseFeatured.name}
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 66vw"
-                      className="object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-100"><Package size={64} className="text-slate-300" /></div>
-                  )}
-                </ProductImageWithOverlay>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent z-20" />
-              </Link>
-              {showcaseDiscount && (
-                <div className="absolute top-4 left-4 z-30">
-                  <SaleBadge text={showcaseDiscount} className="text-sm px-3 py-1" />
-                </div>
-              )}
-              <div className="relative p-6 w-full z-30">
-                <BrandBadge text="Nổi bật" variant="solid" brandColor={brandColor} secondary={secondary} className="mb-2" />
-                <Link href={getProductDetailHref(showcaseFeatured)}>
-                  <h3 className="text-xl md:text-2xl font-bold text-white mb-2 line-clamp-2 hover:opacity-85 transition-colors">{showcaseFeatured?.name}</h3>
+            {/* Showcase Layout - Desktop */}
+            <div className="hidden md:grid grid-cols-3 gap-4">
+              {/* Featured Large Item */}
+              <div
+                className={cn("relative group overflow-hidden cursor-pointer min-h-[450px] border border-slate-200 hover:border-slate-300 transition-colors flex flex-col justify-end", cardRadiusClassName)}
+                style={{ backgroundColor: `${secondary}05` }}
+              >
+                <Link href={getProductDetailHref(showcaseFeatured)} className="absolute inset-0 z-10">
+                  <ProductImageWithOverlay className="absolute inset-0" frameConfig={frameConfig} watermarkConfig={watermarkConfig}>
+                    {showcaseFeatured?.image ? (
+                      <Image
+                        mode="thumb"
+                        src={showcaseFeatured.image}
+                        alt={showcaseFeatured.name}
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 66vw"
+                        className="object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-100"><Package size={64} className="text-slate-300" /></div>
+                    )}
+                  </ProductImageWithOverlay>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent z-20" />
                 </Link>
-                <div className="flex flex-col gap-3">
-                  <span className="text-xl font-bold text-white line-clamp-1">{showcasePriceDisplay?.label ?? ''}</span>
-                  {showAddToCartButton || showBuyNowButton ? (
-                    <ProductCardActions
-                      product={showcaseFeatured as any}
-                      tokens={{
-                        ...tokens,
-                        primaryActionBg: brandColor,
-                        primaryActionText: '#ffffff',
-                        secondaryActionBorder: 'rgba(255,255,255,0.4)',
-                        secondaryActionText: '#ffffff',
-                        secondaryActionHoverBg: 'rgba(255,255,255,0.1)',
-                      }}
-                      showStock={showStock}
-                      showAddToCartButton={showAddToCartButton}
-                      showBuyNowButton={showBuyNowButton}
-                      buyNowLabel="Mua ngay"
-                      onAddToCart={handleAddToCart}
-                      onBuyNow={handleBuyNow}
-                      cartButtonsLayout={cartButtonsLayout}
-                    />
-                  ) : (
-                    <Link href={getProductDetailHref(showcaseFeatured)} className="h-9 px-4 rounded-lg text-white text-sm font-medium shrink-0 inline-flex items-center justify-center" style={{ backgroundColor: brandColor }}>
-                      Xem chi tiết
-                    </Link>
-                  )}
+                {showcaseDiscount && (
+                  <div className="absolute top-4 left-4 z-30">
+                    <SaleBadge text={showcaseDiscount} className="text-sm px-3 py-1" />
+                  </div>
+                )}
+                <div className="relative p-6 w-full z-30">
+                  <BrandBadge text="Nổi bật" variant="solid" brandColor={brandColor} secondary={secondary} className="mb-2" />
+                  <Link href={getProductDetailHref(showcaseFeatured)}>
+                    <h3 className="text-xl md:text-2xl font-bold text-white mb-2 line-clamp-2 hover:opacity-85 transition-colors">{showcaseFeatured?.name}</h3>
+                  </Link>
+                  <div className="flex flex-col gap-3">
+                    <span className="text-xl font-bold text-white line-clamp-1">{showcasePriceDisplay?.label ?? ''}</span>
+                    {showAddToCartButton || showBuyNowButton ? (
+                      <ProductCardActions
+                        product={showcaseFeatured as any}
+                        tokens={{
+                          ...tokens,
+                          primaryActionBg: brandColor,
+                          primaryActionText: '#ffffff',
+                          secondaryActionBorder: 'rgba(255,255,255,0.4)',
+                          secondaryActionText: '#ffffff',
+                          secondaryActionHoverBg: 'rgba(255,255,255,0.1)',
+                        }}
+                        showStock={showStock}
+                        showAddToCartButton={showAddToCartButton}
+                        showBuyNowButton={showBuyNowButton}
+                        buyNowLabel="Mua ngay"
+                        onAddToCart={handleAddToCart}
+                        onBuyNow={handleBuyNow}
+                        cartButtonsLayout={cartButtonsLayout}
+                      />
+                    ) : (
+                      <Link href={getProductDetailHref(showcaseFeatured)} className="h-9 px-4 rounded-lg text-white text-sm font-medium shrink-0 inline-flex items-center justify-center" style={{ backgroundColor: brandColor }}>
+                        Xem chi tiết
+                      </Link>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="col-span-2 grid grid-cols-2 gap-3">
-              {showcaseOthers.map((product) => renderSingleProductCard(product))}
+              <div className="col-span-2 grid grid-cols-2 gap-3">
+                {showcaseOthers.map((product) => renderSingleProductCard(product))}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+        {renderQuickAddModal()}
+      </>
     );
   }
 
@@ -933,58 +962,62 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
       : ['Tất cả'];
 
     return (
-      <section
-        className={cn(sectionSpacingClassName, 'px-4 md:px-6 rounded-xl')}
-        style={{ backgroundColor: brandColor }}
-      >
-        <div className="max-w-7xl mx-auto">
-          {renderSiteHeader()}
-          {/* Category tabs */}
-          <div className="flex flex-wrap gap-2 mb-6">
-            {displayTabs.map((tab, idx) => (
-              <button
-                key={tab}
-                type="button"
-                className={`px-4 py-2 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${
-                  idx === 0
-                    ? 'text-slate-900'
-                    : 'border text-white hover:bg-white/10'
-                }`}
-                style={
-                  idx === 0
-                    ? { backgroundColor: secondary }
-                    : { borderColor: 'rgba(255,255,255,0.3)' }
-                }
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          {/* Product grid */}
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-            {products.slice(0, 10).map((product) => renderSingleProductCard(product))}
-          </div>
-
-          {/* View all */}
-          {showViewAll && (
-            <div className="flex justify-center mt-8">
-              <Link
-                href="/products"
-                className="px-10 py-3 rounded-full text-sm font-bold bg-white text-slate-900 hover:bg-slate-50 transition-colors shadow-md"
-              >
-                Xem tất cả
-              </Link>
+      <>
+        <section
+          className={cn(sectionSpacingClassName, 'px-4 md:px-6 rounded-xl')}
+          style={{ backgroundColor: brandColor }}
+        >
+          <div className="max-w-7xl mx-auto">
+            {renderSiteHeader()}
+            {/* Category tabs */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {displayTabs.map((tab, idx) => (
+                <button
+                  key={tab}
+                  type="button"
+                  className={`px-4 py-2 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${
+                    idx === 0
+                      ? 'text-slate-900'
+                      : 'border text-white hover:bg-white/10'
+                  }`}
+                  style={
+                    idx === 0
+                      ? { backgroundColor: secondary }
+                      : { borderColor: 'rgba(255,255,255,0.3)' }
+                  }
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
-          )}
-        </div>
-      </section>
+
+            {/* Product grid */}
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+              {products.slice(0, 10).map((product) => renderSingleProductCard(product))}
+            </div>
+
+            {/* View all */}
+            {showViewAll && (
+              <div className="flex justify-center mt-8">
+                <Link
+                  href="/products"
+                  className="px-10 py-3 rounded-full text-sm font-bold bg-white text-slate-900 hover:bg-slate-50 transition-colors shadow-md"
+                >
+                  Xem tất cả
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+        {renderQuickAddModal()}
+      </>
     );
   }
 
   // Style 8: Lookbook / Banner Collection — 3 Columns Portrait Cards
   if (style === 'lookbook') {
     return (
+      <>
       <section
         className={cn("bg-transparent", sectionSpacingClassName)}
         style={{ fontFamily: 'Inter, sans-serif' }}
@@ -1118,6 +1151,8 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
           </div>
         </div>
       </section>
+      {renderQuickAddModal()}
+      </>
     );
   }
 
@@ -1218,14 +1253,7 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
         </div>
       </div>
 
-      <QuickAddVariantModal
-        isOpen={quickAddTarget !== null}
-        product={quickAddTarget?.product ?? null}
-        brandColor={brandColor}
-        actionLabel={quickAddTarget?.action === 'addToCart' ? 'Thêm vào giỏ' : 'Mua ngay'}
-        onClose={() => setQuickAddTarget(null)}
-        onConfirm={handleQuickAddConfirm}
-      />
+      {renderQuickAddModal()}
     </section>
   );
 }
