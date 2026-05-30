@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Button, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, cn } from '@/app/admin/components/ui';
-import { AlertCircle, Info, Trash2, Undo2 } from 'lucide-react';
+import { Button, Input, cn } from '@/app/admin/components/ui';
+import { AlertCircle, ChevronDown, Info, Truck, Trash2, Undo2 } from 'lucide-react';
 
 export interface ShippingMethodConfig {
   id: string;
@@ -20,16 +20,17 @@ interface ShippingMethodsEditorProps {
 }
 
 export function ShippingMethodsEditor({ methods, onChange }: ShippingMethodsEditorProps) {
-  // Trạng thái xác nhận xóa cho từng ID (id -> true/false)
   const [deleteConfirms, setDeleteConfirms] = useState<Record<string, boolean>>({});
-  // Hỗ trợ Undo phương thức xóa gần nhất
   const [lastDeleted, setLastDeleted] = useState<{ method: ShippingMethodConfig; index: number } | null>(null);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const handleAdd = () => {
+    const newIndex = methods.length;
     onChange([
       ...methods,
       { id: `shipping-${Date.now()}`, label: '', description: '', fee: 0, estimate: '', freeShipThreshold: 0 },
     ]);
+    setExpandedIndex(newIndex);
   };
 
   const handleRemoveClick = (id: string, index: number) => {
@@ -42,20 +43,16 @@ export function ShippingMethodsEditor({ methods, onChange }: ShippingMethodsEdit
         delete next[id];
         return next;
       });
+      if (expandedIndex === index) setExpandedIndex(null);
     } else {
       setDeleteConfirms((prev) => ({ ...prev, [id]: true }));
     }
   };
 
-  // Tự động reset trạng thái xác nhận xóa sau 4s
   useEffect(() => {
-    const activeIds = Object.keys(deleteConfirms).filter((key) => deleteConfirms[key]);
+    const activeIds = Object.keys(deleteConfirms).filter((k) => deleteConfirms[k]);
     if (activeIds.length === 0) return;
-
-    const timer = setTimeout(() => {
-      setDeleteConfirms({});
-    }, 4000);
-
+    const timer = setTimeout(() => setDeleteConfirms({}), 4000);
     return () => clearTimeout(timer);
   }, [deleteConfirms]);
 
@@ -95,10 +92,11 @@ export function ShippingMethodsEditor({ methods, onChange }: ShippingMethodsEdit
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Danh sách Hình thức Giao hàng</p>
-          <p className="text-xs text-slate-500">Cấu hình các tùy chọn giao hàng và tính phí ship khi thanh toán</p>
+          <p className="text-xs text-slate-500">Click vào hình thức để chỉnh sửa chi tiết</p>
         </div>
         <div className="flex items-center gap-2">
           {lastDeleted && (
@@ -119,290 +117,248 @@ export function ShippingMethodsEditor({ methods, onChange }: ShippingMethodsEdit
         </div>
       </div>
 
-      {methods.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500 dark:border-slate-800">
-          Chưa có hình thức vận chuyển nào được tạo. Khách mua hàng sẽ mặc định được miễn phí vận chuyển.
-        </div>
-      ) : (
-        <>
-          {/* Info: ưu đãi tốt nhất sẽ được auto-apply */}
-          {bestDealSummary && bestDealSummary.length > 0 && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 text-xs text-emerald-800 dark:text-emerald-400">
-              <Info size={14} className="shrink-0 mt-0.5" />
-              <div className="space-y-0.5">
-                <p className="font-semibold">Ưu đãi tốt nhất sẽ tự động áp dụng khi khách checkout:</p>
-                {bestDealSummary.map((item) => (
-                  <p key={item.label}>
-                    • Đặt hàng ≥ <strong>{item.threshold.toLocaleString('vi-VN')}đ</strong>: <strong>{item.label}</strong> miễn phí ship (thường {item.fee.toLocaleString('vi-VN')}đ)
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* BẢN DESKTOP: TABLE */}
-          <div className="hidden sm:block overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-            <Table>
-              <TableHeader className="bg-slate-50/50 dark:bg-slate-900/50">
-                <TableRow>
-                  <TableHead className="text-xs font-semibold w-1/5">Mã (ID)</TableHead>
-                  <TableHead className="text-xs font-semibold w-1/5">Tên hiển thị</TableHead>
-                  <TableHead className="text-xs font-semibold w-1/5">Mô tả</TableHead>
-                  <TableHead className="text-xs font-semibold w-28">Phí ship (đ)</TableHead>
-                  <TableHead className="text-xs font-semibold w-36">Free ship khi ≥ (đ)</TableHead>
-                  <TableHead className="text-xs font-semibold w-28">Thời gian</TableHead>
-                  <TableHead className="text-xs font-semibold text-right w-24">Hành động</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {methods.map((method, index) => {
-                  const isIdEmpty = !method.id.trim();
-                  const isLabelEmpty = !method.label.trim();
-                  const isDuplicate = duplicateIds.has(method.id.trim());
-                  const isFeeInvalid = !Number.isFinite(method.fee) || method.fee < 0;
-                  const hasError = isIdEmpty || isLabelEmpty || isDuplicate || isFeeInvalid;
-
-                  return (
-                    <TableRow key={`${method.id}-${index}`} className={cn(hasError && "bg-rose-50/20 dark:bg-rose-950/5")}>
-                      <TableCell className="p-3">
-                        <div className="space-y-1">
-                          <Input
-                            placeholder="Mã (ví dụ: standard, express...)"
-                            value={method.id}
-                            onChange={(event) => handleUpdate(index, { id: event.target.value.toLowerCase().replace(/\s+/g, '-') })}
-                            className={cn((isIdEmpty || isDuplicate) && "border-rose-500 focus-visible:ring-rose-500")}
-                          />
-                          {isIdEmpty && (
-                            <span className="text-[10px] text-rose-500 flex items-center gap-1">
-                              <AlertCircle size={10} /> Mã không được rỗng
-                            </span>
-                          )}
-                          {isDuplicate && (
-                            <span className="text-[10px] text-rose-500 flex items-center gap-1">
-                              <AlertCircle size={10} /> Mã bị trùng lặp
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="p-3">
-                        <div className="space-y-1">
-                          <Input
-                            placeholder="Tên hiển thị khi checkout"
-                            value={method.label}
-                            onChange={(event) => handleUpdate(index, { label: event.target.value })}
-                            className={cn(isLabelEmpty && "border-rose-500 focus-visible:ring-rose-500")}
-                          />
-                          {isLabelEmpty && (
-                            <span className="text-[10px] text-rose-500 flex items-center gap-1">
-                              <AlertCircle size={10} /> Tên không được rỗng
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="p-3">
-                        <Input
-                          placeholder="Mô tả hình thức giao hàng"
-                          value={method.description ?? ''}
-                          onChange={(event) => handleUpdate(index, { description: event.target.value })}
-                        />
-                      </TableCell>
-                      <TableCell className="p-3">
-                        <div className="space-y-1">
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            value={Number.isFinite(method.fee) ? method.fee : 0}
-                            onChange={(event) => handleUpdate(index, { fee: Number(event.target.value || 0) })}
-                            className={cn(isFeeInvalid && "border-rose-500 focus-visible:ring-rose-500")}
-                          />
-                          {isFeeInvalid && (
-                            <span className="text-[10px] text-rose-500 flex items-center gap-1">
-                              <AlertCircle size={10} /> Phí ship phải &gt;= 0
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      {/* Cột điều kiện free ship */}
-                      <TableCell className="p-3">
-                        <div className="space-y-1">
-                          <Input
-                            type="number"
-                            placeholder="0 = không áp dụng"
-                            min={0}
-                            value={method.freeShipThreshold ?? 0}
-                            onChange={(event) => handleUpdate(index, { freeShipThreshold: Number(event.target.value || 0) })}
-                            className="text-sm"
-                          />
-                          {(method.freeShipThreshold ?? 0) > 0 && (
-                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                              ✓ Đơn ≥ {(method.freeShipThreshold ?? 0).toLocaleString('vi-VN')}đ → free ship
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="p-3">
-                        <Input
-                          placeholder="ví dụ: 2-4 ngày"
-                          value={method.estimate ?? ''}
-                          onChange={(event) => handleUpdate(index, { estimate: event.target.value })}
-                        />
-                      </TableCell>
-                      <TableCell className="p-3 text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveClick(method.id, index)}
-                          className={cn(
-                            "text-xs transition-colors h-9 px-3",
-                            deleteConfirms[method.id]
-                              ? "bg-rose-600 hover:bg-rose-500 text-white font-bold animate-pulse"
-                              : "text-slate-500 hover:text-rose-600 hover:bg-rose-50/50"
-                          )}
-                        >
-                          {deleteConfirms[method.id] ? 'Xác nhận?' : <Trash2 size={14} />}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+      {/* Info box ưu đãi tốt nhất */}
+      {bestDealSummary && bestDealSummary.length > 0 && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 text-xs text-emerald-800 dark:text-emerald-400">
+          <Info size={14} className="shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <p className="font-semibold">Ưu đãi tốt nhất sẽ tự động áp dụng khi khách checkout:</p>
+            {bestDealSummary.map((item) => (
+              <p key={item.label}>
+                • Đặt hàng ≥ <strong>{item.threshold.toLocaleString('vi-VN')}đ</strong>: <strong>{item.label}</strong> miễn phí ship (thường {item.fee.toLocaleString('vi-VN')}đ)
+              </p>
+            ))}
           </div>
+        </div>
+      )}
 
-          {/* BẢN MOBILE: CARDS */}
-          <div className="block sm:hidden space-y-4">
-            {methods.map((method, index) => {
-              const isIdEmpty = !method.id.trim();
-              const isLabelEmpty = !method.label.trim();
-              const isDuplicate = duplicateIds.has(method.id.trim());
-              const isFeeInvalid = !Number.isFinite(method.fee) || method.fee < 0;
-              const hasError = isIdEmpty || isLabelEmpty || isDuplicate || isFeeInvalid;
+      {/* Empty state */}
+      {methods.length === 0 && (
+        <div className="rounded-lg border border-dashed border-slate-200 p-10 text-center text-xs text-slate-500 dark:border-slate-800">
+          Chưa có hình thức vận chuyển nào. Nhấn <strong>+ Thêm hình thức</strong> để tạo mới.
+          <br />
+          <span className="text-slate-400">Khi không có hình thức nào, khách mặc định được miễn phí ship.</span>
+        </div>
+      )}
 
-              return (
-                <div
-                  key={`${method.id}-${index}`}
-                  className={cn(
-                    "p-4 rounded-xl border space-y-3 bg-white dark:bg-slate-950 transition-colors",
-                    hasError
-                      ? "border-rose-300 bg-rose-50/5 dark:border-rose-900/50"
-                      : "border-slate-200 dark:border-slate-800"
-                  )}
+      {/* Accordion cards */}
+      {methods.length > 0 && (
+        <div className="space-y-2">
+          {methods.map((method, index) => {
+            const isIdEmpty = !method.id.trim();
+            const isLabelEmpty = !method.label.trim();
+            const isDuplicate = duplicateIds.has(method.id.trim());
+            const isFeeInvalid = !Number.isFinite(method.fee) || method.fee < 0;
+            const hasError = isIdEmpty || isLabelEmpty || isDuplicate || isFeeInvalid;
+            const isOpen = expandedIndex === index;
+            const threshold = method.freeShipThreshold ?? 0;
+
+            return (
+              <div
+                key={`${method.id}-${index}`}
+                className={cn(
+                  'rounded-xl border-2 transition-all duration-200 overflow-hidden',
+                  hasError
+                    ? 'border-rose-300 dark:border-rose-900/60'
+                    : isOpen
+                    ? 'border-slate-300 dark:border-slate-600 shadow-md'
+                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                )}
+              >
+                {/* Card header — luôn hiển thị */}
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                  onClick={() => setExpandedIndex(isOpen ? null : index)}
                 >
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-semibold text-emerald-600">Hình thức #{index + 1}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveClick(method.id, index)}
-                      className={cn(
-                        "text-xs h-8 px-3 font-semibold",
-                        deleteConfirms[method.id]
-                          ? "bg-rose-600 text-white animate-pulse rounded-md"
-                          : "text-rose-500 hover:bg-rose-50/50"
-                      )}
-                    >
-                      {deleteConfirms[method.id] ? 'Xác nhận xóa?' : 'Xóa'}
-                    </Button>
+                  <Truck size={15} className={cn('shrink-0', hasError ? 'text-rose-400' : 'text-slate-400')} />
+
+                  <div className="flex-1 min-w-0">
+                    <span className={cn(
+                      'text-sm font-semibold',
+                      isLabelEmpty ? 'text-slate-400 italic' : 'text-slate-900 dark:text-slate-100'
+                    )}>
+                      {isLabelEmpty ? 'Chưa đặt tên' : method.label}
+                    </span>
+                    {method.id.trim() && (
+                      <span className="ml-2 text-[10px] text-slate-400 font-mono">#{method.id}</span>
+                    )}
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-semibold text-slate-500 block">Mã hình thức (ID)</label>
-                      <Input
-                        placeholder="Mã (ví dụ: standard, express...)"
-                        value={method.id}
-                        onChange={(event) => handleUpdate(index, { id: event.target.value.toLowerCase().replace(/\s+/g, '-') })}
-                        className={cn((isIdEmpty || isDuplicate) && "border-rose-500 focus-visible:ring-rose-500")}
-                      />
-                      {isIdEmpty && (
-                        <span className="text-[10px] text-rose-500 flex items-center gap-1">
-                          <AlertCircle size={10} /> Mã không được rỗng
-                        </span>
-                      )}
-                      {isDuplicate && (
-                        <span className="text-[10px] text-rose-500 flex items-center gap-1">
-                          <AlertCircle size={10} /> Mã bị trùng lặp
-                        </span>
-                      )}
-                    </div>
+                  {/* Thông tin tóm tắt */}
+                  <div className="flex items-center gap-2 shrink-0 text-xs">
+                    {threshold > 0 ? (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 font-semibold text-[10px]">
+                        Free ship ≥ {threshold.toLocaleString('vi-VN')}đ
+                      </span>
+                    ) : (
+                      <span className="text-slate-500 font-semibold">
+                        {method.fee > 0 ? `${method.fee.toLocaleString('vi-VN')}đ` : 'Miễn phí'}
+                      </span>
+                    )}
+                    {method.estimate && (
+                      <span className="text-slate-400 text-[10px]">{method.estimate}</span>
+                    )}
+                    {hasError && <AlertCircle size={14} className="text-rose-500" />}
+                  </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-semibold text-slate-500 block">Tên hiển thị</label>
-                      <Input
-                        placeholder="Tên hiển thị khi checkout"
-                        value={method.label}
-                        onChange={(event) => handleUpdate(index, { label: event.target.value })}
-                        className={cn(isLabelEmpty && "border-rose-500 focus-visible:ring-rose-500")}
-                      />
-                      {isLabelEmpty && (
-                        <span className="text-[10px] text-rose-500 flex items-center gap-1">
-                          <AlertCircle size={10} /> Tên không được rỗng
-                        </span>
-                      )}
-                    </div>
+                  <ChevronDown
+                    size={16}
+                    className={cn(
+                      'text-slate-400 transition-transform duration-200 shrink-0',
+                      isOpen && 'rotate-180'
+                    )}
+                  />
+                </button>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-semibold text-slate-500 block">Mô tả chi tiết</label>
-                      <Input
-                        placeholder="Mô tả phụ ngắn"
-                        value={method.description ?? ''}
-                        onChange={(event) => handleUpdate(index, { description: event.target.value })}
-                      />
-                    </div>
+                {/* Expanded form */}
+                {isOpen && (
+                  <div className="px-5 pb-5 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-4 bg-white dark:bg-slate-950">
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-semibold text-slate-500 block">Phí ship (đ)</label>
+                    {/* Row 1: Mã + Tên */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block">
+                          Mã hình thức (ID)
+                        </label>
                         <Input
-                          type="number"
-                          placeholder="0"
-                          value={Number.isFinite(method.fee) ? method.fee : 0}
-                          onChange={(event) => handleUpdate(index, { fee: Number(event.target.value || 0) })}
-                          className={cn(isFeeInvalid && "border-rose-500 focus-visible:ring-rose-500")}
+                          placeholder="standard, express, free..."
+                          value={method.id}
+                          onChange={(e) => handleUpdate(index, { id: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+                          className={cn(
+                            'font-mono',
+                            (isIdEmpty || isDuplicate) && 'border-rose-500 focus-visible:ring-rose-500'
+                          )}
                         />
-                        {isFeeInvalid && (
+                        {isIdEmpty && (
                           <span className="text-[10px] text-rose-500 flex items-center gap-1">
-                            <AlertCircle size={10} /> Phí &gt;= 0
+                            <AlertCircle size={10} /> Mã không được rỗng
+                          </span>
+                        )}
+                        {isDuplicate && (
+                          <span className="text-[10px] text-rose-500 flex items-center gap-1">
+                            <AlertCircle size={10} /> Mã bị trùng lặp
                           </span>
                         )}
                       </div>
 
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-semibold text-slate-500 block">Thời gian ước tính</label>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block">
+                          Tên hiển thị khi checkout
+                        </label>
                         <Input
-                          placeholder="ví dụ: 2-4 ngày"
+                          placeholder="Giao hàng tiêu chuẩn, Giao hàng nhanh..."
+                          value={method.label}
+                          onChange={(e) => handleUpdate(index, { label: e.target.value })}
+                          className={cn(isLabelEmpty && 'border-rose-500 focus-visible:ring-rose-500')}
+                        />
+                        {isLabelEmpty && (
+                          <span className="text-[10px] text-rose-500 flex items-center gap-1">
+                            <AlertCircle size={10} /> Tên không được rỗng
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Row 2: Mô tả + Thời gian ước tính */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block">
+                          Mô tả ngắn (tuỳ chọn)
+                        </label>
+                        <Input
+                          placeholder="Giao tận nhà, bảo hiểm hàng hoá..."
+                          value={method.description ?? ''}
+                          onChange={(e) => handleUpdate(index, { description: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block">
+                          Thời gian ước tính
+                        </label>
+                        <Input
+                          placeholder="2-4 ngày, Trong 24h..."
                           value={method.estimate ?? ''}
-                          onChange={(event) => handleUpdate(index, { estimate: event.target.value })}
+                          onChange={(e) => handleUpdate(index, { estimate: e.target.value })}
                         />
                       </div>
                     </div>
 
-                    {/* Điều kiện miễn phí ship */}
-                    <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
-                      <label className="text-[10px] font-semibold text-slate-500 block">
-                        Miễn phí ship khi tổng đơn ≥ (đ)
-                      </label>
-                      <Input
-                        type="number"
-                        placeholder="0 = không áp dụng"
-                        min={0}
-                        value={method.freeShipThreshold ?? 0}
-                        onChange={(event) => handleUpdate(index, { freeShipThreshold: Number(event.target.value || 0) })}
-                      />
-                      {(method.freeShipThreshold ?? 0) > 0 && (
-                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                          ✓ Đơn ≥ {(method.freeShipThreshold ?? 0).toLocaleString('vi-VN')}đ → free ship tự động
-                        </span>
-                      )}
+                    {/* Row 3: Phí ship + Điều kiện free ship */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block">
+                          Phí ship (đồng)
+                        </label>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          min={0}
+                          value={Number.isFinite(method.fee) ? method.fee : 0}
+                          onChange={(e) => handleUpdate(index, { fee: Number(e.target.value || 0) })}
+                          className={cn(isFeeInvalid && 'border-rose-500 focus-visible:ring-rose-500')}
+                        />
+                        {isFeeInvalid && (
+                          <span className="text-[10px] text-rose-500 flex items-center gap-1">
+                            <AlertCircle size={10} /> Phí ship phải ≥ 0
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block">
+                          Miễn phí ship khi tổng đơn ≥ (đồng)
+                        </label>
+                        <Input
+                          type="number"
+                          placeholder="0 = không áp dụng"
+                          min={0}
+                          value={threshold}
+                          onChange={(e) => handleUpdate(index, { freeShipThreshold: Number(e.target.value || 0) })}
+                        />
+                        {threshold > 0 ? (
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                            ✓ Đơn ≥ {threshold.toLocaleString('vi-VN')}đ → tự động miễn phí ship
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400">
+                            Nhập giá trị &gt; 0 để bật điều kiện free ship
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Row 4: Delete */}
+                    <div className="flex justify-end pt-1 border-t border-slate-100 dark:border-slate-800">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveClick(method.id, index)}
+                        className={cn(
+                          'text-xs h-9 px-4 transition-all',
+                          deleteConfirms[method.id]
+                            ? 'bg-rose-600 hover:bg-rose-500 text-white font-bold animate-pulse rounded-lg'
+                            : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50/50 dark:hover:bg-rose-950/20'
+                        )}
+                      >
+                        {deleteConfirms[method.id] ? (
+                          'Xác nhận xóa hình thức này?'
+                        ) : (
+                          <span className="flex items-center gap-1.5">
+                            <Trash2 size={13} />
+                            Xóa hình thức này
+                          </span>
+                        )}
+                      </Button>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
