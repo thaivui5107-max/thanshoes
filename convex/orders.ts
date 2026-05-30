@@ -13,7 +13,6 @@ import { internal } from "./_generated/api";
 import {
   getOrderPlacedCustomerTemplate,
   getOrderPlacedShopTemplate,
-  getOrderDeliveredTemplate,
   getOrderCancelledTemplate,
 } from "./emailTemplates";
 

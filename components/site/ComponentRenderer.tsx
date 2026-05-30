@@ -5,7 +5,6 @@ import useEmblaCarousel from 'embla-carousel-react';
 import { PublicImage as Image } from '@/components/shared/PublicImage';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { useCustomerAuth } from '@/app/(site)/auth/context';
 import { notifyAddToCart, useCart } from '@/lib/cart';
 import { useCartConfig } from '@/lib/experiences';
 import { ProductCardActions } from '@/components/site/shared/ProductCardActions';
@@ -3884,7 +3883,6 @@ function CategoryProductsSection({
   const showStock = config.showStock !== false;
 
   const router = useRouter();
-  const { isAuthenticated, openLoginModal } = useCustomerAuth();
   const { addItem, openDrawer } = useCart();
   const cartConfig = useCartConfig();
   const [quickAddTarget, setQuickAddTarget] = React.useState<{ product: any; action: 'addToCart' | 'buyNow' } | null>(null);

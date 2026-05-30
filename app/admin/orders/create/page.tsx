@@ -574,7 +574,7 @@ export default function CreateOrderPage() {
                             type="button"
                             className="w-full text-left px-3 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
                             onClick={() => {
-                              handleCustomerChange(c._id);
+                              void handleCustomerChange(c._id);
                               setCustomerSearch(`${c.name} - ${c.phone}`);
                               setIsCustomerDropdownOpen(false);
                             }}

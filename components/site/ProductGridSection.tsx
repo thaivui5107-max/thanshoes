@@ -21,7 +21,6 @@ import { cn } from '@/app/admin/components/ui';
 import { getProductListCardRadiusClassName, getProductListImageRadiusClassName, normalizeProductListCardRadius } from '@/app/admin/home-components/product-list/_types';
 import { resolveGridStyle } from '@/app/admin/home-components/product-grid/_lib/constants';
 
-import { useCustomerAuth } from '@/app/(site)/auth/context';
 import { notifyAddToCart, useCart } from '@/lib/cart';
 import { useCartConfig } from '@/lib/experiences';
 import { getProductsListColors } from '@/components/site/products/colors';
@@ -133,7 +132,6 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
   const showStock = config.showStock !== false;
 
   const router = useRouter();
-  const { isAuthenticated, openLoginModal } = useCustomerAuth();
   const { addItem, openDrawer } = useCart();
   const cartConfig = useCartConfig();
   const [quickAddTarget, setQuickAddTarget] = React.useState<{ product: any; action: 'addToCart' | 'buyNow' } | null>(null);

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useQuery } from 'convex/react';
 import {
   ArrowRight,
-  CreditCard,
   Heart,
   Mail,
   MapPin,

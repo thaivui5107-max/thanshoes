@@ -45,7 +45,7 @@ const parseJsonSetting = <T,>(value: string | number | boolean | undefined, fall
 };
 
 export function ShopConfigAdminPanel({
-  config,
+  config: _config,
   moduleData: _moduleData,
   isReadOnly,
   localFeatures: _localFeatures,

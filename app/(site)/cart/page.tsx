@@ -10,7 +10,6 @@ import { useBrandColors } from '@/components/site/hooks';
 import { getCartColors } from '@/components/site/cart/colors';
 import { useCart, useCartExpiry } from '@/lib/cart';
 import { useCartConfig } from '@/lib/experiences';
-import { useCustomerAuth } from '@/app/(site)/auth/context';
 import type { Id } from '@/convex/_generated/dataModel';
 
 const formatPrice = (value: number) => new Intl.NumberFormat('vi-VN', { currency: 'VND', style: 'currency' }).format(value);
@@ -22,7 +21,6 @@ export default function CartPage() {
     [brandColors.primary, brandColors.secondary, brandColors.mode]
   );
   const { cart, items, itemsCount, totalAmount, isLoading, updateQuantity, removeItem, clearCart, updateNote } = useCart();
-  const { isAuthenticated, openLoginModal } = useCustomerAuth();
   const cartConfig = useCartConfig();
   const cartModule = useQuery(api.admin.modules.getModuleByKey, { key: 'cart' });
   const layoutStyle = cartConfig.layoutStyle;
