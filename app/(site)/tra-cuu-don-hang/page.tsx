@@ -716,14 +716,8 @@ function LoadingFallback() {
 
 export default function TraCuuDonHangPage() {
   return (
-    <>
-      <head>
-        <title>Tra cứu đơn hàng</title>
-        <meta name="description" content="Tra cứu đơn hàng theo mã đơn hoặc số điện thoại. Xem trạng thái, mã vận đơn và yêu cầu hủy đơn." />
-      </head>
-      <Suspense fallback={<LoadingFallback />}>
-        <TraCuuContent />
-      </Suspense>
-    </>
+    <Suspense fallback={<LoadingFallback />}>
+      <TraCuuContent />
+    </Suspense>
   );
 }
