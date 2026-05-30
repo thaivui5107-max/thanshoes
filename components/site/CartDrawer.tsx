@@ -267,7 +267,5 @@ export function CartDrawer() {
         </div>
       </div>
     </div>
-      </div>
-    </div>
   );
 }
