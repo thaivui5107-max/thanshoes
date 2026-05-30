@@ -144,7 +144,7 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
   );
 
   const handleAddToCart = async (product: any) => {
-    if (showStock && (product.stock ?? 0) <= 0) {
+    if (showStock && !product.hasVariants && (product.stock ?? 0) <= 0) {
       return;
     }
 
@@ -163,7 +163,7 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
   };
 
   const handleBuyNow = (product: any) => {
-    if (showStock && (product.stock ?? 0) <= 0) {
+    if (showStock && !product.hasVariants && (product.stock ?? 0) <= 0) {
       return;
     }
 

@@ -875,7 +875,7 @@ function ProductsContent(props: ProductsPageProps) {
   };
 
   const handleAddToCart = async (product: ProductCardProps['product']) => {
-    if (showStock && product.stock <= 0) {
+    if (showStock && !product.hasVariants && product.stock <= 0) {
       return;
     }
 
@@ -903,7 +903,7 @@ function ProductsContent(props: ProductsPageProps) {
   };
 
   const handleBuyNow = (product: ProductCardProps['product']) => {
-    if (showStock && product.stock <= 0) {
+    if (showStock && !product.hasVariants && product.stock <= 0) {
       return;
     }
 
@@ -925,7 +925,7 @@ function ProductsContent(props: ProductsPageProps) {
   };
 
   const handlePrimaryAction = (product: ProductCardProps['product']) => {
-    if (showStock && product.stock <= 0) {
+    if (showStock && !product.hasVariants && product.stock <= 0) {
       return;
     }
 
