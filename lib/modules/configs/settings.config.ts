@@ -12,7 +12,7 @@ export const settingsModule = defineModuleWithRuntime({
      { key: 'enableContact', label: 'Thông tin liên hệ', icon: MapPin },
      { key: 'enableSEO', label: 'SEO cơ bản', icon: Globe },
      { key: 'enableSocial', label: 'Mạng xã hội', icon: Share2 },
-     { key: 'enableMail', label: 'Cấu hình Email', icon: Mail },
+     { key: 'enableMail', label: 'Admin cấu hình Email', description: 'Bật tab Cấu hình email trong Admin > Cài đặt nâng cao', icon: Mail },
      { key: 'enableHeaderMenuAdvanced', label: 'Admin chỉnh Header Menu', icon: LayoutTemplate, enabled: true },
      { key: 'enableShopConfigAdvanced', label: 'Cấu hình Shop nâng cao', description: 'Đơn hàng, Vận chuyển, Thanh toán, Địa chỉ', icon: Settings, enabled: true },
      { key: 'enableTrustPages', label: 'Trang tin cậy', icon: Globe },

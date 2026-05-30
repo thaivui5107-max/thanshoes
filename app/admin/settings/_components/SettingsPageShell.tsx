@@ -21,7 +21,7 @@ import { ShopConfigAdminContainer } from '@/components/modules/orders/ShopConfig
 
 type SettingsSection = 'site' | 'contact' | 'seo' | 'advanced';
 type SettingsFormValue = string | boolean;
-type AdvancedTab = 'product-placeholder' | 'product-frame' | 'watermark' | 'header' | 'product-supplemental' | 'shop-config';
+type AdvancedTab = 'product-placeholder' | 'product-frame' | 'watermark' | 'header' | 'product-supplemental' | 'shop-config' | 'email-config';
 type HeaderConfig = {
   showBrandName?: boolean;
   logoSizeLevel?: number;
@@ -42,6 +42,17 @@ type SettingsToSave = {
   key: string;
   storageId?: Id<'_storage'> | null;
   value: unknown;
+};
+type ResendEmailAccount = {
+  id: string;
+  label: string;
+  apiKey: string;
+  fromEmail?: string;
+  fromName?: string;
+  enabled: boolean;
+  dailyLimit: number;
+  monthlyLimit: number;
+  testMode: boolean;
 };
 
 const MODULE_KEY = 'settings';
@@ -139,6 +150,39 @@ const REMOVED_CONTACT_KEYS = new Set([
 const SETTING_STORAGE_ID_SUFFIX = '__storageId';
 const HEADER_MENU_ADVANCED_FEATURE = 'enableHeaderMenuAdvanced';
 const SHOP_CONFIG_ADVANCED_FEATURE = 'enableShopConfigAdvanced';
+const EMAIL_CONFIG_ADVANCED_FEATURE = 'enableMail';
+const EMAIL_SETTING_KEYS = [
+  'mail_driver',
+  'mail_host',
+  'mail_port',
+  'mail_username',
+  'mail_password',
+  'mail_encryption',
+  'mail_from_email',
+  'mail_from_name',
+  'resend_accounts',
+  'order_notification_emails',
+] as const;
+const EMAIL_DEFAULTS: Record<(typeof EMAIL_SETTING_KEYS)[number], string> = {
+  mail_driver: 'resend',
+  mail_host: '',
+  mail_port: '587',
+  mail_username: '',
+  mail_password: '',
+  mail_encryption: 'tls',
+  mail_from_email: 'onboarding@resend.dev',
+  mail_from_name: 'Thanshoes',
+  resend_accounts: '[]',
+  order_notification_emails: '',
+};
+const EMAIL_SETUP_PRESETS = [
+  { id: 'resend', label: 'Resend API (khuyên dùng)', driver: 'resend', host: '', port: '587', encryption: 'tls' },
+  { id: 'gmail', label: 'Gmail / Google Workspace', driver: 'smtp', host: 'smtp.gmail.com', port: '587', encryption: 'tls' },
+  { id: 'outlook', label: 'Outlook / Microsoft 365', driver: 'smtp', host: 'smtp.office365.com', port: '587', encryption: 'tls' },
+  { id: 'zoho', label: 'Zoho Mail', driver: 'smtp', host: 'smtp.zoho.com', port: '587', encryption: 'tls' },
+  { id: 'custom', label: 'Tùy chỉnh', driver: 'smtp', host: '', port: '587', encryption: 'tls' },
+] as const;
+type EmailSetupPresetId = (typeof EMAIL_SETUP_PRESETS)[number]['id'];
 const DEFAULT_HEADER_CONFIG: HeaderConfig = {
   showBrandName: true,
   logoSizeLevel: 2,
@@ -219,6 +263,8 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const [headerConfigDraft, setHeaderConfigDraft] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [initialHeaderConfig, setInitialHeaderConfig] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [activeDrag, setActiveDrag] = useState<'image-move' | 'image-resize' | 'text-move' | null>(null);
+  const [emailPreset, setEmailPreset] = useState<EmailSetupPresetId>('resend');
+  const [resendApiKeyDraft, setResendApiKeyDraft] = useState('');
   const previewCanvasRef = React.useRef<HTMLDivElement>(null);
 
   // Queries
@@ -246,6 +292,10 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const canEditShopConfig = featuresData?.some(feature => feature.featureKey === SHOP_CONFIG_ADVANCED_FEATURE)
     ? Boolean(enabledFeatures[SHOP_CONFIG_ADVANCED_FEATURE])
     : false;
+
+  const canEditEmailConfig = featuresData?.some(feature => feature.featureKey === EMAIL_CONFIG_ADVANCED_FEATURE)
+    ? Boolean(enabledFeatures[EMAIL_CONFIG_ADVANCED_FEATURE])
+    : false;
  
   const enableSupplementalContent = useMemo(
     () => productsSettings?.find(s => s.settingKey === 'enableProductSupplementalContent')?.value === true,
@@ -263,6 +313,12 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       setAdvancedTab('shop-config');
     }
   }, [tabParam, canEditShopConfig]);
+
+  useEffect(() => {
+    if (tabParam === 'email-config' && canEditEmailConfig) {
+      setAdvancedTab('email-config');
+    }
+  }, [tabParam, canEditEmailConfig]);
 
   const handlePreviewPointerDown = (e: React.PointerEvent<HTMLDivElement>, type: 'image-move' | 'image-resize' | 'text-move') => {
     e.preventDefault();
@@ -471,6 +527,19 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       if (values.product_watermark_text_repeat === undefined) {
         values.product_watermark_text_repeat = false;
       }
+      EMAIL_SETTING_KEYS.forEach((key) => {
+        if (values[key] === undefined) {
+          values[key] = EMAIL_DEFAULTS[key];
+        }
+      });
+      const matchedEmailPreset = EMAIL_SETUP_PRESETS.find((preset) =>
+        preset.id !== 'custom' &&
+        preset.driver === values.mail_driver &&
+        preset.host === values.mail_host &&
+        preset.port === values.mail_port &&
+        preset.encryption === values.mail_encryption
+      );
+      setEmailPreset(matchedEmailPreset?.id ?? (values.mail_driver === 'resend' ? 'resend' : 'custom'));
       setIsSecondaryAuto(values.site_brand_mode === 'single' ? true : !values.site_brand_secondary);
       setForm(values);
       setInitialForm(values);
@@ -525,6 +594,12 @@ function SettingsContent({ section }: { section: SettingsSection }) {
     }
   }, [advancedTab, canEditShopConfig]);
 
+  useEffect(() => {
+    if (!canEditEmailConfig && advancedTab === 'email-config') {
+      setAdvancedTab('product-placeholder');
+    }
+  }, [advancedTab, canEditEmailConfig]);
+
   // Detect changes
   const headerConfigHasChanges = useMemo(
     () => stableStringify(headerConfigDraft) !== stableStringify(initialHeaderConfig),
@@ -544,6 +619,62 @@ function SettingsContent({ section }: { section: SettingsSection }) {
 
   const updateField = (key: string, value: string | boolean) => {
     setForm(prev => ({ ...prev, [key]: value }));
+  };
+
+  const getStringField = (key: string, fallback = '') => {
+    const value = form[key];
+    return typeof value === 'string' ? value : fallback;
+  };
+
+  const getResendAccounts = () => {
+    try {
+      const parsed = JSON.parse(getStringField('resend_accounts', '[]'));
+      return Array.isArray(parsed) ? parsed as ResendEmailAccount[] : [];
+    } catch {
+      return [] as ResendEmailAccount[];
+    }
+  };
+
+  const handleEmailPresetChange = (presetId: EmailSetupPresetId) => {
+    const preset = EMAIL_SETUP_PRESETS.find(item => item.id === presetId);
+    if (!preset) {return;}
+    setEmailPreset(presetId);
+    setForm(prev => ({
+      ...prev,
+      mail_driver: preset.driver,
+      mail_host: preset.id === 'custom' ? String(prev.mail_host ?? '') : preset.host,
+      mail_port: preset.port,
+      mail_encryption: preset.encryption,
+    }));
+  };
+
+  const handleAddResendApiKey = () => {
+    const apiKey = resendApiKeyDraft.trim();
+    if (!apiKey.startsWith('re_')) {
+      toast.error('API key Resend phải bắt đầu bằng re_.');
+      return;
+    }
+    const accounts = getResendAccounts();
+    const nextAccount = {
+      id: `acc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      label: `Resend ${accounts.length + 1}`,
+      apiKey,
+      fromEmail: getStringField('mail_from_email', EMAIL_DEFAULTS.mail_from_email).trim() || EMAIL_DEFAULTS.mail_from_email,
+      fromName: getStringField('mail_from_name', EMAIL_DEFAULTS.mail_from_name).trim() || EMAIL_DEFAULTS.mail_from_name,
+      enabled: true,
+      dailyLimit: 100,
+      monthlyLimit: 3000,
+      testMode: false,
+    };
+    updateField('resend_accounts', JSON.stringify([...accounts, nextAccount]));
+    setResendApiKeyDraft('');
+    toast.success('Đã thêm API key Resend. Nhớ lưu thay đổi.');
+  };
+
+  const handleRemoveResendAccount = (id: string) => {
+    const accounts = getResendAccounts().filter((account) => account.id !== id);
+    updateField('resend_accounts', JSON.stringify(accounts));
+    toast.success('Đã gỡ API key Resend. Nhớ lưu thay đổi.');
   };
 
   const updateImageField = (key: string, url: string | undefined, storageId?: Id<'_storage'> | null) => {
@@ -599,6 +730,22 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       if (!hasIframe) {
         toast.error('Google Maps: Vui lòng dán đúng mã iframe nhúng.');
         return false;
+      }
+    }
+
+    if (section === 'advanced' && advancedTab === 'email-config' && canEditEmailConfig) {
+      const driver = getStringField('mail_driver', 'resend');
+      const fromEmail = getStringField('mail_from_email').trim();
+      if (fromEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fromEmail)) {
+        toast.error('Email gửi đi không hợp lệ.');
+        return false;
+      }
+      if (driver === 'smtp') {
+        const port = Number(getStringField('mail_port'));
+        if (!Number.isFinite(port) || port <= 0) {
+          toast.error('SMTP port không hợp lệ.');
+          return false;
+        }
       }
     }
 
@@ -765,6 +912,17 @@ function SettingsContent({ section }: { section: SettingsSection }) {
           group: 'site',
           key: 'header_config',
           value: normalizeHeaderConfig(headerConfigDraft),
+        });
+      }
+      if (section === 'advanced' && advancedTab === 'email-config' && canEditEmailConfig) {
+        EMAIL_SETTING_KEYS.forEach((key) => {
+          if (!settingsToSave.some((item) => item.key === key)) {
+            settingsToSave.push({
+              group: 'mail',
+              key,
+              value: form[key] ?? EMAIL_DEFAULTS[key],
+            });
+          }
         });
       }
 
@@ -1295,6 +1453,8 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const headerSpacingLevel = typeof headerConfigDraft.headerSpacingLevel === 'number' ? headerConfigDraft.headerSpacingLevel : 5;
   const logoSizeLabel = LOGO_SIZE_OPTIONS[logoSizeLevel - 1]?.label ?? 'Mặc định';
   const headerSpacingLabel = HEADER_SPACING_OPTIONS[headerSpacingLevel - 1]?.label ?? 'Cân bằng';
+  const resendAccounts = getResendAccounts();
+  const mailDriver = getStringField('mail_driver', EMAIL_DEFAULTS.mail_driver);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-28">
@@ -1403,6 +1563,20 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                         )}
                       >
                         Cấu hình cửa hàng
+                      </button>
+                    )}
+                    {canEditEmailConfig && (
+                      <button
+                        type="button"
+                        onClick={() => handleTabChange('email-config')}
+                        className={cn(
+                          'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                          advancedTab === 'email-config'
+                            ? 'border-orange-500 text-slate-900 dark:text-slate-100'
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                        )}
+                      >
+                        Cấu hình email
                       </button>
                     )}
                   </div>
@@ -1997,6 +2171,157 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                         saveShopConfigRef.current = ref;
                       }}
                     />
+                  )}
+                  {advancedTab === 'email-config' && canEditEmailConfig && (
+                    <div className="space-y-6">
+                      <div className="rounded-xl border border-orange-100 bg-orange-50/60 p-4 dark:border-orange-900/40 dark:bg-orange-950/20">
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Cấu hình email cho admin</h3>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Chọn preset phù hợp. Nếu dùng Resend, admin chỉ cần dán API key rồi lưu.
+                        </p>
+                      </div>
+
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Preset cấu hình</Label>
+                          <select
+                            value={emailPreset}
+                            onChange={(event) => handleEmailPresetChange(event.target.value as EmailSetupPresetId)}
+                            className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                          >
+                            {EMAIL_SETUP_PRESETS.map((preset) => (
+                              <option key={preset.id} value={preset.id}>{preset.label}</option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-slate-500">
+                            Best practice: Resend API ổn định và ít cấu hình hơn SMTP.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Tên người gửi</Label>
+                          <Input
+                            value={getStringField('mail_from_name', EMAIL_DEFAULTS.mail_from_name)}
+                            onChange={(event) => updateField('mail_from_name', event.target.value)}
+                            placeholder="Thanshoes"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Email gửi đi</Label>
+                          <Input
+                            type="email"
+                            value={getStringField('mail_from_email', EMAIL_DEFAULTS.mail_from_email)}
+                            onChange={(event) => updateField('mail_from_email', event.target.value)}
+                            placeholder="onboarding@resend.dev"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Email nhận thông báo đơn hàng</Label>
+                          <Input
+                            value={getStringField('order_notification_emails')}
+                            onChange={(event) => updateField('order_notification_emails', event.target.value)}
+                            placeholder="admin@example.com, manager@example.com"
+                          />
+                          <p className="text-xs text-slate-500">Có thể nhập nhiều email, phân tách bằng dấu phẩy.</p>
+                        </div>
+                      </div>
+
+                      {mailDriver === 'resend' ? (
+                        <div className="space-y-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                          <div>
+                            <Label>Dán API key Resend</Label>
+                            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                              <Input
+                                type="password"
+                                value={resendApiKeyDraft}
+                                onChange={(event) => setResendApiKeyDraft(event.target.value)}
+                                placeholder="re_..."
+                              />
+                              <Button type="button" onClick={handleAddResendApiKey}>
+                                Thêm key
+                              </Button>
+                            </div>
+                          </div>
+                          {resendAccounts.length > 0 ? (
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              {resendAccounts.map((account) => (
+                                <div key={account.id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <div className="font-semibold text-slate-900 dark:text-slate-100">{account.label || 'Resend'}</div>
+                                      <div className="mt-1 font-mono text-xs text-slate-500">
+                                        re_***{String(account.apiKey ?? '').slice(-6)}
+                                      </div>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleRemoveResendAccount(account.id)}
+                                      className="text-red-500 hover:text-red-600"
+                                    >
+                                      Xóa
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="rounded-lg border border-dashed border-slate-200 p-4 text-center text-sm text-slate-500 dark:border-slate-700">
+                              Chưa có API key. Dán key Resend phía trên là đủ để cấu hình nhanh.
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid gap-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700 lg:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label>SMTP Host</Label>
+                            <Input
+                              value={getStringField('mail_host')}
+                              onChange={(event) => updateField('mail_host', event.target.value)}
+                              placeholder="smtp.gmail.com"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>SMTP Port</Label>
+                            <Input
+                              type="number"
+                              value={getStringField('mail_port', '587')}
+                              onChange={(event) => updateField('mail_port', event.target.value)}
+                              placeholder="587"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Tài khoản SMTP</Label>
+                            <Input
+                              value={getStringField('mail_username')}
+                              onChange={(event) => updateField('mail_username', event.target.value)}
+                              placeholder="email@example.com"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Mật khẩu / App password</Label>
+                            <Input
+                              type="password"
+                              value={getStringField('mail_password')}
+                              onChange={(event) => updateField('mail_password', event.target.value)}
+                              placeholder="App password"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Mã hóa</Label>
+                            <select
+                              value={getStringField('mail_encryption', 'tls')}
+                              onChange={(event) => updateField('mail_encryption', event.target.value)}
+                              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                            >
+                              <option value="tls">TLS</option>
+                              <option value="ssl">SSL</option>
+                              <option value="">Không mã hóa</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               ) : (

@@ -321,6 +321,27 @@ export function ConfigTab({ config, moduleData, isReadOnly, localFeatures, local
 
   const isProductModule = config.key === 'products';
   const isSettingsModule = config.key === 'settings';
+  const advancedSettingsFeatureKeys = new Set([
+    'enableMail',
+    'enableHeaderMenuAdvanced',
+    'enableShopConfigAdvanced',
+  ]);
+  const featureItems = config.features?.map(f => ({
+    config: {
+      key: f.key,
+      label: f.label,
+      icon: f.icon ?? Settings,
+      linkedField: f.linkedField,
+      description: f.description,
+    },
+    enabled: localFeatures[f.key] ?? false,
+  })) ?? [];
+  const advancedSettingsFeatures = isSettingsModule
+    ? featureItems.filter(item => advancedSettingsFeatureKeys.has(item.config.key))
+    : [];
+  const regularFeatures = isSettingsModule
+    ? featureItems.filter(item => !advancedSettingsFeatureKeys.has(item.config.key))
+    : featureItems;
   const isSingleBrandMode = isSettingsModule && localSettings.site_brand_mode === 'single';
   const visibleFields = localFields.filter((field) => {
     if (isSettingsModule && REMOVED_SETTINGS_FIELDS.has(field.key)) {
@@ -425,18 +446,17 @@ export function ConfigTab({ config, moduleData, isReadOnly, localFeatures, local
             </div>
           ))}
            
-           {config.features && config.features.length > 0 && (
+           {regularFeatures.length > 0 && (
              <FeaturesCard
-               features={config.features.map(f => ({
-                 config: { 
-                   key: f.key, 
-                   label: f.label, 
-                   icon: f.icon ?? Settings,
-                   linkedField: f.linkedField,
-                   description: f.description,
-                 },
-                 enabled: localFeatures[f.key] ?? false,
-               }))}
+               features={regularFeatures}
+               onToggle={onToggleFeature}
+               toggleColor={colorClasses.toggle}
+             />
+           )}
+           {advancedSettingsFeatures.length > 0 && (
+             <FeaturesCard
+               title="Tab Cài đặt nâng cao"
+               features={advancedSettingsFeatures}
                onToggle={onToggleFeature}
                toggleColor={colorClasses.toggle}
              />

@@ -11,17 +11,19 @@ interface FeaturesCardProps {
     enabled: boolean;
   }[];
   onToggle: (key: string) => void;
+  title?: string;
   toggleColor?: string;
 }
 
 export const FeaturesCard: React.FC<FeaturesCardProps> = ({ 
   features, 
   onToggle,
+  title = 'Tính năng',
   toggleColor = 'bg-cyan-500'
 }) => (
   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
     <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
-      <Layers size={14} className="text-slate-500" /> Tính năng
+      <Layers size={14} className="text-slate-500" /> {title}
     </h3>
     
     <div className="space-y-2">
