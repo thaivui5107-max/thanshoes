@@ -24,6 +24,7 @@ export const DEFAULT_DEMO_PRODUCTS: DemoProductItem[] = DEFAULT_GRID_DEMO_PRODUC
 export interface ProductGridProductItem {
   _id: string;
   name: string;
+  slug?: string | null;
   image?: string | null;
   price?: number | null;
   salePrice?: number | null;

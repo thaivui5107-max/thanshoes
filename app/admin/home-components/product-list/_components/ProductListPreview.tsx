@@ -19,6 +19,9 @@ import { getProductListCardRadiusClassName, getProductListImageRadiusClassName, 
 import { getProductImageAspectRatioCssValue, resolveProductImageAspectRatio } from '@/lib/products/image-aspect-ratio';
 import { ProductCardActions } from '@/components/site/shared/ProductCardActions';
 import { getProductsListColors } from '@/components/site/products/colors';
+import { QuickAddVariantModal } from '@/components/products/QuickAddVariantModal';
+import type { Id } from '@/convex/_generated/dataModel';
+import { buildPreviewQuickAddProduct, type PreviewQuickAddAction, type PreviewQuickAddProduct } from '../../_shared/lib/previewQuickAdd';
 
 // Embla Carousel sub-component — tách riêng vì cần hooks
 function CarouselPreviewInner({
@@ -45,6 +48,7 @@ function CarouselPreviewInner({
   cartButtonsLayout,
   tokens,
   isProduct = true,
+  onPreviewAction,
 }: {
   displayItems: ProductListPreviewItem[];
   device: 'desktop' | 'tablet' | 'mobile';
@@ -69,6 +73,7 @@ function CarouselPreviewInner({
   cartButtonsLayout?: 'stack' | 'grid-2';
   tokens?: any;
   isProduct?: boolean;
+  onPreviewAction: (item: ProductListPreviewItem, action: PreviewQuickAddAction) => void;
 }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: 'start',
@@ -208,8 +213,8 @@ function CarouselPreviewInner({
                       showAddToCartButton={!!showAddToCartButton}
                       showBuyNowButton={!!showBuyNowButton}
                       buyNowLabel="Mua ngay"
-                      onAddToCart={() => {}}
-                      onBuyNow={() => {}}
+                      onAddToCart={() => onPreviewAction(item, 'addToCart')}
+                      onBuyNow={() => onPreviewAction(item, 'buyNow')}
                       cartButtonsLayout={cartButtonsLayout}
                       device={device}
                     />
@@ -252,6 +257,7 @@ function WineCarouselPreviewInner({
   cartButtonsLayout,
   tokens,
   isProduct = true,
+  onPreviewAction,
 }: {
   displayItems: ProductListPreviewItem[];
   device: 'desktop' | 'tablet' | 'mobile';
@@ -265,6 +271,7 @@ function WineCarouselPreviewInner({
   cartButtonsLayout?: 'stack' | 'grid-2';
   tokens?: any;
   isProduct?: boolean;
+  onPreviewAction: (item: ProductListPreviewItem, action: PreviewQuickAddAction) => void;
 }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: 'start',
@@ -390,8 +397,8 @@ function WineCarouselPreviewInner({
                           showAddToCartButton={!!showAddToCartButton}
                           showBuyNowButton={!!showBuyNowButton}
                           buyNowLabel="Mua ngay"
-                          onAddToCart={() => {}}
-                          onBuyNow={() => {}}
+                          onAddToCart={() => onPreviewAction(item, 'addToCart')}
+                          onBuyNow={() => onPreviewAction(item, 'buyNow')}
                           cartButtonsLayout={cartButtonsLayout}
                           device={device}
                         />
@@ -511,6 +518,20 @@ export const ProductListPreview = ({
   const previewStyle: string = selectedStyle ?? 'commerce';
   const setPreviewStyle = (style: string) => onStyleChange?.(style as ProductListStyle);
   const isProduct = componentType !== 'ServiceList';
+  const [quickAddTarget, setQuickAddTarget] = React.useState<{ product: PreviewQuickAddProduct; action: PreviewQuickAddAction } | null>(null);
+  const onPreviewAction = React.useCallback((item: ProductListPreviewItem | undefined, action: PreviewQuickAddAction) => {
+    if (!item || !isProduct) {
+      return;
+    }
+    const product = buildPreviewQuickAddProduct(item);
+    if (!product.hasVariants || !product._id) {
+      return;
+    }
+    setQuickAddTarget({ product, action });
+  }, [isProduct]);
+  const quickAddModalProduct = React.useMemo(() => quickAddTarget
+    ? { ...quickAddTarget.product, _id: quickAddTarget.product._id as Id<'products'> }
+    : null, [quickAddTarget]);
   const aspectRatioSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
   const imageAspectRatio = React.useMemo(
     () => resolveProductImageAspectRatio(aspectRatioSetting?.value),
@@ -678,8 +699,8 @@ export const ProductListPreview = ({
                       showAddToCartButton={!!effectiveShowAddToCartButton}
                       showBuyNowButton={!!effectiveShowBuyNowButton}
                       buyNowLabel="Mua ngay"
-                      onAddToCart={() => {}}
-                      onBuyNow={() => {}}
+                      onAddToCart={() => onPreviewAction(item, 'addToCart')}
+                      onBuyNow={() => onPreviewAction(item, 'buyNow')}
                       cartButtonsLayout={cartButtonsLayout}
                       device={device}
                     />
@@ -788,8 +809,8 @@ export const ProductListPreview = ({
                       showAddToCartButton={!!effectiveShowAddToCartButton}
                       showBuyNowButton={!!effectiveShowBuyNowButton}
                       buyNowLabel="Mua ngay"
-                      onAddToCart={() => {}}
-                      onBuyNow={() => {}}
+                      onAddToCart={() => onPreviewAction(item, 'addToCart')}
+                      onBuyNow={() => onPreviewAction(item, 'buyNow')}
                       cartButtonsLayout={cartButtonsLayout}
                       device={device}
                     />
@@ -856,8 +877,8 @@ export const ProductListPreview = ({
                         showAddToCartButton={!!effectiveShowAddToCartButton}
                         showBuyNowButton={!!effectiveShowBuyNowButton}
                         buyNowLabel="Mua ngay"
-                        onAddToCart={() => {}}
-                        onBuyNow={() => {}}
+                        onAddToCart={() => onPreviewAction(item, 'addToCart')}
+                        onBuyNow={() => onPreviewAction(item, 'buyNow')}
                         cartButtonsLayout={cartButtonsLayout}
                         device={device}
                       />
@@ -903,12 +924,12 @@ export const ProductListPreview = ({
                   {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) ? (
                     <div className="flex gap-2 mt-3">
                       {effectiveShowAddToCartButton && (
-                        <button type="button" className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-white shadow-lg transition-all hover:opacity-90 whitespace-nowrap" style={{ backgroundColor: brandColor }}>
+                        <button type="button" onClick={() => onPreviewAction(featured, 'addToCart')} className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-white shadow-lg transition-all hover:opacity-90 whitespace-nowrap" style={{ backgroundColor: brandColor }}>
                           Thêm giỏ
                         </button>
                       )}
                       {effectiveShowBuyNowButton && (
-                        <button type="button" className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-slate-900 bg-white/90 hover:bg-white shadow-lg transition-all whitespace-nowrap">
+                        <button type="button" onClick={() => onPreviewAction(featured, 'buyNow')} className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-slate-900 bg-white/90 hover:bg-white shadow-lg transition-all whitespace-nowrap">
                           Mua ngay
                         </button>
                       )}
@@ -986,8 +1007,8 @@ export const ProductListPreview = ({
                           showAddToCartButton={!!effectiveShowAddToCartButton}
                           showBuyNowButton={!!effectiveShowBuyNowButton}
                           buyNowLabel="Mua ngay"
-                          onAddToCart={() => {}}
-                          onBuyNow={() => {}}
+                          onAddToCart={() => onPreviewAction(item, 'addToCart')}
+                          onBuyNow={() => onPreviewAction(item, 'buyNow')}
                           cartButtonsLayout={cartButtonsLayout}
                           device={device}
                         />
@@ -1003,7 +1024,7 @@ export const ProductListPreview = ({
     );
   };
 
-  const renderCarouselStyle = () => <CarouselPreviewInner displayItems={displayItems} device={device} brandColor={brandColor} secondary={secondary} subTitle={subTitle} displayTitle={displayTitle} displaySubtitle={displaySubtitle} imageAspectRatioStyle={imageAspectRatioStyle} getDiscount={getDiscount} effectiveShowBadge={effectiveShowBadge} effectiveShowTitle={effectiveShowTitle} effectiveShowSubtitle={effectiveShowSubtitle} effectiveHideHeader={effectiveHideHeader} titleStyle={titleStyle} uppercaseText={uppercaseText} headerAlign={headerAlign} subtitleAboveTitle={subtitleAboveTitle} cardRadiusClassName={cardRadiusClassName} showAddToCartButton={effectiveShowAddToCartButton} showBuyNowButton={effectiveShowBuyNowButton} cartButtonsLayout={cartButtonsLayout} tokens={tokens} isProduct={isProduct} />;
+  const renderCarouselStyle = () => <CarouselPreviewInner displayItems={displayItems} device={device} brandColor={brandColor} secondary={secondary} subTitle={subTitle} displayTitle={displayTitle} displaySubtitle={displaySubtitle} imageAspectRatioStyle={imageAspectRatioStyle} getDiscount={getDiscount} effectiveShowBadge={effectiveShowBadge} effectiveShowTitle={effectiveShowTitle} effectiveShowSubtitle={effectiveShowSubtitle} effectiveHideHeader={effectiveHideHeader} titleStyle={titleStyle} uppercaseText={uppercaseText} headerAlign={headerAlign} subtitleAboveTitle={subtitleAboveTitle} cardRadiusClassName={cardRadiusClassName} showAddToCartButton={effectiveShowAddToCartButton} showBuyNowButton={effectiveShowBuyNowButton} cartButtonsLayout={cartButtonsLayout} tokens={tokens} isProduct={isProduct} onPreviewAction={onPreviewAction} />;
 
   const renderWineCarouselStyle = () => (
     <WineCarouselPreviewInner
@@ -1019,6 +1040,7 @@ export const ProductListPreview = ({
       cartButtonsLayout={cartButtonsLayout}
       tokens={tokens}
       isProduct={isProduct}
+      onPreviewAction={onPreviewAction}
     />
   );
 
@@ -1062,8 +1084,8 @@ export const ProductListPreview = ({
                     showAddToCartButton={!!effectiveShowAddToCartButton}
                     showBuyNowButton={!!effectiveShowBuyNowButton}
                     buyNowLabel="Mua ngay"
-                    onAddToCart={() => {}}
-                    onBuyNow={() => {}}
+                    onAddToCart={() => onPreviewAction(item, 'addToCart')}
+                    onBuyNow={() => onPreviewAction(item, 'buyNow')}
                     cartButtonsLayout={cartButtonsLayout}
                     device={device}
                   />
@@ -1110,8 +1132,8 @@ export const ProductListPreview = ({
                         showAddToCartButton={!!effectiveShowAddToCartButton}
                         showBuyNowButton={!!effectiveShowBuyNowButton}
                         buyNowLabel="Mua ngay"
-                        onAddToCart={() => {}}
-                        onBuyNow={() => {}}
+                        onAddToCart={() => onPreviewAction(item, 'addToCart')}
+                        onBuyNow={() => onPreviewAction(item, 'buyNow')}
                         cartButtonsLayout={cartButtonsLayout}
                         device={device}
                       />
@@ -1141,12 +1163,12 @@ export const ProductListPreview = ({
                 {isProduct && (effectiveShowAddToCartButton || effectiveShowBuyNowButton) ? (
                   <div className="flex gap-2 mt-2">
                     {effectiveShowAddToCartButton && (
-                      <button type="button" className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-white shadow-lg transition-all hover:opacity-90 whitespace-nowrap" style={{ backgroundColor: brandColor }}>
+                      <button type="button" onClick={() => onPreviewAction(showcaseFeatured, 'addToCart')} className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-white shadow-lg transition-all hover:opacity-90 whitespace-nowrap" style={{ backgroundColor: brandColor }}>
                         Thêm giỏ
                       </button>
                     )}
                     {effectiveShowBuyNowButton && (
-                      <button type="button" className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-slate-900 bg-white/90 hover:bg-white shadow-lg transition-all whitespace-nowrap">
+                      <button type="button" onClick={() => onPreviewAction(showcaseFeatured, 'buyNow')} className="flex-1 rounded-full py-2 px-3 text-sm font-bold text-slate-900 bg-white/90 hover:bg-white shadow-lg transition-all whitespace-nowrap">
                         Mua ngay
                       </button>
                     )}
@@ -1187,8 +1209,8 @@ export const ProductListPreview = ({
                           showAddToCartButton={!!effectiveShowAddToCartButton}
                           showBuyNowButton={!!effectiveShowBuyNowButton}
                           buyNowLabel="Mua ngay"
-                          onAddToCart={() => {}}
-                          onBuyNow={() => {}}
+                          onAddToCart={() => onPreviewAction(item, 'addToCart')}
+                          onBuyNow={() => onPreviewAction(item, 'buyNow')}
                           cartButtonsLayout={cartButtonsLayout}
                           device={device}
                         />
@@ -1398,8 +1420,8 @@ export const ProductListPreview = ({
                         showAddToCartButton={!!effectiveShowAddToCartButton}
                         showBuyNowButton={!!effectiveShowBuyNowButton}
                         buyNowLabel="Mua ngay"
-                        onAddToCart={() => {}}
-                        onBuyNow={() => {}}
+                        onAddToCart={() => onPreviewAction(item, 'addToCart')}
+                        onBuyNow={() => onPreviewAction(item, 'buyNow')}
                         cartButtonsLayout={cartButtonsLayout}
                         device={device}
                       />
@@ -1518,8 +1540,8 @@ export const ProductListPreview = ({
                         showAddToCartButton={!!effectiveShowAddToCartButton}
                         showBuyNowButton={!!effectiveShowBuyNowButton}
                         buyNowLabel="Mua ngay"
-                        onAddToCart={() => {}}
-                        onBuyNow={() => {}}
+                        onAddToCart={() => onPreviewAction(item, 'addToCart')}
+                        onBuyNow={() => onPreviewAction(item, 'buyNow')}
                         cartButtonsLayout={cartButtonsLayout}
                         device={device}
                       />
@@ -1719,6 +1741,16 @@ export const ProductListPreview = ({
         </BrowserFrame>
       </PreviewWrapper>
       <ColorInfoPanel brandColor={brandColor} secondary={secondary} />
+      {isProduct && (
+        <QuickAddVariantModal
+          isOpen={quickAddTarget !== null}
+          product={quickAddModalProduct}
+          brandColor={brandColor}
+          actionLabel={quickAddTarget?.action === 'addToCart' ? 'Thêm vào giỏ' : 'Mua ngay'}
+          onClose={() => setQuickAddTarget(null)}
+          onConfirm={() => setQuickAddTarget(null)}
+        />
+      )}
     </>
   );
 };

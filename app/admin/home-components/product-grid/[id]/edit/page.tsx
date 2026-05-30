@@ -218,8 +218,11 @@ export default function ProductGridEditPage({
       .map(p => ({
         _id: p._id,
         name: p.name,
+        slug: p.slug,
         image: p.image,
         price: p.price,
+        salePrice: p.salePrice,
+        hasVariants: p.hasVariants,
         categoryId: p.categoryId,
         stock: p.stock,
       }));
@@ -234,7 +237,10 @@ export default function ProductGridEditPage({
         _id: product._id,
         image: product.image,
         name: product.name,
+        slug: product.slug,
         price: product.price,
+        salePrice: product.salePrice,
+        hasVariants: product.hasVariants,
         categoryId: product.categoryId,
         stock: product.stock,
       }));
@@ -250,7 +256,10 @@ export default function ProductGridEditPage({
         _id: product._id,
         image: product.image,
         name: product.name,
+        slug: product.slug,
         price: product.price,
+        salePrice: product.salePrice,
+        hasVariants: product.hasVariants,
         categoryId: product.categoryId,
         stock: product.stock,
       }));
@@ -291,14 +300,20 @@ export default function ProductGridEditPage({
       const hasBasePrice = priceValue != null || salePriceValue != null;
       return {
         description: p.name,
+        categoryId: p.categoryId,
+        hasVariants: resolvedProduct?.hasVariants ?? p.hasVariants,
         id: p._id,
         image: p.image ?? undefined,
         name: p.name,
         price: !hasBasePrice && saleMode === 'cart' ? undefined : priceDisplay.label,
+        priceValue,
         originalPrice: priceDisplay.comparePrice
           ? getHomeComponentPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label
           : undefined,
+        salePriceValue,
         category: p.categoryId ? (allCategories?.find(c => c._id === p.categoryId)?.name ?? '') : undefined,
+        slug: p.slug,
+        stock: p.stock ?? undefined,
       };
     });
   }, [selectionMode, demoProducts, selectedProducts, allActiveProducts, resolvedProductMap, saleMode, allCategories]);

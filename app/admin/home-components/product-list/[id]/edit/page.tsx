@@ -591,36 +591,48 @@ export default function ProductListEditPage({
                 }))
                 : productSelectionMode === 'manual' && selectedProducts.length > 0
                   ? selectedProducts.map((product) => ({
+                    categoryId: product.categoryId,
                     description: product.description,
                     id: product._id,
                     image: product.image,
                     name: product.name,
+                    slug: product.slug,
+                    stock: product.stock,
                     ...(() => {
                       const resolvedProduct = resolvedProductMap.get(product._id as Id<'products'>) ?? product;
                       const priceDisplay = getHomeComponentPriceLabel({ saleMode, price: resolvedProduct.price, salePrice: resolvedProduct.salePrice, isRangeFromVariant: resolvedProduct.hasVariants });
                       const hasBasePrice = resolvedProduct.price != null || resolvedProduct.salePrice != null;
                       return {
+                        hasVariants: resolvedProduct.hasVariants,
                         price: !hasBasePrice && saleMode === 'cart' ? undefined : priceDisplay.label,
+                        priceValue: resolvedProduct.price,
                         originalPrice: priceDisplay.comparePrice
                           ? getHomeComponentPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label
                           : undefined,
+                        salePriceValue: resolvedProduct.salePrice,
                       };
                     })(),
                   }))
                   : filteredProducts.slice(0, productListConfig.itemCount).map((product) => ({
+                    categoryId: product.categoryId,
                     description: product.description,
                     id: product._id,
                     image: product.image,
                     name: product.name,
+                    slug: product.slug,
+                    stock: product.stock,
                     ...(() => {
                       const resolvedProduct = resolvedProductMap.get(product._id as Id<'products'>) ?? product;
                       const priceDisplay = getHomeComponentPriceLabel({ saleMode, price: resolvedProduct.price, salePrice: resolvedProduct.salePrice, isRangeFromVariant: resolvedProduct.hasVariants });
                       const hasBasePrice = resolvedProduct.price != null || resolvedProduct.salePrice != null;
                       return {
+                        hasVariants: resolvedProduct.hasVariants,
                         price: !hasBasePrice && saleMode === 'cart' ? undefined : priceDisplay.label,
+                        priceValue: resolvedProduct.price,
                         originalPrice: priceDisplay.comparePrice
                           ? getHomeComponentPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label
                           : undefined,
+                        salePriceValue: resolvedProduct.salePrice,
                       };
                     })(),
                   }))

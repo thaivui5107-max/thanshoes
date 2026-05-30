@@ -9,11 +9,17 @@ export type ProductListDesktopColumns = 3 | 4;
 export interface ProductListPreviewItem {
   id: string | number;
   name: string;
+  slug?: string | null;
   image?: string;
   price?: string;
+  priceValue?: number;
   originalPrice?: string;
+  salePriceValue?: number;
+  stock?: number;
+  hasVariants?: boolean;
   description?: string;
   category?: string;
+  categoryId?: string;
   tag?: 'new' | 'hot' | 'sale';
 }
 

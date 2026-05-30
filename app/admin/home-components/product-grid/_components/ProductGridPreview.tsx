@@ -23,6 +23,9 @@ import { getProductImageAspectRatioCssValue, resolveProductImageAspectRatio } fr
 import { ProductCardActions } from '@/components/site/shared/ProductCardActions';
 import { getProductsListColors } from '@/components/site/products/colors';
 import { CategoryTabSlider } from '@/components/shared/CategoryTabSlider';
+import { QuickAddVariantModal } from '@/components/products/QuickAddVariantModal';
+import type { Id } from '@/convex/_generated/dataModel';
+import { buildPreviewQuickAddProduct, type PreviewQuickAddAction, type PreviewQuickAddProduct } from '../../_shared/lib/previewQuickAdd';
 
 export const ProductGridPreview = ({
   brandColor,
@@ -102,6 +105,20 @@ export const ProductGridPreview = ({
     () => getProductsListColors(brandColor, secondary, 'single'),
     [brandColor, secondary]
   );
+  const [quickAddTarget, setQuickAddTarget] = React.useState<{ product: PreviewQuickAddProduct; action: PreviewQuickAddAction } | null>(null);
+  const onPreviewAction = React.useCallback((item: ProductListPreviewItem | undefined, action: PreviewQuickAddAction) => {
+    if (!item) {
+      return;
+    }
+    const product = buildPreviewQuickAddProduct(item);
+    if (!product.hasVariants || !product._id) {
+      return;
+    }
+    setQuickAddTarget({ product, action });
+  }, []);
+  const quickAddModalProduct = React.useMemo(() => quickAddTarget
+    ? { ...quickAddTarget.product, _id: quickAddTarget.product._id as Id<'products'> }
+    : null, [quickAddTarget]);
 
   // Dynamic Tabs resolution: Lọc theo danh mục hoặc Tự động gôm tab
   const resolvedTabs = useMemo(() => {
@@ -296,8 +313,8 @@ export const ProductGridPreview = ({
                               showAddToCartButton={!!showAddToCartButton}
                               showBuyNowButton={!!showBuyNowButton}
                               buyNowLabel="Mua ngay"
-                              onAddToCart={() => {}}
-                              onBuyNow={() => {}}
+                              onAddToCart={() => onPreviewAction(item, 'addToCart')}
+                              onBuyNow={() => onPreviewAction(item, 'buyNow')}
                               cartButtonsLayout={cartButtonsLayout}
                               device={device}
                             />
@@ -332,6 +349,14 @@ export const ProductGridPreview = ({
             </BrowserFrame>
           </PreviewWrapper>
           <ColorInfoPanel brandColor={brandColor} secondary={secondary} />
+          <QuickAddVariantModal
+            isOpen={quickAddTarget !== null}
+            product={quickAddModalProduct}
+            brandColor={brandColor}
+            actionLabel={quickAddTarget?.action === 'addToCart' ? 'Thêm vào giỏ' : 'Mua ngay'}
+            onClose={() => setQuickAddTarget(null)}
+            onConfirm={() => setQuickAddTarget(null)}
+          />
         </>
       );
     }
@@ -428,8 +453,8 @@ export const ProductGridPreview = ({
                               showAddToCartButton={!!showAddToCartButton}
                               showBuyNowButton={!!showBuyNowButton}
                               buyNowLabel="Mua ngay"
-                              onAddToCart={() => {}}
-                              onBuyNow={() => {}}
+                              onAddToCart={() => onPreviewAction(item, 'addToCart')}
+                              onBuyNow={() => onPreviewAction(item, 'buyNow')}
                               cartButtonsLayout={cartButtonsLayout}
                               device={device}
                             />
@@ -466,6 +491,14 @@ export const ProductGridPreview = ({
         </BrowserFrame>
       </PreviewWrapper>
       <ColorInfoPanel brandColor={brandColor} secondary={secondary} />
+      <QuickAddVariantModal
+        isOpen={quickAddTarget !== null}
+        product={quickAddModalProduct}
+        brandColor={brandColor}
+        actionLabel={quickAddTarget?.action === 'addToCart' ? 'Thêm vào giỏ' : 'Mua ngay'}
+        onClose={() => setQuickAddTarget(null)}
+        onConfirm={() => setQuickAddTarget(null)}
+      />
     </>
     );
   };

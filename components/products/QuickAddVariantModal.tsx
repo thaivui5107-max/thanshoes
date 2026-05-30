@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useQuery } from 'convex/react';
 import { X } from 'lucide-react';
@@ -86,6 +87,7 @@ const findExactVariant = (variants: ProductVariant[], selection: VariantSelectio
   ) ?? null;
 
 export function QuickAddVariantModal({ isOpen, product, brandColor, actionLabel, onClose, onConfirm }: QuickAddVariantModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<VariantSelectionMap>({});
   const [quantity, setQuantity] = useState(1);
   const saleModeSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'saleMode' });
@@ -175,7 +177,11 @@ export function QuickAddVariantModal({ isOpen, product, brandColor, actionLabel,
     return 'cart';
   }, [saleModeSetting?.value]);
 
-  if (!isOpen || !product) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !isOpen || !product) {
     return null;
   }
 
@@ -210,7 +216,7 @@ export function QuickAddVariantModal({ isOpen, product, brandColor, actionLabel,
 
   const canSubmit = Boolean(selectedVariant && inStock && quantity > 0);
 
-  return (
+  const modal = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
@@ -301,4 +307,6 @@ export function QuickAddVariantModal({ isOpen, product, brandColor, actionLabel,
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

@@ -142,14 +142,20 @@ export function ProductListCreateShared({ type, titleLabel }: ProductListCreateS
     const priceDisplay = getHomeComponentPriceLabel({ saleMode, price: priceValue, salePrice: salePriceValue, isRangeFromVariant: resolvedProduct?.hasVariants ?? product.hasVariants });
     const hasBasePrice = priceValue != null || salePriceValue != null;
     return {
+      categoryId: product.categoryId,
       description: product.description,
+      hasVariants: resolvedProduct?.hasVariants ?? product.hasVariants,
       id: product._id,
       image: product.image,
       name: product.name,
       price: !hasBasePrice && saleMode === 'cart' ? undefined : priceDisplay.label,
+      priceValue,
       originalPrice: priceDisplay.comparePrice
         ? getHomeComponentPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label
         : undefined,
+      salePriceValue,
+      slug: product.slug,
+      stock: resolvedProduct?.stock ?? product.stock,
     };
   }), [resolvedProductMap, selectedProducts, saleMode]);
 
@@ -163,14 +169,20 @@ export function ProductListCreateShared({ type, titleLabel }: ProductListCreateS
         const priceDisplay = getHomeComponentPriceLabel({ saleMode, price: product.price, salePrice: product.salePrice, isRangeFromVariant: product.hasVariants });
         const hasBasePrice = product.price != null || product.salePrice != null;
         return {
+          categoryId: product.categoryId,
           description: product.description,
+          hasVariants: product.hasVariants,
           id: product._id,
           image: product.image,
           name: product.name,
           price: !hasBasePrice && saleMode === 'cart' ? undefined : priceDisplay.label,
+          priceValue: product.price,
           originalPrice: priceDisplay.comparePrice
             ? getHomeComponentPriceLabel({ saleMode: 'cart', price: priceDisplay.comparePrice }).label
             : undefined,
+          salePriceValue: product.salePrice,
+          slug: product.slug,
+          stock: product.stock,
         };
       });
   }, [productsData, resolvedProductsData, itemCount, saleMode]);
