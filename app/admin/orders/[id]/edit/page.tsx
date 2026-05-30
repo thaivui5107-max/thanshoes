@@ -198,8 +198,12 @@ export default function EditOrderPage() {
                     <div key={index} className="py-3 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center">
-                            <Package size={16} className="text-slate-400" />
+                          <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center overflow-hidden shrink-0">
+                            {item.productImage ? (
+                              <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
+                            ) : (
+                              <Package size={16} className="text-slate-400" />
+                            )}
                           </div>
                           <div>
                             <p className="font-medium">{item.productName}</p>
