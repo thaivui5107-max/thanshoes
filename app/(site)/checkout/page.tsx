@@ -663,6 +663,23 @@ function CheckoutContent() {
     }
   };
 
+  // ⚠️ Hooks phải khai báo TRƯỚC các early return để tuân thủ Rules of Hooks
+  const isStepInfoCompleted = Boolean(
+    customerName.trim() &&
+    customerPhone.trim() &&
+    customerEmail.trim().includes('@') &&
+    customerEmail.trim().includes('.') &&
+    isAddressValid
+  );
+  const isStepShippingCompleted = !shouldCollectShipping || Boolean(shippingMethodId);
+  const stepsState = useMemo(() => {
+    return [
+      { label: 'Thông tin', icon: MapPin, isCompleted: isStepInfoCompleted, isActive: true },
+      ...(shouldCollectShipping ? [{ label: 'Vận chuyển', icon: Truck, isCompleted: isStepShippingCompleted, isActive: isStepInfoCompleted }] : []),
+      ...(isPaymentEnabled ? [{ label: 'Thanh toán', icon: CreditCard, isCompleted: false, isActive: isStepInfoCompleted && isStepShippingCompleted }] : []),
+    ];
+  }, [isStepInfoCompleted, isStepShippingCompleted, shouldCollectShipping, isPaymentEnabled]);
+
   if (ordersModule && !ordersModule.enabled) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-16 text-center">
@@ -763,24 +780,6 @@ function CheckoutContent() {
       </div>
     );
   }
-
-  const isStepInfoCompleted = Boolean(
-    customerName.trim() &&
-    customerPhone.trim() &&
-    customerEmail.trim().includes('@') &&
-    customerEmail.trim().includes('.') &&
-    isAddressValid
-  );
-
-  const isStepShippingCompleted = !shouldCollectShipping || Boolean(shippingMethodId);
-
-  const stepsState = useMemo(() => {
-    return [
-      { label: 'Thông tin', icon: MapPin, isCompleted: isStepInfoCompleted, isActive: true },
-      ...(shouldCollectShipping ? [{ label: 'Vận chuyển', icon: Truck, isCompleted: isStepShippingCompleted, isActive: isStepInfoCompleted }] : []),
-      ...(isPaymentEnabled ? [{ label: 'Thanh toán', icon: CreditCard, isCompleted: false, isActive: isStepInfoCompleted && isStepShippingCompleted }] : []),
-    ];
-  }, [isStepInfoCompleted, isStepShippingCompleted, shouldCollectShipping, isPaymentEnabled]);
 
   const StepIndicator = (
     <div className="flex items-center justify-between mb-6">
