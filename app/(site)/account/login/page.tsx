@@ -34,11 +34,16 @@ export default function CustomerLoginPage() {
         void (async () => {
           setIsSubmitting(true);
           const res = await identify(prefill);
-          if (res.success && res.state === 'requiresPasswordSetup') {
-            setMaskedEmail(res.maskedEmail || '');
-            const otpRes = await requestPasswordSetup(prefill);
-            if (otpRes.success) {
-              setStep('password_setup');
+          if (res.success) {
+            if (res.state === 'requiresPasswordSetup') {
+              setMaskedEmail(res.maskedEmail || '');
+              const otpRes = await requestPasswordSetup(prefill);
+              if (otpRes.success) {
+                setStep('password_setup');
+              }
+            } else if (res.state === 'requiresPassword') {
+              setStep('password');
+              toast.info('Tài khoản này đã được kích hoạt trước đó. Vui lòng đăng nhập bằng mật khẩu.');
             }
           }
           setIsSubmitting(false);
