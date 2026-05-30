@@ -20,7 +20,7 @@ export default function CustomerRegisterPage() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.push('/wishlist');
+      router.push('/account/profile');
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -33,7 +33,7 @@ export default function CustomerRegisterPage() {
     try {
       const result = await register({ email, name, password, phone });
       if (result.success) {
-        router.push('/wishlist');
+        router.push('/account/profile');
       } else {
         setError(result.message);
         if (result.code === 'GUEST_ACCOUNT_EXISTS') {
