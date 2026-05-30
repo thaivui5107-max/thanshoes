@@ -694,6 +694,17 @@ function SettingsContent({ section }: { section: SettingsSection }) {
         toast.error('Email gửi đi không hợp lệ.');
         return false;
       }
+
+      const adminEmailsStr = getStringField('order_notification_emails').trim();
+      if (adminEmailsStr) {
+        const emails = adminEmailsStr.split(/[,\n;]+/).map((e) => e.trim()).filter(Boolean);
+        for (const email of emails) {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            toast.error(`Email nhận thông báo "${email}" không hợp lệ.`);
+            return false;
+          }
+        }
+      }
     }
 
     // Validate required fields
@@ -867,7 +878,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
             settingsToSave.push({
               group: 'mail',
               key,
-              value: key === 'mail_driver' ? EMAIL_DEFAULTS.mail_driver : (form[key] ?? EMAIL_DEFAULTS[key]),
+              value: form[key] ?? EMAIL_DEFAULTS[key],
             });
           }
         });
@@ -2149,7 +2160,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                         </div>
 
                         <div className="text-[11px] text-slate-500 -mt-2">
-                          Email nhận thông báo đơn hàng có thể nhập nhiều email, phân tách bằng dấu phẩy.
+                          Để trống sẽ dùng Email ở Cài đặt &gt; Thông tin liên hệ; nếu cả hai trống thì không gửi email admin. Có thể nhập nhiều email, phân tách bằng dấu phẩy, chấm phẩy hoặc xuống dòng.
                         </div>
 
                         <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">

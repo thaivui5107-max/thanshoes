@@ -24,6 +24,8 @@ import type * as crons from "../crons.js";
 import type * as customers from "../customers.js";
 import type * as dataManager from "../dataManager.js";
 import type * as email from "../email.js";
+import type * as emailDb from "../emailDb.js";
+import type * as emailTemplates from "../emailTemplates.js";
 import type * as experiences from "../experiences.js";
 import type * as fileLifecycle from "../fileLifecycle.js";
 import type * as homeComponentSystemConfig from "../homeComponentSystemConfig.js";
@@ -112,6 +114,8 @@ declare const fullApi: ApiFromModules<{
   customers: typeof customers;
   dataManager: typeof dataManager;
   email: typeof email;
+  emailDb: typeof emailDb;
+  emailTemplates: typeof emailTemplates;
   experiences: typeof experiences;
   fileLifecycle: typeof fileLifecycle;
   homeComponentSystemConfig: typeof homeComponentSystemConfig;
@@ -207,6 +211,7 @@ export declare const internal: FilterApi<
 export declare const components: {
   rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
   convexFilesControl: import("@gilhrpenner/convex-files-control/_generated/component.js").ComponentApi<"convexFilesControl">;
+  resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
   pageViewsByTime: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"pageViewsByTime">;
   pageViewsByPath: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"pageViewsByPath">;
   pageViewsBySource: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"pageViewsBySource">;

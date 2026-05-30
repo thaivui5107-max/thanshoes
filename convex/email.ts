@@ -39,11 +39,19 @@ async function sendTransactionalEmailInternal(
   const fromEmail = (settings.mail_from_email ?? "").trim();
   const fromName = (settings.mail_from_name ?? "").trim();
   
-  // Parse recipients
-  const toList = args.to.split(",").map((email: string) => email.trim()).filter(Boolean);
+  // Parse recipients safely
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const toList = Array.from(
+    new Set(
+      args.to
+        .split(/[,\n;]+/)
+        .map((email: string) => email.trim())
+        .filter((email: string) => emailRegex.test(email))
+    )
+  );
   const recipientCount = toList.length;
   if (recipientCount === 0) {
-    return { success: false, reason: "Không có địa chỉ email nhận" };
+    return { success: false, reason: "Không có địa chỉ email nhận hợp lệ" };
   }
 
   const idempotencyKey = args.orderId ? `${args.orderId}:${args.eventType}` : undefined;
