@@ -154,11 +154,11 @@ export default function AccountOrdersPage() {
   const config = useAccountOrdersConfig();
   const { statuses: orderStatuses } = useOrderStatuses();
   const router = useRouter();
-  const { customer, isAuthenticated, openLoginModal } = useCustomerAuth();
+  const { customer, isAuthenticated, openLoginModal, token } = useCustomerAuth();
   const { addItem } = useCart();
   const ordersModule = useQuery(api.admin.modules.getModuleByKey, { key: 'orders' });
   const stockFeature = useQuery(api.admin.modules.getModuleFeature, { featureKey: 'enableStock', moduleKey: 'products' });
-  const cancelOrder = useMutation(api.orders.cancel);
+  const cancelOwnOrder = useMutation(api.orders.cancelOwnOrder);
 
   const orders = useQuery(
     api.orders.listAllByCustomer,
@@ -217,8 +217,12 @@ export default function AccountOrdersPage() {
     if (!confirm('Bạn chắc chắn muốn hủy đơn hàng này?')) {
       return;
     }
+    if (!token) {
+      toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      return;
+    }
     try {
-      await cancelOrder({ id: orderId });
+      await cancelOwnOrder({ orderId, token });
       toast.success('Đã hủy đơn hàng thành công.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Không thể hủy đơn hàng.');

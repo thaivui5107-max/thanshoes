@@ -9,6 +9,13 @@ import {
   parseOrderStatuses,
   type OrderStatusConfig,
 } from "../lib/orders/statuses";
+import { internal } from "./_generated/api";
+import {
+  getOrderPlacedCustomerTemplate,
+  getOrderPlacedShopTemplate,
+  getOrderDeliveredTemplate,
+  getOrderCancelledTemplate,
+} from "./emailTemplates";
 
 const orderStatus = v.string();
 
@@ -52,6 +59,97 @@ async function getOrderStatusSettings(ctx: MutationCtx | QueryCtx) {
   const statuses = parseOrderStatuses(statusesSetting?.value, preset);
 
   return { preset, statuses };
+}
+
+async function handleOrderStatusTransition(
+  ctx: MutationCtx,
+  orderId: Id<"orders">,
+  oldStatus: string,
+  newStatus: string
+) {
+  if (oldStatus === newStatus) return;
+
+  const orderDoc = await ctx.db.get(orderId);
+  if (!orderDoc) return;
+
+  const customerDoc = await ctx.db.get(orderDoc.customerId);
+  if (!customerDoc) return;
+
+  const { statuses } = await getOrderStatusSettings(ctx);
+
+  const isDeliveredStatus = (statusKey: string) => {
+    const config = statuses.find((s) => s.key === statusKey);
+    if (!config) return statusKey.toLowerCase() === "delivered";
+    const lowerKey = config.key.toLowerCase();
+    const lowerLabel = config.label.toLowerCase();
+    return (
+      config.isFinal &&
+      !lowerKey.includes("cancel") &&
+      !lowerKey.includes("refund") &&
+      !lowerKey.includes("hủy") &&
+      !lowerLabel.includes("cancel") &&
+      !lowerLabel.includes("refund") &&
+      !lowerLabel.includes("hủy")
+    );
+  };
+
+  const isCancelledStatus = (statusKey: string) => {
+    const config = statuses.find((s) => s.key === statusKey);
+    const lowerKey = statusKey.toLowerCase();
+    const lowerLabel = config ? config.label.toLowerCase() : "";
+    return (
+      lowerKey.includes("cancel") ||
+      lowerKey.includes("refund") ||
+      lowerKey.includes("hủy") ||
+      lowerLabel.includes("cancel") ||
+      lowerLabel.includes("refund") ||
+      lowerLabel.includes("hủy")
+    );
+  };
+
+  // Chuyển sang Delivered
+  if (isDeliveredStatus(newStatus) && !isDeliveredStatus(oldStatus)) {
+    if (customerDoc.email) {
+      const deliveredHtml = getOrderDeliveredTemplate(orderDoc);
+      await ctx.scheduler.runAfter(0, internal.email.sendTransactionalEmail, {
+        to: customerDoc.email,
+        subject: `[Thanshoes] Đơn hàng #${orderDoc.orderNumber} đã được giao thành công`,
+        html: deliveredHtml,
+        eventType: "order_delivered",
+        orderId: orderDoc._id,
+      });
+    }
+  }
+
+  // Chuyển sang Cancelled
+  if (isCancelledStatus(newStatus) && !isCancelledStatus(oldStatus)) {
+    if (customerDoc.email) {
+      const cancelledHtml = getOrderCancelledTemplate(orderDoc);
+      await ctx.scheduler.runAfter(0, internal.email.sendTransactionalEmail, {
+        to: customerDoc.email,
+        subject: `[Thanshoes] Đơn hàng #${orderDoc.orderNumber} đã bị hủy`,
+        html: cancelledHtml,
+        eventType: "order_cancelled",
+        orderId: orderDoc._id,
+      });
+    }
+
+    const notificationEmailsSetting = await ctx.db
+      .query("moduleSettings")
+      .withIndex("by_module_setting", (q) => q.eq("moduleKey", "orders").eq("settingKey", "order_notification_emails"))
+      .unique();
+    const shopEmails = (notificationEmailsSetting?.value as string) ?? "";
+    if (shopEmails) {
+      const cancelledHtml = getOrderCancelledTemplate(orderDoc, "Khách hàng hoặc quản trị viên yêu cầu hủy.");
+      await ctx.scheduler.runAfter(0, internal.email.sendTransactionalEmail, {
+        to: shopEmails,
+        subject: `[Thanshoes] Đơn hàng #${orderDoc.orderNumber} đã bị hủy`,
+        html: cancelledHtml,
+        eventType: "order_cancelled_shop",
+        orderId: orderDoc._id,
+      });
+    }
+  }
 }
 
 const orderItemValidator = v.object({
@@ -666,7 +764,16 @@ export const update = mutation({
     trackingNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const oldOrder = await ctx.db.get(args.id);
+    if (!oldOrder) {
+      throw new Error("Order not found");
+    }
+
     await OrdersModel.update(ctx, args);
+
+    if (args.status && args.status !== oldOrder.status) {
+      await handleOrderStatusTransition(ctx, args.id, oldOrder.status, args.status);
+    }
     return null;
   },
   returns: v.null(),
@@ -675,7 +782,14 @@ export const update = mutation({
 export const updateStatus = mutation({
   args: { id: v.id("orders"), status: orderStatus },
   handler: async (ctx, args) => {
+    const oldOrder = await ctx.db.get(args.id);
+    if (!oldOrder) {
+      throw new Error("Order not found");
+    }
+
     await OrdersModel.updateStatus(ctx, args);
+
+    await handleOrderStatusTransition(ctx, args.id, oldOrder.status, args.status);
     return null;
   },
   returns: v.null(),
@@ -744,9 +858,121 @@ export const cancel = mutation({
       throw new Error("Chưa cấu hình trạng thái hủy đơn");
     }
     await OrdersModel.updateStatus(ctx, { id: args.id, status: cancelledStatus.key });
+    
+    // Gửi email hủy đơn hàng
+    await handleOrderStatusTransition(ctx, args.id, order.status, cancelledStatus.key);
     return null;
   },
   returns: v.null(),
+});
+
+export const cancelOwnOrder = mutation({
+  args: {
+    orderId: v.id("orders"),
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (!args.token || !args.token.startsWith("cus_")) {
+      throw new Error("Phiên đăng nhập không hợp lệ");
+    }
+
+    const session = await ctx.db
+      .query("customerSessions")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+
+    if (!session || session.expiresAt < Date.now()) {
+      throw new Error("Phiên đăng nhập không hợp lệ hoặc đã hết hạn");
+    }
+
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Đơn hàng không tồn tại");
+    }
+
+    if (order.customerId !== session.customerId) {
+      throw new Error("Bạn không có quyền hủy đơn hàng này");
+    }
+
+    const { statuses } = await getOrderStatusSettings(ctx);
+    const currentStatus = statuses.find((status) => status.key === order.status);
+    if (!currentStatus?.allowCancel) {
+      throw new Error("Đơn hàng hiện không ở trạng thái được phép hủy");
+    }
+
+    const cancelledStatus = statuses.find((status) => status.key.toLowerCase().includes("cancel"));
+    if (!cancelledStatus) {
+      throw new Error("Chưa cấu hình trạng thái hủy đơn trên hệ thống");
+    }
+
+    await ctx.db.patch(order._id, { status: cancelledStatus.key });
+
+    // Gửi email hủy đơn hàng
+    await handleOrderStatusTransition(ctx, order._id, order.status, cancelledStatus.key);
+
+    const stockCheckEnabled = await isStockCheckEnabled(ctx);
+    if (stockCheckEnabled) {
+      const { variantStock } = await getVariantSettings(ctx);
+      if (variantStock === "variant") {
+        await Promise.all(
+          order.items.map(async (item) => {
+            if (item.variantId) {
+              const variant = await ctx.db.get(item.variantId);
+              if (variant && variant.stock !== undefined) {
+                await ctx.db.patch(item.variantId, { stock: variant.stock + item.quantity });
+              }
+            } else {
+              const product = await ctx.db.get(item.productId);
+              if (product && product.stock !== undefined) {
+                await ctx.db.patch(item.productId, { stock: product.stock + item.quantity });
+              }
+            }
+          })
+        );
+      } else {
+        await Promise.all(
+          order.items.map(async (item) => {
+            const product = await ctx.db.get(item.productId);
+            if (product && product.stock !== undefined) {
+              await ctx.db.patch(item.productId, { stock: product.stock + item.quantity });
+            }
+          })
+        );
+      }
+    }
+
+    if (order.promotionId) {
+      const promotion = await ctx.db.get(order.promotionId);
+      if (promotion) {
+        const usedCount = Math.max(0, promotion.usedCount - 1);
+        const budgetUsed = Math.max(0, (promotion.budgetUsed ?? 0) - (order.discountAmount ?? 0));
+        await ctx.db.patch(promotion._id, { usedCount, budgetUsed });
+      }
+
+      const usage = await ctx.db
+        .query("promotionUsage")
+        .withIndex("by_order", (q) => q.eq("orderId", order._id))
+        .first();
+      if (usage) {
+        await ctx.db.delete(usage._id);
+      }
+    }
+
+    const customer = await ctx.db.get(order.customerId);
+    await ctx.db.insert("notifications", {
+      title: `Đơn hàng #${order.orderNumber} đã bị khách hủy`,
+      content: `Khách hàng ${customer?.name ?? ""} đã chủ động hủy đơn hàng qua tài khoản.`,
+      type: "warning",
+      status: "Sent",
+      targetType: "users",
+      order: Date.now(),
+      readCount: 0,
+      sentAt: Date.now(),
+    });
+
+    return { ok: true };
+  },
+  returns: v.object({ ok: v.boolean() }),
 });
 
 async function recalculateCartInternal(ctx: MutationCtx, cartId: Id<"carts">) {
@@ -784,6 +1010,18 @@ export const placeOrder = mutation({
     discountAmount: v.optional(v.number()),
     cartId: v.optional(v.id("carts")),
     customerId: v.optional(v.id("customers")),
+    customerAddress: v.optional(
+      v.object({
+        format: v.union(v.literal("text"), v.literal("2-level"), v.literal("3-level")),
+        detail: v.string(),
+        provinceCode: v.optional(v.string()),
+        provinceName: v.optional(v.string()),
+        districtCode: v.optional(v.string()),
+        districtName: v.optional(v.string()),
+        wardCode: v.optional(v.string()),
+        wardName: v.optional(v.string()),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     let customerId: Id<"customers">;
@@ -811,12 +1049,23 @@ export const placeOrder = mutation({
 
     if (customer) {
       customerId = customer._id;
-      await ctx.db.patch(customerId, {
+      const patchData: any = {
         name: args.customer.name,
         address: args.shippingAddress ?? customer.address,
-      });
+      };
+      if (args.customerAddress) {
+        patchData.addressFormat = args.customerAddress.format;
+        patchData.addressDetail = args.customerAddress.detail;
+        patchData.provinceCode = args.customerAddress.provinceCode;
+        patchData.provinceName = args.customerAddress.provinceName;
+        patchData.districtCode = args.customerAddress.districtCode;
+        patchData.districtName = args.customerAddress.districtName;
+        patchData.wardCode = args.customerAddress.wardCode;
+        patchData.wardName = args.customerAddress.wardName;
+      }
+      await ctx.db.patch(customerId, patchData);
     } else {
-      customerId = await ctx.db.insert("customers", {
+      const insertData: any = {
         name: args.customer.name,
         email: cleanEmail,
         phone: cleanPhone,
@@ -824,7 +1073,18 @@ export const placeOrder = mutation({
         ordersCount: 0,
         totalSpent: 0,
         status: "Active",
-      });
+      };
+      if (args.customerAddress) {
+        insertData.addressFormat = args.customerAddress.format;
+        insertData.addressDetail = args.customerAddress.detail;
+        insertData.provinceCode = args.customerAddress.provinceCode;
+        insertData.provinceName = args.customerAddress.provinceName;
+        insertData.districtCode = args.customerAddress.districtCode;
+        insertData.districtName = args.customerAddress.districtName;
+        insertData.wardCode = args.customerAddress.wardCode;
+        insertData.wardName = args.customerAddress.wardName;
+      }
+      customerId = await ctx.db.insert("customers", insertData);
     }
 
     const { variantPricing, variantStock } = await getVariantSettings(ctx);
@@ -934,6 +1194,38 @@ export const placeOrder = mutation({
       sentAt: Date.now(),
     });
 
+    // Schedule gửi email cho khách hàng và shop
+    const orderDoc = await ctx.db.get(orderId);
+    const customerDoc = await ctx.db.get(customerId);
+    if (orderDoc && customerDoc) {
+      if (customerDoc.email) {
+        const customerHtml = getOrderPlacedCustomerTemplate(orderDoc);
+        await ctx.scheduler.runAfter(0, internal.email.sendTransactionalEmail, {
+          to: customerDoc.email,
+          subject: `[Thanshoes] Xác nhận đơn hàng #${orderDoc.orderNumber}`,
+          html: customerHtml,
+          eventType: "order_placed",
+          orderId: orderDoc._id,
+        });
+      }
+
+      const notificationEmailsSetting = await ctx.db
+        .query("moduleSettings")
+        .withIndex("by_module_setting", (q) => q.eq("moduleKey", "orders").eq("settingKey", "order_notification_emails"))
+        .unique();
+      const shopEmails = (notificationEmailsSetting?.value as string) ?? "";
+      if (shopEmails) {
+        const shopHtml = getOrderPlacedShopTemplate(orderDoc, customerDoc);
+        await ctx.scheduler.runAfter(0, internal.email.sendTransactionalEmail, {
+          to: shopEmails,
+          subject: `[Thanshoes] Đơn hàng mới #${orderDoc.orderNumber}`,
+          html: shopHtml,
+          eventType: "order_placed_shop",
+          orderId: orderDoc._id,
+        });
+      }
+    }
+
     return { ok: true, orderId, orderNumber };
   },
   returns: v.object({
@@ -960,18 +1252,20 @@ export const cancelByCustomer = mutation({
       return { ok: false, error: "Số điện thoại không khớp với thông tin đặt hàng" };
     }
 
-    const statusLower = order.status.toLowerCase();
-    if (statusLower !== "pending" && statusLower !== "confirmed") {
-      return { ok: false, error: "Đơn hàng đã được chuyển sang khâu đóng gói hoặc vận chuyển, không thể hủy." };
-    }
-
     const { statuses } = await getOrderStatusSettings(ctx);
+    const currentStatus = statuses.find((status) => status.key === order.status);
+    if (!currentStatus?.allowCancel) {
+      return { ok: false, error: "Đơn hàng hiện không ở trạng thái được phép hủy." };
+    }
     const cancelledStatus = statuses.find((status) => status.key.toLowerCase().includes("cancel"));
     if (!cancelledStatus) {
       return { ok: false, error: "Chưa cấu hình trạng thái hủy đơn trên hệ thống." };
     }
 
     await ctx.db.patch(order._id, { status: cancelledStatus.key });
+
+    // Gửi email hủy đơn hàng
+    await handleOrderStatusTransition(ctx, order._id, order.status, cancelledStatus.key);
 
     const stockCheckEnabled = await isStockCheckEnabled(ctx);
     if (stockCheckEnabled) {

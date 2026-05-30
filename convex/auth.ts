@@ -6,6 +6,10 @@ import { updateUserStats } from "./users";
 import { hashPassword, verifyPassword } from "./lib/password";
 import { consumeRateLimit, resetRateLimit } from "./lib/rateLimit";
 import { internal } from "./_generated/api";
+import {
+  normalizeOrderStatusPreset,
+  parseOrderStatuses,
+} from "../lib/orders/statuses";
 
 async function resolveSuperAdminRole(ctx: MutationCtx) {
   let superAdminRole = await ctx.db
@@ -1539,4 +1543,53 @@ export const checkPermission = query({
     allowed: v.boolean(),
     reason: v.string(),
   }),
+});
+
+export const getCustomerClaimStateByOrder = query({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) return null;
+
+    const customer = await ctx.db.get(order.customerId);
+    if (!customer) return null;
+
+    // Get order status settings
+    const presetSetting = await ctx.db
+      .query("moduleSettings")
+      .withIndex("by_module_setting", (q) =>
+        q.eq("moduleKey", "orders").eq("settingKey", "orderStatusPreset")
+      )
+      .unique();
+    const statusesSetting = await ctx.db
+      .query("moduleSettings")
+      .withIndex("by_module_setting", (q) =>
+        q.eq("moduleKey", "orders").eq("settingKey", "orderStatuses")
+      )
+      .unique();
+
+    const preset = normalizeOrderStatusPreset(presetSetting?.value);
+    const statuses = parseOrderStatuses(statusesSetting?.value, preset);
+
+    const currentStatus = statuses.find((status) => status.key === order.status);
+    const allowCancel = currentStatus?.allowCancel ?? false;
+
+    return {
+      email: customer.email,
+      name: customer.name,
+      phone: customer.phone,
+      canClaimAccount: !customer.passwordHash,
+      allowCancel,
+    };
+  },
+  returns: v.union(
+    v.object({
+      email: v.string(),
+      name: v.string(),
+      phone: v.string(),
+      canClaimAccount: v.boolean(),
+      allowCancel: v.boolean(),
+    }),
+    v.null()
+  ),
 });

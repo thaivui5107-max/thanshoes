@@ -816,6 +816,16 @@ function CheckoutContent() {
         shippingFee: shouldCollectShipping ? shippingFee : 0,
         cartId: fromCart && cart?._id ? cart._id : undefined,
         customerId: customer?.id ? (customer.id as Id<'customers'>) : undefined,
+        customerAddress: shouldCollectShipping ? {
+          format: addressFormat,
+          detail: addressDetail.trim(),
+          provinceCode: provinceCode || undefined,
+          provinceName: selectedProvinceName || undefined,
+          districtCode: districtCode || undefined,
+          districtName: selectedDistrict?.name || undefined,
+          wardCode: wardCode || undefined,
+          wardName: selectedWard?.name || undefined,
+        } : undefined,
       });
       if (!result.ok) {
         toast.error('Không thể tạo đơn hàng.');

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, Lock, Mail, Phone, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { useCustomerAuth } from '@/app/(site)/auth/context';
 import { toast } from 'sonner';
 
@@ -49,7 +49,13 @@ export default function CustomerLoginPage() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.push('/account/profile');
+      const params = new URLSearchParams(window.location.search);
+      const redirectTo = params.get('redirectTo');
+      if (redirectTo) {
+        router.push(redirectTo);
+      } else {
+        router.push('/account/profile');
+      }
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -103,7 +109,9 @@ export default function CustomerLoginPage() {
       const result = await login(identifier, password);
       if (result.success) {
         toast.success('Đăng nhập thành công!');
-        router.push('/account/profile');
+        const params = new URLSearchParams(window.location.search);
+        const redirectTo = params.get('redirectTo');
+        router.push(redirectTo || '/account/profile');
       } else {
         setError(result.message);
       }
@@ -131,7 +139,9 @@ export default function CustomerLoginPage() {
       const result = await completePasswordSetup(identifier, otpCode, newPassword);
       if (result.success) {
         toast.success('Đã kích hoạt tài khoản và đăng nhập thành công!');
-        router.push('/account/profile');
+        const params = new URLSearchParams(window.location.search);
+        const redirectTo = params.get('redirectTo');
+        router.push(redirectTo || '/account/profile');
       } else {
         setError(result.message);
       }

@@ -38,12 +38,12 @@ function ThankYouContent() {
   );
 
   const { isAuthenticated } = useCustomerAuth();
-  const customerDoc = useQuery(
-    api.customers.getById,
-    order ? { id: order.customerId } : 'skip'
+  const claimState = useQuery(
+    api.auth.getCustomerClaimStateByOrder,
+    orderId ? { orderId: orderId as Id<'orders'> } : 'skip'
   );
 
-  const showClaimBanner = !isAuthenticated && customerDoc && !customerDoc.passwordHash;
+  const showClaimBanner = !isAuthenticated && claimState && claimState.canClaimAccount;
 
   const ordersSettings = useQuery(api.admin.modules.listModuleSettings, { moduleKey: 'orders' });
 
@@ -221,7 +221,7 @@ function ThankYouContent() {
       </p>
 
       {/* Claim account password setup card */}
-      {showClaimBanner && (
+      {showClaimBanner && claimState && (
         <div
           style={{
             backgroundColor: tokens.selectionBg || '#fffbeb',
@@ -236,10 +236,15 @@ function ThankYouContent() {
             Kích hoạt tài khoản & Theo dõi đơn hàng
           </h3>
           <p style={{ fontSize: 13, color: tokens.metaText, marginBottom: 16, lineHeight: 1.4 }}>
-            Tài khoản khách vãng lai của bạn đã được ghi nhận. Tạo mật khẩu ngay để theo dõi lịch sử giao hàng và nhận ưu đãi cho lần mua sau.
+            Muốn theo dõi hoặc hủy đơn? Hãy kích hoạt tài khoản bằng email/SĐT vừa đặt hàng.{' '}
+            {claimState.allowCancel ? (
+              <strong>Đơn hiện còn có thể hủy trực tuyến sau khi bạn kích hoạt tài khoản.</strong>
+            ) : (
+              <strong>Đơn hiện không còn ở bước cho hủy trực tuyến; vui lòng liên hệ shop nếu cần hỗ trợ.</strong>
+            )}
           </p>
           <Link
-            href={`/account/login?mode=claim&identifier=${encodeURIComponent(customerDoc.email)}`}
+            href={`/account/login?mode=claim&identifier=${encodeURIComponent(claimState.email)}&redirectTo=${encodeURIComponent(`/account/orders?orderId=${orderId}`)}`}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -253,7 +258,7 @@ function ThankYouContent() {
               textDecoration: 'none',
             }}
           >
-            Kích hoạt tài khoản
+            Kích hoạt tài khoản để theo dõi/hủy đơn
           </Link>
         </div>
       )}

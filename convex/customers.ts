@@ -17,6 +17,14 @@ const customerDoc = v.object({
   phone: v.string(),
   status: customerStatus,
   totalSpent: v.number(),
+  addressFormat: v.optional(v.union(v.literal("text"), v.literal("2-level"), v.literal("3-level"))),
+  addressDetail: v.optional(v.string()),
+  provinceCode: v.optional(v.string()),
+  provinceName: v.optional(v.string()),
+  districtCode: v.optional(v.string()),
+  districtName: v.optional(v.string()),
+  wardCode: v.optional(v.string()),
+  wardName: v.optional(v.string()),
 });
 
 export const list = query({
@@ -236,6 +244,14 @@ export const update = mutation({
     notes: v.optional(v.string()),
     phone: v.optional(v.string()),
     status: v.optional(customerStatus),
+    addressFormat: v.optional(v.union(v.literal("text"), v.literal("2-level"), v.literal("3-level"))),
+    addressDetail: v.optional(v.string()),
+    provinceCode: v.optional(v.string()),
+    provinceName: v.optional(v.string()),
+    districtCode: v.optional(v.string()),
+    districtName: v.optional(v.string()),
+    wardCode: v.optional(v.string()),
+    wardName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
