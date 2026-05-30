@@ -222,13 +222,6 @@ export function ShippingMethodsEditor({ methods, onChange }: ShippingMethodsEdit
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="p-3">
-                        <Input
-                          placeholder="ví dụ: 2-4 ngày"
-                          value={method.estimate ?? ''}
-                          onChange={(event) => handleUpdate(index, { estimate: event.target.value })}
-                        />
-                      </TableCell>
                       {/* Cột điều kiện free ship */}
                       <TableCell className="p-3">
                         <div className="space-y-1">
@@ -246,6 +239,13 @@ export function ShippingMethodsEditor({ methods, onChange }: ShippingMethodsEdit
                             </span>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell className="p-3">
+                        <Input
+                          placeholder="ví dụ: 2-4 ngày"
+                          value={method.estimate ?? ''}
+                          onChange={(event) => handleUpdate(index, { estimate: event.target.value })}
+                        />
                       </TableCell>
                       <TableCell className="p-3 text-right">
                         <Button
