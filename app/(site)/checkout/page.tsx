@@ -18,8 +18,6 @@ import { useCart } from '@/lib/cart';
 const formatPrice = (value: number) => new Intl.NumberFormat('vi-VN', { currency: 'VND', style: 'currency' }).format(value);
 
 // ─── Combobox search cho Tỉnh/Quận/Phường ────────────────────────────────────
-const COMBOBOX_DEFAULT_COUNT = 8;
-
 interface ComboboxOption { code: string; name: string; }
 interface AddressComboboxProps {
   options: ComboboxOption[];
@@ -45,10 +43,8 @@ function AddressCombobox({ options, value, onChange, placeholder, disabled, hasE
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return options.slice(0, COMBOBOX_DEFAULT_COUNT);
-    return options
-      .filter((o) => o.name.toLowerCase().includes(q))
-      .slice(0, 40);
+    if (!q) return options;
+    return options.filter((o) => o.name.toLowerCase().includes(q));
   }, [options, query]);
 
   const handleOpen = useCallback(() => {
@@ -159,11 +155,6 @@ function AddressCombobox({ options, value, onChange, placeholder, disabled, hasE
               ))
             )}
           </ul>
-          {!query && options.length > COMBOBOX_DEFAULT_COUNT && (
-            <div className="px-3 py-1.5 text-[10px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
-              Gõ để tìm trong {options.length} kết quả
-            </div>
-          )}
         </div>
       )}
     </div>
