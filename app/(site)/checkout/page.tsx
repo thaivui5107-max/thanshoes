@@ -13,6 +13,7 @@ import { getCheckoutColors } from '@/components/site/checkout/colors';
 import { useCheckoutConfig } from '@/lib/experiences';
 import { useCustomerAuth } from '@/app/(site)/auth/context';
 import type { Id } from '@/convex/_generated/dataModel';
+import { useCart } from '@/lib/cart';
 
 const formatPrice = (value: number) => new Intl.NumberFormat('vi-VN', { currency: 'VND', style: 'currency' }).format(value);
 
@@ -277,14 +278,9 @@ function CheckoutContent() {
     api.productVariants.listByIds,
     variantId ? { ids: [variantId] } : 'skip'
   );
-  const cart = useQuery(
-    api.cart.getByCustomer,
-    fromCart && customer ? { customerId: customer.id as Id<'customers'> } : 'skip'
-  );
-  const cartItems = useQuery(
-    api.cart.listCartItems,
-    fromCart && cart?._id ? { cartId: cart._id } : 'skip'
-  );
+  const { cart: currentCart, items: currentCartItems, isLoading: isCartCtxLoading } = useCart();
+  const cart = fromCart ? currentCart : null;
+  const cartItems = fromCart ? currentCartItems : null;
   const cartProductIds = useMemo(() => {
     if (!fromCart || !cartItems) {
       return [] as Id<'products'>[];
@@ -420,7 +416,7 @@ function CheckoutContent() {
     api.promotions.validateCode,
     appliedCode && isPromotionEnabled ? { code: appliedCode, orderAmount: totalAmount } : 'skip'
   );
-  const isCartLoading = fromCart && (cart === undefined || (cart && cartItems === undefined));
+  const isCartLoading = fromCart && isCartCtxLoading;
 
   const appliedPromotion = promotionResult?.valid ? promotionResult : null;
   const discountAmount = appliedPromotion?.discountAmount ?? 0;
@@ -646,27 +642,7 @@ function CheckoutContent() {
     );
   }
 
-  if (fromCart && !isAuthenticated) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 py-16 text-center">
-        <div
-          className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: tokens.emptyStateIconBg }}
-        >
-          <CreditCard size={32} style={{ color: tokens.emptyStateIcon }} />
-        </div>
-        <h1 className="text-2xl font-bold mb-2" style={{ color: tokens.heading }}>Đăng nhập để thanh toán từ giỏ hàng</h1>
-        <p className="mb-6" style={{ color: tokens.metaText }}>Bạn cần đăng nhập để thanh toán từ giỏ hàng.</p>
-        <button
-          onClick={openLoginModal}
-          className="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-medium"
-          style={{ backgroundColor: tokens.primaryButtonBg, color: tokens.primaryButtonText }}
-        >
-          Đăng nhập ngay
-        </button>
-      </div>
-    );
-  }
+
 
   if (!fromCart && !productId) {
     return (

@@ -149,27 +149,6 @@ export default function CartPage() {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 py-16 text-center">
-        <div
-          className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: tokens.emptyStateIconBg }}
-        >
-          <ShoppingCart size={32} style={{ color: tokens.emptyStateIcon }} />
-        </div>
-        <h1 className="text-2xl font-bold mb-2" style={{ color: tokens.emptyStateTitle }}>Đăng nhập để xem giỏ hàng</h1>
-        <p className="mb-6" style={{ color: tokens.emptyStateText }}>Bạn cần đăng nhập để quản lý giỏ hàng của mình.</p>
-        <button
-          onClick={openLoginModal}
-          className="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-medium"
-          style={{ backgroundColor: tokens.primaryButtonBg, color: tokens.primaryButtonText }}
-        >
-          Đăng nhập ngay
-        </button>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (

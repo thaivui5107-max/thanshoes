@@ -879,11 +879,6 @@ function ProductsContent(props: ProductsPageProps) {
       return;
     }
 
-    if (!isAuthenticated) {
-      openLoginModal();
-      return;
-    }
-
     if (product.hasVariants) {
       if (enableQuickAddVariant) {
         openQuickAdd(product, 'addToCart');
@@ -904,11 +899,6 @@ function ProductsContent(props: ProductsPageProps) {
 
   const handleBuyNow = (product: ProductCardProps['product']) => {
     if (showStock && !product.hasVariants && product.stock <= 0) {
-      return;
-    }
-
-    if (!isAuthenticated) {
-      openLoginModal();
       return;
     }
 

@@ -732,10 +732,6 @@ export default function ProductDetailPage({ params }: PageProps) {
     if (!product?._id) {
       return;
     }
-    if (!isAuthenticated) {
-      openLoginModal();
-      return;
-    }
     if (product.hasVariants && !variantId) {
       toast.error('Vui lòng chọn phiên bản trước khi thêm vào giỏ hàng');
       return;
@@ -751,10 +747,6 @@ export default function ProductDetailPage({ params }: PageProps) {
 
   const handleBuyNow = async (quantity: number, variantId?: Id<'productVariants'>) => {
     if (!product?._id) {
-      return;
-    }
-    if (!isAuthenticated) {
-      openLoginModal();
       return;
     }
     if (product.hasVariants && !variantId) {
