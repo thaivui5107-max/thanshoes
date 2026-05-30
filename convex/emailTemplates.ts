@@ -38,12 +38,35 @@ export function getOtpTemplate(otpCode: string): string {
   `;
 }
 
-export function getOrderPlacedCustomerTemplate(order: Doc<"orders">): string {
+const formatImageUrl = (src: string | undefined | null, siteUrl: string) => {
+  if (!src) return "";
+  const trimmed = src.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  const cleanSrc = trimmed.startsWith("/") ? trimmed.substring(1) : trimmed;
+  const base = siteUrl.endsWith("/") ? siteUrl : `${siteUrl}/`;
+  return `${base}${cleanSrc}`;
+};
+
+const formatSiteUrl = (siteUrl: string) => {
+  const trimmed = siteUrl.trim();
+  return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
+};
+
+export function getOrderPlacedCustomerTemplate(order: Doc<"orders">, siteUrl: string): string {
   const itemsHtml = order.items
     .map(
       (item) => `
     <tr style="border-bottom: 1px solid #f1f5f9;">
-      <td style="padding: 12px 0; vertical-align: top;">
+      <td style="padding: 12px 0; vertical-align: top; width: 60px;">
+        ${
+          item.productImage
+            ? `<img src="${formatImageUrl(item.productImage, siteUrl)}" alt="${item.productName}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; display: block;" />`
+            : `<div style="width: 50px; height: 50px; background-color: #f1f5f9; border-radius: 8px; border: 1px solid #e2e8f0; display: block;"></div>`
+        }
+      </td>
+      <td style="padding: 12px 12px 12px 0; vertical-align: top;">
         <div style="font-weight: 600; color: #1e293b; font-size: 14px;">${item.productName}</div>
         ${item.variantTitle ? `<div style="font-size: 12px; color: #64748b; margin-top: 2px;">${item.variantTitle}</div>` : ""}
         <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Số lượng: ${item.quantity}</div>
@@ -111,7 +134,7 @@ export function getOrderPlacedCustomerTemplate(order: Doc<"orders">): string {
       <div style="background-color: #eef2ff; border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 24px;">
         <h4 style="color: #4f46e5; margin: 0 0 6px 0; font-size: 15px; font-weight: 700;">Theo dõi & Quản lý đơn hàng</h4>
         <p style="color: #4338ca; margin: 0 0 12px 0; font-size: 13px; line-height: 1.4;">Quý khách có thể kích hoạt tài khoản bằng Email/Số điện thoại để theo dõi lịch trình giao hàng trực tuyến và dễ dàng thực hiện hủy đơn.</p>
-        <a href="https://thanshoes.vn/tra-cuu-don-hang?orderNumber=${order.orderNumber}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 10px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);">Xem đơn hàng của bạn</a>
+        <a href="${formatSiteUrl(siteUrl)}/tra-cuu-don-hang?orderNumber=${order.orderNumber}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 10px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);">Xem đơn hàng của bạn</a>
       </div>
 
       <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;" />
@@ -123,12 +146,19 @@ export function getOrderPlacedCustomerTemplate(order: Doc<"orders">): string {
   `;
 }
 
-export function getOrderPlacedShopTemplate(order: Doc<"orders">, customer: Doc<"customers">): string {
+export function getOrderPlacedShopTemplate(order: Doc<"orders">, customer: Doc<"customers">, siteUrl: string): string {
   const itemsHtml = order.items
     .map(
       (item) => `
     <tr style="border-bottom: 1px solid #f1f5f9;">
-      <td style="padding: 12px 0; vertical-align: top;">
+      <td style="padding: 12px 0; vertical-align: top; width: 60px;">
+        ${
+          item.productImage
+            ? `<img src="${formatImageUrl(item.productImage, siteUrl)}" alt="${item.productName}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; display: block;" />`
+            : `<div style="width: 50px; height: 50px; background-color: #f1f5f9; border-radius: 8px; border: 1px solid #e2e8f0; display: block;"></div>`
+        }
+      </td>
+      <td style="padding: 12px 12px 12px 0; vertical-align: top;">
         <div style="font-weight: 600; color: #1e293b; font-size: 14px;">${item.productName}</div>
         ${item.variantTitle ? `<div style="font-size: 12px; color: #64748b; margin-top: 2px;">${item.variantTitle}</div>` : ""}
         <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Số lượng: ${item.quantity}</div>
@@ -190,7 +220,7 @@ export function getOrderPlacedShopTemplate(order: Doc<"orders">, customer: Doc<"
       </div>
 
       <div style="text-align: center; margin-bottom: 24px;">
-        <a href="https://thanshoes.vn/admin/orders/${order._id}/edit" style="display: inline-block; background-color: #ef4444; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 12px 24px; border-radius: 8px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);">Xem và Xử lý trên Admin Panel</a>
+        <a href="${formatSiteUrl(siteUrl)}/admin/orders/${order._id}/edit" style="display: inline-block; background-color: #ef4444; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 12px 24px; border-radius: 8px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);">Xem và Xử lý trên Admin Panel</a>
       </div>
     </div>
   `;

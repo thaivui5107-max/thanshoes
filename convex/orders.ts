@@ -1184,8 +1184,14 @@ export const placeOrder = mutation({
     const orderDoc = await ctx.db.get(orderId);
     const customerDoc = await ctx.db.get(customerId);
     if (orderDoc && customerDoc) {
+      const siteUrlSetting = await ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", "site_url"))
+        .unique();
+      const siteUrl = siteUrlSetting?.value ? String(siteUrlSetting.value).trim() : "https://thanshoes.vn";
+
       if (customerDoc.email) {
-        const customerHtml = getOrderPlacedCustomerTemplate(orderDoc);
+        const customerHtml = getOrderPlacedCustomerTemplate(orderDoc, siteUrl);
         await ctx.scheduler.runAfter(0, internal.email.sendTransactionalEmail, {
           to: customerDoc.email,
           subject: `[Thanshoes] Xác nhận đơn hàng #${orderDoc.orderNumber}`,
@@ -1197,7 +1203,7 @@ export const placeOrder = mutation({
 
       const shopEmails = await resolveOrderNotificationEmails(ctx);
       if (shopEmails) {
-        const shopHtml = getOrderPlacedShopTemplate(orderDoc, customerDoc);
+        const shopHtml = getOrderPlacedShopTemplate(orderDoc, customerDoc, siteUrl);
         await ctx.scheduler.runAfter(0, internal.email.sendTransactionalEmail, {
           to: shopEmails,
           subject: `[Thanshoes] Đơn hàng mới #${orderDoc.orderNumber}`,
