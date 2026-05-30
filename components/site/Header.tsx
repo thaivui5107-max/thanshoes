@@ -704,15 +704,17 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
               <Package size={16} />
               Đơn hàng của tôi
             </Link>
-            <Link
-              href={DEFAULT_LINKS.wishlist}
-              onClick={() => { setUserMenuOpen(false); }}
-              className="flex items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)]"
-              style={{ color: tokens.dropdownItemText, ...menuVars }}
-            >
-              <Heart size={16} />
-              Danh sách yêu thích
-            </Link>
+            {wishlistEnabled && (
+              <Link
+                href={DEFAULT_LINKS.wishlist}
+                onClick={() => { setUserMenuOpen(false); }}
+                className="flex items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)]"
+                style={{ color: tokens.dropdownItemText, ...menuVars }}
+              >
+                <Heart size={16} />
+                Danh sách yêu thích
+              </Link>
+            )}
           </div>
           <div className="border-t" style={{ borderColor: tokens.border }}>
             <button

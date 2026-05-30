@@ -9,8 +9,8 @@ import {
   MapPin,
   PackageCheck,
   Phone,
-  Settings,
   ShoppingBag,
+  ShoppingCart,
   User,
 } from 'lucide-react';
 import { getAccountProfileColors, type AccountProfileColorMode } from '@/components/site/account/profile/colors';
@@ -48,15 +48,9 @@ const ACTIONS = [
   },
   {
     id: 'payment',
-    label: 'Phương thức thanh toán',
-    description: 'Quản lý thẻ & ví',
-    icon: CreditCard,
-  },
-  {
-    id: 'settings',
-    label: 'Cài đặt tài khoản',
-    description: 'Bảo mật & thông báo',
-    icon: Settings,
+    label: 'Giỏ hàng của tôi',
+    description: 'Quản lý giỏ hàng của bạn',
+    icon: ShoppingCart,
   },
 ];
 

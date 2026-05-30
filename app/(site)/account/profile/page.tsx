@@ -11,8 +11,8 @@ import {
   MapPin,
   PackageCheck,
   Phone,
-  Settings,
   ShoppingBag,
+  ShoppingCart,
   User,
 } from 'lucide-react';
 import { api } from '@/convex/_generated/api';
@@ -31,6 +31,8 @@ export default function AccountProfilePage() {
   const { customer, isAuthenticated, openLoginModal } = useCustomerAuth();
   const customersModule = useQuery(api.admin.modules.getModuleByKey, { key: 'customers' });
   const loginFeature = useQuery(api.admin.modules.getModuleFeature, { moduleKey: 'customers', featureKey: 'enableLogin' });
+  const wishlistModule = useQuery(api.admin.modules.getModuleByKey, { key: 'wishlist' });
+  const customerDetail = useQuery(api.customers.getById, customer?.id ? { id: customer.id as any } : 'skip');
 
   if (customersModule && !customersModule.enabled) {
     return (
@@ -86,7 +88,7 @@ export default function AccountProfilePage() {
 
   const displayName = customer.name || 'Khách hàng';
   const joinedDate = 'Đang cập nhật';
-  const address = 'Chưa cập nhật';
+  const address = customerDetail?.address || 'Chưa cập nhật';
 
   const actions = [
     {
@@ -112,17 +114,10 @@ export default function AccountProfilePage() {
     },
     {
       id: 'payment',
-      label: 'Phương thức thanh toán',
-      description: 'Quản lý thẻ & ví',
-      icon: CreditCard,
+      label: 'Giỏ hàng của tôi',
+      description: 'Quản lý giỏ hàng của bạn',
+      icon: ShoppingCart,
       href: '/cart',
-    },
-    {
-      id: 'settings',
-      label: 'Cài đặt tài khoản',
-      description: 'Bảo mật & thông báo',
-      icon: Settings,
-      href: '/account/profile',
     },
   ];
 
@@ -130,7 +125,12 @@ export default function AccountProfilePage() {
     ? config.actionItems
     : actions.map((action) => action.id);
   const visibleActions = config.showQuickActions
-    ? actions.filter((action) => selectedActionIds.includes(action.id))
+    ? actions.filter((action) => {
+        if (action.id === 'wishlist' && wishlistModule && !wishlistModule.enabled) {
+          return false;
+        }
+        return selectedActionIds.includes(action.id);
+      })
     : [];
 
   return (
