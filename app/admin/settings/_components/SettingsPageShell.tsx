@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { LayoutTemplate, Loader2, Palette, Save, Send } from 'lucide-react';
+import { Eye, LayoutTemplate, Loader2, Palette, Save, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMutation, useQuery } from 'convex/react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -2124,64 +2124,151 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     />
                   )}
                   {advancedTab === 'email-config' && canEditEmailConfig && (
-                    <div className="space-y-6">
-                      <div className="rounded-xl border border-orange-100 bg-orange-50/60 p-4 dark:border-orange-900/40 dark:bg-orange-950/20">
-                        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Cấu hình email cho admin</h3>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Admin chỉ chỉnh thông tin hiển thị và email nhận thông báo. Khóa gửi mail do dev quản lý ở System.
-                        </p>
-                      </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                      {/* Cấu hình cột trái (7 cols) */}
+                      <div className="lg:col-span-7 space-y-6">
+                        <div className="rounded-xl border border-orange-100 bg-orange-50/60 p-4 dark:border-orange-900/40 dark:bg-orange-950/20">
+                          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Cấu hình email cho admin</h3>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Admin chỉ chỉnh thông tin hiển thị và email nhận thông báo. Khóa gửi mail do dev quản lý ở System.
+                          </p>
+                        </div>
 
-                      <div className="grid gap-4 lg:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label>Tên người gửi</Label>
-                          <Input
-                            value={getStringField('mail_from_name', EMAIL_DEFAULTS.mail_from_name)}
-                            onChange={(event) => updateField('mail_from_name', event.target.value)}
-                            placeholder="Thanshoes"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Email gửi đi</Label>
-                          <Input
-                            type="email"
-                            value={getStringField('mail_from_email', EMAIL_DEFAULTS.mail_from_email)}
-                            onChange={(event) => updateField('mail_from_email', event.target.value)}
-                            placeholder="onboarding@resend.dev"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Email nhận thông báo đơn hàng</Label>
-                          <Input
-                            value={getStringField('order_notification_emails')}
-                            onChange={(event) => updateField('order_notification_emails', event.target.value)}
-                            placeholder="admin@example.com, manager@example.com"
-                          />
-                          <p className="text-xs text-slate-500">Có thể nhập nhiều email, phân tách bằng dấu phẩy.</p>
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-                        <div className="space-y-2">
-                          <Label>Gửi thử email</Label>
-                          <div className="flex flex-col gap-2 sm:flex-row">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label>Tên người gửi</Label>
                             <Input
-                              type="email"
-                              value={testEmail}
-                              onChange={(event) => setTestEmail(event.target.value)}
-                              placeholder="email-khach@example.com"
+                              value={getStringField('mail_from_name', EMAIL_DEFAULTS.mail_from_name)}
+                              onChange={(event) => updateField('mail_from_name', event.target.value)}
+                              placeholder="Thanshoes"
                             />
-                            <Button
-                              type="button"
-                              onClick={handleSendTestEmail}
-                              disabled={isSendingTestEmail}
-                              className="shrink-0"
-                            >
-                              {isSendingTestEmail ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Send size={16} className="mr-2" />}
-                              {isSendingTestEmail ? 'Đang gửi...' : 'Gửi thử'}
-                            </Button>
                           </div>
-                          <p className="text-xs text-slate-500">Dùng để kiểm tra email gửi ra có đến đúng hộp thư khách hay không.</p>
+                          <div className="space-y-2">
+                            <Label>Email nhận thông báo đơn hàng</Label>
+                            <Input
+                              value={getStringField('order_notification_emails')}
+                              onChange={(event) => updateField('order_notification_emails', event.target.value)}
+                              placeholder="admin@example.com, manager@example.com"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="text-[11px] text-slate-500 -mt-2">
+                          Email nhận thông báo đơn hàng có thể nhập nhiều email, phân tách bằng dấu phẩy.
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                          <div className="space-y-2">
+                            <Label>Gửi thử email</Label>
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                              <Input
+                                type="email"
+                                value={testEmail}
+                                onChange={(event) => setTestEmail(event.target.value)}
+                                placeholder="email-khach@example.com"
+                              />
+                              <Button
+                                type="button"
+                                onClick={handleSendTestEmail}
+                                disabled={isSendingTestEmail}
+                                className="shrink-0"
+                              >
+                                {isSendingTestEmail ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Send size={16} className="mr-2" />}
+                                {isSendingTestEmail ? 'Đang gửi...' : 'Gửi thử'}
+                              </Button>
+                            </div>
+                            <p className="text-xs text-slate-500">Dùng để kiểm tra email gửi ra có đến đúng hộp thư khách hay không.</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Preview cột phải (5 cols) */}
+                      <div className="lg:col-span-5 flex flex-col justify-start">
+                        <div className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col">
+                          <Label className="font-semibold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-1.5">
+                            <Eye size={16} className="text-orange-500" /> Preview email gửi khách
+                          </Label>
+
+                          {/* Khung giả lập Mail Client */}
+                          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-950 text-xs font-sans text-slate-700 dark:text-slate-300">
+                            {/* Mail Header */}
+                            <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-1">
+                              <div className="flex justify-between text-slate-400">
+                                <span>Từ:</span>
+                                <span className="font-medium text-slate-700 dark:text-slate-300">
+                                  {getStringField('mail_from_name', EMAIL_DEFAULTS.mail_from_name)} &lt;{getStringField('mail_from_email', EMAIL_DEFAULTS.mail_from_email)}&gt;
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-slate-400">
+                                <span>Đến:</span>
+                                <span className="text-slate-600 dark:text-slate-400">khachhang@gmail.com</span>
+                              </div>
+                              <div className="flex justify-between text-slate-400">
+                                <span>Tiêu đề:</span>
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                  [{getStringField('mail_from_name', EMAIL_DEFAULTS.mail_from_name)}] Xác nhận đơn hàng #1004
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Mail Body Container */}
+                            <div className="p-4 bg-white dark:bg-slate-900 flex justify-center">
+                              {/* Mô phỏng khung email gửi thực tế */}
+                              <div className="w-full max-w-sm border border-slate-100 dark:border-slate-800 rounded-md p-4 bg-slate-50/50 dark:bg-slate-950/50 space-y-4 shadow-xs">
+                                {/* Email header logo */}
+                                <div className="text-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                                  <div className="font-bold text-sm text-slate-800 dark:text-slate-200 tracking-wide uppercase">
+                                    {getStringField('mail_from_name', EMAIL_DEFAULTS.mail_from_name)}
+                                  </div>
+                                </div>
+
+                                {/* Greeting */}
+                                <div className="space-y-1">
+                                  <p className="font-semibold text-[11px] text-slate-800 dark:text-slate-200">Chào Nguyễn Văn A,</p>
+                                  <p className="text-[10px] text-slate-500 leading-relaxed">Cảm ơn bạn đã mua sắm tại {getStringField('mail_from_name', EMAIL_DEFAULTS.mail_from_name)}! Đơn hàng của bạn đã được nhận và đang chờ xử lý.</p>
+                                </div>
+
+                                {/* Order details */}
+                                <div className="p-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-sm space-y-2">
+                                  <div className="flex justify-between text-[10px] font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                                    <span>ĐƠN HÀNG #1004</span>
+                                    <span className="text-orange-500 font-medium">Chờ xử lý</span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="flex justify-between text-[9px] text-slate-500">
+                                      <span>Sản phẩm:</span>
+                                      <span className="font-medium text-slate-700 dark:text-slate-300">Giày Sneaker Adidas Samba (Size 41) x 1</span>
+                                    </div>
+                                    <div className="flex justify-between text-[9px] text-slate-500">
+                                      <span>Tổng cộng:</span>
+                                      <span className="font-bold text-slate-800 dark:text-slate-200">2.500.000 đ</span>
+                                    </div>
+                                    <div className="flex justify-between text-[9px] text-slate-500">
+                                      <span>Hình thức:</span>
+                                      <span className="text-slate-600 dark:text-slate-400">Thanh toán chuyển khoản (VietQR)</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Call to action */}
+                                <div className="text-center pt-2">
+                                  <div className="inline-block bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[9px] font-bold px-4 py-1.5 rounded-md shadow-sm">
+                                    Xem chi tiết đơn hàng
+                                  </div>
+                                </div>
+
+                                {/* Footer sign */}
+                                <div className="text-center pt-3 border-t border-slate-100 dark:border-slate-800 text-[9px] text-slate-400">
+                                  <p>Trân trọng,</p>
+                                  <p className="font-semibold text-slate-500 dark:text-slate-300">Đội ngũ {getStringField('mail_from_name', EMAIL_DEFAULTS.mail_from_name)}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 text-center">
+                            💡 Tiêu đề và nội dung email tự động đồng bộ theo <b>Tên người gửi</b>.
+                          </p>
                         </div>
                       </div>
                     </div>
