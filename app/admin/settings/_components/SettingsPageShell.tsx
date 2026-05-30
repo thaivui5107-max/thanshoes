@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { LayoutTemplate, Loader2, Palette, Save } from 'lucide-react';
+import { LayoutTemplate, Loader2, Palette, Save, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMutation, useQuery } from 'convex/react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -46,6 +46,7 @@ type SettingsToSave = {
 };
 
 const MODULE_KEY = 'settings';
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SECTION_LABELS: Record<SettingsSection, string> = {
   contact: 'Thông tin liên hệ',
@@ -147,34 +148,16 @@ const SHOP_CONFIG_ADVANCED_FEATURE = 'enableShopConfigAdvanced';
 const EMAIL_CONFIG_ADVANCED_FEATURE = 'enableMail';
 const EMAIL_SETTING_KEYS = [
   'mail_driver',
-  'mail_host',
-  'mail_port',
-  'mail_username',
-  'mail_password',
-  'mail_encryption',
   'mail_from_email',
   'mail_from_name',
   'order_notification_emails',
 ] as const;
 const EMAIL_DEFAULTS: Record<(typeof EMAIL_SETTING_KEYS)[number], string> = {
   mail_driver: 'resend',
-  mail_host: '',
-  mail_port: '587',
-  mail_username: '',
-  mail_password: '',
-  mail_encryption: 'tls',
   mail_from_email: 'onboarding@resend.dev',
   mail_from_name: 'Thanshoes',
   order_notification_emails: '',
 };
-const EMAIL_SETUP_PRESETS = [
-  { id: 'resend', label: 'Dùng Resend đã cài trong System (khuyên dùng)', driver: 'resend', host: '', port: '587', encryption: 'tls' },
-  { id: 'gmail', label: 'Gửi qua Gmail / Google Workspace', driver: 'smtp', host: 'smtp.gmail.com', port: '587', encryption: 'tls' },
-  { id: 'outlook', label: 'Gửi qua Outlook / Microsoft 365', driver: 'smtp', host: 'smtp.office365.com', port: '587', encryption: 'tls' },
-  { id: 'zoho', label: 'Zoho Mail', driver: 'smtp', host: 'smtp.zoho.com', port: '587', encryption: 'tls' },
-  { id: 'custom', label: 'Tùy chỉnh', driver: 'smtp', host: '', port: '587', encryption: 'tls' },
-] as const;
-type EmailSetupPresetId = (typeof EMAIL_SETUP_PRESETS)[number]['id'];
 const DEFAULT_HEADER_CONFIG: HeaderConfig = {
   showBrandName: true,
   logoSizeLevel: 2,
@@ -255,7 +238,8 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const [headerConfigDraft, setHeaderConfigDraft] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [initialHeaderConfig, setInitialHeaderConfig] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [activeDrag, setActiveDrag] = useState<'image-move' | 'image-resize' | 'text-move' | null>(null);
-  const [emailPreset, setEmailPreset] = useState<EmailSetupPresetId>('resend');
+  const [testEmail, setTestEmail] = useState('');
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
   const previewCanvasRef = React.useRef<HTMLDivElement>(null);
 
   // Queries
@@ -543,14 +527,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
           values[key] = EMAIL_DEFAULTS[key];
         }
       });
-      const matchedEmailPreset = EMAIL_SETUP_PRESETS.find((preset) =>
-        preset.id !== 'custom' &&
-        preset.driver === values.mail_driver &&
-        preset.host === values.mail_host &&
-        preset.port === values.mail_port &&
-        preset.encryption === values.mail_encryption
-      );
-      setEmailPreset(matchedEmailPreset?.id ?? (values.mail_driver === 'resend' ? 'resend' : 'custom'));
       setIsSecondaryAuto(values.site_brand_mode === 'single' ? true : !values.site_brand_secondary);
       setForm(values);
       setInitialForm(values);
@@ -626,23 +602,40 @@ function SettingsContent({ section }: { section: SettingsSection }) {
     return typeof value === 'string' ? value : fallback;
   };
 
-  const handleEmailPresetChange = (presetId: EmailSetupPresetId) => {
-    const preset = EMAIL_SETUP_PRESETS.find(item => item.id === presetId);
-    if (!preset) {return;}
-    setEmailPreset(presetId);
-    setForm(prev => ({
-      ...prev,
-      mail_driver: preset.driver,
-      mail_host: preset.id === 'custom' ? String(prev.mail_host ?? '') : preset.host,
-      mail_port: preset.port,
-      mail_encryption: preset.encryption,
-    }));
-  };
-
   const updateImageField = (key: string, url: string | undefined, storageId?: Id<'_storage'> | null) => {
     updateField(key, url ?? '');
     if (storageId !== undefined) {
       setMediaStorageIds(prev => ({ ...prev, [key]: storageId }));
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    const email = testEmail.trim();
+    if (!EMAIL_REGEX.test(email)) {
+      toast.error('Email nhận thử không hợp lệ.');
+      return;
+    }
+
+    setIsSendingTestEmail(true);
+    try {
+      const response = await fetch('/api/system/integrations/test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: email,
+          subject: 'Email test từ Thanshoes',
+          html: '<p>Đây là email test từ hệ thống Thanshoes.</p>',
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.message || 'Gửi email thử thất bại.');
+      }
+      toast.success('Đã gửi email thử. Vui lòng kiểm tra hộp thư.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Gửi email thử thất bại.');
+    } finally {
+      setIsSendingTestEmail(false);
     }
   };
 
@@ -696,18 +689,10 @@ function SettingsContent({ section }: { section: SettingsSection }) {
     }
 
     if (section === 'advanced' && advancedTab === 'email-config' && canEditEmailConfig) {
-      const driver = getStringField('mail_driver', 'resend');
       const fromEmail = getStringField('mail_from_email').trim();
       if (fromEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fromEmail)) {
         toast.error('Email gửi đi không hợp lệ.');
         return false;
-      }
-      if (driver === 'smtp') {
-        const port = Number(getStringField('mail_port'));
-        if (!Number.isFinite(port) || port <= 0) {
-          toast.error('Cổng kết nối gửi mail không hợp lệ.');
-          return false;
-        }
       }
     }
 
@@ -882,7 +867,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
             settingsToSave.push({
               group: 'mail',
               key,
-              value: form[key] ?? EMAIL_DEFAULTS[key],
+              value: key === 'mail_driver' ? EMAIL_DEFAULTS.mail_driver : (form[key] ?? EMAIL_DEFAULTS[key]),
             });
           }
         });
@@ -1415,7 +1400,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const headerSpacingLevel = typeof headerConfigDraft.headerSpacingLevel === 'number' ? headerConfigDraft.headerSpacingLevel : 5;
   const logoSizeLabel = LOGO_SIZE_OPTIONS[logoSizeLevel - 1]?.label ?? 'Mặc định';
   const headerSpacingLabel = HEADER_SPACING_OPTIONS[headerSpacingLevel - 1]?.label ?? 'Cân bằng';
-  const mailDriver = getStringField('mail_driver', EMAIL_DEFAULTS.mail_driver);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-28">
@@ -2150,21 +2134,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
 
                       <div className="grid gap-4 lg:grid-cols-2">
                         <div className="space-y-2">
-                          <Label>Chọn cách gửi email</Label>
-                          <select
-                            value={emailPreset}
-                            onChange={(event) => handleEmailPresetChange(event.target.value as EmailSetupPresetId)}
-                            className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                          >
-                            {EMAIL_SETUP_PRESETS.map((preset) => (
-                              <option key={preset.id} value={preset.id}>{preset.label}</option>
-                            ))}
-                          </select>
-                          <p className="text-xs text-slate-500">
-                            Nên dùng Resend nếu dev đã cấu hình sẵn ở khu vực System.
-                          </p>
-                        </div>
-                        <div className="space-y-2">
                           <Label>Tên người gửi</Label>
                           <Input
                             value={getStringField('mail_from_name', EMAIL_DEFAULTS.mail_from_name)}
@@ -2192,60 +2161,29 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                         </div>
                       </div>
 
-                      {mailDriver === 'resend' ? (
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
-                          Đang dùng Resend đã cài trong System. Admin không cần nhập khóa bí mật tại đây.
-                        </div>
-                      ) : (
-                        <div className="grid gap-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700 lg:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label>Máy chủ gửi mail</Label>
+                      <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                        <div className="space-y-2">
+                          <Label>Gửi thử email</Label>
+                          <div className="flex flex-col gap-2 sm:flex-row">
                             <Input
-                              value={getStringField('mail_host')}
-                              onChange={(event) => updateField('mail_host', event.target.value)}
-                              placeholder="smtp.gmail.com"
+                              type="email"
+                              value={testEmail}
+                              onChange={(event) => setTestEmail(event.target.value)}
+                              placeholder="email-khach@example.com"
                             />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Cổng kết nối</Label>
-                            <Input
-                              type="number"
-                              value={getStringField('mail_port', '587')}
-                              onChange={(event) => updateField('mail_port', event.target.value)}
-                              placeholder="587"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Tài khoản gửi mail</Label>
-                            <Input
-                              value={getStringField('mail_username')}
-                              onChange={(event) => updateField('mail_username', event.target.value)}
-                              placeholder="email@example.com"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Mật khẩu ứng dụng</Label>
-                            <Input
-                              type="password"
-                              value={getStringField('mail_password')}
-                              onChange={(event) => updateField('mail_password', event.target.value)}
-                              placeholder="Mật khẩu ứng dụng"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Bảo mật kết nối</Label>
-                            <select
-                              value={getStringField('mail_encryption', 'tls')}
-                              onChange={(event) => updateField('mail_encryption', event.target.value)}
-                              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                            <Button
+                              type="button"
+                              onClick={handleSendTestEmail}
+                              disabled={isSendingTestEmail}
+                              className="shrink-0"
                             >
-                              <option value="tls">TLS</option>
-                              <option value="ssl">SSL</option>
-                              <option value="">Không mã hóa</option>
-                            </select>
+                              {isSendingTestEmail ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Send size={16} className="mr-2" />}
+                              {isSendingTestEmail ? 'Đang gửi...' : 'Gửi thử'}
+                            </Button>
                           </div>
+                          <p className="text-xs text-slate-500">Dùng để kiểm tra email gửi ra có đến đúng hộp thư khách hay không.</p>
                         </div>
-                      )}
+                      </div>
                     </div>
                   )}
                 </div>
