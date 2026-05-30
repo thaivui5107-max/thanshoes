@@ -2127,12 +2127,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                       {/* Cấu hình cột trái (7 cols) */}
                       <div className="lg:col-span-7 space-y-6">
-                        <div className="rounded-xl border border-orange-100 bg-orange-50/60 p-4 dark:border-orange-900/40 dark:bg-orange-950/20">
-                          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Cấu hình email cho admin</h3>
-                          <p className="mt-1 text-xs text-slate-500">
-                            Admin chỉ chỉnh thông tin hiển thị và email nhận thông báo. Khóa gửi mail do dev quản lý ở System.
-                          </p>
-                        </div>
+
 
                         <div className="grid gap-4 sm:grid-cols-2">
                           <div className="space-y-2">
