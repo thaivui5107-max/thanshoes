@@ -7,6 +7,7 @@ import { dependencyType, fieldType, moduleCategory } from "../lib/validators";
 import { syncModuleRuntimeConfig } from "../lib/moduleConfigSync";
 import { resolveMenuMaxDepthLevel } from "../../lib/utils/menu-tree";
 import { TRUST_PAGE_SLOTS } from "../../lib/ia/trust-pages";
+import { validateShippingMethods, validatePaymentMethods, validateOrderStatuses } from "../../lib/orders/config-validation";
 
 // ============ ADMIN MODULES ============
 
@@ -974,6 +975,30 @@ export const getModuleSetting = query({
 export const setModuleSetting = mutation({
   args: { moduleKey: v.string(), settingKey: v.string(), value: v.any() },
   handler: async (ctx, args) => {
+    if (args.moduleKey === "orders") {
+      if (args.settingKey === "shippingMethods") {
+        const res = validateShippingMethods(args.value);
+        if (!res.success) {
+          throw new Error(res.error);
+        }
+      } else if (args.settingKey === "paymentMethods") {
+        const res = validatePaymentMethods(args.value);
+        if (!res.success) {
+          throw new Error(res.error);
+        }
+      } else if (args.settingKey === "orderStatuses") {
+        const res = validateOrderStatuses(args.value);
+        if (!res.success) {
+          throw new Error(res.error);
+        }
+      } else if (args.settingKey === "addressFormat") {
+        const format = String(args.value);
+        if (!["text", "2-level", "3-level"].includes(format)) {
+          throw new Error("Định dạng địa chỉ không hợp lệ.");
+        }
+      }
+    }
+
     const existing = await ctx.db
       .query("moduleSettings")
       .withIndex("by_module_setting", (q) =>

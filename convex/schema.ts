@@ -221,6 +221,7 @@ export default defineSchema({
     totalSpent: v.number(),
   })
     .index("by_email", ["email"])
+    .index("by_phone", ["phone"])
     .index("by_status", ["status"])
     .index("by_status_totalSpent", ["status", "totalSpent"])
     .index("by_city_status", ["city", "status"]),

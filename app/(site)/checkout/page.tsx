@@ -135,7 +135,7 @@ function CheckoutContent() {
   );
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { customer, isAuthenticated, openLoginModal } = useCustomerAuth();
+  const { customer } = useCustomerAuth();
   const checkoutConfig = useCheckoutConfig();
   const ordersModule = useQuery(api.admin.modules.getModuleByKey, { key: 'orders' });
   const promotionsModule = useQuery(api.admin.modules.getModuleByKey, { key: 'promotions' });
@@ -158,6 +158,16 @@ function CheckoutContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [activeWizardStep, setActiveWizardStep] = useState(0);
+  const [errors, setErrors] = useState<{
+    customerName?: string;
+    customerPhone?: string;
+    customerEmail?: string;
+    shippingAddress?: string;
+    provinceCode?: string;
+    districtCode?: string;
+    wardCode?: string;
+    addressDetail?: string;
+  }>({});
   const [twoLevelData, setTwoLevelData] = useState<TwoLevelProvince[]>([]);
   const [provinceList, setProvinceList] = useState<AddressOption[]>([]);
   const [districtList, setDistrictList] = useState<AddressOption[]>([]);
@@ -194,7 +204,7 @@ function CheckoutContent() {
     const parsed = parseJsonSetting<PaymentMethodConfig[]>(settingsMap.paymentMethods, DEFAULT_PAYMENT_METHODS);
     return Array.isArray(parsed) ? parsed : DEFAULT_PAYMENT_METHODS;
   }, [settingsMap.paymentMethods]);
-  const bankInfo = useMemo(() => ({
+  const _bankInfo = useMemo(() => ({
     bankName: getStringSetting(settingsMap.bankName, 'Vietcombank'),
     bankCode: getStringSetting(settingsMap.bankCode, 'VCB'),
     accountName: getStringSetting(settingsMap.bankAccountName, 'CÔNG TY VIETADMIN'),
@@ -573,19 +583,44 @@ function CheckoutContent() {
   };
 
   const handlePlaceOrder = async () => {
-    if (!customerName.trim() || !customerPhone.trim()) {
-      toast.error('Vui lòng nhập đầy đủ tên và số điện thoại.');
-      return;
+    const newErrors: typeof errors = {};
+    if (!customerName.trim()) {
+      newErrors.customerName = 'Vui lòng nhập họ tên.';
     }
-
+    if (!customerPhone.trim()) {
+      newErrors.customerPhone = 'Vui lòng nhập số điện thoại.';
+    }
     const emailTrimmed = customerEmail.trim();
-    if (!emailTrimmed || !emailTrimmed.includes('@') || !emailTrimmed.includes('.')) {
-      toast.error('Vui lòng nhập email hợp lệ.');
-      return;
+    if (!emailTrimmed) {
+      newErrors.customerEmail = 'Vui lòng nhập email.';
+    } else if (!emailTrimmed.includes('@') || !emailTrimmed.includes('.')) {
+      newErrors.customerEmail = 'Vui lòng nhập email hợp lệ.';
     }
 
-    if (!isAddressValid) {
-      toast.error('Vui lòng nhập địa chỉ giao hàng.');
+    if (shouldCollectShipping) {
+      if (addressFormat === 'text') {
+        if (!shippingAddress.trim()) {
+          newErrors.shippingAddress = 'Vui lòng nhập địa chỉ giao hàng.';
+        }
+      } else {
+        if (!provinceCode) {
+          newErrors.provinceCode = 'Vui lòng chọn Tỉnh/Thành.';
+        }
+        if (addressFormat === '3-level' && !districtCode) {
+          newErrors.districtCode = 'Vui lòng chọn Quận/Huyện.';
+        }
+        if (!wardCode) {
+          newErrors.wardCode = 'Vui lòng chọn Phường/Xã.';
+        }
+        if (!addressDetail.trim()) {
+          newErrors.addressDetail = 'Vui lòng nhập số nhà, tên đường.';
+        }
+      }
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toast.error('Vui lòng kiểm tra lại các thông tin còn thiếu.');
       return;
     }
 
@@ -599,6 +634,7 @@ function CheckoutContent() {
       const result = await placeOrderMutation({
         customer: { name: customerName.trim(), email: emailTrimmed, phone: customerPhone.trim() },
         items: orderItems,
+        note: fromCart ? (cart?.note ?? undefined) : undefined,
         paymentMethod: selectedPayment?.type ?? 'COD',
         promotionId: appliedPromotion?.promotion?._id,
         promotionCode: appliedPromotion?.promotion?.code,
@@ -728,40 +764,55 @@ function CheckoutContent() {
     );
   }
 
+  const isStepInfoCompleted = Boolean(
+    customerName.trim() &&
+    customerPhone.trim() &&
+    customerEmail.trim().includes('@') &&
+    customerEmail.trim().includes('.') &&
+    isAddressValid
+  );
+
+  const isStepShippingCompleted = !shouldCollectShipping || Boolean(shippingMethodId);
+
+  const stepsState = useMemo(() => {
+    return [
+      { label: 'Thông tin', icon: MapPin, isCompleted: isStepInfoCompleted, isActive: true },
+      ...(shouldCollectShipping ? [{ label: 'Vận chuyển', icon: Truck, isCompleted: isStepShippingCompleted, isActive: isStepInfoCompleted }] : []),
+      ...(isPaymentEnabled ? [{ label: 'Thanh toán', icon: CreditCard, isCompleted: false, isActive: isStepInfoCompleted && isStepShippingCompleted }] : []),
+    ];
+  }, [isStepInfoCompleted, isStepShippingCompleted, shouldCollectShipping, isPaymentEnabled]);
+
   const StepIndicator = (
     <div className="flex items-center justify-between mb-6">
-      {[
-        { label: 'Thông tin', icon: MapPin },
-        { label: 'Vận chuyển', icon: Truck },
-        { label: 'Thanh toán', icon: CreditCard },
-      ].filter((step) => (step.label !== 'Vận chuyển' || shouldCollectShipping) && (step.label !== 'Thanh toán' || isPaymentEnabled))
-        .map((step, index, arr) => (
-          <React.Fragment key={step.label}>
-            <div className="flex flex-col items-center">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={index === 0
-                  ? { backgroundColor: tokens.stepActiveBg, color: tokens.stepActiveText }
-                  : { backgroundColor: tokens.stepInactiveBg, color: tokens.stepInactiveText }
-                }
-              >
-                {index === 0 ? <Check size={18} /> : <step.icon size={18} />}
-              </div>
-              <span
-                className="text-xs mt-1"
-                style={index === 0 ? { color: tokens.primary, fontWeight: 600 } : { color: tokens.mutedText }}
-              >
-                {step.label}
-              </span>
+      {stepsState.map((step, index, arr) => (
+        <React.Fragment key={step.label}>
+          <div className="flex flex-col items-center">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300"
+              style={step.isCompleted
+                ? { backgroundColor: tokens.stepActiveBg, color: tokens.stepActiveText }
+                : step.isActive
+                ? { backgroundColor: tokens.stepActiveBg, color: tokens.stepActiveText }
+                : { backgroundColor: tokens.stepInactiveBg, color: tokens.stepInactiveText }
+              }
+            >
+              {step.isCompleted ? <Check size={18} /> : <step.icon size={18} />}
             </div>
-            {index < arr.length - 1 && (
-              <div
-                className="flex-1 h-0.5 mx-2"
-                style={{ backgroundColor: index === 0 ? tokens.stepLineActive : tokens.stepLineInactive }}
-              />
-            )}
-          </React.Fragment>
-        ))}
+            <span
+              className="text-xs mt-1 transition-colors duration-300"
+              style={step.isActive ? { color: tokens.primary, fontWeight: 600 } : { color: tokens.mutedText }}
+            >
+              {step.label}
+            </span>
+          </div>
+          {index < arr.length - 1 && (
+            <div
+              className="flex-1 h-0.5 mx-2 transition-all duration-500"
+              style={{ backgroundColor: step.isCompleted ? tokens.stepLineActive : tokens.stepLineInactive }}
+            />
+          )}
+        </React.Fragment>
+      ))}
     </div>
   );
 
@@ -776,105 +827,202 @@ function CheckoutContent() {
           {shouldCollectShipping ? 'Thông tin giao hàng' : 'Thông tin liên hệ'}
         </h2>
       </div>
-      <div className="grid gap-3">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input
-            type="text"
-            placeholder="Họ tên"
-            className="w-full px-3 py-2.5 border rounded-lg text-sm"
-            style={{ backgroundColor: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.inputText }}
-            value={customerName}
-            onChange={(event) => setCustomerName(event.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Số điện thoại"
-            className="w-full px-3 py-2.5 border rounded-lg text-sm"
-            style={{ backgroundColor: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.inputText }}
-            value={customerPhone}
-            onChange={(event) => setCustomerPhone(event.target.value)}
-          />
-        </div>
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full px-3 py-2.5 border rounded-lg text-sm"
-          style={{ backgroundColor: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.inputText }}
-          value={customerEmail}
-          onChange={(event) => setCustomerEmail(event.target.value)}
-        />
-        {shouldCollectShipping && addressFormat === 'text' ? (
-          <input
-            type="text"
-            placeholder="Địa chỉ giao hàng"
-            className="w-full px-3 py-2.5 border rounded-lg text-sm"
-            style={{ backgroundColor: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.inputText }}
-            value={shippingAddress}
-            onChange={(event) => setShippingAddress(event.target.value)}
-          />
-        ) : shouldCollectShipping ? (
-          <div className="grid gap-3">
-            <div className={`grid gap-3 ${addressFormat === '3-level' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-              <select
-                value={provinceCode}
-                onChange={(event) => {
-                  setProvinceCode(event.target.value);
-                  setDistrictCode('');
-                  setWardCode('');
-                }}
-                className="w-full px-3 py-2.5 border rounded-lg text-sm"
-                style={{ backgroundColor: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.inputText }}
-              >
-                <option value="">Chọn Tỉnh/Thành</option>
-                {provinceList.map((province) => (
-                  <option key={province.code} value={province.code}>{province.name}</option>
-                ))}
-              </select>
-              {addressFormat === '3-level' && (
-                <select
-                  value={districtCode}
-                  onChange={(event) => {
-                    setDistrictCode(event.target.value);
-                    setWardCode('');
-                  }}
-                  className="w-full px-3 py-2.5 border rounded-lg text-sm"
-                  style={{ backgroundColor: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.inputText }}
-                  disabled={!provinceCode}
-                >
-                  <option value="">Chọn Quận/Huyện</option>
-                  {availableDistricts.map((district) => (
-                    <option key={district.code} value={district.code}>{district.name}</option>
-                  ))}
-                </select>
-              )}
-              <select
-                value={wardCode}
-                onChange={(event) => setWardCode(event.target.value)}
-                className="w-full px-3 py-2.5 border rounded-lg text-sm"
-                style={{ backgroundColor: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.inputText }}
-                disabled={addressFormat === '3-level' ? !districtCode : !provinceCode}
-              >
-                <option value="">Chọn Phường/Xã</option>
-                {availableWards.map((ward) => (
-                  <option key={ward.code} value={ward.code}>{ward.name}</option>
-                ))}
-              </select>
-            </div>
+      <div className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold block" style={{ color: tokens.bodyText }}>
+              Họ tên <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
-              placeholder="Số nhà, tên đường"
-              className="w-full px-3 py-2.5 border rounded-lg text-sm"
-              style={{ backgroundColor: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.inputText }}
-              value={addressDetail}
-              onChange={(event) => setAddressDetail(event.target.value)}
+              placeholder="Họ tên"
+              aria-invalid={!!errors.customerName}
+              className={`w-full px-3 py-2.5 border rounded-lg text-sm transition-colors ${errors.customerName ? 'border-red-500 focus:ring-red-500' : ''}`}
+              style={{ backgroundColor: tokens.inputBg, borderColor: errors.customerName ? '#ef4444' : tokens.inputBorder, color: tokens.inputText }}
+              value={customerName}
+              onChange={(event) => {
+                setCustomerName(event.target.value);
+                setErrors((prev) => ({ ...prev, customerName: undefined }));
+              }}
             />
+            {errors.customerName && (
+              <p className="text-xs text-red-500 mt-1">{errors.customerName}</p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold block" style={{ color: tokens.bodyText }}>
+              Số điện thoại <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Số điện thoại"
+              aria-invalid={!!errors.customerPhone}
+              className={`w-full px-3 py-2.5 border rounded-lg text-sm transition-colors ${errors.customerPhone ? 'border-red-500 focus:ring-red-500' : ''}`}
+              style={{ backgroundColor: tokens.inputBg, borderColor: errors.customerPhone ? '#ef4444' : tokens.inputBorder, color: tokens.inputText }}
+              value={customerPhone}
+              onChange={(event) => {
+                setCustomerPhone(event.target.value);
+                setErrors((prev) => ({ ...prev, customerPhone: undefined }));
+              }}
+            />
+            {errors.customerPhone && (
+              <p className="text-xs text-red-500 mt-1">{errors.customerPhone}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold block" style={{ color: tokens.bodyText }}>
+            Email nhận thông tin đơn hàng <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            placeholder="Email"
+            aria-invalid={!!errors.customerEmail}
+            className={`w-full px-3 py-2.5 border rounded-lg text-sm transition-colors ${errors.customerEmail ? 'border-red-500 focus:ring-red-500' : ''}`}
+            style={{ backgroundColor: tokens.inputBg, borderColor: errors.customerEmail ? '#ef4444' : tokens.inputBorder, color: tokens.inputText }}
+            value={customerEmail}
+            onChange={(event) => {
+              setCustomerEmail(event.target.value);
+              setErrors((prev) => ({ ...prev, customerEmail: undefined }));
+            }}
+          />
+          {errors.customerEmail && (
+            <p className="text-xs text-red-500 mt-1">{errors.customerEmail}</p>
+          )}
+        </div>
+
+        {shouldCollectShipping && addressFormat === 'text' ? (
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold block" style={{ color: tokens.bodyText }}>
+              Địa chỉ giao hàng <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Địa chỉ giao hàng"
+              aria-invalid={!!errors.shippingAddress}
+              className={`w-full px-3 py-2.5 border rounded-lg text-sm transition-colors ${errors.shippingAddress ? 'border-red-500 focus:ring-red-500' : ''}`}
+              style={{ backgroundColor: tokens.inputBg, borderColor: errors.shippingAddress ? '#ef4444' : tokens.inputBorder, color: tokens.inputText }}
+              value={shippingAddress}
+              onChange={(event) => {
+                setShippingAddress(event.target.value);
+                setErrors((prev) => ({ ...prev, shippingAddress: undefined }));
+              }}
+            />
+            {errors.shippingAddress && (
+              <p className="text-xs text-red-500 mt-1">{errors.shippingAddress}</p>
+            )}
+          </div>
+        ) : shouldCollectShipping ? (
+          <div className="grid gap-4">
+            <div className={`grid gap-4 ${addressFormat === '3-level' ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold block" style={{ color: tokens.bodyText }}>
+                  Tỉnh/Thành <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={provinceCode}
+                  aria-invalid={!!errors.provinceCode}
+                  onChange={(event) => {
+                    setProvinceCode(event.target.value);
+                    setDistrictCode('');
+                    setWardCode('');
+                    setErrors((prev) => ({ ...prev, provinceCode: undefined, districtCode: undefined, wardCode: undefined }));
+                  }}
+                  className={`w-full px-3 py-2.5 border rounded-lg text-sm transition-colors ${errors.provinceCode ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  style={{ backgroundColor: tokens.inputBg, borderColor: errors.provinceCode ? '#ef4444' : tokens.inputBorder, color: tokens.inputText }}
+                >
+                  <option value="">Chọn Tỉnh/Thành</option>
+                  {provinceList.map((province) => (
+                    <option key={province.code} value={province.code}>{province.name}</option>
+                  ))}
+                </select>
+                {errors.provinceCode && (
+                  <p className="text-xs text-red-500 mt-1">{errors.provinceCode}</p>
+                )}
+              </div>
+
+              {addressFormat === '3-level' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold block" style={{ color: tokens.bodyText }}>
+                    Quận/Huyện <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={districtCode}
+                    aria-invalid={!!errors.districtCode}
+                    onChange={(event) => {
+                      setDistrictCode(event.target.value);
+                      setWardCode('');
+                      setErrors((prev) => ({ ...prev, districtCode: undefined, wardCode: undefined }));
+                    }}
+                    className={`w-full px-3 py-2.5 border rounded-lg text-sm transition-colors ${errors.districtCode ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    style={{ backgroundColor: tokens.inputBg, borderColor: errors.districtCode ? '#ef4444' : tokens.inputBorder, color: tokens.inputText }}
+                    disabled={!provinceCode}
+                  >
+                    <option value="">Chọn Quận/Huyện</option>
+                    {availableDistricts.map((district) => (
+                      <option key={district.code} value={district.code}>{district.name}</option>
+                    ))}
+                  </select>
+                  {errors.districtCode && (
+                    <p className="text-xs text-red-500 mt-1">{errors.districtCode}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold block" style={{ color: tokens.bodyText }}>
+                  Phường/Xã <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={wardCode}
+                  aria-invalid={!!errors.wardCode}
+                  onChange={(event) => {
+                    setWardCode(event.target.value);
+                    setErrors((prev) => ({ ...prev, wardCode: undefined }));
+                  }}
+                  className={`w-full px-3 py-2.5 border rounded-lg text-sm transition-colors ${errors.wardCode ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  style={{ backgroundColor: tokens.inputBg, borderColor: errors.wardCode ? '#ef4444' : tokens.inputBorder, color: tokens.inputText }}
+                  disabled={addressFormat === '3-level' ? !districtCode : !provinceCode}
+                >
+                  <option value="">Chọn Phường/Xã</option>
+                  {availableWards.map((ward) => (
+                    <option key={ward.code} value={ward.code}>{ward.name}</option>
+                  ))}
+                </select>
+                {errors.wardCode && (
+                  <p className="text-xs text-red-500 mt-1">{errors.wardCode}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold block" style={{ color: tokens.bodyText }}>
+                Số nhà, tên đường <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Số nhà, tên đường"
+                aria-invalid={!!errors.addressDetail}
+                className={`w-full px-3 py-2.5 border rounded-lg text-sm transition-colors ${errors.addressDetail ? 'border-red-500 focus:ring-red-500' : ''}`}
+                style={{ backgroundColor: tokens.inputBg, borderColor: errors.addressDetail ? '#ef4444' : tokens.inputBorder, color: tokens.inputText }}
+                value={addressDetail}
+                onChange={(event) => {
+                  setAddressDetail(event.target.value);
+                  setErrors((prev) => ({ ...prev, addressDetail: undefined }));
+                }}
+              />
+              {errors.addressDetail && (
+                <p className="text-xs text-red-500 mt-1">{errors.addressDetail}</p>
+              )}
+            </div>
           </div>
         ) : (
           <div
             className="rounded-lg border px-3 py-2 text-xs"
             style={{ borderColor: tokens.border, backgroundColor: tokens.surfaceMuted, color: tokens.metaText }}
           >
-            Đơn hàng digital sẽ được gửi qua tài khoản của bạn sau khi thanh toán.
+            Đơn hàng digital sẽ được gửi qua email của bạn sau khi thanh toán thành công.
           </div>
         )}
       </div>
@@ -911,7 +1059,9 @@ function CheckoutContent() {
             <div className="flex-1">
               <div className="font-medium text-sm" style={{ color: tokens.bodyText }}>{method.label}</div>
               {method.description && <div className="text-xs" style={{ color: tokens.metaText }}>{method.description}</div>}
-              {method.estimate && <div className="text-xs" style={{ color: tokens.mutedText }}>{method.estimate}</div>}
+              {method.estimate && method.estimate !== method.description && (
+                <div className="text-xs" style={{ color: tokens.mutedText }}>{method.estimate}</div>
+              )}
             </div>
             <span className="font-semibold text-sm" style={{ color: tokens.priceText }}>{formatPrice(method.fee)}</span>
           </label>
@@ -921,9 +1071,6 @@ function CheckoutContent() {
   );
 
   const paymentMethodsCard = !isPaymentEnabled ? null : (() => {
-    const vietQrInfo = encodeURIComponent(`DH ${orderId ?? 'PENDING'}`);
-    const vietQrAccountName = encodeURIComponent(bankInfo.accountName);
-    const vietQrUrl = `https://img.vietqr.io/image/${bankInfo.bankCode}-${bankInfo.accountNumber}-${bankInfo.vietQrTemplate}.jpg?amount=${finalTotal}&addInfo=${vietQrInfo}&accountName=${vietQrAccountName}`;
     return (
       <div
         className="rounded-2xl border p-5 space-y-3"
@@ -960,30 +1107,13 @@ function CheckoutContent() {
         </div>
         {(selectedPayment?.type === 'BankTransfer' || selectedPayment?.type === 'VietQR') && (
           <div
-            className="border rounded-lg p-3 text-sm"
+            className="border rounded-lg p-3 text-sm space-y-1.5"
             style={{ borderColor: tokens.border, backgroundColor: tokens.surfaceMuted, color: tokens.metaText }}
           >
-            <div className="font-medium mb-1" style={{ color: tokens.bodyText }}>Thông tin chuyển khoản</div>
-            <div>Ngân hàng: {bankInfo.bankName} ({bankInfo.bankCode})</div>
-            <div>Số tài khoản: {bankInfo.accountNumber}</div>
-            <div>Chủ tài khoản: {bankInfo.accountName}</div>
-            {selectedPayment.type === 'VietQR' && (
-              <div className="mt-3 flex flex-col items-center gap-2">
-                <Image
-                  src={vietQrUrl}
-                  alt="VietQR"
-                  width={192}
-                  height={192}
-                  className="w-48 h-48 rounded-lg border"
-                  style={{ borderColor: tokens.border, backgroundColor: tokens.surface }}
-                  loading="lazy"
-                  mode="decorative"
-                />
-                <div className="text-xs" style={{ color: tokens.metaText }}>
-                  Quét mã để thanh toán {formatPrice(finalTotal)}
-                </div>
-              </div>
-            )}
+            <div className="font-medium text-sm" style={{ color: tokens.bodyText }}>Thông tin thanh toán</div>
+            <p className="text-xs" style={{ color: tokens.metaText }}>
+              Sau khi bạn gửi đơn hàng thành công, mã QR và nội dung chuyển khoản chi tiết sẽ xuất hiện ở trang xác nhận đơn hàng để bạn thực hiện thanh toán chuyển khoản.
+            </p>
           </div>
         )}
       </div>
@@ -1047,12 +1177,16 @@ function CheckoutContent() {
       </div>
       <button
         type="button"
-        className="w-full h-11 rounded-lg text-sm font-semibold"
+        className="w-full h-11 rounded-lg text-sm font-semibold transition-colors px-4"
         style={{ backgroundColor: tokens.primaryButtonBg, color: tokens.primaryButtonText }}
         onClick={handlePlaceOrder}
         disabled={isSubmitting || Boolean(orderId)}
       >
-        {orderId ? 'Đã đặt hàng' : isSubmitting ? 'Đang xử lý...' : 'Đặt hàng ngay'}
+        {orderId ? 'Đã đặt hàng' : isSubmitting ? 'Đang xử lý...' : 
+          (selectedPayment?.type === 'BankTransfer' || selectedPayment?.type === 'VietQR')
+            ? 'Tạo đơn và xem thông tin thanh toán'
+            : 'Đặt hàng ngay'
+        }
       </button>
       {orderId && (
         <div className="text-xs text-center" style={{ color: tokens.highlightText }}>
@@ -1157,7 +1291,61 @@ function CheckoutContent() {
                       </div>
                     </div>
                   </button>
-                  {index === activeWizardStep && <div className="px-4 pb-4">{step.content}</div>}
+                  {index === activeWizardStep && (
+                    <div className="px-4 pb-4 space-y-4">
+                      {step.content}
+                      <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor: tokens.border }}>
+                        {index > 0 && (
+                          <button
+                            type="button"
+                            className="px-4 py-2 border rounded-lg text-sm font-semibold transition-colors"
+                            style={{ borderColor: tokens.border, color: tokens.bodyText }}
+                            onClick={() => setActiveWizardStep(index - 1)}
+                          >
+                            Quay lại
+                          </button>
+                        )}
+                        {index < wizardSteps.length - 1 && (
+                          <button
+                            type="button"
+                            className="px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
+                            style={{ backgroundColor: tokens.primaryButtonBg, color: tokens.primaryButtonText }}
+                            onClick={() => {
+                              if (step.key === 'info') {
+                                const newErrors: typeof errors = {};
+                                if (!customerName.trim()) newErrors.customerName = 'Vui lòng nhập họ tên.';
+                                if (!customerPhone.trim()) newErrors.customerPhone = 'Vui lòng nhập số điện thoại.';
+                                const emailTrimmed = customerEmail.trim();
+                                if (!emailTrimmed) {
+                                  newErrors.customerEmail = 'Vui lòng nhập email.';
+                                } else if (!emailTrimmed.includes('@') || !emailTrimmed.includes('.')) {
+                                  newErrors.customerEmail = 'Vui lòng nhập email hợp lệ.';
+                                }
+                                if (shouldCollectShipping) {
+                                  if (addressFormat === 'text') {
+                                    if (!shippingAddress.trim()) newErrors.shippingAddress = 'Vui lòng nhập địa chỉ giao hàng.';
+                                  } else {
+                                    if (!provinceCode) newErrors.provinceCode = 'Vui lòng chọn Tỉnh/Thành.';
+                                    if (addressFormat === '3-level' && !districtCode) newErrors.districtCode = 'Vui lòng chọn Quận/Huyện.';
+                                    if (!wardCode) newErrors.wardCode = 'Vui lòng chọn Phường/Xã.';
+                                    if (!addressDetail.trim()) newErrors.addressDetail = 'Vui lòng nhập số nhà, tên đường.';
+                                  }
+                                }
+                                if (Object.keys(newErrors).length > 0) {
+                                  setErrors(newErrors);
+                                  toast.error('Vui lòng kiểm tra lại các thông tin còn thiếu.');
+                                  return;
+                                }
+                              }
+                              setActiveWizardStep(index + 1);
+                            }}
+                          >
+                            Tiếp tục
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

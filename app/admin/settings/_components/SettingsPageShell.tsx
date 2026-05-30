@@ -17,9 +17,7 @@ import { HomeComponentStickyFooter } from '@/app/admin/home-components/_shared/c
 import { AiSeoImportDialog } from './AiSeoImportDialog';
 import { SeoBuilderDialog } from './SeoBuilderDialog';
 import { ProductSupplementalContentManager } from './ProductSupplementalContentManager';
-import { ordersModule } from '@/lib/modules/configs/orders.config';
-import { OrdersConfigTab } from '@/components/modules/orders/OrdersConfigTab';
-import { useModuleConfig } from '@/lib/modules/hooks/useModuleConfig';
+import { ShopConfigAdminContainer } from '@/components/modules/orders/ShopConfigAdminContainer';
 
 type SettingsSection = 'site' | 'contact' | 'seo' | 'advanced';
 type SettingsFormValue = string | boolean;
@@ -230,7 +228,9 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const defaultImageAspectRatio = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
   const productsSettings = useQuery(api.admin.modules.listModuleSettings, { moduleKey: 'products' });
   const [selectedFrameAR, setSelectedFrameAR] = useState<string>('');
-  const ordersModuleConfig = useModuleConfig(ordersModule);
+  const [shopConfigDirty, setShopConfigDirty] = useState(false);
+  const [shopConfigSaving, setShopConfigSaving] = useState(false);
+  const saveShopConfigRef = React.useRef<{ save: () => Promise<void> } | null>(null);
  
   // Parse enabled features
   const enabledFeatures = useMemo(() => {
@@ -535,12 +535,12 @@ function SettingsContent({ section }: { section: SettingsSection }) {
  
   const hasChanges = useMemo(() => {
     if (isShopConfigTab) {
-      return ordersModuleConfig.hasChanges;
+      return shopConfigDirty;
     }
     return Object.keys(form).some(key => form[key] !== initialForm[key]) || (canEditHeaderMenu && headerConfigHasChanges);
-  }, [isShopConfigTab, ordersModuleConfig.hasChanges, form, initialForm, canEditHeaderMenu, headerConfigHasChanges]);
+  }, [isShopConfigTab, shopConfigDirty, form, initialForm, canEditHeaderMenu, headerConfigHasChanges]);
  
-  const isCurrentlySaving = isSaving || (isShopConfigTab && ordersModuleConfig.isSaving);
+  const isCurrentlySaving = isSaving || (isShopConfigTab && shopConfigSaving);
 
   const updateField = (key: string, value: string | boolean) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -615,9 +615,22 @@ function SettingsContent({ section }: { section: SettingsSection }) {
     return true;
   };
 
+  const handleTabChange = (nextTab: AdvancedTab) => {
+    if (isShopConfigTab && shopConfigDirty) {
+      if (window.confirm('Bạn có thay đổi chưa lưu trong Cấu hình cửa hàng. Nếu chuyển tab, các thay đổi này sẽ bị mất. Bạn có chắc chắn muốn chuyển không?')) {
+        setShopConfigDirty(false);
+        setAdvancedTab(nextTab);
+      }
+    } else {
+      setAdvancedTab(nextTab);
+    }
+  };
+
   const handleSave = async () => {
     if (isShopConfigTab) {
-      await ordersModuleConfig.handleSave();
+      if (saveShopConfigRef.current) {
+        await saveShopConfigRef.current.save();
+      }
       return;
     }
  
@@ -1316,7 +1329,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                   <div className="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-700">
                     <button
                       type="button"
-                      onClick={() => setAdvancedTab('product-placeholder')}
+                      onClick={() => handleTabChange('product-placeholder')}
                       className={cn(
                         'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
                         advancedTab === 'product-placeholder'
@@ -1328,7 +1341,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setAdvancedTab('product-frame')}
+                      onClick={() => handleTabChange('product-frame')}
                       className={cn(
                         'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
                         advancedTab === 'product-frame'
@@ -1340,7 +1353,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setAdvancedTab('watermark')}
+                      onClick={() => handleTabChange('watermark')}
                       className={cn(
                         'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
                         advancedTab === 'watermark'
@@ -1353,7 +1366,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     {canEditHeaderMenu && (
                       <button
                         type="button"
-                        onClick={() => setAdvancedTab('header')}
+                        onClick={() => handleTabChange('header')}
                         className={cn(
                           'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
                           advancedTab === 'header'
@@ -1367,7 +1380,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     {enableSupplementalContent && (
                       <button
                         type="button"
-                        onClick={() => setAdvancedTab('product-supplemental')}
+                        onClick={() => handleTabChange('product-supplemental')}
                         className={cn(
                           'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
                           advancedTab === 'product-supplemental'
@@ -1381,7 +1394,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     {canEditShopConfig && (
                       <button
                         type="button"
-                        onClick={() => setAdvancedTab('shop-config')}
+                        onClick={() => handleTabChange('shop-config')}
                         className={cn(
                           'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
                           advancedTab === 'shop-config'
@@ -1977,27 +1990,12 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     <ProductSupplementalContentManager />
                   )}
                   {advancedTab === 'shop-config' && canEditShopConfig && (
-                    <OrdersConfigTab
-                      config={ordersModule}
-                      moduleData={ordersModuleConfig.moduleData}
-                      isReadOnly={ordersModuleConfig.moduleData?.enabled === false}
-                      localFeatures={ordersModuleConfig.localFeatures}
-                      localFields={ordersModuleConfig.localFields}
-                      localSettings={ordersModuleConfig.localSettings}
-                      localCategoryFields={ordersModuleConfig.localCategoryFields}
-                      colorClasses={{
-                        iconBg: 'bg-emerald-500/10',
-                        iconText: 'text-emerald-600 dark:text-emerald-400',
-                        button: 'bg-emerald-600 hover:bg-emerald-500',
-                        toggle: 'bg-emerald-500',
-                        tab: 'border-emerald-500',
-                        fieldColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+                    <ShopConfigAdminContainer
+                      onDirtyChange={setShopConfigDirty}
+                      onSavingChange={setShopConfigSaving}
+                      registerSaveRef={(ref) => {
+                        saveShopConfigRef.current = ref;
                       }}
-                      onToggleFeature={ordersModuleConfig.handleToggleFeature}
-                      onToggleField={ordersModuleConfig.handleToggleField}
-                      onToggleCategoryField={ordersModuleConfig.handleToggleCategoryField}
-                      onSettingChange={ordersModuleConfig.handleSettingChange}
-                      hideModuleStatus={true}
                     />
                   )}
                 </div>

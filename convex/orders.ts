@@ -758,7 +758,11 @@ async function recalculateCartInternal(ctx: MutationCtx, cartId: Id<"carts">) {
   const itemsCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = items.reduce((sum, item) => sum + item.subtotal, 0);
 
-  await ctx.db.patch(cartId, { itemsCount, totalAmount });
+  const patchData: any = { itemsCount, totalAmount };
+  if (itemsCount === 0) {
+    patchData.status = "Converted";
+  }
+  await ctx.db.patch(cartId, patchData);
 }
 
 export const placeOrder = mutation({
@@ -791,8 +795,10 @@ export const placeOrder = mutation({
       .first();
 
     if (!customer && cleanPhone) {
-      const allCustomers = await ctx.db.query("customers").collect();
-      customer = allCustomers.find((c) => c.phone.trim() === cleanPhone.trim()) ?? null;
+      customer = await ctx.db
+        .query("customers")
+        .withIndex("by_phone", (q) => q.eq("phone", cleanPhone))
+        .first();
     }
 
     if (customer) {
@@ -815,6 +821,23 @@ export const placeOrder = mutation({
 
     const { variantPricing, variantStock } = await getVariantSettings(ctx);
     const normalizedItems = await normalizeOrderItems(ctx, args.items, variantPricing);
+
+    // Siết chặt validation đầu vào
+    if (normalizedItems.length === 0) {
+      throw new Error("Không có sản phẩm để đặt hàng");
+    }
+    for (const item of normalizedItems) {
+      if (item.quantity <= 0 || !Number.isFinite(item.quantity)) {
+        throw new Error(`Số lượng sản phẩm ${item.productName} không hợp lệ`);
+      }
+      if (item.price < 0 || !Number.isFinite(item.price)) {
+        throw new Error(`Giá sản phẩm ${item.productName} không hợp lệ`);
+      }
+    }
+
+    const shippingFee = Math.max(0, args.shippingFee ?? 0);
+    const discountAmount = Math.max(0, args.discountAmount ?? 0);
+
     const stockCheckEnabled = await isStockCheckEnabled(ctx);
     if (stockCheckEnabled) {
       const stockError = await validateStockBeforeCreate(ctx, normalizedItems, variantStock);
@@ -823,27 +846,11 @@ export const placeOrder = mutation({
       }
     }
 
-    if (args.promotionId) {
-      const promotion = await ctx.db.get(args.promotionId);
-      if (!promotion || promotion.status !== "Active") {
-        throw new Error("Mã giảm giá không hợp lệ hoặc đã hết hạn");
-      }
-      const usedCount = promotion.usedCount + 1;
-      const budgetUsed = (promotion.budgetUsed ?? 0) + (args.discountAmount ?? 0);
-      await ctx.db.patch(promotion._id, { usedCount, budgetUsed });
-      await ctx.db.insert("promotionUsage", {
-        customerId,
-        discountAmount: args.discountAmount ?? 0,
-        orderId: undefined as any,
-        promotionId: promotion._id,
-        usedAt: Date.now(),
-      });
-    }
-
     const isDigitalOrder = normalizedItems.some((item) => item.isDigital);
     const { statuses } = await getOrderStatusSettings(ctx);
     const defaultStatus = statuses[0]?.key ?? "Pending";
 
+    // Tạo đơn hàng trước để lấy orderId
     const orderId = await OrdersModel.create(ctx, {
       customerId,
       items: normalizedItems,
@@ -852,25 +859,30 @@ export const placeOrder = mutation({
       shippingMethodId: args.shippingMethodId,
       shippingMethodLabel: args.shippingMethodLabel,
       shippingAddress: args.shippingAddress,
-      shippingFee: args.shippingFee ?? 0,
+      shippingFee,
       promotionId: args.promotionId,
       promotionCode: args.promotionCode,
-      discountAmount: args.discountAmount ?? 0,
+      discountAmount,
       status: defaultStatus,
       isDigitalOrder,
     });
 
+    // Lưu promotion usage sau khi đã có orderId hợp lệ
     if (args.promotionId) {
-      const usage = await ctx.db
-        .query("promotionUsage")
-        .withIndex("by_customer_promotion", (q) =>
-          q.eq("customerId", customerId).eq("promotionId", args.promotionId!)
-        )
-        .order("desc")
-        .first();
-      if (usage && !usage.orderId) {
-        await ctx.db.patch(usage._id, { orderId });
+      const promotion = await ctx.db.get(args.promotionId);
+      if (!promotion || promotion.status !== "Active") {
+        throw new Error("Mã giảm giá không hợp lệ hoặc đã hết hạn");
       }
+      const usedCount = promotion.usedCount + 1;
+      const budgetUsed = (promotion.budgetUsed ?? 0) + discountAmount;
+      await ctx.db.patch(promotion._id, { usedCount, budgetUsed });
+      await ctx.db.insert("promotionUsage", {
+        customerId,
+        discountAmount,
+        orderId,
+        promotionId: promotion._id,
+        usedAt: Date.now(),
+      });
     }
 
     if (stockCheckEnabled) {
@@ -901,7 +913,7 @@ export const placeOrder = mutation({
     }
 
     const orderNumber = await ctx.db.get(orderId).then((o) => o?.orderNumber ?? "");
-    const formattedAmount = (normalizedItems.reduce((sum, item) => sum + item.price * item.quantity, 0) - (args.discountAmount ?? 0) + (args.shippingFee ?? 0)).toLocaleString("vi-VN") + "đ";
+    const formattedAmount = (normalizedItems.reduce((sum, item) => sum + item.price * item.quantity, 0) - discountAmount + shippingFee).toLocaleString("vi-VN") + "đ";
 
     await ctx.db.insert("notifications", {
       title: "Đơn hàng mới #" + orderNumber,
