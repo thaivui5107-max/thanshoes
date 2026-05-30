@@ -125,7 +125,7 @@ function SearchProductCardActions({
 }) {
   if (!showAddToCartButton && !showBuyNowButton) return null;
 
-  const isOutOfStock = product.stock <= 0;
+  const isOutOfStock = !product.hasVariants && product.stock <= 0;
   const isGrid2 = cartButtonsLayout === 'grid-2' && showAddToCartButton && showBuyNowButton;
   const gridColsClass = isGrid2 ? 'grid-cols-2' : 'grid-cols-1';
 
@@ -476,7 +476,7 @@ function SearchContent() {
   const handleBuyNow = useCallback((e: React.MouseEvent, product: any) => {
     e.preventDefault();
     e.stopPropagation();
-    if (product.stock <= 0) return;
+    if (!product.hasVariants && product.stock <= 0) return;
     if (product.hasVariants) {
       const categorySlug = productCategorySlugMap.get(product.categoryId) || 'products';
       router.push(buildDetailPath({ categorySlug, mode: routeMode, moduleKey: 'products', recordSlug: product.slug }));
@@ -891,31 +891,31 @@ function SearchContent() {
                                 <button
                                   type="button"
                                   onClick={(e) => handleAddToCart(e, product)}
-                                  disabled={product.stock <= 0}
+                                  disabled={!product.hasVariants && product.stock <= 0}
                                   className="flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs font-bold transition-all border disabled:opacity-55 disabled:cursor-not-allowed hover:brightness-95 hover:scale-[1.02]"
                                   style={{
-                                    backgroundColor: product.stock > 0 ? primaryColor : '#f1f5f9',
-                                    color: product.stock > 0 ? '#ffffff' : '#64748b',
-                                    borderColor: product.stock > 0 ? 'transparent' : '#e2e8f0'
+                                    backgroundColor: (product.hasVariants || product.stock > 0) ? primaryColor : '#f1f5f9',
+                                    color: (product.hasVariants || product.stock > 0) ? '#ffffff' : '#64748b',
+                                    borderColor: (product.hasVariants || product.stock > 0) ? 'transparent' : '#e2e8f0'
                                   }}
                                 >
                                   <ShoppingCart size={12} />
-                                  <span className="hidden sm:inline">{product.stock > 0 ? (product.hasVariants ? 'Chọn size' : 'Thêm giỏ') : 'Hết hàng'}</span>
+                                  <span className="hidden sm:inline">{(product.hasVariants || product.stock > 0) ? (product.hasVariants ? 'Chọn size' : 'Thêm giỏ') : 'Hết hàng'}</span>
                                 </button>
                               )}
                               {showBuyNowButton && (
                                 <button
                                   type="button"
                                   onClick={(e) => handleBuyNow(e, product)}
-                                  disabled={product.stock <= 0}
+                                  disabled={!product.hasVariants && product.stock <= 0}
                                   className="hidden sm:flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs font-bold transition-all border disabled:opacity-55 disabled:cursor-not-allowed hover:brightness-95"
                                   style={{
                                     backgroundColor: '#ffffff',
-                                    color: product.stock > 0 ? primaryColor : '#64748b',
-                                    borderColor: product.stock > 0 ? primaryColor : '#e2e8f0'
+                                    color: (product.hasVariants || product.stock > 0) ? primaryColor : '#64748b',
+                                    borderColor: (product.hasVariants || product.stock > 0) ? primaryColor : '#e2e8f0'
                                   }}
                                 >
-                                  <span>{product.stock > 0 ? 'Mua ngay' : 'Hết hàng'}</span>
+                                  <span>{(product.hasVariants || product.stock > 0) ? 'Mua ngay' : 'Hết hàng'}</span>
                                 </button>
                               )}
                             </div>

@@ -43,7 +43,7 @@ export function ProductCardActions({
     return null;
   }
 
-  const isOutOfStock = showStock && (product.stock ?? 0) <= 0;
+  const isOutOfStock = showStock && !product.hasVariants && (product.stock ?? 0) <= 0;
   const isGrid2 = cartButtonsLayout === 'grid-2' && showAddToCartButton && showBuyNowButton;
   const actionHeightClass = showAddToCartButton && showBuyNowButton && !isGrid2 ? 'min-h-[72px]' : 'min-h-[32px]';
   const gridColsClass = isGrid2 ? 'grid-cols-2' : 'grid-cols-1';

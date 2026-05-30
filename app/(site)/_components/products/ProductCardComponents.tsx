@@ -65,7 +65,7 @@ export function ProductCardActions({
     return null;
   }
 
-  const isOutOfStock = showStock && product.stock <= 0;
+  const isOutOfStock = showStock && !product.hasVariants && product.stock <= 0;
   const isGrid2 = cartButtonsLayout === 'grid-2' && showAddToCartButton && showBuyNowButton;
   const actionHeightClass = showAddToCartButton && showBuyNowButton && !isGrid2 ? 'min-h-[76px]' : 'min-h-[36px]';
   const gridColsClass = isGrid2 ? 'grid-cols-2' : 'grid-cols-1';
@@ -570,8 +570,8 @@ export function ProductList({
                       )}
                     </div>
                   )}
-                  {showStock && product.stock <= 5 && product.stock > 0 && <span className="text-xs" style={{ color: tokens.stockLowText }}>Chỉ còn {product.stock}</span>}
-                  {showStock && product.stock === 0 && <span className="text-xs" style={{ color: tokens.stockOutText }}>Hết hàng</span>}
+                  {showStock && !product.hasVariants && product.stock <= 5 && product.stock > 0 && <span className="text-xs" style={{ color: tokens.stockLowText }}>Chỉ còn {product.stock}</span>}
+                  {showStock && !product.hasVariants && product.stock === 0 && <span className="text-xs" style={{ color: tokens.stockOutText }}>Hết hàng</span>}
                 </div>
               </div>
               {(showAddToCartButton || showBuyNowButton) && (
@@ -581,7 +581,7 @@ export function ProductList({
                       className="p-3 rounded-full border transition-colors disabled:opacity-55 disabled:cursor-not-allowed"
                       style={{ borderColor: tokens.secondaryActionBorder, color: tokens.secondaryActionText, backgroundColor: tokens.cardBackground }}
                       onClick={(e) => { e.preventDefault(); onAddToCart(product); }}
-                      disabled={showStock && product.stock <= 0}
+                      disabled={showStock && !product.hasVariants && product.stock <= 0}
                     >
                       <ShoppingCart size={20} />
                     </button>
@@ -591,9 +591,9 @@ export function ProductList({
                       className="px-3 py-2 rounded-full border text-xs font-medium transition-colors disabled:opacity-55 disabled:cursor-not-allowed"
                       style={{ borderColor: tokens.secondaryActionBorder, color: tokens.secondaryActionText }}
                       onClick={(e) => { e.preventDefault(); onBuyNow(product); }}
-                      disabled={showStock && product.stock <= 0}
+                      disabled={showStock && !product.hasVariants && product.stock <= 0}
                     >
-                      {showStock && product.stock <= 0 ? 'Hết hàng' : buyNowLabel}
+                      {showStock && !product.hasVariants && product.stock <= 0 ? 'Hết hàng' : buyNowLabel}
                     </button>
                   )}
                 </div>
