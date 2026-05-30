@@ -1,11 +1,11 @@
 'use client';
 
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PublicImage as Image } from '@/components/shared/PublicImage';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
-import { Check, CreditCard, MapPin, Package, Truck } from 'lucide-react';
+import { Check, ChevronDown, CreditCard, MapPin, Package, Search, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/convex/_generated/api';
 import { useBrandColors } from '@/components/site/hooks';
@@ -16,6 +16,160 @@ import type { Id } from '@/convex/_generated/dataModel';
 import { useCart } from '@/lib/cart';
 
 const formatPrice = (value: number) => new Intl.NumberFormat('vi-VN', { currency: 'VND', style: 'currency' }).format(value);
+
+// ─── Combobox search cho Tỉnh/Quận/Phường ────────────────────────────────────
+const COMBOBOX_DEFAULT_COUNT = 8;
+
+interface ComboboxOption { code: string; name: string; }
+interface AddressComboboxProps {
+  options: ComboboxOption[];
+  value: string;
+  onChange: (code: string) => void;
+  placeholder: string;
+  disabled?: boolean;
+  hasError?: boolean;
+  inputBg: string;
+  inputBorder: string;
+  inputText: string;
+}
+
+function AddressCombobox({ options, value, onChange, placeholder, disabled, hasError, inputBg, inputBorder, inputText }: AddressComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [highlighted, setHighlighted] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  const selected = options.find((o) => o.code === value) ?? null;
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options.slice(0, COMBOBOX_DEFAULT_COUNT);
+    return options
+      .filter((o) => o.name.toLowerCase().includes(q))
+      .slice(0, 40);
+  }, [options, query]);
+
+  const handleOpen = useCallback(() => {
+    if (disabled) return;
+    setOpen(true);
+    setQuery('');
+    setHighlighted(0);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, [disabled]);
+
+  const handleSelect = useCallback((code: string) => {
+    onChange(code);
+    setOpen(false);
+    setQuery('');
+  }, [onChange]);
+
+  // Close on click outside
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // Keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!open) { if (e.key === 'Enter' || e.key === ' ') handleOpen(); return; }
+    if (e.key === 'Escape') { setOpen(false); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted((h) => Math.min(h + 1, filtered.length - 1)); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setHighlighted((h) => Math.max(h - 1, 0)); }
+    if (e.key === 'Enter' && filtered[highlighted]) { handleSelect(filtered[highlighted].code); }
+  };
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (!listRef.current) return;
+    const item = listRef.current.children[highlighted] as HTMLElement | undefined;
+    item?.scrollIntoView({ block: 'nearest' });
+  }, [highlighted]);
+
+  return (
+    <div ref={containerRef} className="relative" onKeyDown={handleKeyDown}>
+      {/* Trigger button */}
+      <button
+        type="button"
+        onClick={handleOpen}
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`w-full flex items-center justify-between px-3 py-2.5 border rounded-lg text-sm transition-colors text-left ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-slate-400'}`}
+        style={{
+          backgroundColor: inputBg,
+          borderColor: hasError ? '#ef4444' : inputBorder,
+          color: selected ? inputText : '#9ca3af',
+        }}
+      >
+        <span className="truncate">{selected ? selected.name : placeholder}</span>
+        <ChevronDown size={15} className={`shrink-0 ml-1 transition-transform ${open ? 'rotate-180' : ''}`} style={{ color: '#9ca3af' }} />
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden"
+          style={{ backgroundColor: inputBg, minWidth: '220px' }}
+        >
+          {/* Search input */}
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+            <Search size={13} className="text-slate-400 shrink-0" />
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Tìm kiếm..."
+              value={query}
+              onChange={(e) => { setQuery(e.target.value); setHighlighted(0); }}
+              className="flex-1 text-sm outline-none bg-transparent"
+              style={{ color: inputText }}
+            />
+            {query && (
+              <button type="button" onClick={() => { setQuery(''); setHighlighted(0); inputRef.current?.focus(); }}
+                className="text-xs text-slate-400 hover:text-slate-600 shrink-0">✕</button>
+            )}
+          </div>
+
+          {/* Option list */}
+          <ul ref={listRef} role="listbox" className="max-h-56 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <li className="px-3 py-2 text-xs text-slate-400 text-center">Không tìm thấy kết quả</li>
+            ) : (
+              filtered.map((opt, idx) => (
+                <li
+                  key={opt.code}
+                  role="option"
+                  aria-selected={opt.code === value}
+                  onMouseEnter={() => setHighlighted(idx)}
+                  onMouseDown={(e) => { e.preventDefault(); handleSelect(opt.code); }}
+                  className={`px-3 py-2 text-sm cursor-pointer flex items-center justify-between transition-colors ${
+                    idx === highlighted ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  }`}
+                  style={{ color: inputText }}
+                >
+                  <span>{opt.name}</span>
+                  {opt.code === value && <Check size={13} className="text-emerald-500 shrink-0" />}
+                </li>
+              ))
+            )}
+          </ul>
+          {!query && options.length > COMBOBOX_DEFAULT_COUNT && (
+            <div className="px-3 py-1.5 text-[10px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
+              Gõ để tìm trong {options.length} kết quả
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 type ShippingMethodConfig = {
   id: string;
@@ -943,23 +1097,21 @@ function CheckoutContent() {
                 <label className="text-xs font-semibold block" style={{ color: tokens.bodyText }}>
                   Tỉnh/Thành <span className="text-red-500">*</span>
                 </label>
-                <select
+                <AddressCombobox
+                  options={provinceList}
                   value={provinceCode}
-                  aria-invalid={!!errors.provinceCode}
-                  onChange={(event) => {
-                    setProvinceCode(event.target.value);
+                  onChange={(code) => {
+                    setProvinceCode(code);
                     setDistrictCode('');
                     setWardCode('');
                     setErrors((prev) => ({ ...prev, provinceCode: undefined, districtCode: undefined, wardCode: undefined }));
                   }}
-                  className={`w-full px-3 py-2.5 border rounded-lg text-sm transition-colors ${errors.provinceCode ? 'border-red-500 focus:ring-red-500' : ''}`}
-                  style={{ backgroundColor: tokens.inputBg, borderColor: errors.provinceCode ? '#ef4444' : tokens.inputBorder, color: tokens.inputText }}
-                >
-                  <option value="">Chọn Tỉnh/Thành</option>
-                  {provinceList.map((province) => (
-                    <option key={province.code} value={province.code}>{province.name}</option>
-                  ))}
-                </select>
+                  placeholder="Chọn Tỉnh/Thành"
+                  hasError={!!errors.provinceCode}
+                  inputBg={tokens.inputBg}
+                  inputBorder={tokens.inputBorder}
+                  inputText={tokens.inputText}
+                />
                 {errors.provinceCode && (
                   <p className="text-xs text-red-500 mt-1">{errors.provinceCode}</p>
                 )}
@@ -970,23 +1122,21 @@ function CheckoutContent() {
                   <label className="text-xs font-semibold block" style={{ color: tokens.bodyText }}>
                     Quận/Huyện <span className="text-red-500">*</span>
                   </label>
-                  <select
+                  <AddressCombobox
+                    options={availableDistricts}
                     value={districtCode}
-                    aria-invalid={!!errors.districtCode}
-                    onChange={(event) => {
-                      setDistrictCode(event.target.value);
+                    onChange={(code) => {
+                      setDistrictCode(code);
                       setWardCode('');
                       setErrors((prev) => ({ ...prev, districtCode: undefined, wardCode: undefined }));
                     }}
-                    className={`w-full px-3 py-2.5 border rounded-lg text-sm transition-colors ${errors.districtCode ? 'border-red-500 focus:ring-red-500' : ''}`}
-                    style={{ backgroundColor: tokens.inputBg, borderColor: errors.districtCode ? '#ef4444' : tokens.inputBorder, color: tokens.inputText }}
+                    placeholder="Chọn Quận/Huyện"
                     disabled={!provinceCode}
-                  >
-                    <option value="">Chọn Quận/Huyện</option>
-                    {availableDistricts.map((district) => (
-                      <option key={district.code} value={district.code}>{district.name}</option>
-                    ))}
-                  </select>
+                    hasError={!!errors.districtCode}
+                    inputBg={tokens.inputBg}
+                    inputBorder={tokens.inputBorder}
+                    inputText={tokens.inputText}
+                  />
                   {errors.districtCode && (
                     <p className="text-xs text-red-500 mt-1">{errors.districtCode}</p>
                   )}
@@ -997,22 +1147,20 @@ function CheckoutContent() {
                 <label className="text-xs font-semibold block" style={{ color: tokens.bodyText }}>
                   Phường/Xã <span className="text-red-500">*</span>
                 </label>
-                <select
+                <AddressCombobox
+                  options={availableWards}
                   value={wardCode}
-                  aria-invalid={!!errors.wardCode}
-                  onChange={(event) => {
-                    setWardCode(event.target.value);
+                  onChange={(code) => {
+                    setWardCode(code);
                     setErrors((prev) => ({ ...prev, wardCode: undefined }));
                   }}
-                  className={`w-full px-3 py-2.5 border rounded-lg text-sm transition-colors ${errors.wardCode ? 'border-red-500 focus:ring-red-500' : ''}`}
-                  style={{ backgroundColor: tokens.inputBg, borderColor: errors.wardCode ? '#ef4444' : tokens.inputBorder, color: tokens.inputText }}
+                  placeholder="Chọn Phường/Xã"
                   disabled={addressFormat === '3-level' ? !districtCode : !provinceCode}
-                >
-                  <option value="">Chọn Phường/Xã</option>
-                  {availableWards.map((ward) => (
-                    <option key={ward.code} value={ward.code}>{ward.name}</option>
-                  ))}
-                </select>
+                  hasError={!!errors.wardCode}
+                  inputBg={tokens.inputBg}
+                  inputBorder={tokens.inputBorder}
+                  inputText={tokens.inputText}
+                />
                 {errors.wardCode && (
                   <p className="text-xs text-red-500 mt-1">{errors.wardCode}</p>
                 )}
