@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, cn } from '@/app/admin/components/ui';
-import { AlertCircle, Trash2, Undo2 } from 'lucide-react';
+import { AlertCircle, Info, Trash2, Undo2 } from 'lucide-react';
 
 export interface ShippingMethodConfig {
   id: string;
@@ -10,6 +10,8 @@ export interface ShippingMethodConfig {
   description?: string;
   fee: number;
   estimate?: string;
+  /** Ngưỡng đặt hàng tối thiểu (đ) để được miễn phí ship. 0 = không áp dụng */
+  freeShipThreshold?: number;
 }
 
 interface ShippingMethodsEditorProps {
@@ -26,7 +28,7 @@ export function ShippingMethodsEditor({ methods, onChange }: ShippingMethodsEdit
   const handleAdd = () => {
     onChange([
       ...methods,
-      { id: `shipping-${Date.now()}`, label: '', description: '', fee: 0, estimate: '' },
+      { id: `shipping-${Date.now()}`, label: '', description: '', fee: 0, estimate: '', freeShipThreshold: 0 },
     ]);
   };
 
@@ -69,7 +71,6 @@ export function ShippingMethodsEditor({ methods, onChange }: ShippingMethodsEdit
     onChange(methods.map((item, idx) => (idx === index ? { ...item, ...patch } : item)));
   };
 
-  // Kiểm tra ID trùng lặp
   const duplicateIds = useMemo(() => {
     const counts: Record<string, number> = {};
     methods.forEach((m) => {
@@ -77,6 +78,19 @@ export function ShippingMethodsEditor({ methods, onChange }: ShippingMethodsEdit
       if (id) counts[id] = (counts[id] || 0) + 1;
     });
     return new Set(Object.keys(counts).filter((id) => counts[id] > 1));
+  }, [methods]);
+
+  // Tóm tắt ưu đãi tốt nhất theo ngưỡng để admin dễ hiểu
+  const bestDealSummary = useMemo(() => {
+    const thresholds = methods
+      .filter((m) => (m.freeShipThreshold ?? 0) > 0 && m.fee > 0)
+      .sort((a, b) => (a.freeShipThreshold ?? 0) - (b.freeShipThreshold ?? 0));
+    if (thresholds.length === 0) return null;
+    return thresholds.map((m) => ({
+      label: m.label || m.id,
+      threshold: m.freeShipThreshold ?? 0,
+      fee: m.fee,
+    }));
   }, [methods]);
 
   return (
@@ -111,16 +125,32 @@ export function ShippingMethodsEditor({ methods, onChange }: ShippingMethodsEdit
         </div>
       ) : (
         <>
+          {/* Info: ưu đãi tốt nhất sẽ được auto-apply */}
+          {bestDealSummary && bestDealSummary.length > 0 && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 text-xs text-emerald-800 dark:text-emerald-400">
+              <Info size={14} className="shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="font-semibold">Ưu đãi tốt nhất sẽ tự động áp dụng khi khách checkout:</p>
+                {bestDealSummary.map((item) => (
+                  <p key={item.label}>
+                    • Đặt hàng ≥ <strong>{item.threshold.toLocaleString('vi-VN')}đ</strong>: <strong>{item.label}</strong> miễn phí ship (thường {item.fee.toLocaleString('vi-VN')}đ)
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* BẢN DESKTOP: TABLE */}
           <div className="hidden sm:block overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
             <Table>
               <TableHeader className="bg-slate-50/50 dark:bg-slate-900/50">
                 <TableRow>
                   <TableHead className="text-xs font-semibold w-1/5">Mã (ID)</TableHead>
-                  <TableHead className="text-xs font-semibold w-1/4">Tên hiển thị</TableHead>
-                  <TableHead className="text-xs font-semibold w-1/4">Mô tả</TableHead>
-                  <TableHead className="text-xs font-semibold w-1/6">Phí ship (đ)</TableHead>
-                  <TableHead className="text-xs font-semibold w-1/6">Thời gian ước tính</TableHead>
+                  <TableHead className="text-xs font-semibold w-1/5">Tên hiển thị</TableHead>
+                  <TableHead className="text-xs font-semibold w-1/5">Mô tả</TableHead>
+                  <TableHead className="text-xs font-semibold w-28">Phí ship (đ)</TableHead>
+                  <TableHead className="text-xs font-semibold w-36">Free ship khi ≥ (đ)</TableHead>
+                  <TableHead className="text-xs font-semibold w-28">Thời gian</TableHead>
                   <TableHead className="text-xs font-semibold text-right w-24">Hành động</TableHead>
                 </TableRow>
               </TableHeader>
@@ -198,6 +228,24 @@ export function ShippingMethodsEditor({ methods, onChange }: ShippingMethodsEdit
                           value={method.estimate ?? ''}
                           onChange={(event) => handleUpdate(index, { estimate: event.target.value })}
                         />
+                      </TableCell>
+                      {/* Cột điều kiện free ship */}
+                      <TableCell className="p-3">
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            placeholder="0 = không áp dụng"
+                            min={0}
+                            value={method.freeShipThreshold ?? 0}
+                            onChange={(event) => handleUpdate(index, { freeShipThreshold: Number(event.target.value || 0) })}
+                            className="text-sm"
+                          />
+                          {(method.freeShipThreshold ?? 0) > 0 && (
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                              ✓ Đơn ≥ {(method.freeShipThreshold ?? 0).toLocaleString('vi-VN')}đ → free ship
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="p-3 text-right">
                         <Button
@@ -329,6 +377,25 @@ export function ShippingMethodsEditor({ methods, onChange }: ShippingMethodsEdit
                           onChange={(event) => handleUpdate(index, { estimate: event.target.value })}
                         />
                       </div>
+                    </div>
+
+                    {/* Điều kiện miễn phí ship */}
+                    <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+                      <label className="text-[10px] font-semibold text-slate-500 block">
+                        Miễn phí ship khi tổng đơn ≥ (đ)
+                      </label>
+                      <Input
+                        type="number"
+                        placeholder="0 = không áp dụng"
+                        min={0}
+                        value={method.freeShipThreshold ?? 0}
+                        onChange={(event) => handleUpdate(index, { freeShipThreshold: Number(event.target.value || 0) })}
+                      />
+                      {(method.freeShipThreshold ?? 0) > 0 && (
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                          ✓ Đơn ≥ {(method.freeShipThreshold ?? 0).toLocaleString('vi-VN')}đ → free ship tự động
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

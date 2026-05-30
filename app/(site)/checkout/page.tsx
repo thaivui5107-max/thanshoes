@@ -23,6 +23,8 @@ type ShippingMethodConfig = {
   description?: string;
   fee: number;
   estimate?: string;
+  /** Ngưỡng tổng đơn tối thiểu (đ) để miễn phí ship. 0 = không áp dụng */
+  freeShipThreshold?: number;
 };
 
 type PaymentMethodConfig = {
@@ -321,15 +323,38 @@ function CheckoutContent() {
 
   const shouldCollectShipping = isShippingEnabled && hasPhysicalItems;
 
+  // Tính effectiveFee cho từng phương thức vận chuyển (sau áp dụng freeShipThreshold)
+  // Dùng totalAmount được khai báo phía dưới nhưng đây chỉ là hàm pure âm thầm ref
+  const getEffectiveFee = (method: { fee: number; freeShipThreshold?: number }, amount: number) => {
+    const threshold = method.freeShipThreshold ?? 0;
+    return threshold > 0 && amount >= threshold ? 0 : method.fee;
+  };
+
   useEffect(() => {
     if (!shouldCollectShipping) {
       setShippingMethodId('');
       return;
     }
-    if (!shippingMethods.find((method) => method.id === shippingMethodId)) {
-      setShippingMethodId(shippingMethods[0]?.id ?? '');
+    // Lấy totalAmount tại đây dựa trên cart hoặc product đƣn lẻ
+    const currentTotal = fromCart ? (cart?.totalAmount ?? 0) : ((variants?.[0]?.price ?? product?.price ?? 0) * quantity);
+    if (shippingMethods.length === 0) return;
+
+    // Tìm method có effectiveFee thấp nhất
+    const best = shippingMethods.reduce((prev, curr) => {
+      const prevFee = getEffectiveFee(prev, currentTotal);
+      const currFee = getEffectiveFee(curr, currentTotal);
+      return currFee < prevFee ? curr : prev;
+    });
+
+    // Nếu method hiện tại không tồn tại hoặc không phải best nữa → auto switch
+    const current = shippingMethods.find((m) => m.id === shippingMethodId);
+    const currentFee = current ? getEffectiveFee(current, currentTotal) : Infinity;
+    const bestFee = getEffectiveFee(best, currentTotal);
+    if (!current || bestFee < currentFee) {
+      setShippingMethodId(best.id);
     }
-  }, [shippingMethods, shippingMethodId, shouldCollectShipping]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shippingMethods, shouldCollectShipping, cart?.totalAmount, quantity, product?.price]);
 
   const selectedVariant = variants?.[0] ?? null;
   const optionIds = useMemo(() => {
@@ -419,9 +444,8 @@ function CheckoutContent() {
   const subtotal = unitPrice * quantity;
   const selectedShipping = shippingMethods.find((method) => method.id === shippingMethodId);
   const selectedPayment = paymentMethods.find((method) => method.id === paymentMethodId);
-  const shippingFee = shouldCollectShipping ? (selectedShipping?.fee ?? 0) : 0;
-
   const totalAmount = fromCart ? (cart?.totalAmount ?? 0) : subtotal;
+  const shippingFee = shouldCollectShipping ? getEffectiveFee(selectedShipping ?? { fee: 0 }, totalAmount) : 0;
   const promotionResult = useQuery(
     api.promotions.validateCode,
     appliedCode && isPromotionEnabled ? { code: appliedCode, orderAmount: totalAmount } : 'skip'
@@ -1038,33 +1062,60 @@ function CheckoutContent() {
         <h2 className="text-lg font-semibold" style={{ color: tokens.heading }}>Vận chuyển</h2>
       </div>
       <div className="space-y-2 text-sm" style={{ color: tokens.metaText }}>
-        {shippingMethods.map((method) => (
-          <label
-            key={method.id}
-            className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer"
-            style={shippingMethodId === method.id
-              ? { borderColor: tokens.selectionBorder, backgroundColor: tokens.selectionBg }
-              : { borderColor: tokens.border, backgroundColor: tokens.surface }
-            }
-          >
-            <input
-              type="radio"
-              name="shipping"
-              checked={shippingMethodId === method.id}
-              onChange={() => setShippingMethodId(method.id)}
-              className="w-4 h-4"
-              style={{ accentColor: tokens.radioAccent }}
-            />
-            <div className="flex-1">
-              <div className="font-medium text-sm" style={{ color: tokens.bodyText }}>{method.label}</div>
-              {method.description && <div className="text-xs" style={{ color: tokens.metaText }}>{method.description}</div>}
-              {method.estimate && method.estimate !== method.description && (
-                <div className="text-xs" style={{ color: tokens.mutedText }}>{method.estimate}</div>
-              )}
-            </div>
-            <span className="font-semibold text-sm" style={{ color: tokens.priceText }}>{formatPrice(method.fee)}</span>
-          </label>
-        ))}
+        {shippingMethods.map((method) => {
+          const effectiveFee = getEffectiveFee(method, totalAmount);
+          const isFree = effectiveFee === 0 && method.fee > 0;
+          const isSelected = shippingMethodId === method.id;
+          const threshold = method.freeShipThreshold ?? 0;
+          return (
+            <label
+              key={method.id}
+              className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer"
+              style={isSelected
+                ? { borderColor: tokens.selectionBorder, backgroundColor: tokens.selectionBg }
+                : { borderColor: tokens.border, backgroundColor: tokens.surface }
+              }
+            >
+              <input
+                type="radio"
+                name="shipping"
+                checked={isSelected}
+                onChange={() => setShippingMethodId(method.id)}
+                className="w-4 h-4"
+                style={{ accentColor: tokens.radioAccent }}
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-sm" style={{ color: tokens.bodyText }}>{method.label}</span>
+                  {isFree && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                      Miễn phí
+                    </span>
+                  )}
+                </div>
+                {method.description && <div className="text-xs mt-0.5" style={{ color: tokens.metaText }}>{method.description}</div>}
+                {method.estimate && method.estimate !== method.description && (
+                  <div className="text-xs" style={{ color: tokens.mutedText }}>{method.estimate}</div>
+                )}
+                {threshold > 0 && totalAmount < threshold && (
+                  <div className="text-xs mt-0.5" style={{ color: tokens.mutedText }}>
+                    Miễn ship khi đơn ≥ {threshold.toLocaleString('vi-VN')}đ
+                  </div>
+                )}
+              </div>
+              <div className="text-right">
+                {isFree ? (
+                  <div>
+                    <span className="line-through text-xs" style={{ color: tokens.mutedText }}>{method.fee.toLocaleString('vi-VN')}đ</span>
+                    <span className="block font-bold text-sm text-emerald-600 dark:text-emerald-400">0đ</span>
+                  </div>
+                ) : (
+                  <span className="font-semibold text-sm" style={{ color: tokens.priceText }}>{effectiveFee.toLocaleString('vi-VN')}đ</span>
+                )}
+              </div>
+            </label>
+          );
+        })}
       </div>
     </div>
   );
