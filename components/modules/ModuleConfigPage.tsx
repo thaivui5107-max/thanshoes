@@ -322,8 +322,12 @@ export function ConfigTab({ config, moduleData, isReadOnly, localFeatures, local
   const isProductModule = config.key === 'products';
   const isSettingsModule = config.key === 'settings';
   const advancedSettingsFeatureKeys = new Set([
+    'enableProductImageAdvanced',
+    'enableProductFrameAdvanced',
+    'enableProductWatermarkAdvanced',
     'enableMail',
     'enableHeaderMenuAdvanced',
+    'enableProductSupplementalAdvanced',
     'enableShopConfigAdvanced',
   ]);
   const featureItems = config.features?.map(f => ({
@@ -334,7 +338,7 @@ export function ConfigTab({ config, moduleData, isReadOnly, localFeatures, local
       linkedField: f.linkedField,
       description: f.description,
     },
-    enabled: localFeatures[f.key] ?? false,
+    enabled: localFeatures[f.key] ?? f.enabled ?? false,
   })) ?? [];
   const advancedSettingsFeatures = isSettingsModule
     ? featureItems.filter(item => advancedSettingsFeatureKeys.has(item.config.key))

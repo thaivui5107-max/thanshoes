@@ -22,6 +22,7 @@ import { ShopConfigAdminContainer } from '@/components/modules/orders/ShopConfig
 type SettingsSection = 'site' | 'contact' | 'seo' | 'advanced';
 type SettingsFormValue = string | boolean;
 type AdvancedTab = 'product-placeholder' | 'product-frame' | 'watermark' | 'header' | 'product-supplemental' | 'shop-config' | 'email-config';
+const ADVANCED_TAB_ORDER: AdvancedTab[] = ['product-placeholder', 'product-frame', 'watermark', 'header', 'product-supplemental', 'shop-config', 'email-config'];
 type HeaderConfig = {
   showBrandName?: boolean;
   logoSizeLevel?: number;
@@ -42,17 +43,6 @@ type SettingsToSave = {
   key: string;
   storageId?: Id<'_storage'> | null;
   value: unknown;
-};
-type ResendEmailAccount = {
-  id: string;
-  label: string;
-  apiKey: string;
-  fromEmail?: string;
-  fromName?: string;
-  enabled: boolean;
-  dailyLimit: number;
-  monthlyLimit: number;
-  testMode: boolean;
 };
 
 const MODULE_KEY = 'settings';
@@ -148,7 +138,11 @@ const REMOVED_CONTACT_KEYS = new Set([
 ]);
 
 const SETTING_STORAGE_ID_SUFFIX = '__storageId';
+const PRODUCT_IMAGE_ADVANCED_FEATURE = 'enableProductImageAdvanced';
+const PRODUCT_FRAME_ADVANCED_FEATURE = 'enableProductFrameAdvanced';
+const PRODUCT_WATERMARK_ADVANCED_FEATURE = 'enableProductWatermarkAdvanced';
 const HEADER_MENU_ADVANCED_FEATURE = 'enableHeaderMenuAdvanced';
+const PRODUCT_SUPPLEMENTAL_ADVANCED_FEATURE = 'enableProductSupplementalAdvanced';
 const SHOP_CONFIG_ADVANCED_FEATURE = 'enableShopConfigAdvanced';
 const EMAIL_CONFIG_ADVANCED_FEATURE = 'enableMail';
 const EMAIL_SETTING_KEYS = [
@@ -160,7 +154,6 @@ const EMAIL_SETTING_KEYS = [
   'mail_encryption',
   'mail_from_email',
   'mail_from_name',
-  'resend_accounts',
   'order_notification_emails',
 ] as const;
 const EMAIL_DEFAULTS: Record<(typeof EMAIL_SETTING_KEYS)[number], string> = {
@@ -172,13 +165,12 @@ const EMAIL_DEFAULTS: Record<(typeof EMAIL_SETTING_KEYS)[number], string> = {
   mail_encryption: 'tls',
   mail_from_email: 'onboarding@resend.dev',
   mail_from_name: 'Thanshoes',
-  resend_accounts: '[]',
   order_notification_emails: '',
 };
 const EMAIL_SETUP_PRESETS = [
-  { id: 'resend', label: 'Resend API (khuyên dùng)', driver: 'resend', host: '', port: '587', encryption: 'tls' },
-  { id: 'gmail', label: 'Gmail / Google Workspace', driver: 'smtp', host: 'smtp.gmail.com', port: '587', encryption: 'tls' },
-  { id: 'outlook', label: 'Outlook / Microsoft 365', driver: 'smtp', host: 'smtp.office365.com', port: '587', encryption: 'tls' },
+  { id: 'resend', label: 'Dùng Resend đã cài trong System (khuyên dùng)', driver: 'resend', host: '', port: '587', encryption: 'tls' },
+  { id: 'gmail', label: 'Gửi qua Gmail / Google Workspace', driver: 'smtp', host: 'smtp.gmail.com', port: '587', encryption: 'tls' },
+  { id: 'outlook', label: 'Gửi qua Outlook / Microsoft 365', driver: 'smtp', host: 'smtp.office365.com', port: '587', encryption: 'tls' },
   { id: 'zoho', label: 'Zoho Mail', driver: 'smtp', host: 'smtp.zoho.com', port: '587', encryption: 'tls' },
   { id: 'custom', label: 'Tùy chỉnh', driver: 'smtp', host: '', port: '587', encryption: 'tls' },
 ] as const;
@@ -264,7 +256,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const [initialHeaderConfig, setInitialHeaderConfig] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [activeDrag, setActiveDrag] = useState<'image-move' | 'image-resize' | 'text-move' | null>(null);
   const [emailPreset, setEmailPreset] = useState<EmailSetupPresetId>('resend');
-  const [resendApiKeyDraft, setResendApiKeyDraft] = useState('');
   const previewCanvasRef = React.useRef<HTMLDivElement>(null);
 
   // Queries
@@ -272,7 +263,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const featuresData = useQuery(api.admin.modules.listModuleFeatures, { moduleKey: MODULE_KEY });
   const fieldsData = useQuery(api.admin.modules.listModuleFields, { moduleKey: MODULE_KEY });
   const defaultImageAspectRatio = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
-  const productsSettings = useQuery(api.admin.modules.listModuleSettings, { moduleKey: 'products' });
   const [selectedFrameAR, setSelectedFrameAR] = useState<string>('');
   const [shopConfigDirty, setShopConfigDirty] = useState(false);
   const [shopConfigSaving, setShopConfigSaving] = useState(false);
@@ -284,29 +274,50 @@ function SettingsContent({ section }: { section: SettingsSection }) {
     featuresData?.forEach(f => { features[f.featureKey] = f.enabled; });
     return features;
   }, [featuresData]);
- 
-  const canEditHeaderMenu = featuresData?.some(feature => feature.featureKey === HEADER_MENU_ADVANCED_FEATURE)
-    ? Boolean(enabledFeatures[HEADER_MENU_ADVANCED_FEATURE])
-    : false;
- 
-  const canEditShopConfig = featuresData?.some(feature => feature.featureKey === SHOP_CONFIG_ADVANCED_FEATURE)
-    ? Boolean(enabledFeatures[SHOP_CONFIG_ADVANCED_FEATURE])
-    : false;
 
-  const canEditEmailConfig = featuresData?.some(feature => feature.featureKey === EMAIL_CONFIG_ADVANCED_FEATURE)
-    ? Boolean(enabledFeatures[EMAIL_CONFIG_ADVANCED_FEATURE])
-    : false;
- 
-  const enableSupplementalContent = useMemo(
-    () => productsSettings?.find(s => s.settingKey === 'enableProductSupplementalContent')?.value === true,
-    [productsSettings]
+  const isFeatureEnabled = (featureKey: string, fallback = false) => (
+    featuresData?.some(feature => feature.featureKey === featureKey)
+      ? Boolean(enabledFeatures[featureKey])
+      : fallback
   );
 
+  const canEditProductImage = isFeatureEnabled(PRODUCT_IMAGE_ADVANCED_FEATURE, true);
+  const canEditProductFrame = isFeatureEnabled(PRODUCT_FRAME_ADVANCED_FEATURE, true);
+  const canEditProductWatermark = isFeatureEnabled(PRODUCT_WATERMARK_ADVANCED_FEATURE, true);
+ 
+  const canEditHeaderMenu = isFeatureEnabled(HEADER_MENU_ADVANCED_FEATURE, false);
+ 
+  const canEditShopConfig = isFeatureEnabled(SHOP_CONFIG_ADVANCED_FEATURE, false);
+
+  const canEditEmailConfig = isFeatureEnabled(EMAIL_CONFIG_ADVANCED_FEATURE, false);
+ 
+  const canEditProductSupplemental = isFeatureEnabled(PRODUCT_SUPPLEMENTAL_ADVANCED_FEATURE, true);
+  const enabledAdvancedTabs = useMemo<AdvancedTab[]>(() => ADVANCED_TAB_ORDER.filter((tab) => {
+    switch (tab) {
+      case 'product-placeholder': return canEditProductImage;
+      case 'product-frame': return canEditProductFrame;
+      case 'watermark': return canEditProductWatermark;
+      case 'header': return canEditHeaderMenu;
+      case 'product-supplemental': return canEditProductSupplemental;
+      case 'shop-config': return canEditShopConfig;
+      case 'email-config': return canEditEmailConfig;
+      default: return false;
+    }
+  }), [
+    canEditEmailConfig,
+    canEditHeaderMenu,
+    canEditProductFrame,
+    canEditProductImage,
+    canEditProductSupplemental,
+    canEditProductWatermark,
+    canEditShopConfig,
+  ]);
+
   useEffect(() => {
-    if (tabParam === 'product-supplemental' && enableSupplementalContent) {
+    if (tabParam === 'product-supplemental' && canEditProductSupplemental) {
       setAdvancedTab('product-supplemental');
     }
-  }, [tabParam, enableSupplementalContent]);
+  }, [tabParam, canEditProductSupplemental]);
  
   useEffect(() => {
     if (tabParam === 'shop-config' && canEditShopConfig) {
@@ -583,22 +594,11 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   }, [isLoading, isSectionEnabled, router]);
 
   useEffect(() => {
-    if (!canEditHeaderMenu && advancedTab === 'header') {
-      setAdvancedTab('product-placeholder');
+    if (section !== 'advanced') {return;}
+    if (enabledAdvancedTabs.length > 0 && !enabledAdvancedTabs.includes(advancedTab)) {
+      setAdvancedTab(enabledAdvancedTabs[0]);
     }
-  }, [advancedTab, canEditHeaderMenu]);
- 
-  useEffect(() => {
-    if (!canEditShopConfig && advancedTab === 'shop-config') {
-      setAdvancedTab('product-placeholder');
-    }
-  }, [advancedTab, canEditShopConfig]);
-
-  useEffect(() => {
-    if (!canEditEmailConfig && advancedTab === 'email-config') {
-      setAdvancedTab('product-placeholder');
-    }
-  }, [advancedTab, canEditEmailConfig]);
+  }, [advancedTab, enabledAdvancedTabs, section]);
 
   // Detect changes
   const headerConfigHasChanges = useMemo(
@@ -626,15 +626,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
     return typeof value === 'string' ? value : fallback;
   };
 
-  const getResendAccounts = () => {
-    try {
-      const parsed = JSON.parse(getStringField('resend_accounts', '[]'));
-      return Array.isArray(parsed) ? parsed as ResendEmailAccount[] : [];
-    } catch {
-      return [] as ResendEmailAccount[];
-    }
-  };
-
   const handleEmailPresetChange = (presetId: EmailSetupPresetId) => {
     const preset = EMAIL_SETUP_PRESETS.find(item => item.id === presetId);
     if (!preset) {return;}
@@ -646,35 +637,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       mail_port: preset.port,
       mail_encryption: preset.encryption,
     }));
-  };
-
-  const handleAddResendApiKey = () => {
-    const apiKey = resendApiKeyDraft.trim();
-    if (!apiKey.startsWith('re_')) {
-      toast.error('API key Resend phải bắt đầu bằng re_.');
-      return;
-    }
-    const accounts = getResendAccounts();
-    const nextAccount = {
-      id: `acc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      label: `Resend ${accounts.length + 1}`,
-      apiKey,
-      fromEmail: getStringField('mail_from_email', EMAIL_DEFAULTS.mail_from_email).trim() || EMAIL_DEFAULTS.mail_from_email,
-      fromName: getStringField('mail_from_name', EMAIL_DEFAULTS.mail_from_name).trim() || EMAIL_DEFAULTS.mail_from_name,
-      enabled: true,
-      dailyLimit: 100,
-      monthlyLimit: 3000,
-      testMode: false,
-    };
-    updateField('resend_accounts', JSON.stringify([...accounts, nextAccount]));
-    setResendApiKeyDraft('');
-    toast.success('Đã thêm API key Resend. Nhớ lưu thay đổi.');
-  };
-
-  const handleRemoveResendAccount = (id: string) => {
-    const accounts = getResendAccounts().filter((account) => account.id !== id);
-    updateField('resend_accounts', JSON.stringify(accounts));
-    toast.success('Đã gỡ API key Resend. Nhớ lưu thay đổi.');
   };
 
   const updateImageField = (key: string, url: string | undefined, storageId?: Id<'_storage'> | null) => {
@@ -743,7 +705,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       if (driver === 'smtp') {
         const port = Number(getStringField('mail_port'));
         if (!Number.isFinite(port) || port <= 0) {
-          toast.error('SMTP port không hợp lệ.');
+          toast.error('Cổng kết nối gửi mail không hợp lệ.');
           return false;
         }
       }
@@ -1453,7 +1415,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const headerSpacingLevel = typeof headerConfigDraft.headerSpacingLevel === 'number' ? headerConfigDraft.headerSpacingLevel : 5;
   const logoSizeLabel = LOGO_SIZE_OPTIONS[logoSizeLevel - 1]?.label ?? 'Mặc định';
   const headerSpacingLabel = HEADER_SPACING_OPTIONS[headerSpacingLevel - 1]?.label ?? 'Cân bằng';
-  const resendAccounts = getResendAccounts();
   const mailDriver = getStringField('mail_driver', EMAIL_DEFAULTS.mail_driver);
 
   return (
@@ -1487,42 +1448,48 @@ function SettingsContent({ section }: { section: SettingsSection }) {
               {section === 'advanced' ? (
                 <div className="space-y-5">
                   <div className="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-700">
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange('product-placeholder')}
-                      className={cn(
-                        'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-                        advancedTab === 'product-placeholder'
-                          ? 'border-orange-500 text-slate-900 dark:text-slate-100'
-                          : 'border-transparent text-slate-500 hover:text-slate-700'
-                      )}
-                    >
-                      Ảnh sản phẩm
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange('product-frame')}
-                      className={cn(
-                        'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-                        advancedTab === 'product-frame'
-                          ? 'border-orange-500 text-slate-900 dark:text-slate-100'
-                          : 'border-transparent text-slate-500 hover:text-slate-700'
-                      )}
-                    >
-                      Khung viền sản phẩm
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange('watermark')}
-                      className={cn(
-                        'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-                        advancedTab === 'watermark'
-                          ? 'border-orange-500 text-slate-900 dark:text-slate-100'
-                          : 'border-transparent text-slate-500 hover:text-slate-700'
-                      )}
-                    >
-                      Watermark
-                    </button>
+                    {canEditProductImage && (
+                      <button
+                        type="button"
+                        onClick={() => handleTabChange('product-placeholder')}
+                        className={cn(
+                          'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                          advancedTab === 'product-placeholder'
+                            ? 'border-orange-500 text-slate-900 dark:text-slate-100'
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                        )}
+                      >
+                        Ảnh sản phẩm
+                      </button>
+                    )}
+                    {canEditProductFrame && (
+                      <button
+                        type="button"
+                        onClick={() => handleTabChange('product-frame')}
+                        className={cn(
+                          'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                          advancedTab === 'product-frame'
+                            ? 'border-orange-500 text-slate-900 dark:text-slate-100'
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                        )}
+                      >
+                        Khung viền sản phẩm
+                      </button>
+                    )}
+                    {canEditProductWatermark && (
+                      <button
+                        type="button"
+                        onClick={() => handleTabChange('watermark')}
+                        className={cn(
+                          'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                          advancedTab === 'watermark'
+                            ? 'border-orange-500 text-slate-900 dark:text-slate-100'
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                        )}
+                      >
+                        Watermark
+                      </button>
+                    )}
                     {canEditHeaderMenu && (
                       <button
                         type="button"
@@ -1537,7 +1504,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                         Header
                       </button>
                     )}
-                    {enableSupplementalContent && (
+                    {canEditProductSupplemental && (
                       <button
                         type="button"
                         onClick={() => handleTabChange('product-supplemental')}
@@ -1581,7 +1548,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     )}
                   </div>
 
-                  {advancedTab === 'product-placeholder' && (
+                  {advancedTab === 'product-placeholder' && canEditProductImage && (
                     <div className="space-y-4">
                       {currentFields.map(field => renderField(field))}
                       {!hasAdvancedPlaceholderField && (
@@ -1629,7 +1596,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     </div>
                   )}
 
-                  {advancedTab === 'product-frame' && (
+                  {advancedTab === 'product-frame' && canEditProductFrame && (
                     <div className="space-y-6">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                         <div className="flex items-center gap-3">
@@ -1761,7 +1728,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                     </div>
                   )}
 
-                  {advancedTab === 'watermark' && (
+                  {advancedTab === 'watermark' && canEditProductWatermark && (
                     <div className="space-y-6">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                         <div className="flex items-center gap-3">
@@ -2160,7 +2127,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                       </div>
                     </div>
                   )}
-                  {advancedTab === 'product-supplemental' && enableSupplementalContent && (
+                  {advancedTab === 'product-supplemental' && canEditProductSupplemental && (
                     <ProductSupplementalContentManager />
                   )}
                   {advancedTab === 'shop-config' && canEditShopConfig && (
@@ -2177,13 +2144,13 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                       <div className="rounded-xl border border-orange-100 bg-orange-50/60 p-4 dark:border-orange-900/40 dark:bg-orange-950/20">
                         <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Cấu hình email cho admin</h3>
                         <p className="mt-1 text-xs text-slate-500">
-                          Chọn preset phù hợp. Nếu dùng Resend, admin chỉ cần dán API key rồi lưu.
+                          Admin chỉ chỉnh thông tin hiển thị và email nhận thông báo. Khóa gửi mail do dev quản lý ở System.
                         </p>
                       </div>
 
                       <div className="grid gap-4 lg:grid-cols-2">
                         <div className="space-y-2">
-                          <Label>Preset cấu hình</Label>
+                          <Label>Chọn cách gửi email</Label>
                           <select
                             value={emailPreset}
                             onChange={(event) => handleEmailPresetChange(event.target.value as EmailSetupPresetId)}
@@ -2194,7 +2161,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                             ))}
                           </select>
                           <p className="text-xs text-slate-500">
-                            Best practice: Resend API ổn định và ít cấu hình hơn SMTP.
+                            Nên dùng Resend nếu dev đã cấu hình sẵn ở khu vực System.
                           </p>
                         </div>
                         <div className="space-y-2">
@@ -2226,55 +2193,13 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                       </div>
 
                       {mailDriver === 'resend' ? (
-                        <div className="space-y-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-                          <div>
-                            <Label>Dán API key Resend</Label>
-                            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                              <Input
-                                type="password"
-                                value={resendApiKeyDraft}
-                                onChange={(event) => setResendApiKeyDraft(event.target.value)}
-                                placeholder="re_..."
-                              />
-                              <Button type="button" onClick={handleAddResendApiKey}>
-                                Thêm key
-                              </Button>
-                            </div>
-                          </div>
-                          {resendAccounts.length > 0 ? (
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              {resendAccounts.map((account) => (
-                                <div key={account.id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                      <div className="font-semibold text-slate-900 dark:text-slate-100">{account.label || 'Resend'}</div>
-                                      <div className="mt-1 font-mono text-xs text-slate-500">
-                                        re_***{String(account.apiKey ?? '').slice(-6)}
-                                      </div>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleRemoveResendAccount(account.id)}
-                                      className="text-red-500 hover:text-red-600"
-                                    >
-                                      Xóa
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="rounded-lg border border-dashed border-slate-200 p-4 text-center text-sm text-slate-500 dark:border-slate-700">
-                              Chưa có API key. Dán key Resend phía trên là đủ để cấu hình nhanh.
-                            </div>
-                          )}
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+                          Đang dùng Resend đã cài trong System. Admin không cần nhập khóa bí mật tại đây.
                         </div>
                       ) : (
                         <div className="grid gap-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700 lg:grid-cols-2">
                           <div className="space-y-2">
-                            <Label>SMTP Host</Label>
+                            <Label>Máy chủ gửi mail</Label>
                             <Input
                               value={getStringField('mail_host')}
                               onChange={(event) => updateField('mail_host', event.target.value)}
@@ -2282,7 +2207,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>SMTP Port</Label>
+                            <Label>Cổng kết nối</Label>
                             <Input
                               type="number"
                               value={getStringField('mail_port', '587')}
@@ -2291,7 +2216,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>Tài khoản SMTP</Label>
+                            <Label>Tài khoản gửi mail</Label>
                             <Input
                               value={getStringField('mail_username')}
                               onChange={(event) => updateField('mail_username', event.target.value)}
@@ -2299,16 +2224,16 @@ function SettingsContent({ section }: { section: SettingsSection }) {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>Mật khẩu / App password</Label>
+                            <Label>Mật khẩu ứng dụng</Label>
                             <Input
                               type="password"
                               value={getStringField('mail_password')}
                               onChange={(event) => updateField('mail_password', event.target.value)}
-                              placeholder="App password"
+                              placeholder="Mật khẩu ứng dụng"
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>Mã hóa</Label>
+                            <Label>Bảo mật kết nối</Label>
                             <select
                               value={getStringField('mail_encryption', 'tls')}
                               onChange={(event) => updateField('mail_encryption', event.target.value)}
@@ -2348,7 +2273,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
         </Card>
       )}
 
-      {!(section === 'advanced' && advancedTab === 'product-supplemental' && enableSupplementalContent) && (
+      {!(section === 'advanced' && advancedTab === 'product-supplemental' && canEditProductSupplemental) && (
         <HomeComponentStickyFooter
           isSubmitting={isCurrentlySaving}
           submitLabel="Lưu thay đổi"

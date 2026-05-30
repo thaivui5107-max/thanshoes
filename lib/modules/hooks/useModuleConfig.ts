@@ -75,6 +75,11 @@ export function useModuleConfig(config: ModuleDefinition) {
    useEffect(() => {
      if (featuresData) {
        const state: FeaturesState = {};
+       if (config.features) {
+         for (const feature of config.features) {
+           state[feature.key] = feature.enabled ?? false;
+         }
+       }
        for (const f of featuresData) {
          state[f.featureKey] = f.enabled;
        }
@@ -83,7 +88,7 @@ export function useModuleConfig(config: ModuleDefinition) {
       }
        setLocalFeatures(state);
      }
-  }, [featuresData, moduleKey]);
+  }, [featuresData, moduleKey, config.features]);
    
    useEffect(() => {
      if (fieldsData) {
@@ -184,13 +189,18 @@ export function useModuleConfig(config: ModuleDefinition) {
    // ============ SERVER STATE FOR COMPARISON ============
    const serverFeatures = useMemo<FeaturesState>(() => {
      const state: FeaturesState = {};
+     if (config.features) {
+       for (const feature of config.features) {
+         state[feature.key] = feature.enabled ?? false;
+       }
+     }
      if (featuresData) {
        for (const f of featuresData) {
          state[f.featureKey] = f.enabled;
        }
      }
      return state;
-   }, [featuresData]);
+   }, [featuresData, config.features]);
    
    const serverSettings = useMemo<SettingsState>(() => {
      const state: SettingsState = {};
@@ -238,11 +248,12 @@ export function useModuleConfig(config: ModuleDefinition) {
    
    // ============ HANDLERS ============
    const handleToggleFeature = useCallback((key: string) => {
-     const newState = !localFeatures[key];
+     const feature = config.features?.find(f => f.key === key);
+     const currentState = localFeatures[key] ?? feature?.enabled ?? false;
+     const newState = !currentState;
      setLocalFeatures(prev => ({ ...prev, [key]: newState }));
      
      // Auto-update linked fields
-     const feature = config.features?.find(f => f.key === key);
      if (feature?.linkedField) {
        setLocalFields(prev => prev.map(f => {
         if (f.linkedFeature !== key) {return f;}
