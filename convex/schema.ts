@@ -236,6 +236,18 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_customer", ["customerId"]),
 
+  // 8b. customerAuthChallenges - Challenges cho xác minh OTP khách hàng
+  customerAuthChallenges: defineTable({
+    customerId: v.id("customers"),
+    purpose: v.literal("password_setup"),
+    code: v.string(),
+    expiresAt: v.number(),
+    attempts: v.number(),
+    consumedAt: v.optional(v.number()),
+  })
+    .index("by_customer_purpose", ["customerId", "purpose"])
+    .index("by_expiresAt", ["expiresAt"]),
+
   // 9. productCategories - Danh mục sản phẩm (Hierarchical)
   productCategories: defineTable({
     active: v.boolean(),

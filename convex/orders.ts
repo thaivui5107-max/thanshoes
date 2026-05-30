@@ -783,16 +783,24 @@ export const placeOrder = mutation({
     promotionCode: v.optional(v.string()),
     discountAmount: v.optional(v.number()),
     cartId: v.optional(v.id("carts")),
+    customerId: v.optional(v.id("customers")),
   },
   handler: async (ctx, args) => {
     let customerId: Id<"customers">;
     const cleanEmail = args.customer.email.trim().toLowerCase();
-    const cleanPhone = args.customer.phone.trim();
+    const cleanPhone = args.customer.phone.trim().replace(/[^\d+]/g, "");
 
-    let customer = await ctx.db
-      .query("customers")
-      .withIndex("by_email", (q) => q.eq("email", cleanEmail))
-      .first();
+    let customer = null;
+    if (args.customerId) {
+      customer = await ctx.db.get(args.customerId);
+    }
+
+    if (!customer) {
+      customer = await ctx.db
+        .query("customers")
+        .withIndex("by_email", (q) => q.eq("email", cleanEmail))
+        .first();
+    }
 
     if (!customer && cleanPhone) {
       customer = await ctx.db

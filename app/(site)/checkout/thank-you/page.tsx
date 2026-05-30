@@ -10,6 +10,7 @@ import { api } from '@/convex/_generated/api';
 import { useBrandColors } from '@/components/site/hooks';
 import { getCheckoutColors } from '@/components/site/checkout/colors';
 import type { Id } from '@/convex/_generated/dataModel';
+import { useCustomerAuth } from '@/app/(site)/auth/context';
 
 const formatPrice = (value: number) =>
   new Intl.NumberFormat('vi-VN', { currency: 'VND', style: 'currency' }).format(value);
@@ -35,6 +36,14 @@ function ThankYouContent() {
     api.orders.getById,
     orderId ? { id: orderId as Id<'orders'> } : 'skip'
   );
+
+  const { isAuthenticated } = useCustomerAuth();
+  const customerDoc = useQuery(
+    api.customers.getById,
+    order ? { id: order.customerId } : 'skip'
+  );
+
+  const showClaimBanner = !isAuthenticated && customerDoc && !customerDoc.passwordHash;
 
   const ordersSettings = useQuery(api.admin.modules.listModuleSettings, { moduleKey: 'orders' });
 
@@ -210,6 +219,44 @@ function ThankYouContent() {
       <p style={{ color: tokens.metaText, fontSize: 14, marginBottom: 24 }}>
         Cảm ơn bạn đã đặt hàng. Chúng tôi sẽ liên hệ sớm nhất.
       </p>
+
+      {/* Claim account password setup card */}
+      {showClaimBanner && (
+        <div
+          style={{
+            backgroundColor: tokens.selectionBg || '#fffbeb',
+            border: `1px solid ${tokens.selectionBorder || '#fef3c7'}`,
+            borderRadius: 16,
+            padding: '20px 24px',
+            marginBottom: 20,
+            textAlign: 'left',
+          }}
+        >
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: tokens.heading, marginBottom: 6 }}>
+            Kích hoạt tài khoản & Theo dõi đơn hàng
+          </h3>
+          <p style={{ fontSize: 13, color: tokens.metaText, marginBottom: 16, lineHeight: 1.4 }}>
+            Tài khoản khách vãng lai của bạn đã được ghi nhận. Tạo mật khẩu ngay để theo dõi lịch sử giao hàng và nhận ưu đãi cho lần mua sau.
+          </p>
+          <Link
+            href={`/account/login?mode=claim&identifier=${encodeURIComponent(customerDoc.email)}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 10,
+              padding: '10px 20px',
+              fontSize: 13,
+              fontWeight: 600,
+              backgroundColor: tokens.primaryButtonBg,
+              color: tokens.primaryButtonText,
+              textDecoration: 'none',
+            }}
+          >
+            Kích hoạt tài khoản
+          </Link>
+        </div>
+      )}
 
       {/* Order info card */}
       <div

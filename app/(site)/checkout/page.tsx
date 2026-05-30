@@ -815,6 +815,7 @@ function CheckoutContent() {
           : `${customerName.trim()} | ${customerPhone.trim()}`,
         shippingFee: shouldCollectShipping ? shippingFee : 0,
         cartId: fromCart && cart?._id ? cart._id : undefined,
+        customerId: customer?.id ? (customer.id as Id<'customers'>) : undefined,
       });
       if (!result.ok) {
         toast.error('Không thể tạo đơn hàng.');
