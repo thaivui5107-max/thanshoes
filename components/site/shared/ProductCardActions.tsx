@@ -62,7 +62,7 @@ export function ProductCardActions({
         <button
           className={`w-full rounded-lg ${paddingClass} ${fontSizeClass} transition-all duration-300 flex items-center justify-center whitespace-nowrap disabled:opacity-55 disabled:cursor-not-allowed hover:brightness-95 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md`}
           style={{ backgroundColor: tokens.primaryActionBg, color: tokens.primaryActionText }}
-          onClick={(event) => { event.preventDefault(); onAddToCart(product); }}
+          onClick={(event) => { event.preventDefault(); event.stopPropagation(); onAddToCart(product); }}
           disabled={isOutOfStock}
         >
           Thêm giỏ
@@ -77,7 +77,7 @@ export function ProductCardActions({
             color: tokens.secondaryActionText,
             '--btn-hover-bg': isOnDarkBg ? '#ffffff' : tokens.secondaryActionHoverBg,
           } as React.CSSProperties}
-          onClick={(event) => { event.preventDefault(); onBuyNow(product); }}
+          onClick={(event) => { event.preventDefault(); event.stopPropagation(); onBuyNow(product); }}
           disabled={isOutOfStock}
         >
           {isOutOfStock ? 'Hết hàng' : 'Mua ngay'}

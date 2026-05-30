@@ -76,7 +76,7 @@ export function ProductCardActions({
         <button
           className="w-full rounded-lg py-1.5 sm:py-2 text-[10px] xs:text-xs lg:text-[11px] xl:text-xs font-semibold tracking-tight transition-all duration-300 flex items-center justify-center disabled:opacity-55 disabled:cursor-not-allowed hover:brightness-95 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md px-1 whitespace-nowrap"
           style={{ backgroundColor: tokens.primaryActionBg, color: tokens.primaryActionText }}
-          onClick={(event) => { event.preventDefault(); onAddToCart(product); }}
+          onClick={(event) => { event.preventDefault(); event.stopPropagation(); onAddToCart(product); }}
           disabled={isOutOfStock}
         >
           <span>Thêm giỏ</span>
@@ -90,7 +90,7 @@ export function ProductCardActions({
             color: tokens.secondaryActionText,
             '--btn-hover-bg': tokens.secondaryActionHoverBg,
           } as React.CSSProperties}
-          onClick={(event) => { event.preventDefault(); onBuyNow(product); }}
+          onClick={(event) => { event.preventDefault(); event.stopPropagation(); onBuyNow(product); }}
           disabled={isOutOfStock}
         >
           <span>{isOutOfStock ? 'Hết hàng' : 'Mua ngay'}</span>
@@ -580,7 +580,7 @@ export function ProductList({
                     <button
                       className="p-3 rounded-full border transition-colors disabled:opacity-55 disabled:cursor-not-allowed"
                       style={{ borderColor: tokens.secondaryActionBorder, color: tokens.secondaryActionText, backgroundColor: tokens.cardBackground }}
-                      onClick={(e) => { e.preventDefault(); onAddToCart(product); }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddToCart(product); }}
                       disabled={showStock && !product.hasVariants && product.stock <= 0}
                     >
                       <ShoppingCart size={20} />
@@ -590,7 +590,7 @@ export function ProductList({
                     <button
                       className="px-3 py-2 rounded-full border text-xs font-medium transition-colors disabled:opacity-55 disabled:cursor-not-allowed"
                       style={{ borderColor: tokens.secondaryActionBorder, color: tokens.secondaryActionText }}
-                      onClick={(e) => { e.preventDefault(); onBuyNow(product); }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBuyNow(product); }}
                       disabled={showStock && !product.hasVariants && product.stock <= 0}
                     >
                       {showStock && !product.hasVariants && product.stock <= 0 ? 'Hết hàng' : buyNowLabel}
