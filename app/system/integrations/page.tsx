@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Eye, EyeOff, Loader2, Save, Send, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Save, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -23,8 +23,29 @@ const SETTINGS_KEYS = [
 
 type SettingsKey = (typeof SETTINGS_KEYS)[number];
 
-const sanitizeHtml = (html: string) => html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
 const toSafeString = (value: unknown) => (typeof value === 'string' ? value : '');
+
+const SMTP_PRESETS = [
+  { id: 'gmail', label: 'Gmail / Google Workspace', host: 'smtp.gmail.com', port: '587', encryption: 'tls' },
+  { id: 'outlook', label: 'Outlook / Microsoft 365', host: 'smtp.office365.com', port: '587', encryption: 'tls' },
+  { id: 'zoho', label: 'Zoho Mail', host: 'smtp.zoho.com', port: '587', encryption: 'tls' },
+  { id: 'custom', label: 'Tùy chỉnh', host: '', port: '587', encryption: 'tls' },
+] as const;
+
+type SmtpPresetId = (typeof SMTP_PRESETS)[number]['id'];
+
+const DEFAULT_FORM: Record<SettingsKey, string> = {
+  mail_driver: 'smtp',
+  mail_host: '',
+  mail_port: '587',
+  mail_username: '',
+  mail_password: '',
+  mail_encryption: 'tls',
+  mail_from_email: '',
+  mail_from_name: '',
+  resend_accounts: '[]',
+  order_notification_emails: '',
+};
 
 interface ResendAccount {
   id: string;
@@ -42,24 +63,12 @@ export default function IntegrationsPage() {
   const settings = useQuery(api.settings.getMultiple, { keys: [...SETTINGS_KEYS] });
   const setMultiple = useMutation(api.settings.setMultiple);
 
-  const [form, setForm] = useState<Record<SettingsKey, string>>({
-    mail_driver: 'smtp',
-    mail_host: '',
-    mail_port: '587',
-    mail_username: '',
-    mail_password: '',
-    mail_encryption: 'tls',
-    mail_from_email: '',
-    mail_from_name: '',
-    resend_accounts: '[]',
-    order_notification_emails: '',
-  });
+  const [form, setForm] = useState<Record<SettingsKey, string>>(DEFAULT_FORM);
 
   const [initialForm, setInitialForm] = useState<Record<SettingsKey, string>>(form);
   const [isSaving, setIsSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [previewSubject, setPreviewSubject] = useState('Xin chào từ Thanshoes');
-  const [previewHtml, setPreviewHtml] = useState('<p>Đây là email test từ hệ thống điều phối email.</p>');
+  const [smtpPreset, setSmtpPreset] = useState<SmtpPresetId>('custom');
   const [testEmail, setTestEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
 
@@ -71,12 +80,11 @@ export default function IntegrationsPage() {
   const [newAccFromName, setNewAccFromName] = useState('');
   const [newAccDailyLimit, setNewAccDailyLimit] = useState(100);
   const [newAccMonthlyLimit, setNewAccMonthlyLimit] = useState(3000);
-  const [newAccTestMode, setNewAccTestMode] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [newAccTestMode, setNewAccTestMode] = useState(false);
 
   React.useEffect(() => {
     if (!settings) return;
-    const nextForm = { ...form };
+    const nextForm = { ...DEFAULT_FORM };
     SETTINGS_KEYS.forEach((key) => {
       const value = settings[key];
       nextForm[key] = toSafeString(value);
@@ -87,6 +95,13 @@ export default function IntegrationsPage() {
     
     setForm(nextForm);
     setInitialForm(nextForm);
+    const matchedPreset = SMTP_PRESETS.find((preset) =>
+      preset.id !== 'custom' &&
+      preset.host === nextForm.mail_host &&
+      preset.port === nextForm.mail_port &&
+      preset.encryption === nextForm.mail_encryption
+    );
+    setSmtpPreset(matchedPreset?.id ?? 'custom');
 
     try {
       const parsed = JSON.parse(nextForm.resend_accounts);
@@ -113,6 +128,18 @@ export default function IntegrationsPage() {
 
   const updateField = (key: SettingsKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSelectSmtpPreset = (presetId: SmtpPresetId) => {
+    const preset = SMTP_PRESETS.find((item) => item.id === presetId);
+    if (!preset) return;
+    setSmtpPreset(presetId);
+    setForm((prev) => ({
+      ...prev,
+      mail_host: preset.id === 'custom' ? prev.mail_host : preset.host,
+      mail_port: preset.port,
+      mail_encryption: preset.encryption,
+    }));
   };
 
   const validatePort = () => {
@@ -147,21 +174,19 @@ export default function IntegrationsPage() {
 
   const handleAddAccount = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAccLabel.trim()) {
-      toast.error('Vui lòng nhập nhãn tài khoản.');
-      return;
-    }
     if (!newAccApiKey.trim() || !newAccApiKey.startsWith('re_')) {
       toast.error('API Key Resend không hợp lệ (phải bắt đầu bằng re_).');
       return;
     }
 
+    const fallbackFromName = newAccFromName.trim() || form.mail_from_name.trim() || 'Thanshoes';
+    const fallbackFromEmail = newAccFromEmail.trim() || form.mail_from_email.trim() || 'onboarding@resend.dev';
     const newAcc: ResendAccount = {
       id: `acc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      label: newAccLabel.trim(),
+      label: newAccLabel.trim() || `Resend ${accounts.length + 1}`,
       apiKey: newAccApiKey.trim(),
-      fromEmail: newAccFromEmail.trim() || undefined,
-      fromName: newAccFromName.trim() || undefined,
+      fromEmail: fallbackFromEmail,
+      fromName: fallbackFromName,
       enabled: true,
       dailyLimit: newAccDailyLimit,
       monthlyLimit: newAccMonthlyLimit,
@@ -169,7 +194,13 @@ export default function IntegrationsPage() {
     };
 
     const updated = [...accounts, newAcc];
-    updateAccountsInForm(updated);
+    setAccounts(updated);
+    setForm((prev) => ({
+      ...prev,
+      mail_from_email: prev.mail_from_email.trim() || fallbackFromEmail,
+      mail_from_name: prev.mail_from_name.trim() || fallbackFromName,
+      resend_accounts: JSON.stringify(updated),
+    }));
 
     // Reset inputs
     setNewAccLabel('');
@@ -178,9 +209,8 @@ export default function IntegrationsPage() {
     setNewAccFromName('');
     setNewAccDailyLimit(100);
     setNewAccMonthlyLimit(3000);
-    setNewAccTestMode(true);
-    setShowAddForm(false);
-    toast.success('Đã thêm tài khoản Resend mới. Nhớ nhấn "Lưu thay đổi"!');
+    setNewAccTestMode(false);
+    toast.success('Đã thêm API key Resend. Nhớ nhấn "Lưu thay đổi"!');
   };
 
   const handleRemoveAccount = (id: string) => {
@@ -209,8 +239,8 @@ export default function IntegrationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: testEmail.trim(),
-          subject: previewSubject.trim() || 'Test email',
-          html: previewHtml || '<p>Test email</p>',
+          subject: 'Email test từ Thanshoes',
+          html: '<p>Đây là email test từ hệ thống Thanshoes.</p>',
         }),
       });
       if (!response.ok) {
@@ -235,51 +265,51 @@ export default function IntegrationsPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto pb-16">
-      {/* Title */}
-      <div>
-        <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Cấu hình Tích hợp Email</h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-          Quản lý kênh gửi email giao dịch (SMTP truyền thống hoặc API Resend điều phối tải).
+    <div className="space-y-6 max-w-4xl mx-auto pb-16">
+      <div className="space-y-2">
+        <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Tích hợp Email</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Chọn cách gửi email, nhập thông tin người gửi rồi lưu. Sau đó gửi thử để kiểm tra cấu hình.
         </p>
       </div>
 
-      {/* Driver Selector */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-4">Phương thức gửi chính (Driver)</h3>
-        <div className="flex gap-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
+        <div>
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">1. Chọn phương thức gửi</h3>
+          <p className="text-xs text-slate-500 mt-1">Dùng SMTP nếu có mail server riêng, hoặc Resend nếu gửi qua API.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
           <button
             type="button"
             onClick={() => updateField('mail_driver', 'smtp')}
-            className={`flex-1 py-4 px-6 rounded-2xl border text-sm font-semibold transition-all text-center flex flex-col items-center justify-center gap-1 cursor-pointer ${
+            className={`min-h-24 rounded-2xl border p-4 text-left transition-all cursor-pointer ${
               form.mail_driver === 'smtp'
                 ? 'border-indigo-600 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
                 : 'border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-950'
             }`}
           >
-            <span className="text-base font-bold">SMTP Server</span>
-            <span className="text-xs font-normal">Gửi qua mail server của bên thứ ba (Gmail, Outlook, v.v.)</span>
+            <span className="block text-base font-bold">SMTP</span>
+            <span className="mt-1 block text-xs">Gmail, Outlook hoặc mail server riêng.</span>
           </button>
           <button
             type="button"
             onClick={() => updateField('mail_driver', 'resend')}
-            className={`flex-1 py-4 px-6 rounded-2xl border text-sm font-semibold transition-all text-center flex flex-col items-center justify-center gap-1 cursor-pointer ${
+            className={`min-h-24 rounded-2xl border p-4 text-left transition-all cursor-pointer ${
               form.mail_driver === 'resend'
                 ? 'border-indigo-600 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
                 : 'border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-950'
             }`}
           >
-            <span className="text-base font-bold">Resend API Router</span>
-            <span className="text-xs font-normal">Điều phối thông minh qua một hoặc nhiều tài khoản Resend</span>
+            <span className="block text-base font-bold">Resend</span>
+            <span className="mt-1 block text-xs">Gửi qua API key Resend.</span>
           </button>
         </div>
       </div>
 
-      {/* Main Settings Form */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-6">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
           <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
-            {form.mail_driver === 'smtp' ? 'Cấu hình SMTP Server' : 'Quản lý tài khoản Resend'}
+            2. {form.mail_driver === 'smtp' ? 'Nhập cấu hình SMTP' : 'Nhập cấu hình Resend'}
           </h3>
           <span className={`text-[10px] px-2.5 py-1 rounded-full border font-bold uppercase tracking-wider ${
             form.mail_driver === 'smtp'
@@ -293,8 +323,23 @@ export default function IntegrationsPage() {
         {/* ─── SMTP CONFIG FIELDS ────────────────────────────────────────────── */}
         {form.mail_driver === 'smtp' && (
           <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-xs font-semibold text-slate-500">Chọn nhà cung cấp SMTP</label>
+              <select
+                value={smtpPreset}
+                onChange={(e) => handleSelectSmtpPreset(e.target.value as SmtpPresetId)}
+                className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+              >
+                {SMTP_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-400">Chọn preset để tự điền host, port và mã hóa theo cấu hình phổ biến.</p>
+            </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500">Tên người gửi (From Name)</label>
+              <label className="text-xs font-semibold text-slate-500">Tên người gửi</label>
               <input
                 value={form.mail_from_name}
                 onChange={(e) => updateField('mail_from_name', e.target.value)}
@@ -303,7 +348,7 @@ export default function IntegrationsPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500">Email gửi đi (From Email)</label>
+              <label className="text-xs font-semibold text-slate-500">Email gửi đi</label>
               <input
                 value={form.mail_from_email}
                 onChange={(e) => updateField('mail_from_email', e.target.value)}
@@ -312,7 +357,7 @@ export default function IntegrationsPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500">SMTP Host</label>
+              <label className="text-xs font-semibold text-slate-500">Host</label>
               <input
                 value={form.mail_host}
                 onChange={(e) => updateField('mail_host', e.target.value)}
@@ -321,7 +366,7 @@ export default function IntegrationsPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500">SMTP Port</label>
+              <label className="text-xs font-semibold text-slate-500">Port</label>
               <input
                 value={form.mail_port}
                 onChange={(e) => updateField('mail_port', e.target.value)}
@@ -330,7 +375,7 @@ export default function IntegrationsPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500">Tài khoản (Username)</label>
+              <label className="text-xs font-semibold text-slate-500">Tài khoản</label>
               <input
                 value={form.mail_username}
                 onChange={(e) => updateField('mail_username', e.target.value)}
@@ -338,7 +383,7 @@ export default function IntegrationsPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500">Mật khẩu (Password)</label>
+              <label className="text-xs font-semibold text-slate-500">Mật khẩu</label>
               <div className="relative">
                 <input
                   value={form.mail_password}
@@ -357,7 +402,7 @@ export default function IntegrationsPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500">Mã hóa (Encryption)</label>
+              <label className="text-xs font-semibold text-slate-500">Mã hóa</label>
               <select
                 value={form.mail_encryption}
                 onChange={(e) => updateField('mail_encryption', e.target.value)}
@@ -374,52 +419,105 @@ export default function IntegrationsPage() {
         {/* ─── RESEND CONFIG FIELDS ──────────────────────────────────────────── */}
         {form.mail_driver === 'resend' && (
           <div className="space-y-6">
-            {/* Global fallback sender details */}
-            <div className="grid gap-4 sm:grid-cols-2 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-900">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-500">Tên người gửi mặc định (Fallback From Name)</label>
-                <input
-                  value={form.mail_from_name}
-                  onChange={(e) => updateField('mail_from_name', e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm focus:outline-none"
-                  placeholder="Thanshoes Store"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-500">Email gửi đi mặc định (Fallback From Email)</label>
-                <input
-                  value={form.mail_from_email}
-                  onChange={(e) => updateField('mail_from_email', e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm focus:outline-none"
-                  placeholder="onboarding@resend.dev"
-                />
-              </div>
-            </div>
-
-            {/* Warning Note */}
-            <div className="flex gap-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-4 rounded-2xl text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
-              <AlertTriangle size={18} className="shrink-0 text-amber-500" />
+            <form onSubmit={handleAddAccount} className="rounded-3xl border border-indigo-100 bg-indigo-50/60 p-4 dark:border-indigo-900/40 dark:bg-indigo-950/20 space-y-4">
               <div>
-                <span className="font-bold">Lưu ý về Quota:</span> Việc thêm nhiều API key cùng thuộc một Resend Team/Organization sẽ <span className="font-bold">không giúp tăng quota</span> của team đó. Quota Resend được tính theo Organization của Resend. Bạn nên sử dụng các API key của các tài khoản (hộp thư/tổ chức) khác nhau để tăng tổng quota.
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">Dán API key Resend</h4>
+                <p className="text-xs text-slate-500 mt-1">Chỉ cần dán API key bắt đầu bằng <code>re_</code>. Các giá trị còn lại đã được điền theo mặc định an toàn.</p>
               </div>
-            </div>
-
-            {/* List of Accounts */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Danh sách tài khoản</h4>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="password"
+                  required
+                  value={newAccApiKey}
+                  onChange={(e) => setNewAccApiKey(e.target.value)}
+                  placeholder="re_..."
+                  className="min-h-12 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-800 dark:bg-slate-900"
+                />
                 <button
-                  type="button"
-                  onClick={() => setShowAddForm(!showAddForm)}
-                  className="flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                  type="submit"
+                  className="min-h-12 rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-indigo-700 cursor-pointer"
                 >
-                  <Plus size={14} /> Thêm tài khoản
+                  Thêm API key
                 </button>
               </div>
 
+              <details className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <summary className="cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300">Tùy chỉnh nâng cao</summary>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-500">Tên nhãn</label>
+                    <input
+                      type="text"
+                      value={newAccLabel}
+                      onChange={(e) => setNewAccLabel(e.target.value)}
+                      placeholder="Resend chính"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none dark:border-slate-800 dark:bg-slate-950"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-500">Tên người gửi</label>
+                    <input
+                      type="text"
+                      value={newAccFromName}
+                      onChange={(e) => setNewAccFromName(e.target.value)}
+                      placeholder={form.mail_from_name || 'Thanshoes'}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none dark:border-slate-800 dark:bg-slate-950"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-500">Email gửi đi</label>
+                    <input
+                      type="email"
+                      value={newAccFromEmail}
+                      onChange={(e) => setNewAccFromEmail(e.target.value)}
+                      placeholder={form.mail_from_email || 'onboarding@resend.dev'}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none dark:border-slate-800 dark:bg-slate-950"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-500">Giới hạn/ngày</label>
+                    <input
+                      type="number"
+                      required
+                      value={newAccDailyLimit}
+                      onChange={(e) => setNewAccDailyLimit(Number(e.target.value))}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none dark:border-slate-800 dark:bg-slate-950"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-500">Giới hạn/tháng</label>
+                    <input
+                      type="number"
+                      required
+                      value={newAccMonthlyLimit}
+                      onChange={(e) => setNewAccMonthlyLimit(Number(e.target.value))}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none dark:border-slate-800 dark:bg-slate-950"
+                    />
+                  </div>
+                  <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3 text-xs dark:border-slate-800 sm:col-span-2">
+                    <span>
+                      <span className="block font-bold text-slate-700 dark:text-slate-300">Test mode</span>
+                      <span className="text-slate-400">Bật nếu chỉ muốn gửi thử tới email đã verify trên Resend.</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={newAccTestMode}
+                      onChange={(e) => setNewAccTestMode(e.target.checked)}
+                      className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                  </label>
+                </div>
+              </details>
+            </form>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Danh sách tài khoản</h4>
+              </div>
+
               {accounts.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                  Chưa cấu hình tài khoản Resend nào. Vui lòng bấm thêm mới.
+                <div className="text-center py-6 text-slate-400 text-sm border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                  Chưa có API key Resend. Dán key ở ô phía trên rồi bấm thêm.
                 </div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -475,105 +573,6 @@ export default function IntegrationsPage() {
               )}
             </div>
 
-            {/* Add New Account Form Modal-like Card */}
-            {showAddForm && (
-              <form onSubmit={handleAddAccount} className="bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                <h5 className="font-bold text-sm text-slate-800 dark:text-slate-200">Thêm tài khoản Resend</h5>
-                
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-500">Tên nhãn (Label)</label>
-                    <input
-                      type="text"
-                      required
-                      value={newAccLabel}
-                      onChange={(e) => setNewAccLabel(e.target.value)}
-                      placeholder="Ví dụ: Resend Free Acc 1"
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-500">Resend API Key</label>
-                    <input
-                      type="password"
-                      required
-                      value={newAccApiKey}
-                      onChange={(e) => setNewAccApiKey(e.target.value)}
-                      placeholder="re_..."
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-500">Người gửi tùy chọn (From Name)</label>
-                    <input
-                      type="text"
-                      value={newAccFromName}
-                      onChange={(e) => setNewAccFromName(e.target.value)}
-                      placeholder="Để trống nếu dùng mặc định"
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-500">Email gửi tùy chọn (From Email)</label>
-                    <input
-                      type="email"
-                      value={newAccFromEmail}
-                      onChange={(e) => setNewAccFromEmail(e.target.value)}
-                      placeholder="Để trống nếu dùng mặc định"
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-500">Daily Limit (Ngày)</label>
-                    <input
-                      type="number"
-                      required
-                      value={newAccDailyLimit}
-                      onChange={(e) => setNewAccDailyLimit(Number(e.target.value))}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-500">Monthly Limit (Tháng)</label>
-                    <input
-                      type="number"
-                      required
-                      value={newAccMonthlyLimit}
-                      onChange={(e) => setNewAccMonthlyLimit(Number(e.target.value))}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none"
-                    />
-                  </div>
-                  <div className="sm:col-span-2 flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
-                    <div>
-                      <span className="font-bold block text-slate-700 dark:text-slate-300">Chế độ Thử nghiệm (Test Mode)</span>
-                      <span className="text-slate-400">Nếu bật, email sẽ được gửi qua Resend Test Mode (chỉ gửi tới các email đã verify trên console Resend).</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={newAccTestMode}
-                      onChange={(e) => setNewAccTestMode(e.target.checked)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-5 h-5 cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddForm(false)}
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs font-semibold rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 cursor-pointer"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl cursor-pointer"
-                  >
-                    Đồng ý thêm
-                  </button>
-                </div>
-              </form>
-            )}
           </div>
         )}
 
@@ -607,53 +606,22 @@ export default function IntegrationsPage() {
         </div>
       </div>
 
-      {/* Test Mail Section */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Cấu hình Email gửi thử</h3>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-500">Tiêu đề email test</label>
-            <input
-              value={previewSubject}
-              onChange={(e) => setPreviewSubject(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-3 text-sm focus:outline-none"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-500">Nội dung HTML email test</label>
-            <textarea
-              value={previewHtml}
-              onChange={(e) => setPreviewHtml(e.target.value)}
-              className="w-full min-h-[160px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-3 text-sm font-mono focus:outline-none"
-            />
-          </div>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 space-y-4 shadow-sm">
+        <div>
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">3. Gửi thử</h3>
+          <p className="text-xs text-slate-500 mt-1">Nhập email nhận để kiểm tra cấu hình vừa lưu.</p>
         </div>
-
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Xem trước nội dung (Preview)</h3>
-          <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-4 bg-slate-50 dark:bg-slate-950 overflow-hidden max-h-[300px] overflow-y-auto">
-            <div className="text-xs text-slate-400 mb-2 border-b border-slate-100 dark:border-slate-900 pb-2">Subject: {previewSubject || 'Email Subject'}</div>
-            <div
-              className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 text-xs"
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(previewHtml || '') }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Gửi thử Email Test thực tế</h3>
         <div className="flex flex-col sm:flex-row gap-3">
           <input
             value={testEmail}
             onChange={(e) => setTestEmail(e.target.value)}
-            className="flex-1 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-3 text-sm focus:outline-none"
-            placeholder="dien-email-nhan@example.com"
+            className="min-h-12 flex-1 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            placeholder="email-nhan@example.com"
           />
           <button
             onClick={handleSendTest}
             disabled={isSending}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-2xl transition-colors disabled:opacity-50 cursor-pointer shadow-md"
+            className="min-h-12 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-2xl transition-colors disabled:opacity-50 cursor-pointer shadow-md"
           >
             {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
             {isSending ? 'Đang gửi...' : 'Gửi mail test'}
