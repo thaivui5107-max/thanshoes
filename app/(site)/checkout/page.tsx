@@ -405,7 +405,7 @@ function CheckoutContent() {
           const wardsRaw = await wardsRes.json() as Record<string, { code: string; name_with_type?: string; name: string; parent_code: string }>;
 
           if (cancelled) return;
-          setProvinceList(provinces.map((province) => ({ code: province.id, name: province.name })));
+          setProvinceList(provinces.map((province) => ({ code: province.id.padStart(2, '0'), name: province.name })));
           setDistrictList(Object.values(districtsRaw).map((district) => ({
             code: district.code,
             name: district.name_with_type ?? district.name,
