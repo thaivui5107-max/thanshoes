@@ -41,9 +41,6 @@ type PostsListExperienceConfig = {
 
 const EXPERIENCE_KEY = 'posts_list_ui';
 
-// Legacy keys for backward compatibility with /posts page
-const LEGACY_LAYOUT_KEY = 'posts_list_style';
-
 const LAYOUT_STYLES: LayoutOption<ListLayoutStyle>[] = [
   { description: 'Horizontal filter bar + grid/list toggle, tối ưu mobile', id: 'fullwidth', label: 'Full Width' },
   { description: 'Classic blog với sidebar filters, categories, recent posts', id: 'sidebar', label: 'Sidebar' },
@@ -75,52 +72,41 @@ export default function PostsListExperiencePage() {
   const [colorMode, setColorMode] = useState<'single' | 'dual'>(brandColors.mode || 'single');
   const exampleCategorySlug = useExamplePostCategorySlug();
   const [previewDevice, setPreviewDevice] = useState<DeviceType>('desktop');
-  
-  // Read legacy layout setting
-  const legacyLayoutSetting = useQuery(api.settings.getByKey, { key: LEGACY_LAYOUT_KEY });
 
   const serverConfig = useMemo<PostsListExperienceConfig>(() => {
     const raw = experienceSetting?.value as Partial<PostsListExperienceConfig> | undefined;
-    const legacyLayout = legacyLayoutSetting?.value as string;
     const rawLayout = raw?.layoutStyle as string | undefined;
     
     const normalizeLayoutStyle = (value?: string): ListLayoutStyle => {
-      if (value === 'fullwidth' || value === 'grid') {return 'fullwidth';}
-      if (value === 'sidebar' || value === 'list') {return 'sidebar';}
-      if (value === 'magazine' || value === 'masonry') {return 'magazine';}
-      return 'fullwidth';
+      if (value === 'fullwidth') {return 'fullwidth';}
+      if (value === 'sidebar') {return 'sidebar';}
+      if (value === 'magazine') {return 'magazine';}
+      return DEFAULT_CONFIG.layoutStyle;
     };
     
-    const normalizePaginationType = (value?: string | boolean): PaginationType => {
+    const normalizePaginationType = (value?: string): PaginationType => {
       if (value === 'infiniteScroll') return 'infiniteScroll';
       if (value === 'pagination') return 'pagination';
-      if (value === false) return 'infiniteScroll';
-      return 'pagination';
+      return DEFAULT_CONFIG.paginationType;
     };
     
     return {
-      layoutStyle: normalizeLayoutStyle(rawLayout ?? legacyLayout),
+      layoutStyle: normalizeLayoutStyle(rawLayout),
       showSearch: raw?.showSearch ?? true,
       showCategories: raw?.showCategories ?? true,
       hideEmptyCategories: raw?.hideEmptyCategories ?? true,
-      paginationType: normalizePaginationType(raw?.paginationType ?? (raw as { showPagination?: boolean })?.showPagination),
+      paginationType: normalizePaginationType(raw?.paginationType),
       postsPerPage: raw?.postsPerPage ?? 12,
     };
-  }, [experienceSetting?.value, legacyLayoutSetting?.value]);
+  }, [experienceSetting?.value]);
 
   const isLoading = experienceSetting === undefined || postsModule === undefined;
   const { config, setConfig, hasChanges } = useExperienceConfig(serverConfig, DEFAULT_CONFIG, isLoading);
   
-  // Additional settings to sync with legacy keys
-  const additionalSettings = useMemo(() => [
-    { group: 'posts', key: LEGACY_LAYOUT_KEY, value: config.layoutStyle }
-  ], [config.layoutStyle]);
-  
   const { handleSave, isSaving } = useExperienceSave(
     EXPERIENCE_KEY, 
     config, 
-    MESSAGES.saveSuccess(EXPERIENCE_NAMES[EXPERIENCE_KEY]),
-    additionalSettings
+    MESSAGES.saveSuccess(EXPERIENCE_NAMES[EXPERIENCE_KEY])
   );
 
   useEffect(() => {

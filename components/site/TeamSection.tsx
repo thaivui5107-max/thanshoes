@@ -45,16 +45,7 @@ export function TeamSection({
     ? normalizedConfig.members
     : normalizeTeamConfig({}).members;
 
-  // Extract header config via shared util (backward compat: fallback to texts.subtitle)
-  const legacySubtitle = typeof normalizedConfig.texts?.subtitle === 'string'
-    ? normalizedConfig.texts.subtitle
-    : '';
-
-  const rawHeaderConfig = extractSectionHeaderConfig(config);
-  const headerConfig = {
-    ...rawHeaderConfig,
-    subtitle: rawHeaderConfig.subtitle || legacySubtitle,
-  };
+  const headerConfig = extractSectionHeaderConfig(config);
 
   return (
     <TeamSectionShared

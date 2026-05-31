@@ -23,7 +23,7 @@ export async function recalculateProductEffectivePrice(ctx: MutationCtx, product
   const product = await ctx.db.get(productId);
   if (!product) return;
 
-  let effectivePrice = product.salePrice ?? product.price;
+  let effectivePrice = product.price ?? product.salePrice;
 
   if (product.hasVariants) {
     const variants = await ctx.db
@@ -33,7 +33,7 @@ export async function recalculateProductEffectivePrice(ctx: MutationCtx, product
     
     const activeVariants = variants.filter(v => v.status === "Active");
     if (activeVariants.length > 0) {
-      const prices = activeVariants.map(v => v.salePrice ?? v.price).filter((p): p is number => p !== undefined);
+      const prices = activeVariants.map(v => v.price ?? v.salePrice).filter((p): p is number => p !== undefined);
       if (prices.length > 0) {
         effectivePrice = Math.min(...prices);
       }
@@ -41,6 +41,56 @@ export async function recalculateProductEffectivePrice(ctx: MutationCtx, product
   }
 
   await ctx.db.patch(productId, { effectivePrice });
+}
+
+async function searchActiveProductsByNameOrSku(
+  ctx: QueryCtx,
+  args: {
+    categoryId?: Id<"productCategories">;
+    productTypeId?: Id<"productTypes">;
+    search: string;
+    limit: number;
+  },
+) {
+  const searchText = args.search.toLowerCase().trim();
+  const fallbackLimit = Math.max(args.limit, 200);
+  const nameQuery = ctx.db
+    .query("products")
+    .withSearchIndex("search_name", (q) => {
+      const builder = q.search("name", searchText).eq("status", "Active");
+      return args.categoryId ? builder.eq("categoryId", args.categoryId) : builder;
+    });
+  const skuQuery = ctx.db
+    .query("products")
+    .withSearchIndex("search_sku", (q) => {
+      const builder = q.search("sku", searchText).eq("status", "Active");
+      return args.categoryId ? builder.eq("categoryId", args.categoryId) : builder;
+    });
+  const fallbackQuery = args.categoryId
+    ? ctx.db
+      .query("products")
+      .withIndex("by_category_status", (q) =>
+        q.eq("categoryId", args.categoryId!).eq("status", "Active")
+      )
+    : ctx.db
+      .query("products")
+      .withIndex("by_status_order", (q) => q.eq("status", "Active"));
+
+  const [nameResults, skuResults, fallbackResults] = await Promise.all([
+    nameQuery.take(args.limit),
+    skuQuery.take(args.limit),
+    fallbackQuery.take(fallbackLimit),
+  ]);
+
+  let products = Array.from(
+    new Map([...nameResults, ...skuResults, ...fallbackResults].map((product) => [product._id, product])).values(),
+  );
+
+  if (args.productTypeId) {
+    products = products.filter((product) => product.productTypeId === args.productTypeId);
+  }
+
+  return products;
 }
 
 const comboItemDoc = v.object({
@@ -905,7 +955,7 @@ export const getPriceRangeStats = query({
     let maxPrice = -Infinity;
 
     for (const p of resolvedProducts) {
-      const price = p.effectivePrice ?? p.salePrice ?? p.price;
+      const price = p.effectivePrice ?? 0;
       if (price > 0) {
         if (price < minPrice) minPrice = price;
         if (price > maxPrice) maxPrice = price;
@@ -954,13 +1004,6 @@ export const listPublishedPaginated = query({
         query = query.filter((q) => q.eq(q.field("productTypeId"), args.productTypeId));
       }
 
-      if (args.minPrice !== undefined) {
-        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
-      }
-      if (args.maxPrice !== undefined) {
-        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
-      }
-      
       result = await query
         .order(sortBy === "oldest" ? "asc" : "desc")
         .paginate(args.paginationOpts);
@@ -979,13 +1022,6 @@ export const listPublishedPaginated = query({
           q.eq("productTypeId", args.productTypeId!).eq("status", "Active")
         );
 
-      if (args.minPrice !== undefined) {
-        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
-      }
-      if (args.maxPrice !== undefined) {
-        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
-      }
-
       result = await query
         .order(sortBy === "oldest" ? "asc" : "desc")
         .paginate(args.paginationOpts);
@@ -993,13 +1029,6 @@ export const listPublishedPaginated = query({
       let query = ctx.db
         .query("products")
         .withIndex("by_status_sales", (q) => q.eq("status", "Active"));
-
-      if (args.minPrice !== undefined) {
-        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
-      }
-      if (args.maxPrice !== undefined) {
-        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
-      }
 
       result = await query
         .order("desc")
@@ -1009,22 +1038,15 @@ export const listPublishedPaginated = query({
         .query("products")
         .withIndex("by_status_order", (q) => q.eq("status", "Active"));
 
-      if (args.minPrice !== undefined) {
-        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
-      }
-      if (args.maxPrice !== undefined) {
-        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
-      }
-
       result = await query
         .order(sortBy === "oldest" ? "asc" : "desc")
         .paginate(args.paginationOpts);
     }
 
-    // Filter by minPrice and maxPrice
+    // Filter by minPrice and maxPrice using canonical sale price.
     if (args.minPrice !== undefined || args.maxPrice !== undefined) {
       result.page = result.page.filter((p) => {
-        const price = p.effectivePrice ?? p.salePrice ?? p.price;
+        const price = p.effectivePrice ?? 0;
         if (args.minPrice !== undefined && price < args.minPrice) return false;
         if (args.maxPrice !== undefined && price > args.maxPrice) return false;
         return true;
@@ -1092,18 +1114,13 @@ export const listPublishedWithOffset = query({
     const fetchLimit = (hasAttributeFilter || args.minPrice !== undefined || args.maxPrice !== undefined) ? 1000 : offset + limit + 10;
 
     if (args.search?.trim()) {
-      const searchLower = args.search.toLowerCase().trim();
       const fetchLimit = Math.min(offset + limit + 20, 500);
-      const searchQuery = ctx.db
-        .query("products")
-        .withSearchIndex("search_name", (q) => {
-          const builder = q.search("name", searchLower).eq("status", "Active");
-          return args.categoryId ? builder.eq("categoryId", args.categoryId) : builder;
-        });
-      products = await searchQuery.take(fetchLimit);
-      if (args.productTypeId) {
-        products = products.filter((p) => p.productTypeId === args.productTypeId);
-      }
+      products = await searchActiveProductsByNameOrSku(ctx, {
+        categoryId: args.categoryId,
+        productTypeId: args.productTypeId,
+        search: args.search,
+        limit: fetchLimit,
+      });
     } else if (args.categoryId) {
       let query = ctx.db
         .query("products")
@@ -1115,13 +1132,6 @@ export const listPublishedWithOffset = query({
         query = query.filter((q) => q.eq(q.field("productTypeId"), args.productTypeId));
       }
 
-      if (args.minPrice !== undefined) {
-        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
-      }
-      if (args.maxPrice !== undefined) {
-        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
-      }
-      
       products = await query.take(fetchLimit);
       if (await isMultiCategoryEnabled(ctx, "products")) {
         products = await mergeProductsByCategoryAssignments(ctx, args.categoryId, products, fetchLimit);
@@ -1134,38 +1144,17 @@ export const listPublishedWithOffset = query({
           q.eq("productTypeId", args.productTypeId!).eq("status", "Active")
         );
 
-      if (args.minPrice !== undefined) {
-        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
-      }
-      if (args.maxPrice !== undefined) {
-        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
-      }
-
       products = await query.take(fetchLimit);
     } else if (sortBy === "popular") {
       let query = ctx.db
         .query("products")
         .withIndex("by_status_sales", (q) => q.eq("status", "Active"));
 
-      if (args.minPrice !== undefined) {
-        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
-      }
-      if (args.maxPrice !== undefined) {
-        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
-      }
-
       products = await query.order("desc").take(fetchLimit);
     } else {
       let query = ctx.db
         .query("products")
         .withIndex("by_status_order", (q) => q.eq("status", "Active"));
-
-      if (args.minPrice !== undefined) {
-        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
-      }
-      if (args.maxPrice !== undefined) {
-        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
-      }
 
       products = await query.take(fetchLimit);
     }
@@ -1182,7 +1171,7 @@ export const listPublishedWithOffset = query({
 
     if (args.minPrice !== undefined || args.maxPrice !== undefined) {
       products = products.filter((p) => {
-        const price = p.effectivePrice ?? p.salePrice ?? p.price;
+        const price = p.effectivePrice ?? 0;
         if (args.minPrice !== undefined && price < args.minPrice) return false;
         if (args.maxPrice !== undefined && price > args.maxPrice) return false;
         return true;
@@ -1230,11 +1219,11 @@ export const listPublishedWithOffset = query({
           break;
         }
         case "price_asc": {
-          products.sort((a, b) => (a.salePrice ?? a.price) - (b.salePrice ?? b.price));
+          products.sort((a, b) => (a.effectivePrice ?? 0) - (b.effectivePrice ?? 0));
           break;
         }
         case "price_desc": {
-          products.sort((a, b) => (b.salePrice ?? b.price) - (a.salePrice ?? a.price));
+          products.sort((a, b) => (b.effectivePrice ?? 0) - (a.effectivePrice ?? 0));
           break;
         }
         case "name": {
@@ -1271,15 +1260,12 @@ export const searchPublished = query({
     let products;
 
     if (args.search?.trim()) {
-      const searchLower = args.search.toLowerCase().trim();
       const fetchLimit = Math.min(limit * 2, 200);
-      const searchQuery = ctx.db
-        .query("products")
-        .withSearchIndex("search_name", (q) => {
-          const builder = q.search("name", searchLower).eq("status", "Active");
-          return args.categoryId ? builder.eq("categoryId", args.categoryId) : builder;
-        });
-      products = await searchQuery.take(fetchLimit);
+      products = await searchActiveProductsByNameOrSku(ctx, {
+        categoryId: args.categoryId,
+        search: args.search,
+        limit: fetchLimit,
+      });
     } else if (args.categoryId) {
       products = await ctx.db
         .query("products")
@@ -1327,11 +1313,11 @@ export const searchPublished = query({
         break;
       }
       case "price_asc": {
-        products.sort((a, b) => (a.salePrice ?? a.price) - (b.salePrice ?? b.price));
+        products.sort((a, b) => (a.effectivePrice ?? 0) - (b.effectivePrice ?? 0));
         break;
       }
       case "price_desc": {
-        products.sort((a, b) => (b.salePrice ?? b.price) - (a.salePrice ?? a.price));
+        products.sort((a, b) => (b.effectivePrice ?? 0) - (a.effectivePrice ?? 0));
         break;
       }
       case "name": {
@@ -1378,13 +1364,6 @@ export const countPublished = query({
         query = query.filter((q) => q.eq(q.field("productTypeId"), args.productTypeId));
       }
 
-      if (args.minPrice !== undefined) {
-        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
-      }
-      if (args.maxPrice !== undefined) {
-        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
-      }
-      
       products = await query.collect();
       if (await isMultiCategoryEnabled(ctx, "products")) {
         products = await mergeProductsByCategoryAssignments(ctx, args.categoryId, products, 1000);
@@ -1397,25 +1376,11 @@ export const countPublished = query({
           q.eq("productTypeId", args.productTypeId!).eq("status", "Active")
         );
 
-      if (args.minPrice !== undefined) {
-        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
-      }
-      if (args.maxPrice !== undefined) {
-        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
-      }
-
       products = await query.collect();
     } else {
       let query = ctx.db
         .query("products")
         .withIndex("by_status_order", (q) => q.eq("status", "Active"));
-
-      if (args.minPrice !== undefined) {
-        query = query.filter((q) => q.gte(q.field("effectivePrice"), args.minPrice!));
-      }
-      if (args.maxPrice !== undefined) {
-        query = query.filter((q) => q.lte(q.field("effectivePrice"), args.maxPrice!));
-      }
 
       products = await query.collect();
     }
@@ -1432,7 +1397,7 @@ export const countPublished = query({
 
     if (args.minPrice !== undefined || args.maxPrice !== undefined) {
       products = products.filter((p) => {
-        const price = p.effectivePrice ?? p.salePrice ?? p.price;
+        const price = p.effectivePrice ?? 0;
         if (args.minPrice !== undefined && price < args.minPrice) return false;
         if (args.maxPrice !== undefined && price > args.maxPrice) return false;
         return true;

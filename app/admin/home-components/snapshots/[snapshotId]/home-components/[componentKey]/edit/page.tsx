@@ -65,6 +65,7 @@ import PricingEditPage from '@/app/admin/home-components/pricing/[id]/edit/page'
 import PopupEditPage from '@/app/admin/home-components/popup/[id]/edit/page';
 import ContactEditPage from '@/app/admin/home-components/contact/[id]/edit/page';
 import { saveSnapshotComponent } from '@/app/admin/home-components/snapshots/_lib/snapshotComponentSave';
+import { collectSnapshotMediaRefs } from '@/app/admin/home-components/snapshots/_lib/collectSnapshotMediaRefs';
 import { SnapshotRouterMain } from '../../../../_components/SnapshotRouterMain';
 
 
@@ -97,6 +98,7 @@ function SnapshotComponentEditPage({ snapshotId, componentKey }: { snapshotId: s
   const router = useRouter();
   const snapshot = useQuery(api.homepageSnapshots.getHomepageSnapshotById, { snapshotId: snapshotId as Id<'homeComponentSnapshots'> });
   const updateSnapshot = useMutation(api.homepageSnapshots.updateHomepageSnapshot);
+  const commitDraftUploads = useMutation(api.fileLifecycle.commitDraftUploadsByStorageIds);
   const { effectiveColors: footerColors } = useTypeColorOverrideState('Footer');
   const { effectiveColors: speedDialColors } = useTypeColorOverrideState('SpeedDial');
   const { effectiveColors: galleryColors } = useTypeColorOverrideState('Gallery');
@@ -168,6 +170,59 @@ function SnapshotComponentEditPage({ snapshotId, componentKey }: { snapshotId: s
     setLoadedKey(decodedKey);
   }, [decodedKey, loadedKey, payload]);
 
+  const handleSaveSnapshotComponent = async ({
+    active,
+    config,
+    title,
+    order,
+    manualMediaRefs,
+  }: {
+    active: boolean;
+    config: unknown;
+    title: string;
+    order?: number | string;
+    manualMediaRefs?: string[];
+  }) => {
+    if (!payload || !snapshot || !component) {
+      toast.error('Component chưa sẵn sàng');
+      return;
+    }
+
+    const autoRefs = collectSnapshotMediaRefs(config);
+    const combinedRefs = Array.from(new Set([
+      ...autoRefs,
+      ...(manualMediaRefs ?? []),
+    ])).filter(Boolean);
+
+    setIsSaving(true);
+    try {
+      await saveSnapshotComponent({
+        active,
+        component,
+        config,
+        decodedKey,
+        label: snapshot.label,
+        mediaRefs: combinedRefs,
+        order,
+        payload,
+        snapshotId,
+        title,
+        updateSnapshot,
+      });
+
+      if (combinedRefs.length > 0) {
+        await commitDraftUploads({ storageIds: combinedRefs });
+      }
+
+      toast.success('Đã lưu component');
+      router.push(`/admin/home-components/snapshots/${snapshotId}/home-components`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể lưu component');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!payload || !snapshot || !component) {
       toast.error('Component chưa sẵn sàng');
@@ -184,13 +239,10 @@ function SnapshotComponentEditPage({ snapshotId, componentKey }: { snapshotId: s
     if (component.type === 'Footer') {
       parsedConfig = normalizeFooterConfig(component.config as Partial<FooterConfig> | null | undefined);
     } else if (component.type === 'SpeedDial') {
-      // SpeedDial config đã được normalize và update trực tiếp qua component.config
       parsedConfig = component.config;
     } else if (component.type === 'Gallery') {
-      // Gallery config đã được normalize và update trực tiếp qua component.config
       parsedConfig = component.config;
     } else if (component.type === 'ProductList') {
-      // ProductList config đã được update trực tiếp qua component.config
       parsedConfig = component.config;
     } else {
       try {
@@ -201,46 +253,12 @@ function SnapshotComponentEditPage({ snapshotId, componentKey }: { snapshotId: s
       }
     }
 
-    const nextComponent: SnapshotComponentPayload = {
+    await handleSaveSnapshotComponent({
       active: component.active,
-      componentKey: component.componentKey,
       config: parsedConfig,
-      fallbackUsed: component.fallbackUsed,
-      mediaRefs: component.mediaRefs,
+      title: component.title,
       order,
-      title: component.title.trim() || component.type,
-      type: component.type,
-    };
-    const nextComponents = payload.homepage.components.map((item) => (
-      item.componentKey === decodedKey ? nextComponent : item
-    )).sort((a, b) => a.order - b.order);
-
-    setIsSaving(true);
-    try {
-      await updateSnapshot({
-        label: snapshot.label,
-        payload: {
-          ...payload,
-          manifest: {
-            ...payload.manifest,
-            componentCount: nextComponents.length,
-            snapshotLabel: snapshot.label,
-          },
-          homepage: {
-            ...payload.homepage,
-            componentOrder: nextComponents.map((item) => item.componentKey),
-            components: nextComponents,
-          },
-        },
-        snapshotId: snapshotId as Id<'homeComponentSnapshots'>,
-      });
-      toast.success('Đã lưu component');
-      router.push(`/admin/home-components/snapshots/${snapshotId}/home-components`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Không thể lưu component');
-    } finally {
-      setIsSaving(false);
-    }
+    });
   };
 
   if (snapshot === undefined || (payload && loadedKey !== decodedKey)) {
@@ -270,17 +288,11 @@ function SnapshotComponentEditPage({ snapshotId, componentKey }: { snapshotId: s
         showSnapshotLabel={snapshot.label}
         onAfterSave={() => router.push(`/admin/home-components/snapshots/${snapshotId}/home-components`)}
         onSave={async ({ active, config, storageIds, title }) => {
-          await saveSnapshotComponent({
+          await handleSaveSnapshotComponent({
             active,
-            component,
             config,
-            decodedKey,
-            label: snapshot.label,
-            mediaRefs: storageIds.length > 0 ? storageIds.map(String) : component.mediaRefs,
-            payload,
-            snapshotId,
             title,
-            updateSnapshot,
+            manualMediaRefs: storageIds.map(String),
           });
         }}
       />
@@ -309,18 +321,11 @@ function SnapshotComponentEditPage({ snapshotId, componentKey }: { snapshotId: s
           type: component.type,
         }}
         onSnapshotSave={async (next) => {
-          await saveSnapshotComponent({
+          await handleSaveSnapshotComponent({
             active: next.active,
-            component,
             config: next.config,
-            decodedKey,
-            label: snapshot.label,
-            payload,
-            snapshotId,
             title: next.title,
-            updateSnapshot,
           });
-          router.push(`/admin/home-components/snapshots/${snapshotId}/home-components`);
         }}
       />
     );
@@ -348,18 +353,11 @@ function SnapshotComponentEditPage({ snapshotId, componentKey }: { snapshotId: s
           type: component.type,
         }}
         onSnapshotSave={async (next) => {
-          await saveSnapshotComponent({
+          await handleSaveSnapshotComponent({
             active: next.active,
-            component,
             config: next.config,
-            decodedKey,
-            label: snapshot.label,
-            payload,
-            snapshotId,
             title: next.title,
-            updateSnapshot,
           });
-          router.push(`/admin/home-components/snapshots/${snapshotId}/home-components`);
         }}
       />
     );
@@ -391,18 +389,11 @@ function SnapshotComponentEditPage({ snapshotId, componentKey }: { snapshotId: s
           type: component.type,
         }}
         onSnapshotSave={async (next) => {
-          await saveSnapshotComponent({
+          await handleSaveSnapshotComponent({
             active: next.active,
-            component,
             config: next.config,
-            decodedKey,
-            label: snapshot.label,
-            payload,
-            snapshotId,
             title: next.title,
-            updateSnapshot,
           });
-          router.push(`/admin/home-components/snapshots/${snapshotId}/home-components`);
         }}
       />
     );
@@ -430,18 +421,11 @@ function SnapshotComponentEditPage({ snapshotId, componentKey }: { snapshotId: s
           type: component.type,
         }}
         onSnapshotSave={async (next) => {
-          await saveSnapshotComponent({
+          await handleSaveSnapshotComponent({
             active: next.active,
-            component,
             config: next.config,
-            decodedKey,
-            label: snapshot.label,
-            payload,
-            snapshotId,
             title: next.title,
-            updateSnapshot,
           });
-          router.push(`/admin/home-components/snapshots/${snapshotId}/home-components`);
         }}
       />
     );
@@ -471,18 +455,11 @@ function SnapshotComponentEditPage({ snapshotId, componentKey }: { snapshotId: s
           type: component.type,
         }}
         onSnapshotSave={async (next) => {
-          await saveSnapshotComponent({
+          await handleSaveSnapshotComponent({
             active: next.active,
-            component,
             config: next.config,
-            decodedKey,
-            label: snapshot.label,
-            payload,
-            snapshotId,
             title: next.title,
-            updateSnapshot,
           });
-          router.push(`/admin/home-components/snapshots/${snapshotId}/home-components`);
         }}
       />
     );
@@ -521,18 +498,11 @@ function SnapshotComponentEditPage({ snapshotId, componentKey }: { snapshotId: s
         }}
         snapshotLabel={snapshot.label}
         onSnapshotSave={async ({ active, config, title }) => {
-          await saveSnapshotComponent({
+          await handleSaveSnapshotComponent({
             active,
-            component,
             config,
-            decodedKey,
-            label: snapshot.label,
-            payload,
-            snapshotId,
             title,
-            updateSnapshot,
           });
-          router.push(`/admin/home-components/snapshots/${snapshotId}/home-components`);
         }}
       />
     );

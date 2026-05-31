@@ -49,7 +49,6 @@ const STEPS: Array<{ key: WizardStep; label: string }> = [
 ];
 
 const DEFAULT_SITE_SETTINGS: SnapshotSiteSettings = {
-  site_brand_color: '#9b2c3b',
   site_brand_mode: 'dual',
   site_brand_primary: '#9b2c3b',
   site_brand_secondary: '#ecaa4d',
@@ -276,7 +275,6 @@ const buildPayload = (
   };
   const nextSite: SnapshotSiteSettings = {
     ...meta.site,
-    site_brand_color: meta.site.site_brand_primary,
     site_brand_mode: 'dual',
   };
   const nextFooterMenu = normalizeMenuPayload(footerMenu, 'footer');

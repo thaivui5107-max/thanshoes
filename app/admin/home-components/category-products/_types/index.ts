@@ -50,6 +50,7 @@ export interface DemoCategoryProductsSection {
   id: string;
   categoryName: string;
   categoryImage?: string;
+  categoryImageStorageId?: string | null;
   products: DemoCategoryProduct[];
 }
 

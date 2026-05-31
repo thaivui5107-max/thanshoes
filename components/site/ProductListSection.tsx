@@ -243,15 +243,11 @@ export function ProductListSection({ config, brandColor, secondary, mode, title,
   const selectionMode = (config.selectionMode as 'auto' | 'manual' | 'demo') || 'auto';
   const selectedProductIds = React.useMemo(() => (config.selectedProductIds as string[]) || [], [config.selectedProductIds]);
   const demoProducts = React.useMemo(() => (config.demoProducts as Array<{ id: string; name: string; image?: string; price?: string; originalPrice?: string; description?: string; category?: string; tag?: string }>) || [], [config.demoProducts]);
-  const _subTitle = (config.subTitle as string) || 'Bộ sưu tập';
-  const _sectionTitle = (config.sectionTitle as string) || title;
 
-  // Header config — use shared extractor with legacy field mapping
   const headerConfig = extractSectionHeaderConfig({
     ...config,
-    // Map legacy fields to shared schema if not explicitly set
-    badgeText: config.badgeText ?? config.subTitle ?? 'Bộ sưu tập',
-    subtitle: config.subtitle ?? config.sectionTitle ?? title,
+    badgeText: config.badgeText ?? 'Bộ sưu tập',
+    subtitle: config.subtitle ?? title,
   });
   // SectionHeader title = component title from props
   const displayTitle = title;

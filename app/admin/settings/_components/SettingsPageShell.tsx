@@ -382,14 +382,12 @@ function SettingsContent({ section }: { section: SettingsSection }) {
   const brandMode = form.site_brand_mode === 'single' ? 'single' : 'dual';
   const isSecondaryModeSingle = brandMode === 'single';
 
-  const hasPrimaryField = useMemo(() => fieldsData?.some(field => field.fieldKey === 'site_brand_primary'), [fieldsData]);
-
   // Filter and group fields based on enabled status and feature
   const fieldsByGroup = useMemo(() => {
     const groups: Record<string, typeof fieldsData> = {};
     
     fieldsData?.forEach(field => {
-      if (hasPrimaryField && field.fieldKey === 'site_brand_color') {return;}
+      if (field.fieldKey === 'site_brand_color') {return;}
       // Skip disabled fields
       if (!field.enabled) {return;}
       
@@ -413,7 +411,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
     });
 
     return groups;
-  }, [fieldsData, enabledFeatures, hasPrimaryField]);
+  }, [fieldsData, enabledFeatures]);
 
   // Sync form with settings data
   useEffect(() => {
@@ -434,9 +432,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
         }
         values[s.key] = typeof s.value === 'boolean' ? s.value : (typeof s.value === 'string' ? s.value : String(s.value ?? ''));
       });
-      if (!values.site_brand_primary && values.site_brand_color) {
-        values.site_brand_primary = values.site_brand_color;
-      }
       if (!values.contact_lat) {
         values.contact_lat = '10.762622';
       }
@@ -451,9 +446,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       }
       if (values.product_image_placeholder === undefined) {
         values.product_image_placeholder = '';
-      }
-      if (values.product_frame_overlay_url === undefined) {
-        values.product_frame_overlay_url = '';
       }
       if (values.enable_product_frames === undefined) {
         values.enable_product_frames = false;
@@ -470,13 +462,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
           values[key] = '';
         }
       });
-      // Tự động chuyển đổi/tương thích ngược: map khung viền cũ sang ô Vuông (1:1) nếu ô Vuông trống
-      if (!values.product_frame_overlay_square_url && values.product_frame_overlay_url) {
-        values.product_frame_overlay_square_url = values.product_frame_overlay_url;
-        if (storageIds.product_frame_overlay_url) {
-          storageIds.product_frame_overlay_square_url = storageIds.product_frame_overlay_url;
-        }
-      }
       if (values.enable_product_watermark === undefined) {
         values.enable_product_watermark = false;
       }
@@ -747,7 +732,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
       const settingsToSave: SettingsToSave[] = fieldsData
         ?.filter(f => {
           if (!f.enabled) {return false;}
-          if (hasPrimaryField && f.fieldKey === 'site_brand_color') {return false;}
+          if (f.fieldKey === 'site_brand_color') {return false;}
           if (HIDDEN_ADMIN_SEO_KEYS.has(f.fieldKey)) {return false;}
           if (REMOVED_CONTACT_KEYS.has(f.fieldKey)) {return false;}
           return !f.linkedFeature || enabledFeatures[f.linkedFeature];
@@ -756,9 +741,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
           let value = form[field.fieldKey] ?? '';
           if (field.type === 'boolean') {
             value = value === true || value === 'true';
-          }
-          if (field.fieldKey === 'site_brand_primary' && !value && form.site_brand_color) {
-            value = form.site_brand_color;
           }
           if (field.fieldKey === 'site_brand_secondary' && (isSecondaryAuto || isSecondaryModeSingle)) {
             value = '';
@@ -770,11 +752,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
             value,
           };
         }) ?? [];
-
-      const primaryValue = form.site_brand_primary || form.site_brand_color;
-      if (primaryValue && hasPrimaryField) {
-        settingsToSave.push({ group: 'site', key: 'site_brand_color', value: primaryValue });
-      }
 
       if (form.contact_lat && !settingsToSave.some((item) => item.key === 'contact_lat')) {
         settingsToSave.push({ group: 'contact', key: 'contact_lat', value: form.contact_lat });
@@ -802,14 +779,6 @@ function SettingsContent({ section }: { section: SettingsSection }) {
           key: 'product_image_placeholder',
           storageId: mediaStorageIds.product_image_placeholder ?? null,
           value: form.product_image_placeholder || '',
-        });
-      }
-      if (!settingsToSave.some((item) => item.key === 'product_frame_overlay_url')) {
-        settingsToSave.push({
-          group: 'advanced',
-          key: 'product_frame_overlay_url',
-          storageId: mediaStorageIds.product_frame_overlay_url ?? null,
-          value: form.product_frame_overlay_url || '',
         });
       }
       const frameKeys = [
@@ -914,7 +883,7 @@ function SettingsContent({ section }: { section: SettingsSection }) {
     switch (field.type) {
       case 'color': {
         if (key === 'site_brand_secondary') {
-          const primaryColor = (form.site_brand_primary as string) || (form.site_brand_color as string) || '#3b82f6';
+          const primaryColor = (form.site_brand_primary as string) || '#3b82f6';
           const normalizedPrimary = isValidHexColor(primaryColor) ? primaryColor : '#3b82f6';
           const derivedSecondary = generateComplementary(normalizedPrimary);
           const displayColor = isSecondaryModeSingle ? derivedSecondary : (isSecondaryAuto ? derivedSecondary : stringValue);

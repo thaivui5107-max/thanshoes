@@ -67,16 +67,6 @@ type ProductDetailAccentColorConfig = {
   comboBadge?: ProductDetailElementColorChoice;
 };
 
-const LEGACY_COMBO_EFFECT_MAP = {
-  'sparkle-gradient': { type: 'sparkle', color: 'gradient-1' },
-  'sparkle-black': { type: 'sparkle', color: 'black' },
-  'sparkle-gold': { type: 'sparkle', color: 'gradient-2' },
-  'sparkle-emerald': { type: 'sparkle', color: 'gradient-3' },
-  'sparkle-red': { type: 'sparkle', color: 'red' },
-  'sparkle-primary': { type: 'sparkle', color: 'primary' },
-  'sparkle-secondary': { type: 'sparkle', color: 'secondary' },
-} as const;
-
 type BaseImageLayoutConfig = {
   showRating: boolean;
   showComments: boolean;
@@ -128,6 +118,8 @@ type ProductDetailExperienceConfig = {
   premiumBannerText?: 'primary' | 'secondary' | 'black' | 'white';
   premiumBannerItems?: { title: string; subtitle: string }[];
   showPremiumBanner?: boolean;
+  highlightsPosition?: 'info_column' | 'image_column';
+  highlightsSpacing?: 'low' | 'high' | 'none';
 };
 
 type ProductVariantOptionValue = {
@@ -220,8 +212,6 @@ const DEFAULT_CLASSIC_HIGHLIGHTS: ClassicHighlightItem[] = [
 
 function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
   const experienceSetting = useQuery(api.settings.getByKey, { key: 'product_detail_ui' });
-  const detailStyleSetting = useQuery(api.settings.getByKey, { key: 'products_detail_style' });
-  const highlightsSetting = useQuery(api.settings.getByKey, { key: 'products_detail_classic_highlights_enabled' });
   const moduleAspectRatioSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'defaultImageAspectRatio' });
   const cartModule = useQuery(api.admin.modules.getModuleByKey, { key: 'cart' });
   const ordersModule = useQuery(api.admin.modules.getModuleByKey, { key: 'orders' });
@@ -230,8 +220,6 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
   const commentsLikesFeature = useQuery(api.admin.modules.getModuleFeature, { featureKey: 'enableLikes', moduleKey: 'comments' });
   const commentsRepliesFeature = useQuery(api.admin.modules.getModuleFeature, { featureKey: 'enableReplies', moduleKey: 'comments' });
 
-  const legacyStyle = (detailStyleSetting?.value as ProductDetailStyle) || 'classic';
-  const legacyHighlightsEnabled = (highlightsSetting?.value as boolean) ?? true;
   const cartAvailable = (cartModule?.enabled ?? false) && (ordersModule?.enabled ?? false);
   const ordersEnabled = ordersModule?.enabled ?? false;
   const canUseWishlist = wishlistModule?.enabled ?? false;
@@ -268,13 +256,15 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
       imageAspectRatioSource?: ProductImageAspectRatioSource;
       relatedProductsMode: RelatedProductsMode;
       relatedProductsPerPage: number;
-      comboAnimateType?: ComboAnimateType | 'pulse' | 'bounce' | keyof typeof LEGACY_COMBO_EFFECT_MAP;
+      comboAnimateType?: ComboAnimateType;
       comboEffectColor?: ComboEffectColor;
       accentColors?: ProductDetailAccentColorConfig;
       showSocialButtons?: boolean;
       socialButtons?: Array<{ id: string; icon: string; label: string; url: string; active: boolean }>;
+      highlightsPosition?: 'info_column' | 'image_column';
+      highlightsSpacing?: 'low' | 'high' | 'none';
     }> | undefined;
-    const layoutStyle = raw?.layoutStyle ?? legacyStyle;
+    const layoutStyle = raw?.layoutStyle ?? 'classic';
     const layoutConfig = raw?.layouts?.[layoutStyle];
     const normalizedRelatedMode = raw?.relatedProductsMode === 'infiniteScroll' || raw?.relatedProductsMode === 'pagination'
       ? raw.relatedProductsMode
@@ -282,7 +272,7 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
     const relatedProductsPerPage = typeof raw?.relatedProductsPerPage === 'number' && raw.relatedProductsPerPage > 0
       ? raw.relatedProductsPerPage
       : 8;
-    const legacyAspectRatio = resolveProductImageAspectRatio(
+    const selectedImageAspectRatio = resolveProductImageAspectRatio(
       raw?.imageAspectRatio
       ?? raw?.layouts?.classic?.imageAspectRatio
       ?? raw?.layouts?.modern?.imageAspectRatio
@@ -299,29 +289,20 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
         : 'module';
     const resolvedImageAspectRatio = imageAspectRatioSource === 'module'
       ? moduleDefaultAspectRatio
-      : legacyAspectRatio;
+      : selectedImageAspectRatio;
     const configShowAddToCart = layoutConfig?.showAddToCart ?? raw?.showAddToCart ?? true;
     const classicLayoutHighlights = raw?.layouts?.classic?.showClassicHighlights
       ?? (layoutConfig as Partial<Record<'showClassicHighlights', boolean>>)?.showClassicHighlights;
-    const legacyLayoutHighlights = raw?.layouts?.classic
-      ? (raw.layouts.classic as Partial<Record<'showHighlights', boolean>>)?.showHighlights
-      : undefined;
     const resolvedHighlights = classicLayoutHighlights
-      ?? legacyLayoutHighlights
       ?? raw?.showClassicHighlights
       ?? raw?.showHighlights
-      ?? legacyHighlightsEnabled;
+      ?? true;
     const layoutComments = layoutConfig as Partial<ClassicLayoutConfig & ModernLayoutConfig & MinimalLayoutConfig> | undefined;
     const showComments = layoutComments?.showComments ?? raw?.showComments ?? true;
     const showCommentLikes = layoutComments?.showCommentLikes ?? raw?.showCommentLikes ?? true;
     const showCommentReplies = layoutComments?.showCommentReplies ?? raw?.showCommentReplies ?? true;
     const showShare = layoutComments?.showShare ?? raw?.showShare ?? true;
-    const legacyComboEffect = raw?.comboAnimateType && (raw.comboAnimateType in LEGACY_COMBO_EFFECT_MAP)
-      ? LEGACY_COMBO_EFFECT_MAP[raw.comboAnimateType as keyof typeof LEGACY_COMBO_EFFECT_MAP]
-      : undefined;
-    const comboAnimateType: ComboAnimateType = raw?.comboAnimateType === 'pulse' || raw?.comboAnimateType === 'bounce'
-      ? 'luxury-sheen'
-      : legacyComboEffect?.type ?? (raw?.comboAnimateType as ComboAnimateType | undefined) ?? 'luxury-sheen';
+    const comboAnimateType: ComboAnimateType = raw?.comboAnimateType ?? 'luxury-sheen';
     return {
       layoutStyle,
       showAddToCart: configShowAddToCart && cartAvailable,
@@ -347,7 +328,7 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
       relatedProductsMode: normalizedRelatedMode,
       relatedProductsPerPage,
       comboAnimateType,
-      comboEffectColor: raw?.comboEffectColor ?? legacyComboEffect?.color ?? 'gradient-1',
+      comboEffectColor: raw?.comboEffectColor ?? 'gradient-1',
       accentColors: {
         categoryBadge: 'secondary',
         discountBadge: 'primary',
@@ -374,8 +355,10 @@ function useProductDetailExperienceConfig(): ProductDetailExperienceConfig {
       priceRightIcon: (raw?.layouts?.premium as any)?.priceRightIcon ?? 'Gift',
       showPriceLeftIcon: (raw?.layouts?.premium as any)?.showPriceLeftIcon !== false,
       showPriceRightIcon: (raw?.layouts?.premium as any)?.showPriceRightIcon !== false,
+      highlightsPosition: raw?.highlightsPosition ?? 'image_column',
+      highlightsSpacing: raw?.highlightsSpacing ?? 'high',
     };
-  }, [experienceSetting?.value, legacyHighlightsEnabled, legacyStyle, cartAvailable, canUseComments, canUseCommentLikes, canUseCommentReplies, canUseWishlist, ordersEnabled, moduleDefaultAspectRatio]);
+  }, [experienceSetting?.value, cartAvailable, canUseComments, canUseCommentLikes, canUseCommentReplies, canUseWishlist, ordersEnabled, moduleDefaultAspectRatio]);
 }
 
 type RatingSummary = { average: number | null; count: number };
@@ -1028,6 +1011,8 @@ export default function ProductDetailPage({ params }: PageProps) {
           variantOptions={variantOptions}
           highlights={classicHighlights}
           highlightsEnabled={classicHighlightsEnabled}
+          highlightsPosition={experienceConfig.highlightsPosition}
+          highlightsSpacing={experienceConfig.highlightsSpacing}
           ratingSummary={ratingSummary}
           saleMode={saleMode}
           showAddToCart={canUseCartActions ? experienceConfig.showAddToCart : false}
@@ -1101,6 +1086,8 @@ export default function ProductDetailPage({ params }: PageProps) {
           variantOptions={variantOptions}
           highlights={classicHighlights}
           highlightsEnabled={classicHighlightsEnabled}
+          highlightsPosition={experienceConfig.highlightsPosition}
+          highlightsSpacing={experienceConfig.highlightsSpacing}
           ratingSummary={ratingSummary}
           saleMode={saleMode}
           showAddToCart={canUseCartActions ? experienceConfig.showAddToCart : false}
@@ -1157,6 +1144,8 @@ export default function ProductDetailPage({ params }: PageProps) {
           variantOptions={variantOptions}
           highlights={classicHighlights}
           showHighlights={experienceConfig.showHighlights}
+          highlightsPosition={experienceConfig.highlightsPosition}
+          highlightsSpacing={experienceConfig.highlightsSpacing}
           ratingSummary={ratingSummary}
           saleMode={saleMode}
           showAddToCart={canUseCartActions ? experienceConfig.showAddToCart : false}
@@ -1216,6 +1205,8 @@ export default function ProductDetailPage({ params }: PageProps) {
           variantOptions={variantOptions}
           highlights={classicHighlights}
           showHighlights={experienceConfig.showHighlights}
+          highlightsPosition={experienceConfig.highlightsPosition}
+          highlightsSpacing={experienceConfig.highlightsSpacing}
           ratingSummary={ratingSummary}
           saleMode={saleMode}
           showAddToCart={canUseCartActions ? experienceConfig.showAddToCart : false}
@@ -1384,12 +1375,22 @@ interface ExperienceBlocksProps {
 interface HighlightBlockProps {
   highlights: ClassicHighlightItem[];
   showHighlights: boolean;
+  highlightsPosition?: 'info_column' | 'image_column';
+  highlightsSpacing?: 'low' | 'high' | 'none';
 }
 
 interface ClassicStyleProps extends StyleProps, ExperienceBlocksProps {
   highlights: ClassicHighlightItem[];
   highlightsEnabled: boolean;
+  highlightsPosition?: 'info_column' | 'image_column';
+  highlightsSpacing?: 'low' | 'high' | 'none';
 }
+
+const getHighlightsSpacingClass = (spacing?: 'low' | 'high' | 'none') => {
+  if (spacing === 'none') return '!mt-0';
+  if (spacing === 'low') return '!mt-4 md:!mt-5';
+  return '!mt-8 md:!mt-10';
+};
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat('vi-VN', { currency: 'VND', style: 'currency' }).format(price);
@@ -2040,6 +2041,8 @@ function ClassicStyle({
   socialButtons,
   productAttributesMap,
   productTypeId,
+  highlightsPosition,
+  highlightsSpacing,
 }: ClassicStyleProps) {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -2288,6 +2291,19 @@ function ClassicStyle({
                 </div>
               </>
             )}
+            {highlightsEnabled && highlights.length > 0 && highlightsPosition === 'image_column' && (
+              <div className="grid grid-cols-3 gap-4 p-4 rounded-xl mt-4 animate-fadeIn" style={{ backgroundColor: tokens.highlightBg }}>
+                {highlights.map((item, index) => {
+                  const Icon = CLASSIC_HIGHLIGHT_ICON_MAP[item.icon];
+                  return (
+                    <div key={`${item.icon}-${index}`} className="text-center">
+                      <Icon size={24} className="mx-auto mb-2 animate-bounce-slow" style={{ color: tokens.highlightIcon }} />
+                      <p className="text-xs" style={{ color: tokens.highlightText }}>{item.text}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Product Info */}
@@ -2440,8 +2456,8 @@ function ClassicStyle({
               />
             )}
 
-            {highlightsEnabled && highlights.length > 0 && (
-              <div className="grid grid-cols-3 gap-4 p-4 rounded-xl mb-8" style={{ backgroundColor: tokens.highlightBg }}>
+            {highlightsEnabled && highlights.length > 0 && highlightsPosition !== 'image_column' && (
+              <div className={`grid grid-cols-3 gap-4 p-4 rounded-xl ${getHighlightsSpacingClass(highlightsSpacing)} mb-8 animate-fadeIn`} style={{ backgroundColor: tokens.highlightBg }}>
                 {highlights.map((item, index) => {
                   const Icon = CLASSIC_HIGHLIGHT_ICON_MAP[item.icon];
                   return (
@@ -2564,6 +2580,8 @@ function ClassicStyle({
 interface PremiumStyleProps extends StyleProps, ExperienceBlocksProps {
   highlights: ClassicHighlightItem[];
   highlightsEnabled: boolean;
+  highlightsPosition?: 'info_column' | 'image_column';
+  highlightsSpacing?: 'low' | 'high' | 'none';
   premiumBannerItems?: { title: string; subtitle: string }[];
   premiumBannerBg?: 'primary' | 'secondary' | 'black' | 'white';
   premiumBannerText?: 'primary' | 'secondary' | 'black' | 'white';
@@ -2647,6 +2665,8 @@ function PremiumStyle({
   priceRightIcon = 'Gift',
   showPriceLeftIcon = true,
   showPriceRightIcon = true,
+  highlightsPosition,
+  highlightsSpacing,
 }: PremiumStyleProps) {
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
@@ -2994,7 +3014,7 @@ function PremiumStyle({
             )}
 
             {/* Highlights động từ cài đặt dưới ảnh sản phẩm */}
-            {highlightsEnabled && highlights && highlights.length > 0 && (
+            {highlightsEnabled && highlights && highlights.length > 0 && highlightsPosition !== 'info_column' && (
               <div className="grid grid-cols-3 gap-2 border-t pt-4" style={{ borderColor: tokens.divider }}>
                 {highlights.map((item, index) => {
                   const Icon = CLASSIC_HIGHLIGHT_ICON_MAP[item.icon] || BadgeCheck;
@@ -3332,7 +3352,19 @@ function PremiumStyle({
               />
             )}
 
-
+            {highlightsEnabled && highlights && highlights.length > 0 && highlightsPosition === 'info_column' && (
+              <div className={`grid grid-cols-3 gap-2 border-t pt-4 ${getHighlightsSpacingClass(highlightsSpacing)} animate-fadeIn`} style={{ borderColor: tokens.divider }}>
+                {highlights.map((item, index) => {
+                  const Icon = CLASSIC_HIGHLIGHT_ICON_MAP[item.icon] || BadgeCheck;
+                  return (
+                    <div key={`${item.icon}-${index}`} className="flex flex-col items-center text-center p-2.5 rounded-2xl" style={{ backgroundColor: tokens.surfaceMuted }}>
+                      <Icon size={20} style={{ color: tokens.primary }} />
+                      <span className="text-[10px] md:text-xs font-semibold mt-1 line-clamp-1" style={{ color: tokens.bodyText }}>{item.text}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -4018,6 +4050,8 @@ function ModernStyle({
   productTypeId,
   enableProductTypes,
   productTypeSlugMap,
+  highlightsPosition,
+  highlightsSpacing,
 }: StyleProps & ExperienceBlocksProps & HighlightBlockProps & { heroStyle: ModernHeroStyle }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -4369,6 +4403,11 @@ function ModernStyle({
                 </div>
               </>
             )}
+            {showHighlights && highlightsPosition === 'image_column' && (
+              <div className="mt-4 animate-fadeIn">
+                <HighlightsGrid highlights={highlights} tokens={tokens} />
+              </div>
+            )}
           </div>
 
           <div className="space-y-3 md:space-y-4 lg:space-y-5">
@@ -4525,7 +4564,11 @@ function ModernStyle({
               />
             )}
 
-            {showHighlights && <HighlightsGrid highlights={highlights} tokens={tokens} />}
+            {showHighlights && highlightsPosition !== 'image_column' && (
+              <div className={`${getHighlightsSpacingClass(highlightsSpacing)} mb-6 animate-fadeIn`}>
+                <HighlightsGrid highlights={highlights} tokens={tokens} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -4689,6 +4732,8 @@ function MinimalStyle({
   productTypeId,
   enableProductTypes,
   productTypeSlugMap,
+  highlightsPosition,
+  highlightsSpacing,
 }: StyleProps & ExperienceBlocksProps & HighlightBlockProps & { contentWidth: MinimalContentWidth }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<VariantSelectionMap>({});
@@ -4977,6 +5022,11 @@ function MinimalStyle({
                   </div>
                 </div>
               </div>
+              {showHighlights && highlightsPosition === 'image_column' && (
+                <div className="mt-4 animate-fadeIn w-full">
+                  <HighlightsGrid highlights={highlights} tokens={tokens} />
+                </div>
+              )}
             </div>
           </div>
 
@@ -5107,7 +5157,11 @@ function MinimalStyle({
               />
             )}
 
-            {showHighlights && <HighlightsGrid highlights={highlights} tokens={tokens} />}
+            {showHighlights && highlightsPosition !== 'image_column' && (
+              <div className={`${getHighlightsSpacingClass(highlightsSpacing)} mb-6 animate-fadeIn`}>
+                <HighlightsGrid highlights={highlights} tokens={tokens} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -5875,7 +5929,7 @@ function ProductCombosBlock({
   // Luôn áp dụng màu hiệu ứng để mọi hiệu ứng chữ đều nhận màu
   applyEffectColor();
 
-  if (comboAnimateType === 'luxury-sheen' || comboAnimateType === 'pulse' || comboAnimateType === 'bounce') {
+  if (comboAnimateType === 'luxury-sheen') {
     animateClass = 'animate-combo-luxury-sheen';
   } else if (comboAnimateType === 'typing') {
     titleEffectClass = 'animate-combo-typing-text';
@@ -5884,7 +5938,7 @@ function ProductCombosBlock({
   } else if (comboAnimateType === 'fire') {
     animateClass = 'animate-combo-fire';
     titleEffectClass = 'animate-combo-fire-text';
-  } else if (comboAnimateType === 'sparkle' || comboAnimateType.startsWith('sparkle-')) {
+  } else if (comboAnimateType === 'sparkle') {
     animateClass = 'animate-combo-sparkle';
     titleEffectClass = 'animate-combo-sparkle-text';
   } else if (comboAnimateType === 'text-highlight') {
@@ -6222,7 +6276,7 @@ function ProductSocialButtons({
   if (activeButtons.length === 0) return null;
 
   return (
-    <div className="mt-4 pt-4 border-t" style={{ borderColor: tokens.divider }}>
+    <div className="mt-4 pt-4 border-t pb-2" style={{ borderColor: tokens.divider }}>
       <p className="text-xs font-semibold mb-2" style={{ color: tokens.headingColor }}>
         Liên hệ & Mua hàng:
       </p>

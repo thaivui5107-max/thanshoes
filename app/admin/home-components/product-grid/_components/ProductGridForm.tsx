@@ -714,7 +714,11 @@ export const ProductGridForm = ({
                         <SettingsImageUploader
                           label="Ảnh sản phẩm"
                           value={item.image ?? ''}
-                          onChange={(url) => updateDemoProduct(item.id, { image: url ?? '' })}
+                          storageId={item.storageId as any}
+                          onChange={(url, storageId) => updateDemoProduct(item.id, {
+                            image: url ?? '',
+                            storageId: storageId ? String(storageId) : undefined
+                          })}
                           folder="home-components/product-grid"
                           naming={{ entityName: item.name || 'demo-product', field: 'image', index: index + 1 }}
                           previewSize="sm"

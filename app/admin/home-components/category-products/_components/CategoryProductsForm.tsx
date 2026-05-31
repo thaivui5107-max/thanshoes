@@ -524,7 +524,11 @@ export const CategoryProductsForm = ({
                         <SettingsImageUploader
                           label="Ảnh danh mục"
                           value={section.categoryImage ?? ''}
-                          onChange={(url) => updateDemoSection(section.id, { categoryImage: url ?? '' })}
+                          storageId={section.categoryImageStorageId as any}
+                          onChange={(url, storageId) => updateDemoSection(section.id, {
+                            categoryImage: url ?? '',
+                            categoryImageStorageId: storageId ? String(storageId) : null
+                          })}
                           folder="home-components/category-products"
                           naming={{ entityName: section.categoryName || 'demo-category', field: 'category-image', index: sectionIndex + 1 }}
                           previewSize="sm"
@@ -552,7 +556,11 @@ export const CategoryProductsForm = ({
                               <SettingsImageUploader
                                 label="Ảnh sản phẩm"
                                 value={product.image ?? ''}
-                                onChange={(url) => updateDemoProduct(section.id, product.id, { image: url ?? '', storageId: undefined })}
+                                storageId={product.storageId as any}
+                                onChange={(url, storageId) => updateDemoProduct(section.id, product.id, {
+                                  image: url ?? '',
+                                  storageId: storageId ? String(storageId) : undefined
+                                })}
                                 folder="home-components/category-products"
                                 naming={{ entityName: product.name || 'demo-product', field: 'product-image', index: productIndex + 1 }}
                                 previewSize="sm"

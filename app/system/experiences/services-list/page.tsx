@@ -91,30 +91,27 @@ export default function ServicesListExperiencePage() {
 
   const serverConfig = useMemo<ServicesListExperienceConfig>(() => {
     const raw = experienceSetting?.value as Partial<ServicesListExperienceConfig> | undefined;
-    // Migrate legacy 'list' layout to 'sidebar'
     const rawLayout = raw?.layoutStyle as string | undefined;
-    const normalizedLayout = rawLayout === 'list' ? 'sidebar' : rawLayout;
     
-    const normalizePaginationType = (value?: string | boolean): PaginationType => {
+    const normalizePaginationType = (value?: string): PaginationType => {
       if (value === 'infiniteScroll') return 'infiniteScroll';
       if (value === 'pagination') return 'pagination';
-      if (value === false) return 'infiniteScroll';
       return 'pagination';
     };
     
-    const normalizeLayoutConfig = (cfg?: Partial<LayoutConfig & { showPagination?: boolean }>): LayoutConfig => ({
+    const normalizeLayoutConfig = (cfg?: Partial<LayoutConfig>): LayoutConfig => ({
       showSearch: cfg?.showSearch ?? true,
       showCategories: cfg?.showCategories ?? true,
-      paginationType: normalizePaginationType(cfg?.paginationType ?? cfg?.showPagination),
+      paginationType: normalizePaginationType(cfg?.paginationType),
       postsPerPage: cfg?.postsPerPage ?? 12,
     });
     
     return {
-      layoutStyle: (normalizedLayout as ListLayoutStyle | undefined) ?? 'grid',
+      layoutStyle: (rawLayout as ListLayoutStyle | undefined) ?? 'grid',
       layouts: {
-        grid: normalizeLayoutConfig(raw?.layouts?.grid as Partial<LayoutConfig & { showPagination?: boolean }>),
-        sidebar: normalizeLayoutConfig(raw?.layouts?.sidebar as Partial<LayoutConfig & { showPagination?: boolean }>),
-        masonry: normalizeLayoutConfig(raw?.layouts?.masonry as Partial<LayoutConfig & { showPagination?: boolean }>),
+        grid: normalizeLayoutConfig(raw?.layouts?.grid),
+        sidebar: normalizeLayoutConfig(raw?.layouts?.sidebar),
+        masonry: normalizeLayoutConfig(raw?.layouts?.masonry),
       },
       hideEmptyCategories: raw?.hideEmptyCategories ?? true,
     };

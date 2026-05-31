@@ -28,6 +28,7 @@ export interface DemoServiceItem {
   id: string;
   name: string;
   image?: string;
+  storageId?: string | null;
   price?: string;
   description?: string;
   tag?: '' | 'new' | 'hot';

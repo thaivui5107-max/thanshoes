@@ -11,7 +11,6 @@ export type SnapshotSiteSettings = {
   site_brand_primary: string;
   site_brand_secondary: string;
   site_brand_mode: 'single' | 'dual';
-  site_brand_color: string;
   site_timezone: string;
   site_language: string;
 };

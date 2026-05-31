@@ -33,6 +33,7 @@ interface SettingsImageUploaderProps {
 export function SettingsImageUploader({
   value,
   onChange,
+  storageId: _storageId,
   folder = 'settings',
   naming,
   className,
@@ -247,7 +248,7 @@ export function SettingsImageUploader({
                   sizes="(max-width: 768px) 100vw, 240px"
                   className="object-cover"
                   onError={(e) => {
-                    e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f1f5f9" width="100" height="100"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-size="12">Error</text></svg>';
+                    e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23fef2f2" width="100" height="100"/><text x="50%" y="45%" dominant-baseline="middle" text-anchor="middle" fill="%23ef4444" font-size="10" font-weight="bold">Ảnh lỗi</text><text x="50%" y="65%" dominant-baseline="middle" text-anchor="middle" fill="%23991b1b" font-size="7">Hãy upload lại</text></svg>';
                   }}
                 />
                 {isUploading && (
@@ -346,7 +347,7 @@ export function SettingsImageUploader({
                   sizes="(max-width: 768px) 100vw, 240px"
                   className="object-cover"
                   onError={(e) => {
-                    e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f1f5f9" width="100" height="100"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-size="12">Error</text></svg>';
+                    e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23fef2f2" width="100" height="100"/><text x="50%" y="45%" dominant-baseline="middle" text-anchor="middle" fill="%23ef4444" font-size="10" font-weight="bold">Ảnh lỗi</text><text x="50%" y="65%" dominant-baseline="middle" text-anchor="middle" fill="%23991b1b" font-size="7">Kiểm tra URL</text></svg>';
                   }}
                 />
               </div>

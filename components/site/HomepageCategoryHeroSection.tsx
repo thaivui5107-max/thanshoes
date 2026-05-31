@@ -342,12 +342,6 @@ export function HomepageCategoryHeroSection({
     : '';
   const isDemo = resolvedConfig.selectionMode === 'demo';
   const needsHeroPayload = !isDemo && (resolvedConfig.selectionMode === 'auto' || resolvedConfig.hideEmptyCategories);
-  const legacyPayload = useQuery(
-    api.productCategories.listActiveWithStats,
-    needsHeroPayload
-      ? { productLimit: resolvedConfig.autoGenerateConfig.productScanLimit }
-      : 'skip'
-  );
   const [heroPayload, setHeroPayload] = useState<HeroPayload | null>(null);
   const hierarchyFeature = useQuery(
     api.admin.modules.getModuleFeature,
@@ -419,11 +413,8 @@ export function HomepageCategoryHeroSection({
   const resolvedHeroPayload = useMemo(() => {
     if (!needsHeroPayload) {return null;}
     if (heroPayload) {return heroPayload;}
-    if (legacyPayload) {
-      return { ...legacyPayload, productsByCategory: [] } as HeroPayload;
-    }
     return null;
-  }, [heroPayload, legacyPayload, needsHeroPayload]);
+  }, [heroPayload, needsHeroPayload]);
 
   const productMap = useMemo(() => {
     const map = new Map<string, HeroProductSummary>();

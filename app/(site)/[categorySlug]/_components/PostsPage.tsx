@@ -19,17 +19,6 @@ import {
   type SortOption,
 } from '@/components/site/posts';
 
-type PostsListLayout = 'fullwidth' | 'sidebar' | 'magazine';
-
-function usePostsLayout(): PostsListLayout {
-  const setting = useQuery(api.settings.getByKey, { key: 'posts_list_style' });
-  const value = setting?.value as string;
-  if (value === 'fullwidth' || value === 'grid' || value === 'list') {return 'fullwidth';}
-  if (value === 'sidebar') {return 'sidebar';}
-  if (value === 'magazine') {return 'magazine';}
-  return 'fullwidth';
-}
-
 function useEnabledPostFields(): Set<string> {
   const fields = useQuery(api.admin.modules.listEnabledModuleFields, { moduleKey: 'posts' });
   return useMemo(() => {
@@ -166,9 +155,9 @@ function PostsContent() {
     () => getPostsListColors(brandColors.primary, brandColors.secondary, brandColors.mode || 'single'),
     [brandColors.primary, brandColors.secondary, brandColors.mode]
   );
-  const layout = usePostsLayout();
   const enabledFields = useEnabledPostFields();
   const listConfig = usePostsListConfig();
+  const layout = listConfig.layoutStyle;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

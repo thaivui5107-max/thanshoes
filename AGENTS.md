@@ -19,6 +19,15 @@
 - Verification runtime/integration do tester phụ trách.
 - Tự review tĩnh trước khi bàn giao: typing, null-safety, edge cases, tương thích dữ liệu cũ.
 
+# Data Contract & Migration Discipline
+- Khi nâng schema/data model hoặc phát hiện data cũ thiếu field, mặc định dùng pattern **Expand → Migrate → Contract**.
+- **Expand:** mở rộng code/schema để ghi field chuẩn mới và cho phép chuyển tiếp an toàn; chỉ dùng fallback tạm thời nếu cần giữ hệ thống sống trong cửa sổ migration.
+- **Migrate:** chạy migration/backfill có đọc trước, patch tối thiểu, verify sau ghi; ưu tiên đưa data thật về contract mới thay vì chôn logic legacy trong runtime.
+- **Contract:** sau khi verify data đã đạt chuẩn, bỏ fallback legacy, code chỉ đọc source-of-truth mới; cập nhật data contract/audit để lần sau phát hiện thiếu/dư field sớm.
+- Không biến fallback legacy thành thiết kế lâu dài. Nếu phải thêm fallback, phải ghi rõ điều kiện gỡ bỏ và migration/backfill đi kèm.
+- Khi nâng code cho dự án cũ hoặc nghi ngờ nợ dữ liệu, dùng `/system/data` → **Data Contract Check** hoặc Convex CLI tương ứng để quét missing/recommended/extra/deprecated fields trước khi fix chắp vá.
+- Khi thêm field/table mới có ý nghĩa runtime, phải cập nhật contract scan tương ứng để AI agents/dev nhận ra data cũ cần migrate.
+
 # Sub-agent Delegation (Speed-first)
 - Với task từ mức trung bình trở lên, ưu tiên dùng sub-agent (Task) trước khi tự xử lý tuần tự.
 - Mục tiêu tối ưu wall-clock time hơn token cost; chấp nhận “tốn thêm ~80 để nhanh thêm ~20”.

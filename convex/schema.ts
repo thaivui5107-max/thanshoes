@@ -778,7 +778,6 @@ export default defineSchema({
     createdAt: v.number(),
     label: v.string(),
     logo: v.optional(v.string()),
-    payload: v.optional(v.any()), // Deprecated: dữ liệu cũ, mới dùng homeComponentSnapshotPayloads
     phone: v.optional(v.string()),
     publicEnabled: v.optional(v.boolean()),
     sectionTitles: v.optional(v.array(v.string())),

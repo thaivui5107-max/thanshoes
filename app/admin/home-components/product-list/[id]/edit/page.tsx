@@ -160,14 +160,13 @@ export default function ProductListEditPage({
       setHideHeader(headerConfig.hideHeader ?? false);
       setShowTitleHeader(headerConfig.showTitle ?? true);
       setShowSubtitle(headerConfig.showSubtitle ?? true);
-      // Map: subtitle → sectionTitle, badgeText → subTitle
-      setHeaderSubtitle((config.sectionTitle as string) ?? headerConfig.subtitle ?? DEFAULT_PRODUCT_LIST_TEXT.sectionTitle);
+      setHeaderSubtitle(headerConfig.subtitle ?? DEFAULT_PRODUCT_LIST_TEXT.sectionTitle);
       setHeaderAlign(headerConfig.headerAlign ?? 'left');
       setTitleColorPrimary(headerConfig.titleColorPrimary ?? false);
       setSubtitleAboveTitle(headerConfig.subtitleAboveTitle ?? false);
       setUppercaseText(headerConfig.uppercaseText ?? false);
       setShowBadge(headerConfig.showBadge ?? true);
-      setBadgeText((config.subTitle as string) ?? headerConfig.badgeText ?? DEFAULT_PRODUCT_LIST_TEXT.subTitle);
+      setBadgeText(headerConfig.badgeText ?? DEFAULT_PRODUCT_LIST_TEXT.subTitle);
       setSpacing(normalizedSpacing);
       setCardRadius(normalizedCornerRadius);
       setDesktopColumns(normalizeProductListDesktopColumns(config.desktopColumns ?? config.lookbookDesktopColumns));
@@ -201,13 +200,13 @@ export default function ProductListEditPage({
       hideHeader: headerConfig.hideHeader,
       showTitle: headerConfig.showTitle,
       showSubtitle: headerConfig.showSubtitle,
-      subtitle: (config.sectionTitle as string) ?? headerConfig.subtitle ?? DEFAULT_PRODUCT_LIST_TEXT.sectionTitle,
+      subtitle: headerConfig.subtitle ?? DEFAULT_PRODUCT_LIST_TEXT.sectionTitle,
       headerAlign: headerConfig.headerAlign,
       titleColorPrimary: headerConfig.titleColorPrimary,
       subtitleAboveTitle: headerConfig.subtitleAboveTitle,
       uppercaseText: headerConfig.uppercaseText,
       showBadge: headerConfig.showBadge,
-      badgeText: (config.subTitle as string) ?? headerConfig.badgeText ?? DEFAULT_PRODUCT_LIST_TEXT.subTitle,
+      badgeText: headerConfig.badgeText ?? DEFAULT_PRODUCT_LIST_TEXT.subTitle,
       spacing: normalizedSpacing,
       cornerRadius: normalizedCornerRadius,
       showAddToCartButton: config.showAddToCartButton ?? true,
@@ -274,10 +273,6 @@ export default function ProductListEditPage({
         style: productListStyle,
         desktopColumns,
         lookbookDesktopColumns: desktopColumns,
-        // Legacy fields for backward compat
-        subTitle: badgeText,
-        sectionTitle: headerSubtitle,
-        // Header config fields
         hideHeader,
         showTitle: showTitleHeader,
         showSubtitle,

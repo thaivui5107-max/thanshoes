@@ -252,7 +252,7 @@ function ProductTypesContent() {
   };
 
   const openFrontend = (slug: string) => {
-    window.open(`/type/${slug}`, '_blank');
+    window.open(`/${slug}`, '_blank');
   };
 
   return (

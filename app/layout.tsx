@@ -141,7 +141,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>): Promise<React.ReactElement> {
   const site = await getSiteSettings();
-  const brandPrimary = site.site_brand_primary || site.site_brand_color || '#3b82f6';
+  const brandPrimary = site.site_brand_primary || '#3b82f6';
   const brandMode = site.site_brand_mode === 'single' ? 'single' : 'dual';
   const brandSecondary = brandMode === 'single'
     ? ''

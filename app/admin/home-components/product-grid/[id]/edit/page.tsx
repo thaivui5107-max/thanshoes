@@ -137,8 +137,8 @@ export default function ProductGridEditPage({
     const nextSortBy = config.sortBy ?? DEFAULT_PRODUCT_GRID_CONFIG.sortBy;
     const nextSelectionMode = config.selectionMode ?? DEFAULT_PRODUCT_GRID_CONFIG.selectionMode;
     const nextSelectedProductIds = config.selectedProductIds ?? [];
-    const nextSubTitle = config.subTitle ?? DEFAULT_PRODUCT_GRID_CONFIG.subTitle;
-    const nextSectionTitle = config.sectionTitle ?? DEFAULT_PRODUCT_GRID_CONFIG.sectionTitle;
+    const nextSubTitle = config.badgeText ?? DEFAULT_PRODUCT_GRID_CONFIG.subTitle;
+    const nextSectionTitle = config.subtitle ?? DEFAULT_PRODUCT_GRID_CONFIG.sectionTitle;
     const nextStyle = (config.style as ProductGridStyle) ?? DEFAULT_PRODUCT_GRID_CONFIG.style;
 
     setItemCount(nextItemCount);
@@ -187,8 +187,8 @@ export default function ProductGridEditPage({
       selectedProductIds: nextSelectionMode === 'manual' ? nextSelectedProductIds : [],
       demoProducts: nextSelectionMode === 'demo' ? (Array.isArray(config.demoProducts) ? config.demoProducts : []) : [],
       style: nextStyle,
-      subTitle: nextSubTitle,
-      sectionTitle: nextSectionTitle,
+      badgeText: nextSubTitle,
+      subtitle: nextSectionTitle,
       categoryTabIds: Array.isArray(config.categoryTabIds) ? config.categoryTabIds : [],
       hideHeader: config.hideHeader === true,
       showTitle: config.showTitle !== false,
@@ -330,8 +330,8 @@ export default function ProductGridEditPage({
     selectedProductIds: selectionMode === 'manual' ? selectedProductIds : [],
     demoProducts: selectionMode === 'demo' ? demoProducts : [],
     style,
-    subTitle,
-    sectionTitle,
+    badgeText: subTitle,
+    subtitle: sectionTitle,
     categoryTabIds,
     hideHeader,
     showTitle: showTitleHeader,
@@ -375,14 +375,11 @@ export default function ProductGridEditPage({
       const nextConfig = {
           itemCount: effectiveItemCount,
           desktopRows,
-          sectionTitle,
           selectedProductIds: savedSelectedProductIds,
           demoProducts: selectionMode === 'demo' ? demoProducts : undefined,
           selectionMode,
           sortBy,
           style,
-          subTitle,
-          // Header config fields
           hideHeader,
           showTitle: showTitleHeader,
           showSubtitle,
@@ -445,8 +442,8 @@ export default function ProductGridEditPage({
         selectedProductIds: savedSelectedProductIds,
         demoProducts: selectionMode === 'demo' ? demoProducts : [],
         style,
-        subTitle,
-        sectionTitle,
+        badgeText: subTitle,
+        subtitle: sectionTitle,
         categoryTabIds,
         hideHeader,
         showTitle: showTitleHeader,

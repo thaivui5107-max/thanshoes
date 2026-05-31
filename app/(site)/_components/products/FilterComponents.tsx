@@ -35,10 +35,22 @@ export function AttributeFilterGroupWidget({
   const filterType = group.filterType || 'single';
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const toggleDropdown = (open: boolean) => {
     setIsDropdownOpen(open);
   };
+
+  useEffect(() => {
+    if (!isDropdownOpen || inputType !== 'select') return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!dropdownRef.current?.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [inputType, isDropdownOpen]);
 
   // Range Slider logic
   const numericTerms = useMemo(() => {
@@ -53,72 +65,85 @@ export function AttributeFilterGroupWidget({
       return { minLimit: 0, maxLimit: 100 };
     }
     return {
-      minLimit: numericTerms[0].value,
-      maxLimit: numericTerms[numericTerms.length - 1].value
+      minLimit: 0,
+      maxLimit: numericTerms.length - 1
     };
   }, [numericTerms]);
 
-  const step = useMemo(() => {
-    const diff = maxLimit - minLimit;
-    if (diff <= 0) return 1;
-    if (diff <= 2) return 0.1;
-    if (diff <= 20) return 0.5;
-    return 1;
-  }, [minLimit, maxLimit]);
-
   const [sliderMin, setSliderMin] = useState(minLimit);
   const [sliderMax, setSliderMax] = useState(maxLimit);
+  // lastAppliedSlugsRef: lưu slugs mà CHÍNH widget vừa apply
+  // - null = chưa apply lần nào (fresh mount)
+  // - [] = vừa reset về toàn bộ (clear filter)
+  // - ['slug-a', ...] = vừa apply khoảng lọc cụ thể
   const lastAppliedSlugsRef = useRef<string[] | null>(null);
 
   // Sync slider state khi URL thay đổi từ bên ngoài
   const currentSelectedTermIds = selectedAttributes?.[group._id] || [];
 
   useEffect(() => {
-    if (filterType === 'range' && numericTerms.length > 0) {
-      const isSelfChange = lastAppliedSlugsRef.current &&
-        lastAppliedSlugsRef.current.length === currentSelectedTermIds.length &&
-        lastAppliedSlugsRef.current.every(slug => currentSelectedTermIds.includes(slug));
+    if (filterType !== 'range' || numericTerms.length === 0) return;
 
-      if (isSelfChange) return;
+    const last = lastAppliedSlugsRef.current;
 
-      if (currentSelectedTermIds.length > 0) {
-        const selectedValues = numericTerms
-          .filter((item: any) => currentSelectedTermIds.includes(item.term.slug))
-          .map((item: any) => item.value);
-        if (selectedValues.length > 0) {
-          setSliderMin(Math.min(...selectedValues));
-          setSliderMax(Math.max(...selectedValues));
-          return;
-        }
+    // Case 1: Chính widget vừa apply – slugs khớp hoàn toàn → không cần sync
+    if (last !== null) {
+      const isSelfChange =
+        last.length === currentSelectedTermIds.length &&
+        last.every(slug => currentSelectedTermIds.includes(slug));
+      if (isSelfChange) {
+        // URL đã phản ánh đúng giá trị chúng ta vừa apply → done
+        lastAppliedSlugsRef.current = null;
+        return;
       }
-      setSliderMin(minLimit);
-      setSliderMax(maxLimit);
+
+      // Case 2: URL đang trống NHƯNG chúng ta vừa apply non-empty → chờ URL update
+      // (trạng thái intermediate: router.push chưa kịp phản ánh vào searchParams)
+      if (currentSelectedTermIds.length === 0 && last.length > 0) {
+        return; // giữ nguyên local slider, không reset
+      }
     }
+
+    // Case 3: Thay đổi từ bên ngoài (URL navigate, clear all, v.v.) → sync
+    if (currentSelectedTermIds.length > 0) {
+      const selectedIndexes = numericTerms
+        .map((item: any, index: number) => currentSelectedTermIds.includes(item.term.slug) ? index : null)
+        .filter((index: number | null): index is number => index !== null);
+      if (selectedIndexes.length > 0) {
+        setSliderMin(Math.min(...selectedIndexes));
+        setSliderMax(Math.max(...selectedIndexes));
+        return;
+      }
+    }
+    setSliderMin(minLimit);
+    setSliderMax(maxLimit);
   }, [currentSelectedTermIds, minLimit, maxLimit, numericTerms, filterType]);
 
   const applyRangeFilter = useCallback((newMin: number, newMax: number) => {
-    setSliderMin(newMin);
-    setSliderMax(newMax);
-    if (newMin === minLimit && newMax === maxLimit) {
+    const nextMinIndex = Math.max(minLimit, Math.min(maxLimit, Math.round(newMin)));
+    const nextMaxIndex = Math.max(minLimit, Math.min(maxLimit, Math.round(newMax)));
+    const minIndex = Math.min(nextMinIndex, nextMaxIndex);
+    const maxIndex = Math.max(nextMinIndex, nextMaxIndex);
+    setSliderMin(minIndex);
+    setSliderMax(maxIndex);
+
+    if (minIndex === minLimit && maxIndex === maxLimit) {
+      // Reset về toàn bộ dải = xóa filter
       lastAppliedSlugsRef.current = [];
       onAttributeChange?.(group.slug, [], false);
     } else {
       const matchedTermSlugs = numericTerms
-        .filter((item: any) => item.value >= newMin && item.value <= newMax)
+        .slice(minIndex, maxIndex + 1)
         .map((item: any) => item.term.slug);
       lastAppliedSlugsRef.current = matchedTermSlugs;
       onAttributeChange?.(group.slug, matchedTermSlugs, true);
     }
   }, [minLimit, maxLimit, numericTerms, onAttributeChange, group.slug]);
 
-  const unit = useMemo(() => {
-    if (group.terms && group.terms.length > 0) {
-      const name = group.terms[0].name;
-      const clean = name.replace(/[\d\s.-]/g, '');
-      return clean || '';
-    }
-    return '';
-  }, [group.terms]);
+  const formatRangeValue = useCallback((indexValue: number) => {
+    const index = Math.max(minLimit, Math.min(maxLimit, Math.round(indexValue)));
+    return numericTerms[index]?.term.name ?? '';
+  }, [maxLimit, minLimit, numericTerms]);
 
   // RENDER DUAL RANGE SLIDER (dùng Radix UI Slider)
   if (filterType === 'range') {
@@ -132,12 +157,13 @@ export function AttributeFilterGroupWidget({
         maxLimit={maxLimit}
         valueMin={sliderMin}
         valueMax={sliderMax}
-        step={step}
+        step={1}
         primaryColor={tokens.filterChipActiveBg}
         trackColor={tokens.filterChipBg}
         thumbBorderColor="#ffffff"
-        unit={unit}
+        formatValue={formatRangeValue}
         onValueCommit={applyRangeFilter}
+        hasFilterActive={currentSelectedTermIds.length > 0}
       />
     );
   }
@@ -170,7 +196,7 @@ export function AttributeFilterGroupWidget({
     };
 
     return (
-      <div className="relative">
+      <div ref={dropdownRef} className="relative">
         <button
           type="button"
           onClick={() => toggleDropdown(!isDropdownOpen)}
@@ -182,45 +208,42 @@ export function AttributeFilterGroupWidget({
         </button>
 
         {isDropdownOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => toggleDropdown(false)} />
-            <div className="absolute left-0 right-0 mt-1 z-20 max-h-60 overflow-y-auto rounded-lg border bg-white dark:bg-slate-800 shadow-lg p-1 space-y-0.5" style={{ borderColor: tokens.inputBorder }}>
-              {filterType === 'single' && (
+          <div className="relative mt-1 z-20 max-h-60 overflow-y-auto rounded-lg border bg-white dark:bg-slate-800 shadow-lg p-1 space-y-0.5" style={{ borderColor: tokens.inputBorder }}>
+            {filterType === 'single' && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleSelectTerm('');
+                  toggleDropdown(false);
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 text-sm rounded-md text-left text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                Tất cả
+              </button>
+            )}
+            {group.terms.map((term: any) => {
+              const isSelected = selectedAttributes?.[group._id]?.includes(term.slug) ?? false;
+              return (
                 <button
+                  key={term._id}
                   type="button"
                   onClick={() => {
-                    handleSelectTerm('');
-                    toggleDropdown(false);
+                    handleSelectTerm(term.slug);
+                    if (filterType !== 'multiple') toggleDropdown(false);
                   }}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm rounded-md text-left text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md text-left transition-colors ${
+                    isSelected
+                      ? 'font-semibold'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                  style={isSelected ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText } : {}}
                 >
-                  Tất cả
+                  <span>{term.name}</span>
+                  {isSelected && <Check size={14} />}
                 </button>
-              )}
-              {group.terms.map((term: any) => {
-                const isSelected = selectedAttributes?.[group._id]?.includes(term.slug) ?? false;
-                return (
-                  <button
-                    key={term._id}
-                    type="button"
-                    onClick={() => {
-                      handleSelectTerm(term.slug);
-                      if (filterType !== 'multiple') toggleDropdown(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md text-left transition-colors ${
-                      isSelected
-                        ? 'font-semibold'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}
-                    style={isSelected ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText } : {}}
-                  >
-                    <span>{term.name}</span>
-                    {isSelected && <Check size={14} />}
-                  </button>
-                );
-              })}
-            </div>
-          </>
+              );
+            })}
+          </div>
         )}
 
         {/* Selected tags list for multiple filter select */}

@@ -151,8 +151,8 @@ export default function ProductsListExperiencePage() {
 
   const serverConfig = useMemo<ProductsListExperienceConfig>(() => {
     const raw = experienceSetting?.value as {
-      layoutStyle?: ListLayoutStyle | 'masonry';
-      layouts?: Partial<Record<'grid' | 'list' | 'sidebar' | 'masonry', Partial<LayoutConfig & { showPagination?: boolean }>>>;
+      layoutStyle?: ListLayoutStyle;
+      layouts?: Partial<Record<ListLayoutStyle, Partial<LayoutConfig>>>;
       showWishlistButton?: boolean;
       showAddToCartButton?: boolean;
       showBuyNowButton?: boolean;
@@ -164,29 +164,27 @@ export default function ProductsListExperiencePage() {
       priceFilterMode?: 'disabled' | 'custom' | 'smart_dropdown' | 'slider';
     } | undefined;
     
-    const normalizePaginationType = (value?: string | boolean): PaginationType => {
+    const normalizePaginationType = (value?: string): PaginationType => {
       if (value === 'infiniteScroll') return 'infiniteScroll';
       if (value === 'pagination') return 'pagination';
-      if (value === false) return 'infiniteScroll';
       return 'pagination';
     };
     
-    const normalizeLayoutConfig = (cfg?: Partial<LayoutConfig & { showPagination?: boolean }>): LayoutConfig => ({
-      paginationType: normalizePaginationType(cfg?.paginationType ?? cfg?.showPagination),
+    const normalizeLayoutConfig = (cfg?: Partial<LayoutConfig>): LayoutConfig => ({
+      paginationType: normalizePaginationType(cfg?.paginationType),
       showSearch: cfg?.showSearch ?? true,
       showCategories: cfg?.showCategories ?? true,
       postsPerPage: cfg?.postsPerPage ?? 12,
     });
     
-    const layoutStyle: ListLayoutStyle = raw?.layoutStyle === 'masonry' ? 'sidebar' : (raw?.layoutStyle ?? 'grid');
-    const sidebarConfig = raw?.layouts?.sidebar ?? raw?.layouts?.masonry;
+    const layoutStyle: ListLayoutStyle = raw?.layoutStyle ?? 'grid';
 
     return {
       layoutStyle,
       layouts: {
-        grid: normalizeLayoutConfig(raw?.layouts?.grid as Partial<LayoutConfig & { showPagination?: boolean }>),
-        sidebar: normalizeLayoutConfig(sidebarConfig as Partial<LayoutConfig & { showPagination?: boolean }>),
-        list: normalizeLayoutConfig(raw?.layouts?.list as Partial<LayoutConfig & { showPagination?: boolean }>),
+        grid: normalizeLayoutConfig(raw?.layouts?.grid),
+        sidebar: normalizeLayoutConfig(raw?.layouts?.sidebar),
+        list: normalizeLayoutConfig(raw?.layouts?.list),
       },
       showWishlistButton: raw?.showWishlistButton ?? true,
       showAddToCartButton: raw?.showAddToCartButton ?? true,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, X, SlidersHorizontal } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Id } from '@/convex/_generated/dataModel';
@@ -17,6 +17,7 @@ import {
   EmptyState 
 } from './ProductCardComponents';
 import { AttributeFilterGroupWidget } from './FilterComponents';
+import { RangeSlider } from '@/components/shared/RangeSlider';
 
 export type ProductSortOption = 'newest' | 'oldest' | 'popular' | 'price_asc' | 'price_desc' | 'name';
 export type ProductsSaleMode = 'cart' | 'contact' | 'affiliate';
@@ -305,157 +306,21 @@ function DoubleRangeSlider({
   tokens: any;
   brandColor: string;
 }) {
-  const [minVal, setMinVal] = useState(initialMin);
-  const [maxVal, setMaxVal] = useState(initialMax);
-  const minValRef = useRef(initialMin);
-  const maxValRef = useRef(initialMax);
-  const rangeRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMinVal(initialMin);
-    minValRef.current = initialMin;
-  }, [initialMin]);
-
-  useEffect(() => {
-    setMaxVal(initialMax);
-    maxValRef.current = initialMax;
-  }, [initialMax]);
-
-  const getPercent = (value: number) => Math.round(((value - min) / (max - min)) * 100);
-
-  useEffect(() => {
-    const minPercent = getPercent(minVal);
-    const maxPercent = getPercent(maxVal);
-
-    if (rangeRef.current) {
-      rangeRef.current.style.left = `${minPercent}%`;
-      rangeRef.current.style.width = `${maxPercent - minPercent}%`;
-    }
-  }, [minVal, maxVal, min, max]);
-
-  const handleMinChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Math.min(Number(event.target.value), maxVal - 1);
-    setMinVal(value);
-    minValRef.current = value;
-  };
-
-  const handleMaxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Math.max(Number(event.target.value), minVal + 1);
-    setMaxVal(value);
-    maxValRef.current = value;
-  };
-
-  const handleMouseUp = () => {
-    onChange(minVal, maxVal);
-  };
-
-  const formatK = (num: number) => {
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
-    }
-    if (num >= 1000) {
-      return `${(num / 1000).toFixed(0)}k`;
-    }
-    return String(num);
-  };
+  const step = Math.max(1, Math.min(10000, Math.floor((max - min) / 100)));
 
   return (
-    <div className="flex flex-col gap-4 py-2">
-      <style>{`
-        .thumb,
-        .thumb::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          -webkit-tap-highlight-color: transparent;
-        }
-        .thumb {
-          pointer-events: none;
-          position: absolute;
-          height: 24px;
-          width: 100%;
-          outline: none;
-          background: transparent;
-        }
-        .thumb::-webkit-slider-thumb {
-          background-color: #ffffff;
-          border: 3px solid ${brandColor};
-          border-radius: 50%;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-          cursor: pointer;
-          height: 16px;
-          width: 16px;
-          pointer-events: all;
-          position: relative;
-          box-sizing: border-box;
-        }
-        .thumb::-moz-range-thumb {
-          background-color: #ffffff;
-          border: 3px solid ${brandColor};
-          border-radius: 50%;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-          cursor: pointer;
-          height: 16px;
-          width: 16px;
-          pointer-events: all;
-          position: relative;
-          box-sizing: border-box;
-        }
-        .slider-track {
-          position: absolute;
-          border-radius: 3px;
-          height: 4px;
-          width: 100%;
-          z-index: 1;
-        }
-        .slider-range {
-          position: absolute;
-          border-radius: 3px;
-          height: 4px;
-          z-index: 2;
-        }
-      `}</style>
-      <div className="relative w-full h-6 flex items-center">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          value={minVal}
-          onChange={handleMinChange}
-          onMouseUp={handleMouseUp}
-          onTouchEnd={handleMouseUp}
-          className="thumb thumb--left"
-          style={{
-            zIndex: minVal > max - 100 ? 5 : 3,
-          }}
-        />
-        <input
-          type="range"
-          min={min}
-          max={max}
-          value={maxVal}
-          onChange={handleMaxChange}
-          onMouseUp={handleMouseUp}
-          onTouchEnd={handleMouseUp}
-          className="thumb thumb--right"
-          style={{
-            zIndex: 4,
-          }}
-        />
-
-        <div className="slider-track" style={{ backgroundColor: tokens.filterChipBg }} />
-        <div ref={rangeRef} className="slider-range" style={{ backgroundColor: brandColor }} />
-      </div>
-
-      <div className="flex justify-between items-center text-sm font-semibold mt-1">
-        <div className="px-2 py-1 rounded border" style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}>
-          {formatK(minVal)}đ
-        </div>
-        <span className="text-slate-400 dark:text-slate-500 font-bold">-</span>
-        <div className="px-2 py-1 rounded border" style={{ borderColor: tokens.inputBorder, backgroundColor: tokens.inputBackground, color: tokens.inputText }}>
-          {formatK(maxVal)}đ
-        </div>
-      </div>
-    </div>
+    <RangeSlider
+      minLimit={min}
+      maxLimit={max}
+      valueMin={initialMin}
+      valueMax={initialMax}
+      step={step}
+      primaryColor={brandColor}
+      trackColor={tokens.filterChipBg}
+      thumbBorderColor="#ffffff"
+      unit="đ"
+      onValueCommit={onChange}
+    />
   );
 }
 
@@ -593,6 +458,37 @@ export function CatalogLayout({
               </div>
             )}
 
+            {enableProductTypes && productTypes && productTypes.length > 0 && (
+              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                <h3 className="font-bold text-sm mb-2" style={{ color: tokens.bodyText }}>Nhóm sản phẩm</h3>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => onProductTypeChange?.(null)}
+                    className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${!productType ? 'font-semibold' : ''}`}
+                    style={!productType
+                      ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                      : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                    }
+                  >
+                    Tất cả nhóm
+                  </button>
+                  {productTypes.map((t) => (
+                    <button
+                      key={t._id}
+                      onClick={() => onProductTypeChange?.(t.slug)}
+                      className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${productType?.slug === t.slug ? 'font-semibold' : ''}`}
+                      style={productType?.slug === t.slug
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                      }
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {showCategories && (
               <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
                 <h3 className="font-semibold text-sm mb-2" style={{ color: tokens.bodyText }}>
@@ -661,37 +557,6 @@ export function CatalogLayout({
                       Không tìm thấy kết quả.
                     </div>
                   )}
-                </div>
-              </div>
-            )}
-
-            {enableProductTypes && productTypes && productTypes.length > 0 && (
-              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
-                <h3 className="font-bold text-sm mb-2" style={{ color: tokens.bodyText }}>Nhóm sản phẩm</h3>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => onProductTypeChange?.(null)}
-                    className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${!productType ? 'font-semibold' : ''}`}
-                    style={!productType
-                      ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
-                      : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
-                    }
-                  >
-                    Tất cả nhóm
-                  </button>
-                  {productTypes.map((t) => (
-                    <button
-                      key={t._id}
-                      onClick={() => onProductTypeChange?.(t.slug)}
-                      className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${productType?.slug === t.slug ? 'font-semibold' : ''}`}
-                      style={productType?.slug === t.slug
-                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
-                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
-                      }
-                    >
-                      {t.name}
-                    </button>
-                  ))}
                 </div>
               </div>
             )}
@@ -798,8 +663,13 @@ export function CatalogLayout({
                     onChange={(minVal, maxVal) => {
                       if (!router) return;
                       const params = new URLSearchParams(window.location.search);
-                      params.set('minPrice', String(minVal));
-                      params.set('maxPrice', String(maxVal));
+                      if (minVal === priceStats!.minPrice && maxVal === priceStats!.maxPrice) {
+                        params.delete('minPrice');
+                        params.delete('maxPrice');
+                      } else {
+                        params.set('minPrice', String(minVal));
+                        params.set('maxPrice', String(maxVal));
+                      }
                       params.delete('page');
                       params.delete('priceRange');
                       router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
@@ -1162,8 +1032,13 @@ export function CatalogLayout({
                       onChange={(minVal, maxVal) => {
                         if (!router) return;
                         const params = new URLSearchParams(window.location.search);
-                        params.set('minPrice', String(minVal));
-                        params.set('maxPrice', String(maxVal));
+                        if (minVal === priceStats!.minPrice && maxVal === priceStats!.maxPrice) {
+                          params.delete('minPrice');
+                          params.delete('maxPrice');
+                        } else {
+                          params.set('minPrice', String(minVal));
+                          params.set('maxPrice', String(maxVal));
+                        }
                         params.delete('page');
                         params.delete('priceRange');
                         router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
@@ -1366,6 +1241,37 @@ export function ListLayout({
               </div>
             )}
 
+            {enableProductTypes && productTypes && productTypes.length > 0 && (
+              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
+                <h3 className="font-bold text-sm mb-2" style={{ color: tokens.bodyText }}>Nhóm sản phẩm</h3>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => onProductTypeChange?.(null)}
+                    className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${!productType ? 'font-semibold' : ''}`}
+                    style={!productType
+                      ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                      : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                    }
+                  >
+                    Tất cả nhóm
+                  </button>
+                  {productTypes.map((t) => (
+                    <button
+                      key={t._id}
+                      onClick={() => onProductTypeChange?.(t.slug)}
+                      className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${productType?.slug === t.slug ? 'font-semibold' : ''}`}
+                      style={productType?.slug === t.slug
+                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
+                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
+                      }
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {showCategories && (
               <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
                 <h3 className="font-semibold text-sm mb-2" style={{ color: tokens.bodyText }}>
@@ -1434,37 +1340,6 @@ export function ListLayout({
                       Không tìm thấy kết quả.
                     </div>
                   )}
-                </div>
-              </div>
-            )}
-
-            {enableProductTypes && productTypes && productTypes.length > 0 && (
-              <div className={`${radiusClass} border p-3`} style={{ backgroundColor: tokens.filterBarBackground, borderColor: tokens.filterBarBorder }}>
-                <h3 className="font-bold text-sm mb-2" style={{ color: tokens.bodyText }}>Nhóm sản phẩm</h3>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => onProductTypeChange?.(null)}
-                    className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${!productType ? 'font-semibold' : ''}`}
-                    style={!productType
-                      ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
-                      : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
-                    }
-                  >
-                    Tất cả nhóm
-                  </button>
-                  {productTypes.map((t) => (
-                    <button
-                      key={t._id}
-                      onClick={() => onProductTypeChange?.(t.slug)}
-                      className={`w-full py-1.5 px-2.5 rounded text-left text-sm transition-colors border ${productType?.slug === t.slug ? 'font-semibold' : ''}`}
-                      style={productType?.slug === t.slug
-                        ? { backgroundColor: tokens.filterChipActiveBg, color: tokens.filterChipActiveText, borderColor: tokens.filterChipActiveBorder }
-                        : { backgroundColor: tokens.filterChipBg, color: tokens.filterChipText, borderColor: tokens.filterChipBorder }
-                      }
-                    >
-                      {t.name}
-                    </button>
-                  ))}
                 </div>
               </div>
             )}
@@ -1571,8 +1446,13 @@ export function ListLayout({
                     onChange={(minVal, maxVal) => {
                       if (!router) return;
                       const params = new URLSearchParams(window.location.search);
-                      params.set('minPrice', String(minVal));
-                      params.set('maxPrice', String(maxVal));
+                      if (minVal === priceStats!.minPrice && maxVal === priceStats!.maxPrice) {
+                        params.delete('minPrice');
+                        params.delete('maxPrice');
+                      } else {
+                        params.set('minPrice', String(minVal));
+                        params.set('maxPrice', String(maxVal));
+                      }
                       params.delete('page');
                       params.delete('priceRange');
                       router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
@@ -1936,8 +1816,13 @@ export function ListLayout({
                       onChange={(minVal, maxVal) => {
                         if (!router) return;
                         const params = new URLSearchParams(window.location.search);
-                        params.set('minPrice', String(minVal));
-                        params.set('maxPrice', String(maxVal));
+                        if (minVal === priceStats!.minPrice && maxVal === priceStats!.maxPrice) {
+                          params.delete('minPrice');
+                          params.delete('maxPrice');
+                        } else {
+                          params.set('minPrice', String(minVal));
+                          params.set('maxPrice', String(maxVal));
+                        }
                         params.delete('page');
                         params.delete('priceRange');
                         router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });

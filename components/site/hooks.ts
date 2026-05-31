@@ -39,13 +39,10 @@ export function useBrandColors() {
   // Skip DB queries entirely when snapshot provides site settings
   const skipDb = Boolean(snapshotSite);
   const primarySetting = useQuery(api.settings.getByKey, skipDb ? 'skip' : { key: 'site_brand_primary' });
-  const legacySetting = useQuery(api.settings.getByKey, skipDb ? 'skip' : { key: 'site_brand_color' });
   const secondarySetting = useQuery(api.settings.getByKey, skipDb ? 'skip' : { key: 'site_brand_secondary' });
   const modeSetting = useQuery(api.settings.getByKey, skipDb ? 'skip' : { key: 'site_brand_mode' });
   const primary = resolveColorSetting(snapshotSite?.site_brand_primary)
-    ?? resolveColorSetting(snapshotSite?.site_brand_color)
     ?? resolveColorSetting(primarySetting?.value)
-    ?? resolveColorSetting(legacySetting?.value)
     ?? initialBrandColors?.primary
     ?? resolveColorSetting(getCssVariableFromDoc('--site-brand-primary'))
     ?? DEFAULT_BRAND_COLOR;
@@ -90,7 +87,7 @@ export function useSiteSettings() {
     });
   }
   
-  const brandPrimary = (settingsMap.site_brand_primary as string) || (settingsMap.site_brand_color as string) || DEFAULT_BRAND_COLOR;
+  const brandPrimary = (settingsMap.site_brand_primary as string) || DEFAULT_BRAND_COLOR;
   const brandMode = settingsMap.site_brand_mode === 'single' ? 'single' : 'dual';
   const brandSecondary = brandMode === 'single'
     ? ''

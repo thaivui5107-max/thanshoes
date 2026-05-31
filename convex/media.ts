@@ -320,8 +320,8 @@ async function resolveMediaUsageMap(
   const homeComponents = fullScan ? await ctx.db.query("homeComponents").collect() : trimUsageRecords(await ctx.db.query("homeComponents").take(MAX_USAGE_SCAN_PER_TABLE + 1), scanState);
   homeComponents.forEach(record => collectUsageMatches(usageMap, candidates, "homeComponents", record, "config", record.config));
 
-  const homeComponentSnapshots = fullScan ? await ctx.db.query("homeComponentSnapshots").collect() : trimUsageRecords(await ctx.db.query("homeComponentSnapshots").take(MAX_USAGE_SCAN_PER_TABLE + 1), scanState);
-  homeComponentSnapshots.forEach(record => collectUsageMatches(usageMap, candidates, "homeComponentSnapshots", record, "payload", record.payload));
+  const homeComponentSnapshotPayloads = fullScan ? await ctx.db.query("homeComponentSnapshotPayloads").collect() : trimUsageRecords(await ctx.db.query("homeComponentSnapshotPayloads").take(MAX_USAGE_SCAN_PER_TABLE + 1), scanState);
+  homeComponentSnapshotPayloads.forEach(record => collectUsageMatches(usageMap, candidates, "homeComponentSnapshotPayloads", record, "payload", record.payload));
 
   return { scanComplete: scanState.complete, usageMap };
 }

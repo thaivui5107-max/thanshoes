@@ -16,23 +16,16 @@ import type { ContactSettings, SEOSettings, SiteSettings, SocialSettings } from 
 
 const REPLACE_ALL_MODE = 'replace_all';
 
-/**
- * Load payload từ bảng `homeComponentSnapshotPayloads` (mới), fallback sang field
- * `snapshot.payload` cũ để hỗ trợ migration zero-downtime.
- * Sau khi backfill xong, có thể bỏ fallback.
- */
 const loadSnapshotPayload = async (
   ctx: any,
   snapshotId: string,
-  fallbackPayload?: unknown
 ): Promise<unknown> => {
   const payloadRow = await ctx.db
     .query('homeComponentSnapshotPayloads')
     .withIndex('by_snapshotId', (q: any) => q.eq('snapshotId', snapshotId))
     .unique();
   if (payloadRow) return payloadRow.payload;
-  // Fallback về field cũ trong giai đoạn migration
-  return fallbackPayload;
+  return null;
 };
 
 const SNAPSHOT_REQUIRED_SETTINGS_KEYS = {
@@ -53,7 +46,6 @@ const SNAPSHOT_REQUIRED_SETTINGS_KEYS = {
     'site_brand_primary',
     'site_brand_secondary',
     'site_brand_mode',
-    'site_brand_color',
     'site_timezone',
     'site_language',
   ],
@@ -114,7 +106,7 @@ const toStaticProduct = (product: Doc<'products'>): SnapshotStaticItem => ({
   image: product.image || product.images?.[0],
   slug: product.slug,
   subtitle: product.description,
-  price: product.salePrice ?? product.price,
+  price: product.effectivePrice ?? product.price,
 });
 
 const toStaticService = (service: Doc<'services'>): SnapshotStaticItem => ({
@@ -652,7 +644,7 @@ export const listHomepageSnapshotsWithPayload = query({
   handler: async (ctx) => {
     const rows = await ctx.db.query('homeComponentSnapshots').withIndex('by_createdAt').order('desc').take(100);
     return await Promise.all(rows.map(async (row) => {
-      const payload = await loadSnapshotPayload(ctx, row._id as string, row.payload);
+      const payload = await loadSnapshotPayload(ctx, row._id as string);
       return {
         _id: row._id,
         createdAt: row.createdAt,
@@ -786,7 +778,7 @@ function buildSnapshotSummary(payload: HomepageSnapshotPayload) {
     address: contact.contact_address || '',
     brandMode: site.site_brand_mode || 'dual',
     brandName: site.site_name || '',
-    brandPrimary: site.site_brand_primary || site.site_brand_color || '#3b82f6',
+    brandPrimary: site.site_brand_primary || '#3b82f6',
     brandSecondary: site.site_brand_secondary || '',
     componentCount: activeSections.length,
     componentTypes: [...new Set(activeSections.map((component) => component.type))],
@@ -852,7 +844,7 @@ export const getHomepageSnapshotById = query({
   handler: async (ctx, args) => {
     const snapshot = await ctx.db.get(args.snapshotId);
     if (!snapshot) return null;
-    const payload = await loadSnapshotPayload(ctx, args.snapshotId as string, snapshot.payload);
+    const payload = await loadSnapshotPayload(ctx, args.snapshotId as string);
     return { ...snapshot, payload };
   },
   returns: v.union(v.object({
@@ -885,7 +877,7 @@ export const getHomepageSnapshotDemoById = query({
   handler: async (ctx, args) => {
     const snapshot = await ctx.db.get(args.snapshotId);
     if (!snapshot) {return null;}
-    const payload = await loadSnapshotPayload(ctx, args.snapshotId as string, snapshot.payload) as HomepageSnapshotPayload | null;
+    const payload = await loadSnapshotPayload(ctx, args.snapshotId as string) as HomepageSnapshotPayload | null;
     if (!payload) {return null;}
     const bundle = (payload.homepage.demoBundle ?? null) as Record<string, unknown> | null;
     return {
@@ -1006,7 +998,7 @@ export const backfillHomepageSnapshotSummaries = mutation({
       .take(Math.min(args.batchSize ?? 50, 100));
     let updated = 0;
     for (const row of rows) {
-      const payload = await loadSnapshotPayload(ctx, row._id as string, row.payload) as HomepageSnapshotPayload | null;
+      const payload = await loadSnapshotPayload(ctx, row._id as string) as HomepageSnapshotPayload | null;
       if (!payload) continue;
       await ctx.db.patch(row._id, buildSnapshotSummary(payload));
       updated += 1;
@@ -1021,7 +1013,7 @@ export const getHomepageSnapshotBySlug = query({
   handler: async (ctx, args) => {
     const snapshot = await ctx.db.query('homeComponentSnapshots').withIndex('by_slug', (q) => q.eq('slug', args.slug)).unique();
     if (!snapshot || !snapshot.publicEnabled) return null;
-    const payload = await loadSnapshotPayload(ctx, snapshot._id as string, snapshot.payload) as HomepageSnapshotPayload | null;
+    const payload = await loadSnapshotPayload(ctx, snapshot._id as string) as HomepageSnapshotPayload | null;
     if (!payload) return null;
     const bundle = (payload.homepage.demoBundle ?? null) as Record<string, unknown> | null;
     return {
@@ -1259,9 +1251,9 @@ export const applyHomepageSnapshot = mutation({
     if (!snapshot) {
       throw new Error('Snapshot không tồn tại');
     }
-    const payload = await loadSnapshotPayload(ctx, args.snapshotId as string, snapshot.payload) as HomepageSnapshotPayload | null;
+    const payload = await loadSnapshotPayload(ctx, args.snapshotId as string) as HomepageSnapshotPayload | null;
     if (!payload) {
-      throw new Error('Payload snapshot không tìm thấy — hãy chạy backfillSnapshotPayloads trước');
+      throw new Error('Payload snapshot không tìm thấy trong homeComponentSnapshotPayloads');
     }
     const report = buildReport(payload);
     if (report.summary.blocking > 0) {
@@ -1343,47 +1335,64 @@ export const applyHomepageSnapshot = mutation({
 });
 
 /**
- * Backfill: chuyển payload từ field cũ trong `homeComponentSnapshots`
- * sang bảng `homeComponentSnapshotPayloads`.
- * Chạy 1 lần sau khi deploy — tự bỏ qua nếu đã migrate.
+ * MIGRATION: Tách `payload` từ homeComponentSnapshots (legacy) sang homeComponentSnapshotPayloads.
+ * Chỉ chạy 1 lần trong quá trình nâng core — sau đó xóa `payload` optional khỏi schema (Contract phase).
+ * Quy trình: Expand → [Migrate này] → Contract (xóa payload optional trong schema.ts).
  */
-export const backfillSnapshotPayloads = mutation({
-  args: { batchSize: v.optional(v.number()) },
-  handler: async (ctx, args) => {
-    const batchSize = Math.min(args.batchSize ?? 20, 50);
-    const rows = await ctx.db
+export const migrateSnapshotPayloadsToSeparateTable = mutation({
+  args: {},
+  handler: async (ctx): Promise<{ migrated: number; skipped: number; errors: string[] }> => {
+    const snapshots = await ctx.db
       .query('homeComponentSnapshots')
       .withIndex('by_createdAt')
-      .order('desc')
-      .take(200);
+      .collect();
 
     let migrated = 0;
     let skipped = 0;
+    const errors: string[] = [];
 
-    for (const row of rows) {
-      if (migrated >= batchSize) break;
-      // Kiểm tra đã có payload row chưa
-      const existing = await ctx.db
+    for (const snapshot of snapshots) {
+      // Kiểm tra nếu đã có payload row trong bảng riêng
+      const existingPayloadRow = await ctx.db
         .query('homeComponentSnapshotPayloads')
-        .withIndex('by_snapshotId', (q) => q.eq('snapshotId', row._id))
+        .withIndex('by_snapshotId', (q) => q.eq('snapshotId', snapshot._id))
         .unique();
-      if (existing) {
-        skipped += 1;
+
+      const legacyPayload = (snapshot as Record<string, unknown>).payload;
+
+      if (!legacyPayload) {
+        // Không có payload cũ → bỏ qua
+        skipped++;
         continue;
       }
-      // Nếu snapshot cũ còn payload field
-      if (row.payload !== undefined) {
+
+      if (existingPayloadRow) {
+        // Đã migrate rồi → chỉ xóa payload cũ khỏi snapshot doc (as any vì field không còn trong schema)
+        await ctx.db.patch(snapshot._id, { payload: undefined } as any);
+        skipped++;
+        continue;
+      }
+
+      try {
+        // Insert payload vào bảng riêng
         await ctx.db.insert('homeComponentSnapshotPayloads', {
-          snapshotId: row._id,
-          payload: row.payload,
+          snapshotId: snapshot._id,
+          payload: legacyPayload,
         });
-        migrated += 1;
-      } else {
-        // Snapshot cũ không có payload (hiếm) — bỏ qua
-        skipped += 1;
+        // Xóa field payload khỏi snapshot doc (as any vì field không còn trong schema)
+        await ctx.db.patch(snapshot._id, { payload: undefined } as any);
+        migrated++;
+      } catch (err) {
+        errors.push(`snapshot ${snapshot._id as string}: ${String(err)}`);
       }
     }
-    return { migrated, skipped };
+
+    return { migrated, skipped, errors };
   },
-  returns: v.object({ migrated: v.number(), skipped: v.number() }),
+  returns: v.object({
+    migrated: v.number(),
+    skipped: v.number(),
+    errors: v.array(v.string()),
+  }),
 });
+

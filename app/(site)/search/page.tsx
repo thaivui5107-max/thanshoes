@@ -869,9 +869,6 @@ function SearchContent() {
                             <h3 className="font-semibold text-slate-800 text-sm md:text-base line-clamp-1 mb-1 group-hover:text-slate-900 transition-colors">
                               {product.name}
                             </h3>
-                            <p className="text-slate-400 text-xs line-clamp-2 hidden md:block">
-                              {product.description || 'Không có mô tả chi tiết cho sản phẩm này.'}
-                            </p>
                           </div>
 
                           <div className="flex items-end justify-between mt-2 gap-3 flex-wrap">

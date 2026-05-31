@@ -39,7 +39,6 @@ type SnapshotMetaDraft = {
 };
 
 const DEFAULT_SITE_SETTINGS: SnapshotSiteSettings = {
-  site_brand_color: '#3b82f6',
   site_brand_mode: 'dual',
   site_brand_primary: '#3b82f6',
   site_brand_secondary: '#06b6d4',
@@ -349,10 +348,7 @@ function SnapshotHomeComponentsPage({ snapshotId }: { snapshotId: string }) {
       ...footerMenu,
       items: metaDraft.footerItems.map((item, order) => ({ ...item, menuId: footerMenu.menu._id, order })),
     };
-    const nextSite = {
-      ...metaDraft.site,
-      site_brand_color: metaDraft.site.site_brand_primary,
-    };
+    const nextSite = metaDraft.site;
     const currentHeader = normalizeSnapshotHeaderSettings(bundle.settings?.header);
     const draftHeader = normalizeSnapshotHeaderSettings(metaDraft.header);
     const nextHeader: SnapshotHeaderSettings = {

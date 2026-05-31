@@ -87,12 +87,10 @@ const resolveColorSetting = (value: unknown): string | null => {
 
 export function useSystemBrandColors() {
   const primarySetting = useQuery(api.settings.getByKey, { key: 'site_brand_primary' });
-  const legacySetting = useQuery(api.settings.getByKey, { key: 'site_brand_color' });
   const secondarySetting = useQuery(api.settings.getByKey, { key: 'site_brand_secondary' });
   const modeSetting = useQuery(api.settings.getByKey, { key: 'site_brand_mode' });
 
   const primary = resolveColorSetting(primarySetting?.value)
-    ?? resolveColorSetting(legacySetting?.value)
     ?? DEFAULT_BRAND_COLOR;
 
   const mode: 'single' | 'dual' = modeSetting?.value === 'single' ? 'single' : 'dual';
@@ -116,7 +114,6 @@ export function useBrandColor() {
   return useBrandColors().primary;
 }
 
-// Legacy export - giữ để không breaking change
 export const BRAND_COLOR = DEFAULT_BRAND_COLOR;
 
 export function getComponentType(type: string) {

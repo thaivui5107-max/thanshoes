@@ -70,11 +70,10 @@ export function ProductGridSection({ config, brandColor, secondary, mode, title,
   const categoryTabIds = React.useMemo(() => (config.categoryTabIds as string[]) || [], [config.categoryTabIds]);
   const [activeTabId, setActiveTabId] = React.useState<string | null>(null);
 
-  // Header config
   const headerConfig = extractSectionHeaderConfig({
     ...config,
-    badgeText: config.badgeText ?? config.subTitle ?? 'Bộ sưu tập',
-    subtitle: config.subtitle ?? config.sectionTitle ?? title,
+    badgeText: config.badgeText ?? 'Bộ sưu tập',
+    subtitle: config.subtitle ?? title,
   });
   const displayTitle = title;
 

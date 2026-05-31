@@ -184,13 +184,11 @@ function ProductGridCreateContent() {
     void handleSubmit(e, {
       itemCount: effectiveItemCount,
       desktopRows,
-      sectionTitle,
       selectedProductIds: selectionMode === 'manual' ? selectedProductIds : [],
       demoProducts: selectionMode === 'demo' ? demoProducts : undefined,
       selectionMode,
       sortBy,
       style,
-      subTitle,
       showCategoryTabs: true,
       categoryTabIds,
       desktopColumns,

@@ -8,11 +8,11 @@ export async function GET(request: Request) {
   try {
     const client = getConvexClient();
     const settings = await client.query(api.settings.getMultiple, {
-      keys: ['site_favicon', 'site_brand_primary', 'site_brand_color', 'site_name'],
+      keys: ['site_favicon', 'site_brand_primary', 'site_name'],
     });
 
     const faviconUrl = (settings.site_favicon as string | undefined)?.trim();
-    const brandColor = (settings.site_brand_primary as string) || (settings.site_brand_color as string) || '#3b82f6';
+    const brandColor = (settings.site_brand_primary as string) || '#3b82f6';
     const siteName = (settings.site_name as string) || 'V';
 
     // Nếu có favicon URL, redirect đến đó

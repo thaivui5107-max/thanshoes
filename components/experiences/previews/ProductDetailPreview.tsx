@@ -115,6 +115,8 @@ type ProductDetailPreviewProps = {
   showPriceLeftIcon?: boolean;
   showPriceRightIcon?: boolean;
   cartButtonsLayout?: 'stack' | 'grid-2';
+  highlightsPosition?: 'info_column' | 'image_column';
+  highlightsSpacing?: 'low' | 'high' | 'none';
 };
 
 const formatVND = (price: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -656,7 +658,14 @@ export function ProductDetailPreview({
   showPriceLeftIcon = true,
   showPriceRightIcon = true,
   cartButtonsLayout = 'stack',
+  highlightsPosition,
+  highlightsSpacing = 'high',
 }: ProductDetailPreviewProps) {
+  const getHighlightsSpacingClass = (spacing?: 'low' | 'high' | 'none') => {
+    if (spacing === 'none') return '!mt-0';
+    if (spacing === 'low') return '!mt-4 md:!mt-5';
+    return '!mt-8 md:!mt-10';
+  };
   const tokens = getProductDetailColors(brandColor, secondaryColor, colorMode);
   const categoryBadgeColors = resolveProductDetailElementColor(accentColors?.categoryBadge ?? 'secondary', tokens);
   const discountBadgeColors = resolveProductDetailElementColor(accentColors?.discountBadge ?? 'primary', tokens);
@@ -915,6 +924,11 @@ export function ProductDetailPreview({
                   )}
                 </>
               )}
+              {showHighlightBlock && highlightsPosition === 'image_column' && (
+                <div className="mt-4 animate-fadeIn">
+                  {renderHighlights()}
+                </div>
+              )}
             </div>
             <div className="space-y-3 md:space-y-4">
               <div>
@@ -1033,7 +1047,11 @@ export function ProductDetailPreview({
                 />
               )}
 
-              {showHighlightBlock && renderHighlights()}
+              {showHighlightBlock && highlightsPosition !== 'image_column' && (
+                <div className={`${getHighlightsSpacingClass(highlightsSpacing)} mb-6 animate-fadeIn`}>
+                  {renderHighlights()}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1196,6 +1214,11 @@ export function ProductDetailPreview({
                     )}
                   </>
                 )}
+                {showHighlightBlock && highlightsPosition === 'image_column' && (
+                  <div className="mt-4 animate-fadeIn">
+                    {renderHighlights()}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3 md:space-y-4">
@@ -1338,7 +1361,11 @@ export function ProductDetailPreview({
                   />
                 )}
 
-                {showHighlightBlock && renderHighlights()}
+                {showHighlightBlock && highlightsPosition !== 'image_column' && (
+                  <div className={`${getHighlightsSpacingClass(highlightsSpacing)} mb-6 animate-fadeIn`}>
+                    {renderHighlights()}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1443,6 +1470,11 @@ export function ProductDetailPreview({
                     </div>
                   </div>
                 </div>
+                {showHighlightBlock && highlightsPosition === 'image_column' && (
+                  <div className="mt-4 animate-fadeIn w-full">
+                    {renderHighlights()}
+                  </div>
+                )}
               </div>
 
               <div className="lg:col-span-5 px-0 md:px-2 py-2 lg:py-0 flex flex-col justify-center">
@@ -1561,7 +1593,11 @@ export function ProductDetailPreview({
                   />
                 )}
 
-                {showHighlightBlock && renderHighlights()}
+                {showHighlightBlock && highlightsPosition !== 'image_column' && (
+                  <div className={`${getHighlightsSpacingClass(highlightsSpacing)} mb-6 animate-fadeIn`}>
+                    {renderHighlights()}
+                  </div>
+                )}
 
                 <div className="space-y-4 text-sm font-light" style={{ color: tokens.metaText }}>
                   <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: tokens.divider }}>
@@ -1721,7 +1757,7 @@ export function ProductDetailPreview({
                 )}
 
                 {/* Highlights cài đặt dưới ảnh */}
-                {showHighlightBlock && (
+                {showHighlightBlock && highlightsPosition !== 'info_column' && (
                   <div className="grid grid-cols-3 gap-2 border-t pt-4" style={{ borderColor: tokens.divider }}>
                     {highlightItems.map((item, index) => {
                       const Icon = CLASSIC_HIGHLIGHT_ICON_MAP[item.icon] || Star;
@@ -1919,7 +1955,19 @@ export function ProductDetailPreview({
                   />
                 )}
 
-
+                {showHighlightBlock && highlightsPosition === 'info_column' && (
+                  <div className={`grid grid-cols-3 gap-2 border-t pt-4 ${getHighlightsSpacingClass(highlightsSpacing)} animate-fadeIn`} style={{ borderColor: tokens.divider }}>
+                    {highlightItems.map((item, index) => {
+                      const Icon = CLASSIC_HIGHLIGHT_ICON_MAP[item.icon] || Star;
+                      return (
+                        <div key={`${item.icon}-${index}`} className="flex flex-col items-center text-center p-2 rounded-xl" style={{ backgroundColor: tokens.surfaceMuted }}>
+                          <Icon size={18} style={{ color: tokens.primary }} />
+                          <span className="text-[10px] md:text-xs font-medium mt-1 line-clamp-1" style={{ color: tokens.bodyText }}>{item.text}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2639,7 +2687,7 @@ function PreviewSocialButtons({
   if (activeButtons.length === 0) return null;
 
   return (
-    <div className="mt-4 pt-4 border-t" style={{ borderColor: tokens.divider }}>
+    <div className="mt-4 pt-4 border-t pb-2" style={{ borderColor: tokens.divider }}>
       <p className="text-xs font-semibold mb-2" style={{ color: tokens.headingColor }}>
         Liên hệ & Mua hàng:
       </p>

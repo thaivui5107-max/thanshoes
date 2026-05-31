@@ -149,6 +149,12 @@ const vi = {
       subtitle: 'Bật/tắt các chức năng cho Admin Dashboard',
       title: 'Quản lý Module',
       viewConfig: 'Xem Config',
+      bulkSync: 'Đồng bộ đã chọn',
+      bulkSyncTitle: 'Đồng bộ các module được chọn từ định nghĩa',
+      bulkSyncSuccess: 'Đã đồng bộ {count} modules thành công',
+      syncAll: 'Đồng bộ tất cả từ định nghĩa',
+      syncAllTitle: 'Đồng bộ tất cả các module đang bật từ định nghĩa',
+      syncing: 'Đang đồng bộ...',
     },
 
     // Common
@@ -349,6 +355,12 @@ const en: typeof vi = {
       subtitle: 'Enable/disable features for Admin Dashboard',
       title: 'Module Management',
       viewConfig: 'View Config',
+      bulkSync: 'Sync Selected',
+      bulkSyncTitle: 'Sync selected modules from definitions',
+      bulkSyncSuccess: 'Successfully synced {count} modules',
+      syncAll: 'Sync All from Definition',
+      syncAllTitle: 'Sync all enabled modules from definitions',
+      syncing: 'Syncing...',
     },
 
     // Common
