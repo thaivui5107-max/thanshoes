@@ -18,10 +18,16 @@ import {
 import ProductsPage from '../_components/products/ProductsPage';
 import PostsPage from '../_components/posts/PostsPage';
 import ServicesPage from '../_components/services/ServicesPage';
+import CoursesPage from '../_components/courses/CoursesPage';
+import ProjectsPage from '@/app/(site)/projects/page';
+import ResourcesPage from '../_components/resources/ResourcesPage';
 
 import ProductDetailPage from '../_components/details/ProductDetailPage';
 import PostDetailPage from '../_components/details/PostDetailPage';
 import ServiceDetailPage from '../_components/details/ServiceDetailPage';
+import CourseDetailPage from '@/app/(site)/_components/courses/CourseDetailPage';
+import ProjectDetailPage from '@/app/(site)/projects/[slug]/page';
+import ResourceDetailPage from '@/app/(site)/_components/resources/ResourceDetailPage';
 
 interface Props {
   params: Promise<{ slugs: string[] }>;
@@ -189,6 +195,113 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       });
     }
 
+    if (resolvedContext.moduleKey === 'courses') {
+      const course = await client.query(api.courses.getById, { id: resolvedContext.recordId as Id<'courses'> });
+      if (!course) {
+        return buildSeoMetadata({
+          contact,
+          descriptionOverride: 'Khóa học không tồn tại hoặc đã bị xóa.',
+          entityExists: false,
+          pathname: canonicalPath,
+          routeType: 'detail',
+          seo,
+          site,
+          social,
+          titleOverride: 'Không tìm thấy khóa học',
+        });
+      }
+
+      return buildSeoMetadata({
+        contact,
+        entity: {
+          content: course.content,
+          excerpt: course.excerpt,
+          metaDescription: course.metaDescription,
+          metaTitle: course.metaTitle,
+          thumbnail: course.thumbnail,
+          title: course.title,
+        },
+        entityExists: true,
+        pathname: canonicalPath,
+        routeType: 'detail',
+        seo,
+        site,
+        social,
+        titleOverride: course.metaTitle ?? course.title,
+      });
+    }
+
+    if (resolvedContext.moduleKey === 'resources') {
+      const resource = await client.query(api.resources.getById, { id: resolvedContext.recordId as Id<'resources'> });
+      if (!resource) {
+        return buildSeoMetadata({
+          contact,
+          descriptionOverride: 'Tài nguyên không tồn tại hoặc đã bị xóa.',
+          entityExists: false,
+          pathname: canonicalPath,
+          routeType: 'detail',
+          seo,
+          site,
+          social,
+          titleOverride: 'Không tìm thấy tài nguyên',
+        });
+      }
+      return buildSeoMetadata({
+        contact,
+        descriptionOverride: (resource.metaDescription ?? resource.excerpt) ?? seo.seo_description,
+        entity: {
+          content: resource.content,
+          excerpt: resource.excerpt,
+          image: resource.thumbnail,
+          metaDescription: resource.metaDescription,
+          metaTitle: resource.metaTitle,
+          title: resource.title,
+        },
+        pathname: canonicalPath,
+        routeType: 'detail',
+        seo,
+        site,
+        social,
+        titleOverride: resource.metaTitle ?? resource.title,
+      });
+    }
+
+    if (resolvedContext.moduleKey === 'projects') {
+      const project = await client.query(api.projects.getById, { id: resolvedContext.recordId as Id<'projects'> });
+      if (!project) {
+        return buildSeoMetadata({
+          contact,
+          descriptionOverride: 'Dự án không tồn tại hoặc đã bị xóa.',
+          entityExists: false,
+          pathname: canonicalPath,
+          routeType: 'detail',
+          seo,
+          site,
+          social,
+          titleOverride: 'Không tìm thấy dự án',
+        });
+      }
+
+      return buildSeoMetadata({
+        contact,
+        entity: {
+          content: project.content,
+          excerpt: project.excerpt,
+          metaDescription: project.metaDescription,
+          metaTitle: project.metaTitle,
+          thumbnail: project.thumbnail,
+          title: project.title,
+        },
+        entityExists: true,
+        pathname: canonicalPath,
+        routeType: 'detail',
+        seo,
+        site,
+        social,
+        titleOverride: project.metaTitle ?? project.title,
+      });
+    }
+
     const post = await client.query(api.posts.getById, { id: resolvedContext.recordId as Id<'posts'> });
     if (!post) {
       return buildSeoMetadata({
@@ -254,6 +367,15 @@ export default async function UnifiedCatchAllPage({ params }: Props) {
     }
     if (resolvedContext.moduleKey === 'posts') {
       return <PostsPage />;
+    }
+    if (resolvedContext.moduleKey === 'courses') {
+      return <CoursesPage />;
+    }
+    if (resolvedContext.moduleKey === 'resources') {
+      return <ResourcesPage />;
+    }
+    if (resolvedContext.moduleKey === 'projects') {
+      return <ProjectsPage />;
     }
     notFound();
   }
@@ -400,6 +522,72 @@ export default async function UnifiedCatchAllPage({ params }: Props) {
           <JsonLd data={serviceSchema} />
           <JsonLd data={breadcrumbSchema} />
           <ServiceDetailPage params={Promise.resolve({ slug: resolvedContext.recordSlug })} />
+        </>
+      );
+    }
+
+    if (resolvedContext.moduleKey === 'courses') {
+      const [course, category] = await Promise.all([
+        client.query(api.courses.getById, { id: resolvedContext.recordId as Id<'courses'> }),
+        client.query(api.courseCategories.getById, { id: resolvedContext.categoryId as Id<'courseCategories'> }),
+      ]);
+      if (!course) {notFound();}
+
+      const courseUrl = `${baseUrl}${canonicalPath}`;
+      const breadcrumbSchema = generateBreadcrumbSchema([
+        { name: 'Trang chủ', url: baseUrl },
+        { name: category?.name ?? 'Khóa học', url: `${baseUrl}/${resolvedContext.categorySlug}` },
+        { name: course.title, url: courseUrl },
+      ]);
+
+      return (
+        <>
+          <JsonLd data={breadcrumbSchema} />
+          <CourseDetailPage params={Promise.resolve({ slug: resolvedContext.recordSlug })} />
+        </>
+      );
+    }
+
+    if (resolvedContext.moduleKey === 'resources') {
+      const [resource, category] = await Promise.all([
+        client.query(api.resources.getById, { id: resolvedContext.recordId as Id<'resources'> }),
+        client.query(api.resourceCategories.getById, { id: resolvedContext.categoryId as Id<'resourceCategories'> }),
+      ]);
+      if (!resource) {notFound();}
+
+      const resourceUrl = `${baseUrl}${canonicalPath}`;
+      const breadcrumbSchema = generateBreadcrumbSchema([
+        { name: 'Trang chủ', url: baseUrl },
+        { name: category?.name ?? 'Tài nguyên', url: `${baseUrl}/${resolvedContext.categorySlug}` },
+        { name: resource.title, url: resourceUrl },
+      ]);
+
+      return (
+        <>
+          <JsonLd data={breadcrumbSchema} />
+          <ResourceDetailPage params={Promise.resolve({ slug: resolvedContext.recordSlug })} />
+        </>
+      );
+    }
+
+    if (resolvedContext.moduleKey === 'projects') {
+      const [project, category] = await Promise.all([
+        client.query(api.projects.getById, { id: resolvedContext.recordId as Id<'projects'> }),
+        client.query(api.projectCategories.getById, { id: resolvedContext.categoryId as Id<'projectCategories'> }),
+      ]);
+      if (!project) {notFound();}
+
+      const projectUrl = `${baseUrl}${canonicalPath}`;
+      const breadcrumbSchema = generateBreadcrumbSchema([
+        { name: 'Trang chủ', url: baseUrl },
+        { name: category?.name ?? 'Dự án', url: `${baseUrl}/${resolvedContext.categorySlug}` },
+        { name: project.title, url: projectUrl },
+      ]);
+
+      return (
+        <>
+          <JsonLd data={breadcrumbSchema} />
+          <ProjectDetailPage params={Promise.resolve({ slug: resolvedContext.recordSlug })} />
         </>
       );
     }

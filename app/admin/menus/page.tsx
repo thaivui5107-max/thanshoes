@@ -13,61 +13,17 @@ import {
 import { ModuleGuard } from '../components/ModuleGuard';
 import { BulkActionBar, SelectCheckbox } from '../components/TableUtilities';
 import { HomeComponentStickyFooter } from '@/app/admin/home-components/_shared/components/HomeComponentStickyFooter';
-import { buildCategoryPath, buildDetailPath, normalizeRouteMode } from '@/lib/ia/route-mode';
+import { QuickRoutePickerModal } from '@/app/admin/components/QuickRoutePickerModal';
+import { buildCategoryPath, buildModuleListPath, normalizeRouteMode } from '@/lib/ia/route-mode';
 import { 
   ArrowDown, ArrowUp, Bot, ChevronLeft, ChevronRight, Copy, ExternalLink, Eye, EyeOff, 
-  GripVertical, Loader2, Menu, Plus, Sparkles, Trash2
+  GripVertical, Link2, Loader2, Menu, Plus, Sparkles, Trash2
 } from 'lucide-react';
 import { SimpleMenuPreview } from './SimpleMenuPreview';
 import { MENU_MAX_LEVEL, resolveMenuMaxDepthLevel } from '@/lib/utils/menu-tree';
 
 const MODULE_KEY = 'menus';
 const MENU_ITEMS_LIMIT = 500;
-
-type QuickRouteGroup = 'Trang cơ bản' | 'Module' | 'Danh mục';
-
-type QuickRouteOption = {
-  group: QuickRouteGroup;
-  label: string;
-  source: string;
-  url: string;
-};
-
-const CORE_ROUTE_OPTIONS: QuickRouteOption[] = [
-  { label: 'Trang chủ', url: '/', source: 'Core', group: 'Trang cơ bản' },
-  { label: 'Liên hệ', url: '/contact', source: 'Core', group: 'Trang cơ bản' },
-];
-
-const MODULE_SITE_ROUTE_CATALOG: Record<string, { label: string; url: string }[]> = {
-  cart: [
-    { label: 'Giỏ hàng', url: '/cart' },
-  ],
-  customers: [
-    { label: 'Đăng nhập', url: '/account/login' },
-    { label: 'Đăng ký', url: '/account/register' },
-    { label: 'Tài khoản', url: '/account/profile' },
-    { label: 'Đơn hàng', url: '/account/orders' },
-  ],
-  orders: [
-    { label: 'Đơn hàng', url: '/account/orders' },
-    { label: 'Checkout', url: '/checkout' },
-  ],
-  posts: [
-    { label: 'Tất cả bài viết', url: '/posts' },
-  ],
-  products: [
-    { label: 'Tất cả sản phẩm', url: '/products' },
-  ],
-  promotions: [
-    { label: 'Khuyến mãi', url: '/promotions' },
-  ],
-  services: [
-    { label: 'Tất cả dịch vụ', url: '/services' },
-  ],
-  wishlist: [
-    { label: 'Wishlist', url: '/wishlist' },
-  ],
-};
 
 
 interface MenuItem {
@@ -175,6 +131,12 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
   const productCategories = useQuery(api.productCategories.listActive);
   const postCategories = useQuery(api.postCategories.listActive, { limit: 100 });
   const serviceCategories = useQuery(api.serviceCategories.listActive, { limit: 100 });
+  const projectCategories = useQuery(api.projectCategories.listActive, { limit: 100 });
+  const courseCategories = useQuery(api.courseCategories.listActive, { limit: 100 });
+  const resourceCategories = useQuery(api.resourceCategories.listActive, { limit: 100 });
+  const trustPageRoutes = useQuery(api.menus.listTrustPageRoutesForPicker, {});
+  const coursesEnabled = enabledModules?.some(moduleItem => moduleItem.key === 'courses') ?? false;
+  const publishedCourseCount = useQuery(api.courses.countPublished, coursesEnabled ? {} : 'skip');
   const routeModeSetting = useQuery(api.settings.getValue, { key: 'ia_route_mode', defaultValue: 'unified' });
   const routeMode = useMemo(() => normalizeRouteMode(routeModeSetting), [routeModeSetting]);
   const saveMenuItemsBulk = useMutation(api.menus.saveMenuItemsBulk);
@@ -188,11 +150,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [isQuickPickerOpen, setIsQuickPickerOpen] = useState(false);
   const [quickPickerTargetId, setQuickPickerTargetId] = useState<string | null>(null);
-  const [quickRouteSearch, setQuickRouteSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [pickerStep, setPickerStep] = useState<1 | 2 | 3>(1);
-  const [selectedType, setSelectedType] = useState<'core' | 'module' | 'category' | 'detail' | null>(null);
-  const [selectedModule, setSelectedModule] = useState<'posts' | 'products' | 'services' | null>(null);
 
   // AI Import state
   const [isAiImportOpen, setIsAiImportOpen] = useState(false);
@@ -204,24 +162,6 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
   const enableProductTypes = enableProductTypesSetting?.value === true;
   const smartMenuBuilderData = useQuery(api.menus.getSmartMenuBuilderData, isUseProductTypeLogic ? {} : 'skip');
 
-  const detailPosts = useQuery(
-    api.menus.listPostsForPicker,
-    selectedModule === 'posts' && pickerStep === 3
-      ? { search: quickRouteSearch, limit: 20 }
-      : 'skip'
-  );
-  const detailProducts = useQuery(
-    api.menus.listProductsForPicker,
-    selectedModule === 'products' && pickerStep === 3
-      ? { search: quickRouteSearch, limit: 20 }
-      : 'skip'
-  );
-  const detailServices = useQuery(
-    api.menus.listServicesForPicker,
-    selectedModule === 'services' && pickerStep === 3
-      ? { search: quickRouteSearch, limit: 20 }
-      : 'skip'
-  );
 
   const maxDepthLevel = useMemo(() => {
     const setting = settingsData?.find(s => s.settingKey === 'maxDepth');
@@ -240,69 +180,6 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
   const showNested = enabledFeatures.enableNested ?? true;
   const showNewTab = enabledFeatures.enableNewTab ?? true;
 
-  const quickRouteOptions = useMemo(() => {
-    const enabledKeys = new Set((enabledModules ?? []).map(moduleItem => moduleItem.key));
-    const options: QuickRouteOption[] = [...CORE_ROUTE_OPTIONS];
-
-    Object.entries(MODULE_SITE_ROUTE_CATALOG).forEach(([moduleKey, routes]) => {
-      if (!enabledKeys.has(moduleKey)) {return;}
-      routes.forEach(route => {
-        options.push({ ...route, source: moduleKey, group: 'Module' });
-      });
-    });
-
-    if (enabledKeys.has('products')) {
-      (productCategories ?? []).forEach(category => {
-        options.push({
-          group: 'Danh mục',
-          label: category.name,
-          source: 'products',
-          url: buildCategoryPath({ categorySlug: category.slug, mode: routeMode, moduleKey: 'products' }),
-        });
-      });
-    }
-
-    if (enabledKeys.has('posts')) {
-      (postCategories ?? []).forEach(category => {
-        options.push({
-          group: 'Danh mục',
-          label: category.name,
-          source: 'posts',
-          url: buildCategoryPath({ categorySlug: category.slug, mode: routeMode, moduleKey: 'posts' }),
-        });
-      });
-    }
-
-    if (enabledKeys.has('services')) {
-      (serviceCategories ?? []).forEach(category => {
-        options.push({
-          group: 'Danh mục',
-          label: category.name,
-          source: 'services',
-          url: buildCategoryPath({ categorySlug: category.slug, mode: routeMode, moduleKey: 'services' }),
-        });
-      });
-    }
-
-    const deduped = new Map<string, QuickRouteOption>();
-    options.forEach(option => {
-      if (!deduped.has(option.url)) {
-        deduped.set(option.url, option);
-      }
-    });
-
-    return Array.from(deduped.values());
-  }, [enabledModules, postCategories, productCategories, routeMode, serviceCategories]);
-
-  const filteredQuickRoutes = useMemo(() => {
-    const keyword = quickRouteSearch.trim().toLowerCase();
-    if (!keyword) {return quickRouteOptions;}
-    return quickRouteOptions.filter(option =>
-      option.label.toLowerCase().includes(keyword)
-      || option.url.toLowerCase().includes(keyword)
-      || option.source.toLowerCase().includes(keyword)
-    );
-  }, [quickRouteOptions, quickRouteSearch]);
 
   const buildDraftItems = (items: MenuItem[]) => items
     .slice()
@@ -347,17 +224,51 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
     const seen = new Set<string>();
     const items: SmartMenuPlanItem[] = [];
     const add = (item: SmartMenuPlanItem) => {
-      if (seen.has(item.url)) {return;}
+      const uniqueKey = `${item.url}::${item.label}`;
+      if (seen.has(uniqueKey)) {return;}
       if (item.depth > maxChildDepth) {return;}
-      seen.add(item.url);
+      seen.add(uniqueKey);
       items.push(item);
+    };
+    const hasPublishedCourses = enabledKeys.has('courses') && (publishedCourseCount ?? 0) > 0;
+    const appendTrustPages = (scoreBase: number) => {
+      const routes = (trustPageRoutes ?? []).slice(0, maxChildDepth >= 1 ? 6 : 3);
+      if (routes.length === 0) {return;}
+      if (maxChildDepth >= 1) {
+        add({
+          depth: 0,
+          label: 'Chính sách',
+          reasons: ['Có trang tin cậy đã xuất bản từ Trust Pages'],
+          score: scoreBase,
+          url: '#',
+        });
+        routes.forEach((route, index) => {
+          add({
+            depth: 1,
+            label: route.label,
+            reasons: ['Trang chính sách đã map dữ liệu'],
+            score: scoreBase - 1 - index,
+            url: route.url,
+          });
+        });
+        return;
+      }
+      routes.forEach((route, index) => {
+        add({
+          depth: 0,
+          label: route.label,
+          reasons: ['Trang chính sách đã map dữ liệu'],
+          score: scoreBase - index,
+          url: route.url,
+        });
+      });
     };
 
     if (isUseProductTypeLogic && smartMenuBuilderData && enableProductTypes) {
       const { productTypes, productCategoryTypes, attributeGroups, productTypeAttributeGroups, attributeTerms } = smartMenuBuilderData;
 
       add({ depth: 0, label: 'Trang chủ', reasons: ['Luôn nên có trong menu chính'], score: 100, url: '/' });
-      add({ depth: 0, label: 'Sản phẩm', reasons: ['Khu vực chính'], score: 90, url: '/products' });
+      add({ depth: 0, label: 'Sản phẩm', reasons: ['Khu vực chính'], score: 90, url: buildModuleListPath('products') });
 
       if (maxChildDepth >= 1) {
         productTypes.forEach((pt, ptIndex) => {
@@ -366,7 +277,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
             label: pt.name,
             reasons: ['Loại sản phẩm'],
             score: 89 - ptIndex,
-            url: `/products?type=${pt.slug}`
+            url: `/${pt.slug}`
           });
 
           if (maxChildDepth >= 2) {
@@ -378,7 +289,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
                 label: cat.name,
                 reasons: [`Danh mục thuộc ${pt.name}`],
                 score: 80 - catIndex,
-                url: buildCategoryPath({ categorySlug: cat.slug, mode: routeMode, moduleKey: 'products' })
+                url: `/${pt.slug}/${cat.slug}`
               });
             });
 
@@ -391,7 +302,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
                 label: group.name,
                 reasons: [`Bộ lọc đặc biệt của ${pt.name}`],
                 score: 70 - groupIndex,
-                url: `/products?type=${pt.slug}&${group.code}=all`
+                url: `/${pt.slug}`
               });
 
               if (maxChildDepth >= 3) {
@@ -402,7 +313,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
                     label: term.name,
                     reasons: [`Giá trị của ${group.name}`],
                     score: 60 - termIndex,
-                    url: `/products?type=${pt.slug}&${group.code}=${term.slug}`
+                    url: `/${pt.slug}/${group.slug}/${term.slug}`
                   });
                 });
               }
@@ -414,7 +325,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
                 label: 'Mức giá',
                 reasons: [`Khoảng giá của ${pt.name}`],
                 score: 50,
-                url: `/products?type=${pt.slug}&price=all`
+                url: `/${pt.slug}`
               });
               if (maxChildDepth >= 3) {
                 pt.priceRanges.forEach((range, rangeIndex) => {
@@ -423,7 +334,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
                     label: range.label,
                     reasons: [`Mức giá`],
                     score: 40 - rangeIndex,
-                    url: `/products?type=${pt.slug}&price=${range.slug}`
+                    url: `/${pt.slug}/${range.slug}`
                   });
                 });
               }
@@ -432,23 +343,25 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
         });
       }
 
-      const globalSpecialGroups = attributeGroups.filter(g => g.isSpecialFilter);
-      globalSpecialGroups.forEach((group, idx) => {
+      if (enabledKeys.has('services')) {
+        add({ depth: 0, label: 'Dịch vụ', reasons: ['Khu vực dịch vụ'], score: 75, url: buildModuleListPath('services') });
+      }
+      if (enabledKeys.has('projects')) {
+        add({ depth: 0, label: 'Dự án', reasons: ['Khu vực dự án'], score: 74, url: buildModuleListPath('projects') });
+      }
+      if (hasPublishedCourses) {
         add({
           depth: 0,
-          label: group.name,
-          reasons: ['Bộ lọc đặc biệt'],
-          score: 85 - idx,
-          url: `/products?${group.code}=all`
+          label: 'Khóa học',
+          reasons: [`Có ${publishedCourseCount ?? 0} khóa học đã xuất bản`],
+          score: 73,
+          url: buildModuleListPath('courses'),
         });
-      });
-
-      if (enabledKeys.has('services')) {
-        add({ depth: 0, label: 'Dịch vụ', reasons: ['Khu vực dịch vụ'], score: 75, url: '/services' });
       }
       if (enabledKeys.has('posts')) {
-        add({ depth: 0, label: 'Bài viết', reasons: ['Khu vực bài viết'], score: 70, url: '/posts' });
+        add({ depth: 0, label: 'Bài viết', reasons: ['Khu vực bài viết'], score: 70, url: buildModuleListPath('posts') });
       }
+      appendTrustPages(66);
       add({ depth: 0, label: 'Liên hệ', reasons: ['Nên đặt cuối menu'], score: 65, url: '/contact' });
 
       // Build tree ordering manually or rely on scores.
@@ -459,7 +372,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
       const categoryLimit = maxDepth >= 3 ? 6 : 4;
       const appendCategories = (
         categories: Array<{ name: string; slug: string }> | undefined,
-        moduleKey: 'posts' | 'products' | 'services',
+        moduleKey: 'posts' | 'products' | 'services' | 'courses' | 'projects' | 'resources',
         scoreBase: number,
       ) => {
         if (maxChildDepth < 1) {return;}
@@ -494,7 +407,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
           `${productCategories?.length ?? 0} danh mục sản phẩm có thể làm menu con`,
         ],
         score: 96 + Math.min(12, productCategories?.length ?? 0),
-        url: '/products',
+        url: buildModuleListPath('products'),
       });
       appendCategories(productCategories, 'products', 88);
     }
@@ -508,9 +421,51 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
           `${serviceCategories?.length ?? 0} danh mục dịch vụ có thể làm menu con`,
         ],
         score: 90 + Math.min(8, serviceCategories?.length ?? 0),
-        url: '/services',
+        url: buildModuleListPath('services'),
       });
       appendCategories(serviceCategories, 'services', 78);
+    }
+
+    if (enabledKeys.has('projects')) {
+      add({
+        depth: 0,
+        label: 'Dự án',
+        reasons: [
+          'Khu vực dự án đang bật',
+          `${projectCategories?.length ?? 0} danh mục dự án có thể làm menu con`,
+        ],
+        score: 88 + Math.min(8, projectCategories?.length ?? 0),
+        url: buildModuleListPath('projects'),
+      });
+      appendCategories(projectCategories, 'projects', 76);
+    }
+
+    if (hasPublishedCourses) {
+      add({
+        depth: 0,
+        label: 'Khóa học',
+        reasons: [
+          'Khu vực khóa học đang bật',
+          `${courseCategories?.length ?? 0} danh mục khóa học và ${publishedCourseCount ?? 0} khóa học đã xuất bản`,
+        ],
+        score: 86 + Math.min(8, courseCategories?.length ?? 0),
+        url: buildModuleListPath('courses'),
+      });
+      appendCategories(courseCategories, 'courses', 74);
+    }
+
+    if (enabledKeys.has('resources')) {
+      add({
+        depth: 0,
+        label: 'Tài nguyên',
+        reasons: [
+          'Khu vực tài nguyên đang bật',
+          `${resourceCategories?.length ?? 0} danh mục tài nguyên có thể làm menu con`,
+        ],
+        score: 84 + Math.min(8, resourceCategories?.length ?? 0),
+        url: buildModuleListPath('resources'),
+      });
+      appendCategories(resourceCategories, 'resources', 72);
     }
 
     if (enabledKeys.has('posts')) {
@@ -522,7 +477,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
           `${postCategories?.length ?? 0} danh mục bài viết có thể làm menu con`,
         ],
         score: 82 + Math.min(6, postCategories?.length ?? 0),
-        url: '/posts',
+        url: buildModuleListPath('posts'),
       });
       appendCategories(postCategories, 'posts', 68);
     }
@@ -556,6 +511,8 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
         url: '/cart',
       });
     }
+
+    appendTrustPages(77);
 
     add({
       depth: 0,
@@ -609,7 +566,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
       root,
       ...(childrenByRoot.get(root.url) ?? [])
     ]).slice(0, MENU_ITEMS_LIMIT);
-  }, [enabledModules, maxDepth, postCategories, productCategories, routeMode, serviceCategories, isUseProductTypeLogic, smartMenuBuilderData, enableProductTypes]);
+  }, [courseCategories, enabledModules, maxDepth, postCategories, productCategories, projectCategories, resourceCategories, publishedCourseCount, routeMode, serviceCategories, isUseProductTypeLogic, smartMenuBuilderData, enableProductTypes, trustPageRoutes]);
 
   const hasChanges = useMemo(() => {
     const normalize = (items: DraftMenuItem[]) => items.map(item => ({
@@ -638,11 +595,6 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
     }
   }, [menuItemsData, pendingSync, originalItems.length, draftItems.length, hasChanges]);
 
-  useEffect(() => {
-    if (isQuickPickerOpen) {return;}
-    if (!quickRouteSearch) {return;}
-    setQuickRouteSearch('');
-  }, [isQuickPickerOpen, quickRouteSearch]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(draftItems.length / MENU_ITEMS_LIMIT));
@@ -832,26 +784,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
     setDraftItems(prev => prev.map(item => item.localId === itemId ? { ...item, [field]: value } : item));
   };
 
-  const handleOpenQuickPicker = (itemId: string) => {
-    setQuickPickerTargetId(itemId);
-    setIsQuickPickerOpen(true);
-  };
 
-  const handleCloseQuickPicker = () => {
-    setIsQuickPickerOpen(false);
-    setQuickPickerTargetId(null);
-    setQuickRouteSearch('');
-    setPickerStep(1);
-    setSelectedType(null);
-    setSelectedModule(null);
-  };
-
-  const handleSelectQuickRoute = (option: QuickRouteOption) => {
-    if (!quickPickerTargetId) {return;}
-    handleUpdateField(quickPickerTargetId, 'url', option.url);
-    handleUpdateField(quickPickerTargetId, 'label', option.label);
-    handleCloseQuickPicker();
-  };
 
   // AI Import handler
   const handleAiImportApply = (lines: AiMenuLine[]) => {
@@ -957,59 +890,7 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
   // Get actual index in full items array for move operations
   const getActualIndex = (item: DraftMenuItem) => draftItems.findIndex(i => i.localId === item.localId);
 
-  const quickRouteKeyword = quickRouteSearch.trim().toLowerCase();
 
-  const pickerTypeOptions = [
-    { type: 'core' as const, label: 'Trang cơ bản', description: 'Trang chủ, Liên hệ...' },
-    { type: 'module' as const, label: 'Module', description: 'Posts, Products, Services...' },
-    { type: 'category' as const, label: 'Danh mục', description: 'Category filters' },
-    { type: 'detail' as const, label: 'Chi tiết', description: 'Bài viết, Sản phẩm, Dịch vụ' },
-  ];
-
-  const detailModuleOptions = [
-    {
-      key: 'posts' as const,
-      label: 'Bài viết chi tiết',
-      description: 'Chọn 1 bài viết cụ thể',
-      enabled: enabledModules?.some(moduleItem => moduleItem.key === 'posts'),
-    },
-    {
-      key: 'products' as const,
-      label: 'Sản phẩm chi tiết',
-      description: 'Chọn 1 sản phẩm cụ thể',
-      enabled: enabledModules?.some(moduleItem => moduleItem.key === 'products'),
-    },
-    {
-      key: 'services' as const,
-      label: 'Dịch vụ chi tiết',
-      description: 'Chọn 1 dịch vụ cụ thể',
-      enabled: enabledModules?.some(moduleItem => moduleItem.key === 'services'),
-    },
-  ];
-
-  const availableDetailModules = detailModuleOptions.filter(option => option.enabled);
-  const filteredDetailModules = quickRouteKeyword
-    ? availableDetailModules.filter(option =>
-      option.label.toLowerCase().includes(quickRouteKeyword)
-      || option.description.toLowerCase().includes(quickRouteKeyword)
-    )
-    : availableDetailModules;
-  const resolvedDetailModules = filteredDetailModules.length > 0
-    ? filteredDetailModules
-    : availableDetailModules;
-
-  const filteredPickerRoutes = filteredQuickRoutes.filter(option => {
-    if (selectedType === 'core') {return option.group === 'Trang cơ bản';}
-    if (selectedType === 'module') {return option.group === 'Module';}
-    if (selectedType === 'category') {return option.group === 'Danh mục';}
-    return false;
-  });
-
-  const isDetailLoading = pickerStep === 3 && (
-    (selectedModule === 'posts' && detailPosts === undefined)
-    || (selectedModule === 'products' && detailProducts === undefined)
-    || (selectedModule === 'services' && detailServices === undefined)
-  );
 
   const stats = [
     { label: 'Tổng', value: draftItems.length },
@@ -1157,11 +1038,15 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
-                        className="h-8 whitespace-nowrap"
-                        onClick={() => handleOpenQuickPicker(item.localId)}
+                        size="icon"
+                        className="h-8 w-8 shrink-0 text-slate-400 hover:text-blue-600 hover:border-blue-400 transition-colors"
+                        onClick={() => {
+                          setQuickPickerTargetId(item.localId);
+                          setIsQuickPickerOpen(true);
+                        }}
+                        title="Chọn link gợi ý"
                       >
-                        Gợi ý
+                        <Link2 size={14} />
                       </Button>
                     </div>
                   </div>
@@ -1270,279 +1155,21 @@ function MenuItemsEditor({ menuId }: { menuId: Id<"menus"> }) {
         />
       </div>
 
-      <Dialog
+      <QuickRoutePickerModal
         open={isQuickPickerOpen}
-        onOpenChange={(open) =>{ if (open) { setIsQuickPickerOpen(true); } else { handleCloseQuickPicker(); } }}
-      >
-        <DialogContent className="max-w-2xl w-[80vw]">
-          <DialogHeader>
-            <DialogTitle>Chọn URL - Bước {pickerStep}/3</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              value={quickRouteSearch}
-              onChange={(e) => setQuickRouteSearch(e.target.value)}
-              placeholder={
-                pickerStep === 1
-                  ? 'Tìm theo loại...'
-                  : pickerStep === 2
-                    ? (selectedType === 'detail' ? 'Tìm module...' : 'Tìm theo tên hoặc URL...')
-                    : 'Tìm theo tên...'
-              }
-              className="h-9 text-sm"
-            />
-
-            <div className="space-y-3">
-              {pickerStep === 1 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {pickerTypeOptions.map(option => (
-                    <Button
-                      key={option.type}
-                      type="button"
-                      variant="outline"
-                      className="h-20 flex-col items-start gap-1.5 text-left"
-                      onClick={() => {
-                        setSelectedType(option.type);
-                        setPickerStep(2);
-                      }}
-                    >
-                      <span className="font-semibold">{option.label}</span>
-                      <span className="text-xs text-slate-500">{option.description}</span>
-                    </Button>
-                  ))}
-                </div>
-              )}
-
-              {pickerStep === 2 && selectedType === 'detail' && (
-                <>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setPickerStep(1);
-                      setSelectedType(null);
-                    }}
-                  >
-                    ← Quay lại
-                  </Button>
-
-                  {resolvedDetailModules.length === 0 ? (
-                    <div className="rounded-md border border-slate-200 px-4 py-6 text-sm text-slate-500">
-                      Không có module phù hợp.
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-2">
-                      {resolvedDetailModules.map(option => (
-                        <Button
-                          key={option.key}
-                          type="button"
-                          variant="outline"
-                          className="justify-start h-16"
-                          onClick={() => {
-                            setSelectedModule(option.key);
-                            setPickerStep(3);
-                          }}
-                        >
-                          <div className="text-left">
-                            <div className="font-semibold">{option.label}</div>
-                            <div className="text-xs text-slate-500">{option.description}</div>
-                          </div>
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-
-              {pickerStep === 2 && selectedType && selectedType !== 'detail' && (
-                <>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setPickerStep(1);
-                      setSelectedType(null);
-                    }}
-                  >
-                    ← Quay lại
-                  </Button>
-
-                  <div className="max-h-[50vh] overflow-auto rounded-md border border-slate-200 dark:border-slate-800">
-                    {filteredPickerRoutes.length === 0 ? (
-                      <div className="px-4 py-6 text-sm text-slate-500">Không có gợi ý phù hợp.</div>
-                    ) : (
-                      <div className="space-y-1 p-2">
-                        {filteredPickerRoutes.map(option => (
-                          <button
-                            key={`${option.url}-${option.source}`}
-                            type="button"
-                            onClick={() => handleSelectQuickRoute(option)}
-                            className="flex w-full items-center justify-between gap-3 rounded px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
-                          >
-                            <div className="min-w-0">
-                              <div className="font-semibold text-slate-700 dark:text-slate-200 truncate">
-                                {option.label}
-                              </div>
-                              <div className="text-xs text-slate-500 font-mono truncate">{option.url}</div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {pickerStep === 3 && selectedModule && (
-                <>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setPickerStep(2);
-                      setSelectedModule(null);
-                    }}
-                  >
-                    ← Quay lại
-                  </Button>
-
-                  <div className="max-h-[50vh] overflow-auto rounded-md border border-slate-200 dark:border-slate-800">
-                    {isDetailLoading && (
-                      <div className="px-4 py-6 text-sm text-slate-500">Đang tải dữ liệu...</div>
-                    )}
-
-                    {!isDetailLoading && selectedModule === 'posts' && (detailPosts?.length ?? 0) === 0 && (
-                      <div className="px-4 py-6 text-sm text-slate-500">Không tìm thấy bài viết.</div>
-                    )}
-
-                    {!isDetailLoading && selectedModule === 'products' && (detailProducts?.length ?? 0) === 0 && (
-                      <div className="px-4 py-6 text-sm text-slate-500">Không tìm thấy sản phẩm.</div>
-                    )}
-
-                    {!isDetailLoading && selectedModule === 'services' && (detailServices?.length ?? 0) === 0 && (
-                      <div className="px-4 py-6 text-sm text-slate-500">Không tìm thấy dịch vụ.</div>
-                    )}
-
-                    {!isDetailLoading && selectedModule === 'posts' && (detailPosts?.length ?? 0) > 0 && (
-                      <div className="space-y-1 p-2">
-                        {detailPosts?.map(post => (
-                          <button
-                            key={post._id}
-                            type="button"
-                            onClick={() => {
-                              handleSelectQuickRoute({
-                                label: post.title,
-                                url: buildDetailPath({
-                                  categorySlug: post.categorySlug,
-                                  mode: routeMode,
-                                  moduleKey: 'posts',
-                                  recordSlug: post.slug,
-                                }),
-                                source: 'posts',
-                                group: 'Module',
-                              });
-                            }}
-                            className="flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-slate-700 truncate">{post.title}</div>
-                              <div className="text-xs text-slate-500 font-mono truncate">
-                                {buildDetailPath({
-                                  categorySlug: post.categorySlug,
-                                  mode: routeMode,
-                                  moduleKey: 'posts',
-                                  recordSlug: post.slug,
-                                })}
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {!isDetailLoading && selectedModule === 'products' && (detailProducts?.length ?? 0) > 0 && (
-                      <div className="space-y-1 p-2">
-                        {detailProducts?.map(product => (
-                          <button
-                            key={product._id}
-                            type="button"
-                            onClick={() => {
-                              handleSelectQuickRoute({
-                                label: product.name,
-                                url: buildDetailPath({
-                                  categorySlug: product.categorySlug,
-                                  mode: routeMode,
-                                  moduleKey: 'products',
-                                  recordSlug: product.slug,
-                                }),
-                                source: 'products',
-                                group: 'Module',
-                              });
-                            }}
-                            className="flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-slate-700 truncate">{product.name}</div>
-                              <div className="text-xs text-slate-500 font-mono truncate">
-                                {buildDetailPath({
-                                  categorySlug: product.categorySlug,
-                                  mode: routeMode,
-                                  moduleKey: 'products',
-                                  recordSlug: product.slug,
-                                })}
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {!isDetailLoading && selectedModule === 'services' && (detailServices?.length ?? 0) > 0 && (
-                      <div className="space-y-1 p-2">
-                        {detailServices?.map(service => (
-                          <button
-                            key={service._id}
-                            type="button"
-                            onClick={() => {
-                              handleSelectQuickRoute({
-                                label: service.title,
-                                url: buildDetailPath({
-                                  categorySlug: service.categorySlug,
-                                  mode: routeMode,
-                                  moduleKey: 'services',
-                                  recordSlug: service.slug,
-                                }),
-                                source: 'services',
-                                group: 'Module',
-                              });
-                            }}
-                            className="flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-slate-700 truncate">{service.title}</div>
-                              <div className="text-xs text-slate-500 font-mono truncate">
-                                {buildDetailPath({
-                                  categorySlug: service.categorySlug,
-                                  mode: routeMode,
-                                  moduleKey: 'services',
-                                  recordSlug: service.slug,
-                                })}
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+        onOpenChange={(open) => {
+          setIsQuickPickerOpen(open);
+          if (!open) setQuickPickerTargetId(null);
+        }}
+        onSelect={(option) => {
+          if (quickPickerTargetId) {
+            handleUpdateField(quickPickerTargetId, 'url', option.url);
+            handleUpdateField(quickPickerTargetId, 'label', option.label);
+          }
+          setIsQuickPickerOpen(false);
+          setQuickPickerTargetId(null);
+        }}
+      />
 
       {/* AI Import Dialog */}
       <AiMenuImportDialog

@@ -6,7 +6,7 @@ import { AdminImage as Image } from '@/app/admin/components/AdminImage';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { 
-  Bell, Briefcase, CalendarDays, ChevronRight, ChevronsLeft, 
+  Bell, Briefcase, CalendarDays, ChevronRight, ChevronsLeft, GraduationCap,
   ChevronsRight, FileText, Globe, Image as ImageIcon, Inbox, LayoutDashboard, LayoutGrid, Loader2,
   LogOut, Settings, ShoppingCart, Ticket, User, Users, X
 } from 'lucide-react';
@@ -67,7 +67,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
           onClick={handleClick}
           className={cn(
             "w-full flex items-center transition-all duration-200 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-            isCollapsed ? "justify-center p-3" : "justify-between px-3 py-2.5",
+            isCollapsed ? "justify-center p-2" : "justify-between px-3 py-2",
             active ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
           )}
           title={isCollapsed ? label : undefined}
@@ -87,7 +87,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
           href={href} 
           className={cn(
             "flex items-center transition-all duration-200 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-            isCollapsed ? "justify-center p-3" : "gap-3 px-3 py-2.5",
+            isCollapsed ? "justify-center p-2" : "gap-3 px-3 py-2",
             active ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
           )}
           title={isCollapsed ? label : undefined}
@@ -110,7 +110,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
                 key={sub.href} 
                 href={sub.href}
                 className={cn(
-                  "block px-3 py-2 rounded-md text-sm transition-colors truncate relative",
+                  "block px-3 py-1.5 rounded-md text-sm transition-colors truncate relative",
                   pathname === sub.href || pathname.startsWith(sub.href + '/')
                     ? "text-blue-600 bg-blue-500/5 font-medium dark:text-blue-400" 
                     : "text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -145,12 +145,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileMenuOpen, setMobileMenuO
   const userFeatures = useQuery(api.admin.modules.listModuleFeatures, { moduleKey: 'users' });
   const siteSettings = useQuery(api.settings.getMultiple, { keys: ['site_logo', 'site_name'] });
   const trustPagesFeature = useQuery(api.admin.modules.getModuleFeature, { moduleKey: 'settings', featureKey: 'enableTrustPages' });
+  const courseFiltersFeature = useQuery(api.admin.modules.getModuleFeature, { moduleKey: 'courses', featureKey: 'enableCourseFilters' });
+  const resourceFiltersFeature = useQuery(api.admin.modules.getModuleFeature, { moduleKey: 'resources', featureKey: 'enableResourceFilters' });
 
   const isActive = (route: string) => pathname.startsWith(route);
 
   const activeMenu = useMemo(() => {
     if (pathname.startsWith('/admin/posts') || pathname.startsWith('/admin/post-categories') || pathname.startsWith('/admin/comments')) {
       return 'Quản lý bài viết';
+    }
+    if (pathname.startsWith('/admin/courses') || pathname.startsWith('/admin/course-categories')) {
+      return 'Khóa học';
+    }
+    if (pathname.startsWith('/admin/resources') || pathname.startsWith('/admin/resource-categories')) {
+      return 'Tài nguyên';
+    }
+    if (pathname.startsWith('/admin/projects') || pathname.startsWith('/admin/project-categories')) {
+      return 'Dự án';
     }
     if (
       pathname.startsWith('/admin/products') ||
@@ -195,6 +206,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileMenuOpen, setMobileMenuO
   // Comments trong posts section chỉ hiện khi cả posts VÀ comments đều bật
   const showPostComments = isModuleEnabled('posts') && isModuleEnabled('comments');
   // Services section
+  const showCoursesSection = isModuleEnabled('courses');
+  const showResourcesSection = isModuleEnabled('resources');
+  const showProjectsSection = isModuleEnabled('projects');
   const showServicesSection = isModuleEnabled('services');
   const showBookingsSection = isModuleEnabled('bookings');
   const showCommerceSection = isModuleEnabled('products') || isModuleEnabled('customers') || isModuleEnabled('orders') || isModuleEnabled('wishlist');
@@ -213,13 +227,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileMenuOpen, setMobileMenuO
   const productTypesEnabled = Boolean(productSettings?.find(setting => setting.settingKey === 'enableProductTypes')?.value);
 
   const analyticsSectionItemCount = showAnalyticsSection ? 1 : 0;
-  const contentSectionItemCount = Number(showPostsSection) + Number(showServicesSection);
+  const contentSectionItemCount = Number(showPostsSection) + Number(showCoursesSection) + Number(showResourcesSection) + Number(showProjectsSection) + Number(showServicesSection);
   const commerceSectionItemCount = showCommerceSection ? 1 : 0;
   const mediaSectionItemCount = showMediaSection ? 1 : 0;
   const marketingSectionItemCount = Number(showNotificationsSection) + Number(showPromotionsSection);
   const systemSectionItemCount = Number(showUsersSection) + Number(showWebsiteSection) + Number(showContactInboxSection) + Number(showKanbanSection) + Number(showSubscriptionsSection) + Number(showSettingsSection);
 
-  const shouldShowGroupTitle = (itemCount: number) => !isSidebarCollapsed && itemCount > 1;
+  const shouldShowGroupTitle = (itemCount: number) => !isSidebarCollapsed && itemCount > 0;
   const getSectionClassName = (showTitle: boolean) => cn('space-y-1', !showTitle && '-mt-2');
 
   const showAnalyticsTitle = shouldShowGroupTitle(analyticsSectionItemCount);
@@ -317,7 +331,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileMenuOpen, setMobileMenuO
             <Loader2 size={24} className="animate-spin text-slate-400" />
           </div>
         ) : (
-          <div className="admin-sidebar-scroll flex-1 py-6 px-3 space-y-6 overflow-y-auto scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+          <div className="admin-sidebar-scroll flex-1 py-4 px-3 space-y-3.5 overflow-y-auto scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
             
             {/* Dashboard/Analytics */}
             {showAnalyticsSection && (
@@ -360,10 +374,80 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileMenuOpen, setMobileMenuO
               </div>
             )}
 
+            {/* Courses Section */}
+            {showCoursesSection && (
+              <div className={getSectionClassName(showContentTitle)}>
+                {!showPostsSection && showContentTitle && <div className="px-3 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Nội dung</div>}
+                <SidebarItem
+                  icon={GraduationCap}
+                  label="Khóa học"
+                  href="/admin/courses"
+                  active={isActive('/admin/courses') || isActive('/admin/course-categories') || isActive('/admin/courses/filters')}
+                  isCollapsed={isSidebarCollapsed}
+                  isExpanded={currentExpandedMenu === 'Khóa học'}
+                  onToggle={() =>{  handleMenuToggle('Khóa học'); }}
+                  pathname={pathname}
+                  isModuleEnabled={isModuleEnabled}
+                  subItems={[
+                    { href: '/admin/courses', label: 'Tất cả khóa học', moduleKey: 'courses' },
+                    { href: '/admin/course-categories', label: 'Danh mục khóa học', moduleKey: 'courses' },
+                    ...(courseFiltersFeature?.enabled ? [{ href: '/admin/courses/filters', label: 'Bộ lọc khóa học', moduleKey: 'courses' }] : []),
+                    { href: '/admin/courses/students', label: 'Học viên', moduleKey: 'courses' },
+                  ]}
+                />
+              </div>
+            )}
+
+            {/* Resources Section */}
+            {showResourcesSection && (
+              <div className={getSectionClassName(showContentTitle)}>
+                {!showPostsSection && !showCoursesSection && showContentTitle && <div className="px-3 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Nội dung</div>}
+                <SidebarItem
+                  icon={FileText}
+                  label="Tài nguyên"
+                  href="/admin/resources"
+                  active={isActive('/admin/resources') || isActive('/admin/resource-categories')}
+                  isCollapsed={isSidebarCollapsed}
+                  isExpanded={currentExpandedMenu === 'Tài nguyên'}
+                  onToggle={() =>{  handleMenuToggle('Tài nguyên'); }}
+                  pathname={pathname}
+                  isModuleEnabled={isModuleEnabled}
+                  subItems={[
+                    { href: '/admin/resources', label: 'Tất cả tài nguyên', moduleKey: 'resources' },
+                    { href: '/admin/resource-categories', label: 'Danh mục tài nguyên', moduleKey: 'resources' },
+                    ...(resourceFiltersFeature?.enabled ? [{ href: '/admin/resources/filters', label: 'Bộ lọc tài nguyên', moduleKey: 'resources' }] : []),
+                    { href: '/admin/resources/customers', label: 'Người mua và tải', moduleKey: 'resources' },
+                  ]}
+                />
+              </div>
+            )}
+
+            {/* Services Section */}
+            {showProjectsSection && (
+              <div className={getSectionClassName(showContentTitle)}>
+                {!showPostsSection && !showCoursesSection && !showResourcesSection && showContentTitle && <div className="px-3 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Nội dung</div>}
+                <SidebarItem
+                  icon={Briefcase}
+                  label="Dự án"
+                  href="/admin/projects"
+                  active={isActive('/admin/projects') || isActive('/admin/project-categories')}
+                  isCollapsed={isSidebarCollapsed}
+                  isExpanded={currentExpandedMenu === 'Dự án'}
+                  onToggle={() =>{  handleMenuToggle('Dự án'); }}
+                  pathname={pathname}
+                  isModuleEnabled={isModuleEnabled}
+                  subItems={[
+                    { href: '/admin/projects', label: 'Tất cả dự án', moduleKey: 'projects' },
+                    { href: '/admin/project-categories', label: 'Danh mục dự án', moduleKey: 'projects' },
+                  ]}
+                />
+              </div>
+            )}
+
             {/* Services Section */}
             {showServicesSection && (
               <div className={getSectionClassName(showContentTitle)}>
-                {!showPostsSection && showContentTitle && <div className="px-3 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Nội dung</div>}
+                {!showPostsSection && !showCoursesSection && !showResourcesSection && !showProjectsSection && showContentTitle && <div className="px-3 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Nội dung</div>}
                 <SidebarItem 
                   icon={Briefcase} 
                   label="Dịch vụ" 

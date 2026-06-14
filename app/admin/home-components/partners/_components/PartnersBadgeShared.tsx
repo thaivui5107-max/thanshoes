@@ -4,7 +4,7 @@ import React from 'react';
 import { Image as ImageIcon } from 'lucide-react';
 import { cn } from '../../../components/ui';
 import { getPartnersColors, type PartnersBrandMode } from '../_lib/colors';
-import { getPartnersContentTopSpacingClassName, getPartnersCornerRadiusClassName, getPartnersHeaderSpacingClassName, getPartnersItemGapClassName, getPartnersLogoBoxClassName, getPartnersLogoCardClassName, getPartnersLogoFallbackSize, getPartnersSectionSpacingClassName, type PartnersAlign, type PartnersCornerRadius, type PartnersDisplayMode, type PartnersLogoSize, type PartnersSpacing } from '../_types';
+import { getPartnersContentTopSpacingClassName, getPartnersCornerRadiusClassName, getPartnersHeaderSpacingClassName, getPartnersItemGapClassName, getPartnersLogoCardClassName, getPartnersLogoFallbackSize, getPartnersSectionSpacingClassName, type PartnersAlign, type PartnersCornerRadius, type PartnersDisplayMode, type PartnersLogoSize, type PartnersSpacing } from '../_types';
 import { PartnersSectionHeader } from './PartnersSectionHeader';
 
 export type PartnerBadgeItem = {
@@ -66,7 +66,6 @@ export const PartnersBadgeShared = ({
   const linkProps = openInNewTab ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   const showName = displayMode === 'withName';
   const radiusClassName = getPartnersCornerRadiusClassName(cornerRadius);
-  const logoBoxClassName = getPartnersLogoBoxClassName('compact', logoSize, showName);
   const logoCardClassName = getPartnersLogoCardClassName('compact', logoSize, showName);
   const fallbackIconSize = getPartnersLogoFallbackSize('compact', logoSize, showName);
   const sectionSpacingClassName = getPartnersSectionSpacingClassName(spacing, 'default', skipHeader);
@@ -128,12 +127,9 @@ export const PartnersBadgeShared = ({
                   onMouseLeave={(event) => { event.currentTarget.style.borderColor = ''; }}
                   {...linkProps}
                 >
-                  <div className={cn(
-                    'flex w-full items-center justify-center',
-                    logoBoxClassName,
-                  )}>
+                  <div className="flex w-full items-center justify-center">
                     {item.url
-                      ? renderImage(item, 'h-full w-auto max-w-full object-contain')
+                      ? renderImage(item, 'w-full h-auto object-contain')
                       : <ImageIcon size={fallbackIconSize} className="text-slate-300" />}
                   </div>
                   {showName && (

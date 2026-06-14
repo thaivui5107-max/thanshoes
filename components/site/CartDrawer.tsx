@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { Clock, Minus, Plus, ShoppingCart, Trash2, X } from 'lucide-react';
 import { useCart, useCartExpiry } from '@/lib/cart';
 import { useCartConfig } from '@/lib/experiences';
-import { useBrandColors } from './hooks';
+import { useBrandColors, useSiteSettings } from './hooks';
 import { getCartColors } from './cart/colors';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -17,12 +17,20 @@ const formatVND = (value: number) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
   currency: 'VND',
 }).format(value);
+const itemTypeLabel = (itemType?: 'product' | 'service' | 'course' | 'resource') => {
+  if (itemType === 'service') return 'Dịch vụ';
+  if (itemType === 'course') return 'Khóa học';
+  if (itemType === 'resource') return 'Tài nguyên';
+  return 'Sản phẩm';
+};
 
 export function CartDrawer() {
   const brandColors = useBrandColors();
+  const { siteDarkMode } = useSiteSettings();
+  const isDark = siteDarkMode === 'dark' || (siteDarkMode === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const tokens = useMemo(
-    () => getCartColors(brandColors.primary, brandColors.secondary, brandColors.mode),
-    [brandColors.primary, brandColors.secondary, brandColors.mode]
+    () => getCartColors(brandColors.primary, brandColors.secondary, brandColors.mode, isDark),
+    [brandColors.primary, brandColors.secondary, brandColors.mode, isDark]
   );
   const { cart, items, itemsCount, totalAmount, isDrawerOpen, closeDrawer, updateQuantity, removeItem, updateNote } = useCart();
   const { layoutStyle, showExpiry, showNote } = useCartConfig();
@@ -154,7 +162,9 @@ export function CartDrawer() {
           {items.length === 0 && (
             <div className="text-sm text-center py-8" style={{ color: tokens.metaText }}>Giỏ hàng đang trống.</div>
           )}
-          {items.map(item => (
+          {items.map(item => {
+            const isSingleQuantity = item.itemType === 'course' || item.itemType === 'resource';
+            return (
             <div key={item._id} className="flex gap-3 py-3 border-b last:border-0" style={{ borderColor: tokens.itemDivider }}>
               <div className="w-16 h-16 rounded-lg flex-shrink-0 overflow-hidden" style={{ backgroundColor: tokens.thumbBg }}>
                 {item.productImage ? (
@@ -165,36 +175,45 @@ export function CartDrawer() {
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-sm line-clamp-2" style={{ color: tokens.bodyText }}>{item.productName}</h4>
+                <p className="text-[11px] font-medium mt-0.5" style={{ color: tokens.metaText }}>{itemTypeLabel(item.itemType)}</p>
                 {item.variantId && variantTitleById.get(item.variantId) && (
                   <p className="text-xs mt-0.5" style={{ color: tokens.metaText }}>{variantTitleById.get(item.variantId)}</p>
                 )}
                 <p className="text-sm font-semibold mt-0.5" style={{ color: tokens.priceText }}>{formatVND(item.price)}</p>
                 <div className="flex items-center gap-2 mt-2">
-                  <button
-                    type="button"
-                    className="w-6 h-6 rounded border flex items-center justify-center hover:bg-[var(--qty-hover-bg)]"
-                    style={{
-                      borderColor: tokens.quantityButtonBorder,
-                      backgroundColor: tokens.quantityButtonBg,
-                      ['--qty-hover-bg' as never]: tokens.quantityButtonHoverBg,
-                    }}
-                    onClick={() => handleUpdateQuantity(item._id, item.quantity - 1)}
-                  >
-                    <Minus size={12} style={{ color: tokens.quantityButtonIcon }} />
-                  </button>
-                  <span className="text-sm font-medium w-6 text-center" style={{ color: tokens.bodyText }}>{item.quantity}</span>
-                  <button
-                    type="button"
-                    className="w-6 h-6 rounded border flex items-center justify-center hover:bg-[var(--qty-hover-bg)]"
-                    style={{
-                      borderColor: tokens.quantityButtonBorder,
-                      backgroundColor: tokens.quantityButtonBg,
-                      ['--qty-hover-bg' as never]: tokens.quantityButtonHoverBg,
-                    }}
-                    onClick={() => handleUpdateQuantity(item._id, item.quantity + 1)}
-                  >
-                    <Plus size={12} style={{ color: tokens.quantityButtonIcon }} />
-                  </button>
+                  {isSingleQuantity ? (
+                    <span className="rounded-full px-2 py-1 text-xs font-medium" style={{ backgroundColor: tokens.surfaceSoft, color: tokens.metaText }}>
+                      1 {item.itemType === 'resource' ? 'tài nguyên' : 'khóa học'}
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="w-6 h-6 rounded border flex items-center justify-center hover:bg-[var(--qty-hover-bg)]"
+                        style={{
+                          borderColor: tokens.quantityButtonBorder,
+                          backgroundColor: tokens.quantityButtonBg,
+                          ['--qty-hover-bg' as never]: tokens.quantityButtonHoverBg,
+                        }}
+                        onClick={() => handleUpdateQuantity(item._id, item.quantity - 1)}
+                      >
+                        <Minus size={12} style={{ color: tokens.quantityButtonIcon }} />
+                      </button>
+                      <span className="text-sm font-medium w-6 text-center" style={{ color: tokens.bodyText }}>{item.quantity}</span>
+                      <button
+                        type="button"
+                        className="w-6 h-6 rounded border flex items-center justify-center hover:bg-[var(--qty-hover-bg)]"
+                        style={{
+                          borderColor: tokens.quantityButtonBorder,
+                          backgroundColor: tokens.quantityButtonBg,
+                          ['--qty-hover-bg' as never]: tokens.quantityButtonHoverBg,
+                        }}
+                        onClick={() => handleUpdateQuantity(item._id, item.quantity + 1)}
+                      >
+                        <Plus size={12} style={{ color: tokens.quantityButtonIcon }} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="flex flex-col items-end justify-between">
@@ -216,7 +235,7 @@ export function CartDrawer() {
                 <span className="text-sm font-semibold" style={{ color: tokens.bodyText }}>{formatVND(item.subtotal)}</span>
               </div>
             </div>
-          ))}
+          );})}
         </div>
 
         {showNote && (

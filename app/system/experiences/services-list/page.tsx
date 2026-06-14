@@ -28,15 +28,16 @@ import {
 import { useExperienceConfig, useExperienceSave, EXPERIENCE_NAMES, MESSAGES } from '@/lib/experiences';
 import { enforceMultipleToggles } from '@/lib/experiences/module-toggle-guards';
 
-type ListLayoutStyle = 'grid' | 'sidebar' | 'masonry';
+type ListLayoutStyle = 'grid' | 'sidebar' | 'list';
 type PaginationType = 'pagination' | 'infiniteScroll';
 
 type ServicesListExperienceConfig = {
   layoutStyle: ListLayoutStyle;
+  gridColumns: number;
   layouts: {
     grid: LayoutConfig;
     sidebar: LayoutConfig;
-    masonry: LayoutConfig;
+    list: LayoutConfig;
   };
   hideEmptyCategories: boolean;
 };
@@ -51,9 +52,9 @@ type LayoutConfig = {
 const EXPERIENCE_KEY = 'services_list_ui';
 
 const LAYOUT_STYLES: LayoutOption<ListLayoutStyle>[] = [
-  { description: 'Hiển thị dạng lưới cards', id: 'grid', label: 'Grid' },
-  { description: 'Hiển thị với sidebar bên trái', id: 'sidebar', label: 'Sidebar' },
-  { description: 'Hiển thị dạng magazine chuyên nghiệp', id: 'masonry', label: 'Magazine' },
+  { description: 'Bộ lọc ngang phía trên, lưới thẻ dịch vụ', id: 'grid', label: 'Grid' },
+  { description: 'Sidebar bộ lọc bên trái, lưới thẻ bên phải', id: 'sidebar', label: 'Sidebar' },
+  { description: 'Sidebar bộ lọc, thẻ dạng ngang rõ thông tin', id: 'list', label: 'List' },
 ];
 
 const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
@@ -65,18 +66,19 @@ const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
 
 const DEFAULT_CONFIG: ServicesListExperienceConfig = {
   layoutStyle: 'grid',
+  gridColumns: 3,
   layouts: {
     grid: { ...DEFAULT_LAYOUT_CONFIG },
     sidebar: { ...DEFAULT_LAYOUT_CONFIG },
-    masonry: { ...DEFAULT_LAYOUT_CONFIG },
+    list: { ...DEFAULT_LAYOUT_CONFIG },
   },
   hideEmptyCategories: true,
 };
 
 const HINTS = [
-  'Grid layout hiển thị cards dạng lưới gọn gàng.',
-  'Sidebar layout có sidebar trái với search và categories.',
-  'Magazine layout tạo cảm giác chuyên nghiệp với hero featured.',
+  'Grid hiển thị cards dạng lưới gọn gàng.',
+  'Sidebar có sidebar trái với search và categories.',
+  'List giúp quét nhanh, thấy rõ mô tả dịch vụ.',
   'Mỗi layout có config riêng - chuyển tab để chỉnh.',
 ];
 
@@ -107,11 +109,17 @@ export default function ServicesListExperiencePage() {
     });
     
     return {
-      layoutStyle: (rawLayout as ListLayoutStyle | undefined) ?? 'grid',
+      layoutStyle: (() => {
+        const raw = rawLayout as string | undefined;
+        if (raw === 'grid' || raw === 'sidebar' || raw === 'list') return raw;
+        if (raw === 'masonry') return 'list';
+        return 'grid';
+      })() as ListLayoutStyle,
+      gridColumns: raw?.gridColumns ?? 3,
       layouts: {
         grid: normalizeLayoutConfig(raw?.layouts?.grid),
         sidebar: normalizeLayoutConfig(raw?.layouts?.sidebar),
-        masonry: normalizeLayoutConfig(raw?.layouts?.masonry),
+        list: normalizeLayoutConfig((raw?.layouts as any)?.list ?? (raw?.layouts as any)?.masonry),
       },
       hideEmptyCategories: raw?.hideEmptyCategories ?? true,
     };
@@ -133,7 +141,7 @@ export default function ServicesListExperiencePage() {
       layouts: {
         grid: normalizeLayout(configValue.layouts.grid),
         sidebar: normalizeLayout(configValue.layouts.sidebar),
-        masonry: normalizeLayout(configValue.layouts.masonry),
+        list: normalizeLayout(configValue.layouts.list),
       },
     };
   };
@@ -238,6 +246,16 @@ export default function ServicesListExperiencePage() {
               onChange={(v) => setConfig(prev => ({ ...prev, hideEmptyCategories: v }))}
               accentColor={brandColor}
             />
+            <SelectRow
+              label="Số cột hiển thị (Desktop)"
+              value={String(config.gridColumns ?? 3)}
+              options={[
+                { value: '3', label: '3 cột' },
+                { value: '4', label: '4 cột' },
+              ]}
+              onChange={(v) => setConfig(prev => ({ ...prev, gridColumns: Number(v) }))}
+              disabled={!canUseServices}
+            />
           </ControlCard>
 
           <ControlCard title="Phân trang">
@@ -318,6 +336,7 @@ export default function ServicesListExperiencePage() {
             <BrowserFrame url="yoursite.com/services">
               <ServicesListPreview
                 layoutStyle={config.layoutStyle}
+                gridColumns={config.gridColumns}
                 showSearch={currentLayoutConfig.showSearch}
                 showCategories={currentLayoutConfig.showCategories}
                 paginationType={currentLayoutConfig.paginationType}

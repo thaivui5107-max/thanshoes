@@ -41,8 +41,9 @@ export const seedModules = mutation({
       { category: "marketing" as const, dependencies: ["products", "orders"], dependencyType: "all" as const, description: "Quản lý mã giảm giá, voucher", enabled: false, icon: "Megaphone", isCore: false, key: "promotions", name: "Khuyến mãi", order: 16 },
       { category: "marketing" as const, description: "Báo cáo và phân tích dữ liệu", enabled: true, icon: "BarChart3", isCore: false, key: "analytics", name: "Thống kê", order: 17 },
       { category: "content" as const, description: "Quản lý dịch vụ và danh mục dịch vụ", enabled: true, icon: "Briefcase", isCore: false, key: "services", name: "Dịch vụ", order: 18 },
-      { category: "system" as const, description: "Bảng Kanban quản lý công việc nội bộ", enabled: true, icon: "LayoutGrid", isCore: false, key: "kanban", name: "Kanban Board", order: 19 },
-      { category: "commerce" as const, dependencies: ["services"], dependencyType: "all" as const, description: "Quản lý lịch hẹn và đặt lịch", enabled: true, icon: "CalendarDays", isCore: false, key: "bookings", name: "Đặt lịch", order: 20 },
+      { category: "content" as const, description: "Quản lý tài nguyên, link tải và quyền truy cập", enabled: true, icon: "FileText", isCore: false, key: "resources", name: "Tài nguyên", order: 19 },
+      { category: "system" as const, description: "Bảng Kanban quản lý công việc nội bộ", enabled: true, icon: "LayoutGrid", isCore: false, key: "kanban", name: "Kanban Board", order: 20 },
+      { category: "commerce" as const, dependencies: ["services"], dependencyType: "all" as const, description: "Quản lý lịch hẹn và đặt lịch", enabled: true, icon: "CalendarDays", isCore: false, key: "bookings", name: "Đặt lịch", order: 21 },
     ];
 
     for (const mod of modules) {
@@ -94,7 +95,7 @@ export const seedPresets = mutation({
       },
       {
         description: "Shop đầy đủ: giỏ hàng, wishlist, khuyến mãi",
-        enabledModules: ["posts", "comments", "media", "products", "orders", "cart", "wishlist", "customers", "users", "roles", "settings", "menus", "homepage", "contactInbox", "notifications", "promotions", "analytics"],
+        enabledModules: ["posts", "comments", "media", "products", "orders", "cart", "wishlist", "resources", "customers", "users", "roles", "settings", "menus", "homepage", "contactInbox", "notifications", "promotions", "analytics"],
         isDefault: true,
         key: "ecommerce-full",
         name: "eCommerce Full",
@@ -1824,6 +1825,8 @@ export const seedSettingsModule = mutation({
         { group: "social", key: "social_instagram", value: "" },
         { group: "social", key: "social_youtube", value: "" },
         { group: "social", key: "social_tiktok", value: "" },
+        { group: "social", key: "social_pinterest", value: "" },
+        { group: "social", key: "social_twitter", value: "" },
         
         // Mail settings
         { group: "mail", key: "mail_from_name", value: "Website" },
@@ -1914,7 +1917,7 @@ export const seedSettingsModule = mutation({
         { description: "Meta title, description, keywords", enabled: true, featureKey: "enableSEO", moduleKey: "settings", name: "SEO cơ bản" },
         { description: "Links Facebook, Instagram, Youtube...", enabled: true, featureKey: "enableSocial", moduleKey: "settings", name: "Mạng xã hội" },
         { description: "Bật/tắt nhóm Trang tin cậy", enabled: true, featureKey: "enableTrustPages", moduleKey: "settings", name: "Trang tin cậy" },
-        { description: "Sinh tự động Trust Pages từ dữ liệu thực", enabled: false, featureKey: "enableTrustPagesAutoGenerate", moduleKey: "settings", name: "Tự sinh Trust Pages" },
+        { description: "Sinh tự động Trust Pages từ dữ liệu thực", enabled: true, featureKey: "enableTrustPagesAutoGenerate", moduleKey: "settings", name: "Tự sinh Trust Pages" },
       ];
       for (const feature of features) {
         await ctx.db.insert("moduleFeatures", feature);
@@ -1931,8 +1934,8 @@ export const seedSettingsModule = mutation({
         { enabled: true, fieldKey: "site_url", group: "site", isSystem: true, moduleKey: "settings", name: "URL Website", order: 2, required: false, type: "text" as const },
         { enabled: true, fieldKey: "site_logo", group: "site", isSystem: true, moduleKey: "settings", name: "Logo", order: 3, required: false, type: "image" as const },
         { enabled: true, fieldKey: "site_favicon", group: "site", isSystem: true, moduleKey: "settings", name: "Favicon", order: 4, required: false, type: "image" as const },
-        { enabled: true, fieldKey: "site_timezone", group: "site", isSystem: false, moduleKey: "settings", name: "Múi giờ", order: 5, required: false, type: "select" as const },
-        { enabled: true, fieldKey: "site_language", group: "site", isSystem: false, moduleKey: "settings", name: "Ngôn ngữ", order: 6, required: false, type: "select" as const },
+        { enabled: false, fieldKey: "site_timezone", group: "site", isSystem: false, moduleKey: "settings", name: "Múi giờ", order: 5, required: false, type: "select" as const },
+        { enabled: false, fieldKey: "site_language", group: "site", isSystem: false, moduleKey: "settings", name: "Ngôn ngữ", order: 6, required: false, type: "select" as const },
         { enabled: true, fieldKey: "site_brand_primary", group: "site", isSystem: false, moduleKey: "settings", name: "Màu thương hiệu (chính)", order: 7, required: false, type: "color" as const },
         { enabled: true, fieldKey: "site_brand_secondary", group: "site", isSystem: false, moduleKey: "settings", name: "Màu thương hiệu (phụ)", order: 8, required: false, type: "color" as const },
         // Contact fields
@@ -1954,6 +1957,8 @@ export const seedSettingsModule = mutation({
         { enabled: true, fieldKey: "social_instagram", group: "social", isSystem: false, linkedFeature: "enableSocial", moduleKey: "settings", name: "Instagram", order: 17, required: false, type: "text" as const },
         { enabled: true, fieldKey: "social_youtube", group: "social", isSystem: false, linkedFeature: "enableSocial", moduleKey: "settings", name: "Youtube", order: 18, required: false, type: "text" as const },
         { enabled: false, fieldKey: "social_tiktok", group: "social", isSystem: false, linkedFeature: "enableSocial", moduleKey: "settings", name: "TikTok", order: 19, required: false, type: "text" as const },
+        { enabled: true, fieldKey: "social_pinterest", group: "social", isSystem: false, linkedFeature: "enableSocial", moduleKey: "settings", name: "Pinterest", order: 20, required: false, type: "text" as const },
+        { enabled: true, fieldKey: "social_twitter", group: "social", isSystem: false, linkedFeature: "enableSocial", moduleKey: "settings", name: "X (Twitter)", order: 21, required: false, type: "text" as const },
         // Mail fields
       ];
       for (const field of fields) {

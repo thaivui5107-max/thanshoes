@@ -3,7 +3,7 @@
 import React from 'react';
 import { AlertTriangle, Eye } from 'lucide-react';
 import { BrowserFrame } from '../../_shared/components/BrowserFrame';
-import { PreviewWrapper } from '../../_shared/components/PreviewWrapper';
+import { PreviewWrapper, usePreviewDark } from '../../_shared/components/PreviewWrapper';
 import { deviceWidths, usePreviewDevice } from '../../_shared/hooks/usePreviewDevice';
 import {
   getCTAAccentBalance,
@@ -13,13 +13,43 @@ import { CTASectionShared } from './CTASectionShared';
 import type { CTAConfig, CTAStyle } from '../_types';
 
 const CTA_STYLES: { id: CTAStyle; label: string }[] = [
-  { id: 'banner', label: 'Banner' },
-  { id: 'centered', label: 'Centered' },
-  { id: 'split', label: 'Split' },
-  { id: 'floating', label: 'Floating' },
-  { id: 'gradient', label: 'Gradient' },
-  { id: 'minimal', label: 'Minimal' },
+  { id: 'banner', label: '(1) Thanh ngang' },
+  { id: 'centered', label: '(2) Căn giữa' },
+  { id: 'split', label: '(3) Chia đôi' },
+  { id: 'floating', label: '(4) Khối nổi' },
+  { id: 'gradient', label: '(5) Chuyển màu' },
+  { id: 'minimal', label: '(6) Tối giản' },
 ];
+
+const CTAPreviewContent = ({
+  config,
+  brandColor,
+  secondary,
+  mode,
+  style,
+}: {
+  config: CTAConfig;
+  brandColor: string;
+  secondary: string;
+  mode: 'single' | 'dual';
+  style: CTAStyle;
+}) => {
+  const { isDark } = usePreviewDark();
+  const { tokens } = React.useMemo(() => getCTAValidationResult({
+    config,
+    primary: brandColor,
+    secondary,
+    mode,
+    style,
+    isDark,
+  }), [brandColor, config, isDark, mode, secondary, style]);
+
+  return (
+    <BrowserFrame url="yoursite.com">
+      <CTASectionShared config={config} style={style} tokens={tokens} context="preview" />
+    </BrowserFrame>
+  );
+};
 
 export const CTAPreview = ({
   config,
@@ -47,7 +77,6 @@ export const CTAPreview = ({
     accessibility,
     harmonyStatus,
     resolvedSecondary,
-    tokens,
   } = getCTAValidationResult({
     config,
     primary: brandColor,
@@ -72,9 +101,13 @@ export const CTAPreview = ({
         fontStyle={fontStyle}
         fontClassName={fontClassName}
       >
-        <BrowserFrame url="yoursite.com">
-          <CTASectionShared config={config} style={style} tokens={tokens} context="preview" />
-        </BrowserFrame>
+        <CTAPreviewContent
+          config={config}
+          brandColor={brandColor}
+          secondary={secondary}
+          mode={mode}
+          style={style}
+        />
       </PreviewWrapper>
 
       {mode === 'dual' && harmonyStatus.isTooSimilar && (

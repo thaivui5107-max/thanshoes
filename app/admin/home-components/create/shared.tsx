@@ -4,20 +4,21 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import {
   AlertCircle, Award, Briefcase, Check, FileText, FolderTree,
   Grid, HelpCircle, Image as ImageIcon, LayoutTemplate, MessageSquare, MousePointerClick,
   Package, Phone, ShoppingBag, Star, Tag, UserCircle, User as UserIcon, Users, Zap
 } from 'lucide-react';
-import { formatHex, oklch } from 'culori';
-import { Card, CardContent, CardHeader, CardTitle, Input, Label } from '../../components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Label } from '../../components/ui';
+import { CopyableInput } from '../../components/CopyTextButton';
 import { HOME_COMPONENT_BASE_TYPES, HOME_COMPONENT_TYPE_VALUES as BASE_COMPONENT_TYPE_VALUES } from '@/lib/home-components/componentTypes';
 import { HomeComponentStickyFooter } from '../_shared/components/HomeComponentStickyFooter';
 import { TypeColorOverrideCard } from '../_shared/components/TypeColorOverrideCard';
 import { useTypeColorOverrideState } from '../_shared/hooks/useTypeColorOverride';
 import { getSuggestedSecondary, resolveSecondaryByMode, type ColorOverrideState } from '../_shared/lib/typeColorOverride';
+import { useSystemBrandColors, DEFAULT_BRAND_COLOR } from '../_shared/hooks/useSystemBrandColors';
 import { TypeFontOverrideCard } from '../_shared/components/TypeFontOverrideCard';
 import { useTypeFontOverrideState } from '../_shared/hooks/useTypeFontOverride';
 import type { FontOverrideState } from '../_shared/lib/typeFontOverride';
@@ -65,42 +66,7 @@ export const COMPONENT_TYPES = HOME_COMPONENT_BASE_TYPES.map((type) => ({
 
 export const HOME_COMPONENT_TYPE_VALUES = BASE_COMPONENT_TYPE_VALUES;
 
-export const DEFAULT_BRAND_COLOR = '#3b82f6';
 
-const safeOklch = (value: string) => oklch(value) ?? oklch(DEFAULT_BRAND_COLOR);
-
-const generateComplementary = (hex: string): string => {
-  const parsed = safeOklch(hex);
-  if (!parsed) {return DEFAULT_BRAND_COLOR;}
-
-  return formatHex(oklch({
-    ...parsed,
-    h: ((parsed.h ?? 0) + 180) % 360,
-  }));
-};
-
-const resolveColorSetting = (value: unknown): string | null => {
-  if (typeof value !== 'string') {return null;}
-  const trimmed = value.trim();
-  return trimmed ? trimmed : null;
-};
-
-export function useSystemBrandColors() {
-  const primarySetting = useQuery(api.settings.getByKey, { key: 'site_brand_primary' });
-  const secondarySetting = useQuery(api.settings.getByKey, { key: 'site_brand_secondary' });
-  const modeSetting = useQuery(api.settings.getByKey, { key: 'site_brand_mode' });
-
-  const primary = resolveColorSetting(primarySetting?.value)
-    ?? DEFAULT_BRAND_COLOR;
-
-  const mode: 'single' | 'dual' = modeSetting?.value === 'single' ? 'single' : 'dual';
-  const secondary = mode === 'single'
-    ? ''
-    : resolveColorSetting(secondarySetting?.value)
-      ?? generateComplementary(primary);
-
-  return { primary, secondary, mode };
-}
 
 export function useBrandColors(type?: string) {
   if (type && HOME_COMPONENT_TYPE_VALUES.includes(type)) {
@@ -236,9 +202,10 @@ export function ComponentFormWrapper({
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Tên hiển thị <span className="text-red-500">*</span></Label>
-                <Input 
+                <CopyableInput
                   value={title} 
                   onChange={(e) =>{ setTitle(e.target.value); }} 
+                  copyLabel="tên hiển thị"
                   required 
                   placeholder="Nhập tiêu đề component..." 
                 />

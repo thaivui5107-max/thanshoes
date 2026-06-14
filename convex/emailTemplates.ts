@@ -7,12 +7,12 @@ const formatPrice = (value: number) => {
   }).format(value);
 };
 
-export function getOtpTemplate(otpCode: string): string {
+export function getOtpTemplate(otpCode: string, brandName: string = "YourBrand"): string {
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
       <div style="text-align: center; margin-bottom: 24px;">
-        <h1 style="color: #4f46e5; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.025em;">THANSHOES</h1>
-        <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Cửa Hàng Giày Sneaker Cao Cấp</p>
+        <h1 style="color: #4f46e5; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.025em;">${brandName.toUpperCase()}</h1>
+        <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Hệ thống cửa hàng ${brandName}</p>
       </div>
       <div style="border-top: 1px solid #f1f5f9; padding-top: 24px;">
         <h2 style="color: #1e293b; font-size: 20px; font-weight: 700; margin-top: 0; margin-bottom: 12px; text-align: center;">Xác Minh Tài Khoản</h2>
@@ -32,7 +32,7 @@ export function getOtpTemplate(otpCode: string): string {
       <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;" />
       <div style="text-align: center;">
         <p style="font-size: 12px; color: #94a3b8; margin: 0;">Đây là email tự động, vui lòng không phản hồi trực tiếp email này.</p>
-        <p style="font-size: 12px; color: #94a3b8; margin: 6px 0 0 0;">&copy; 2026 Thanshoes. All rights reserved.</p>
+        <p style="font-size: 12px; color: #94a3b8; margin: 6px 0 0 0;">&copy; ${new Date().getFullYear()} ${brandName}. All rights reserved.</p>
       </div>
     </div>
   `;
@@ -54,7 +54,7 @@ const formatSiteUrl = (siteUrl: string) => {
   return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
 };
 
-export function getOrderPlacedCustomerTemplate(order: Doc<"orders">, siteUrl: string): string {
+export function getOrderPlacedCustomerTemplate(order: Doc<"orders">, siteUrl: string, brandName: string = "YourBrand"): string {
   const itemsHtml = order.items
     .map(
       (item) => `
@@ -82,7 +82,7 @@ export function getOrderPlacedCustomerTemplate(order: Doc<"orders">, siteUrl: st
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
       <div style="text-align: center; margin-bottom: 24px;">
-        <h1 style="color: #4f46e5; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.025em;">THANSHOES</h1>
+        <h1 style="color: #4f46e5; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.025em;">${brandName.toUpperCase()}</h1>
         <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Cảm ơn quý khách đã đặt hàng!</p>
       </div>
       
@@ -140,13 +140,13 @@ export function getOrderPlacedCustomerTemplate(order: Doc<"orders">, siteUrl: st
       <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;" />
       <div style="text-align: center;">
         <p style="font-size: 12px; color: #94a3b8; margin: 0;">Quý khách có bất kỳ câu hỏi nào? Vui lòng phản hồi trực tiếp email này hoặc liên hệ hotline của chúng tôi.</p>
-        <p style="font-size: 12px; color: #94a3b8; margin: 6px 0 0 0;">&copy; 2026 Thanshoes. All rights reserved.</p>
+        <p style="font-size: 12px; color: #94a3b8; margin: 6px 0 0 0;">&copy; ${new Date().getFullYear()} ${brandName}. All rights reserved.</p>
       </div>
     </div>
   `;
 }
 
-export function getOrderPlacedShopTemplate(order: Doc<"orders">, customer: Doc<"customers">, siteUrl: string): string {
+export function getOrderPlacedShopTemplate(order: Doc<"orders">, customer: Doc<"customers">, siteUrl: string, _brandName: string = "YourBrand"): string {
   const itemsHtml = order.items
     .map(
       (item) => `
@@ -226,40 +226,40 @@ export function getOrderPlacedShopTemplate(order: Doc<"orders">, customer: Doc<"
   `;
 }
 
-export function getOrderDeliveredTemplate(order: Doc<"orders">): string {
+export function getOrderDeliveredTemplate(order: Doc<"orders">, siteUrl: string, brandName: string = "YourBrand"): string {
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
       <div style="text-align: center; margin-bottom: 24px;">
-        <h1 style="color: #4f46e5; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.025em;">THANSHOES</h1>
+        <h1 style="color: #4f46e5; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.025em;">${brandName.toUpperCase()}</h1>
         <p style="color: #10b981; margin: 4px 0 0 0; font-size: 15px; font-weight: 700;">✓ Đơn hàng đã giao thành công!</p>
       </div>
 
       <div style="border-top: 1px solid #f1f5f9; padding-top: 24px; margin-bottom: 24px;">
         <h2 style="color: #1e293b; font-size: 18px; font-weight: 700; margin-top: 0; margin-bottom: 12px;">Mã đơn hàng: #${order.orderNumber}</h2>
         <p style="color: #334155; font-size: 15px; line-height: 1.6;">
-          Xin chào quý khách, đơn hàng của quý khách đã được giao thành công tới địa chỉ đăng ký. Hy vọng quý khách sẽ hài lòng với sản phẩm giày của Thanshoes!
+          Xin chào quý khách, đơn hàng của quý khách đã được giao thành công tới địa chỉ đăng ký. Hy vọng quý khách sẽ hài lòng với sản phẩm từ ${brandName}!
         </p>
       </div>
 
       <div style="background-color: #f0fdf4; border-radius: 12px; padding: 18px; text-align: center; margin-bottom: 24px; border: 1px solid #bbf7d0;">
         <h3 style="color: #166534; margin: 0 0 6px 0; font-size: 15px; font-weight: 700;">Góp ý & Đánh giá</h3>
         <p style="color: #15803d; margin: 0 0 12px 0; font-size: 13px; line-height: 1.4;">Ý kiến đóng góp của quý khách là động lực to lớn giúp chúng tôi hoàn thiện sản phẩm và dịch vụ tốt hơn.</p>
-        <a href="https://thanshoes.vn/account/orders" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 10px 20px; border-radius: 8px;">Đánh giá sản phẩm</a>
+        <a href="${formatSiteUrl(siteUrl)}/account/orders" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 10px 20px; border-radius: 8px;">Đánh giá sản phẩm</a>
       </div>
 
       <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;" />
       <div style="text-align: center;">
-        <p style="font-size: 12px; color: #94a3b8; margin: 0;">&copy; 2026 Thanshoes. All rights reserved.</p>
+        <p style="font-size: 12px; color: #94a3b8; margin: 0;">&copy; ${new Date().getFullYear()} ${brandName}. All rights reserved.</p>
       </div>
     </div>
   `;
 }
 
-export function getOrderCancelledTemplate(order: Doc<"orders">, reason?: string): string {
+export function getOrderCancelledTemplate(order: Doc<"orders">, siteUrl: string, brandName: string = "YourBrand", reason?: string): string {
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
       <div style="text-align: center; margin-bottom: 24px;">
-        <h1 style="color: #4f46e5; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.025em;">THANSHOES</h1>
+        <h1 style="color: #4f46e5; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.025em;">${brandName.toUpperCase()}</h1>
         <p style="color: #ef4444; margin: 4px 0 0 0; font-size: 15px; font-weight: 700;">✕ Đơn hàng đã bị hủy</p>
       </div>
 
@@ -275,12 +275,12 @@ export function getOrderCancelledTemplate(order: Doc<"orders">, reason?: string)
       </div>
 
       <div style="text-align: center; margin-bottom: 24px;">
-        <a href="https://thanshoes.vn/products" style="display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 11px 24px; border-radius: 8px;">Tiếp tục mua sắm</a>
+        <a href="${formatSiteUrl(siteUrl)}/products" style="display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 11px 24px; border-radius: 8px;">Tiếp tục mua sắm</a>
       </div>
 
       <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;" />
       <div style="text-align: center;">
-        <p style="font-size: 12px; color: #94a3b8; margin: 0;">&copy; 2026 Thanshoes. All rights reserved.</p>
+        <p style="font-size: 12px; color: #94a3b8; margin: 0;">&copy; ${new Date().getFullYear()} ${brandName}. All rights reserved.</p>
       </div>
     </div>
   `;

@@ -2,11 +2,14 @@
 
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Image as ImageIcon, X } from 'lucide-react';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useBrandColors } from '@/components/site/hooks';
 import { cn } from '../../../components/ui';
 import { BrowserFrame } from '../../_shared/components/BrowserFrame';
 import { ColorInfoPanel } from '../../_shared/components/ColorInfoPanel';
 import { PreviewImage } from '../../_shared/components/PreviewImage';
-import { PreviewWrapper } from '../../_shared/components/PreviewWrapper';
+import { PreviewWrapper, usePreviewDark } from '../../_shared/components/PreviewWrapper';
 import { SectionHeader } from '../../_shared/components/SectionHeader';
 import { deviceWidths, usePreviewDevice } from '../../_shared/hooks/usePreviewDevice';
 import type { SectionSpacing } from '../../_shared/types/sectionSpacing';
@@ -15,6 +18,7 @@ import { getGalleryMarqueeBaseItems } from '../_lib/constants';
 import type { GalleryItem, GalleryStyle, GalleryCornerRadius, GalleryDesktopColumns } from '../_types';
 import { getGalleryColorTokens } from '../_lib/colors';
 import type { GalleryColorTokens, GalleryHarmony } from '../_lib/colors';
+import { adaptTokensForDarkMode } from '@/components/site/home/utils/darkModeColorAdapter';
 
 const usePrefersReducedMotion = () => {
   const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false);
@@ -207,6 +211,7 @@ export const GalleryPreview = ({
   cornerRadius?: GalleryCornerRadius;
 }): React.ReactElement => {
   const { device, setDevice } = usePreviewDevice();
+  const { isDark } = usePreviewDark();
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryItem | null>(null);
   const [isMarqueeInteractionPaused, setIsMarqueeInteractionPaused] = useState(false);
   const [marqueeRepeatCount, setMarqueeRepeatCount] = useState(2);
@@ -214,9 +219,35 @@ export const GalleryPreview = ({
   const marqueeScrollRef = React.useRef<HTMLDivElement>(null);
   const marqueeBaseTrackRef = React.useRef<HTMLDivElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
-  const colors = getGalleryColorTokens({ primary: brandColor, secondary, mode, harmony });
+  const colors = React.useMemo(
+    () => adaptTokensForDarkMode(getGalleryColorTokens({ primary: brandColor, secondary, mode, harmony }), isDark),
+    [brandColor, secondary, mode, harmony, isDark]
+  );
   const ONE = 1;
   const NEGATIVE_ONE = -1;
+
+  const systemConfig = useQuery(api.homeComponentSystemConfig.getConfig);
+  const systemColors = useBrandColors();
+
+  const homePageBgColor = React.useMemo(() => {
+    if (isDark) {return colors.neutralBackground ?? '#020617';}
+    if (!systemConfig?.homePageBackground) {return '#ffffff';}
+    const { type, customColor } = systemConfig.homePageBackground;
+    switch (type) {
+      case 'white':
+        return '#ffffff';
+      case 'black':
+        return '#000000';
+      case 'primary':
+        return systemColors.primary;
+      case 'secondary':
+        return systemColors.secondary || systemColors.primary;
+      case 'custom':
+        return customColor || '#ffffff';
+      default:
+        return '#ffffff';
+    }
+  }, [systemConfig?.homePageBackground, systemColors, colors.neutralBackground, isDark]);
   let previewStyle = selectedStyle;
   if (!previewStyle) {
     previewStyle = 'spotlight';
@@ -437,7 +468,7 @@ export const GalleryPreview = ({
     if (items.length === 0) {return renderGalleryEmptyState();}
     const showCounters = items.length > 6;
 
-    const colsClass = desktopColumns === 3 ? 'grid-cols-3' : 'grid-cols-4';
+    const colsClass = desktopColumns === 3 ? 'grid-cols-3' : desktopColumns === 6 ? 'grid-cols-6' : 'grid-cols-4';
     
     return (
       <div
@@ -588,7 +619,7 @@ export const GalleryPreview = ({
       );
     }
 
-    const colsClass = desktopColumns === 3 ? 'columns-3' : 'columns-4';
+    const colsClass = desktopColumns === 3 ? 'columns-3' : desktopColumns === 6 ? 'columns-6' : 'columns-4';
 
     return (
       <div className={cn('px-4', fullWidthDesktop ? 'w-full' : 'max-w-7xl mx-auto')}>
@@ -793,11 +824,13 @@ export const GalleryPreview = ({
     }
 
     // Masonry layout with CSS columns
+    const colsClass = desktopColumns === 3 ? 'columns-3' : desktopColumns === 6 ? 'columns-6' : 'columns-4';
+
     return (
       <div className="px-4">
         <div className={cn(
           'gap-3',
-          device === 'mobile' ? 'columns-2' : (device === 'tablet' ? 'columns-3' : 'columns-4'),
+          device === 'mobile' ? 'columns-2' : (device === 'tablet' ? 'columns-3' : colsClass),
         )}>
           {visibleItems.map((photo, idx) => {
             // Varying heights for masonry effect
@@ -835,7 +868,7 @@ export const GalleryPreview = ({
 
   // Render Gallery styles with container and Lightbox (with keyboard navigation)
   const renderGalleryContent = () => (
-    <section className={cn("w-full", sectionSpacingClassName)} style={{ backgroundColor: colors.neutralSurface }}>
+    <section className={cn("w-full", sectionSpacingClassName)} style={{ backgroundColor: 'transparent' }}>
       <div className={cn(
         'mx-auto',
         fullWidthDesktop ? 'w-full px-2' : 'max-w-7xl px-4',
@@ -909,7 +942,7 @@ export const GalleryPreview = ({
         fontClassName={fontClassName}
       >
         <BrowserFrame>
-          <div className="w-full">
+          <div className="w-full transition-colors duration-300" style={{ backgroundColor: homePageBgColor }}>
             <SectionHeader
               title={title}
               subtitle={subtitle}

@@ -8,7 +8,7 @@ import { ColorInfoPanel } from '../../_shared/components/ColorInfoPanel';
 import { PreviewImage } from '../../_shared/components/PreviewImage';
 import { deviceWidths, usePreviewDevice } from '../../_shared/hooks/usePreviewDevice';
 import { getPreviewDeviceClass } from '../../_shared/lib/previewResponsive';
-import { getFooterLayoutColors } from '../_lib/colors';
+import { getFooterThemeColors } from '../_lib/colors';
 import { getFooterCornerRadiusClassName, getFooterLogoBackgroundClassName, getFooterLogoBackgroundStyle, getFooterLogoSize, getFooterMaxWidthClass, getFooterSectionSpacingClassName } from '../_lib/constants';
 import type { FooterBrandMode, FooterConfig, FooterStyle } from '../_types';
 
@@ -39,12 +39,12 @@ const SOCIAL_ORIGINAL_COLORS: Record<string, { bg: string; icon: string }> = {
 };
 
 const styles: { id: FooterStyle; label: string }[] = [
-  { id: 'classic', label: '1. Classic Grid' },
-  { id: 'modern', label: '2. Info-Rich' },
-  { id: 'corporate', label: '3. Split Zones' },
-  { id: 'minimal', label: '4. Compact Bar' },
-  { id: 'centered', label: '5. Magazine' },
-  { id: 'stacked', label: '6. Wave' },
+  { id: 'classic', label: '(1) Bốn cột' },
+  { id: 'modern', label: '(2) Đầy đủ' },
+  { id: 'corporate', label: '(3) Phân vùng' },
+  { id: 'minimal', label: '(4) Thu gọn' },
+  { id: 'centered', label: '(5) Tạp chí' },
+  { id: 'stacked', label: '(6) Dạng sóng' },
 ];
 
 export const FooterPreview = ({
@@ -69,7 +69,9 @@ export const FooterPreview = ({
   const { device, setDevice } = usePreviewDevice();
   const previewStyle = selectedStyle ?? 'classic';
   const setPreviewStyle = (value: string) => onStyleChange?.(value as FooterStyle);
-  const colors = getFooterLayoutColors(previewStyle, brandColor, secondary, mode);
+
+  const PreviewContent = ({ isDark = false }: { isDark?: boolean }) => {
+  const colors = getFooterThemeColors(previewStyle, brandColor, secondary, mode, isDark);
   const useOriginalSocialIconColors = config.useOriginalSocialIconColors !== false;
   const logoSizeLevel = config.logoSizeLevel ?? 1;
   const resolveLogoSize = (baseSize: number) => getFooterLogoSize(baseSize, logoSizeLevel);
@@ -576,6 +578,8 @@ export const FooterPreview = ({
     );
   };
 
+  return preview();
+  };
 
   return (
     <>
@@ -591,7 +595,7 @@ export const FooterPreview = ({
         fontStyle={fontStyle}
         fontClassName={fontClassName}
       >
-        {preview()}
+        <PreviewContent />
       </PreviewWrapper>
       <ColorInfoPanel brandColor={brandColor} secondary={secondary} />
     </>

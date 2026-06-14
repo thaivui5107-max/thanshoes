@@ -1,12 +1,17 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Eye, EyeOff, Loader2, Save, Send, Trash2 } from 'lucide-react';
+import { AlertTriangle, Bot, CheckCircle2, Eye, EyeOff, KeyRound, Loader2, Mail, Save, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { getEmailConfigurationStatus } from '@/lib/email-config-status';
+import { SafeMarkdown } from '@/components/common/SafeMarkdown';
+import { readAiChatStream, streamChatjptFromBrowser } from '@/lib/ai-chat-client';
+import { HOME_COMPONENT_TYPE_VALUES } from '@/lib/home-components/componentTypes';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SYSTEM_TOKEN_KEY = 'system_auth_token';
 
 const SETTINGS_KEYS = [
   'mail_driver',
@@ -22,6 +27,11 @@ const SETTINGS_KEYS = [
 ] as const;
 
 type SettingsKey = (typeof SETTINGS_KEYS)[number];
+type IntegrationTab = 'email' | 'ai';
+type AiProvider = 'gemini' | 'chatjpt';
+
+const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const DEFAULT_CHATJPT_MODEL = '@cf/openai/gpt-oss-120b';
 
 const toSafeString = (value: unknown) => (typeof value === 'string' ? value : '');
 
@@ -47,6 +57,28 @@ const DEFAULT_FORM: Record<SettingsKey, string> = {
   order_notification_emails: '',
 };
 
+interface AiForm {
+  apiKey: string;
+  enabled: boolean;
+  model: string;
+  provider: AiProvider;
+  systemPrompt: string;
+  temperature: string;
+  widgetGreeting: string;
+  widgetTitle: string;
+}
+
+const DEFAULT_AI_FORM: AiForm = {
+  apiKey: '',
+  enabled: false,
+  model: DEFAULT_GEMINI_MODEL,
+  provider: 'gemini',
+  systemPrompt: 'Bạn là trợ lý AI của website. Trả lời bằng tiếng Việt, ngắn gọn, lịch sự, ưu tiên dựa trên dữ liệu site được cung cấp và gợi ý link phù hợp khi có.',
+  temperature: '0.4',
+  widgetGreeting: 'Xin chào, tôi có thể hỗ trợ gì cho bạn?',
+  widgetTitle: 'Trợ lý AI',
+};
+
 interface ResendAccount {
   id: string;
   label: string;
@@ -60,9 +92,16 @@ interface ResendAccount {
 }
 
 export default function IntegrationsPage() {
-  const settings = useQuery(api.settings.getMultiple, { keys: [...SETTINGS_KEYS] });
+  const settings = useQuery(api.settings.getMultiple, { keys: [...SETTINGS_KEYS, 'site_name'] });
   const setMultiple = useMutation(api.settings.setMultiple);
+  const [systemToken, setSystemToken] = useState('');
+  const aiConfig = useQuery(api.systemIntegrations.getAiConfig, systemToken ? { token: systemToken } : 'skip');
+  const saveAiConfig = useMutation(api.systemIntegrations.saveAiConfig);
+  const bulkSetTypeAiImportOverride = useMutation(api.homeComponentSystemConfig.bulkSetTypeAiImportOverride);
 
+  const brandName = typeof settings?.site_name === 'string' ? settings.site_name.trim() : 'YourBrand';
+
+  const [activeTab, setActiveTab] = useState<IntegrationTab>('email');
   const [form, setForm] = useState<Record<SettingsKey, string>>(DEFAULT_FORM);
 
   const [initialForm, setInitialForm] = useState<Record<SettingsKey, string>>(form);
@@ -81,6 +120,19 @@ export default function IntegrationsPage() {
   const [newAccDailyLimit, setNewAccDailyLimit] = useState(100);
   const [newAccMonthlyLimit, setNewAccMonthlyLimit] = useState(3000);
   const [newAccTestMode, setNewAccTestMode] = useState(false);
+  const [aiForm, setAiForm] = useState<AiForm>(DEFAULT_AI_FORM);
+  const [initialAiForm, setInitialAiForm] = useState<AiForm>(DEFAULT_AI_FORM);
+  const [showAiKey, setShowAiKey] = useState(false);
+  const [clearAiKey, setClearAiKey] = useState(false);
+  const [isSavingAi, setIsSavingAi] = useState(false);
+  const [isTestingAi, setIsTestingAi] = useState(false);
+  const [isEnablingAiImports, setIsEnablingAiImports] = useState(false);
+  const [aiTestMessage, setAiTestMessage] = useState('Tư vấn giúp tôi nội dung nổi bật trên website.');
+  const [aiTestResponse, setAiTestResponse] = useState('');
+
+  React.useEffect(() => {
+    setSystemToken(window.localStorage.getItem(SYSTEM_TOKEN_KEY) ?? '');
+  }, []);
 
   React.useEffect(() => {
     if (!settings) return;
@@ -113,6 +165,23 @@ export default function IntegrationsPage() {
     }
   }, [settings]);
 
+  React.useEffect(() => {
+    if (!aiConfig) return;
+    const nextForm: AiForm = {
+      apiKey: '',
+      enabled: aiConfig.enabled,
+      model: aiConfig.model,
+      provider: aiConfig.provider,
+      systemPrompt: aiConfig.systemPrompt,
+      temperature: String(aiConfig.temperature),
+      widgetGreeting: aiConfig.widgetGreeting,
+      widgetTitle: aiConfig.widgetTitle,
+    };
+    setAiForm(nextForm);
+    setInitialAiForm(nextForm);
+    setClearAiKey(false);
+  }, [aiConfig]);
+
   // Sync accounts state to form value
   const updateAccountsInForm = (updatedAccounts: ResendAccount[]) => {
     setAccounts(updatedAccounts);
@@ -126,8 +195,19 @@ export default function IntegrationsPage() {
     return SETTINGS_KEYS.some((key) => form[key] !== initialForm[key]);
   }, [form, initialForm]);
 
+  const hasAiChanges = useMemo(() => {
+    return clearAiKey || (Object.keys(aiForm) as Array<keyof AiForm>).some((key) => aiForm[key] !== initialAiForm[key]);
+  }, [aiForm, clearAiKey, initialAiForm]);
+
+  const emailStatus = useMemo(() => getEmailConfigurationStatus(form), [form]);
+  const savedEmailStatus = useMemo(() => getEmailConfigurationStatus(initialForm), [initialForm]);
+
   const updateField = (key: SettingsKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const updateAiField = <K extends keyof AiForm>(key: K, value: AiForm[K]) => {
+    setAiForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSelectSmtpPreset = (presetId: SmtpPresetId) => {
@@ -172,6 +252,142 @@ export default function IntegrationsPage() {
     }
   };
 
+  const handleSaveAi = async () => {
+    if (!systemToken) {
+      toast.error('Phiên system chưa sẵn sàng. Vui lòng đăng nhập lại.');
+      return;
+    }
+    const isGemini = aiForm.provider === 'gemini';
+    const willHaveApiKey = !clearAiKey && (aiConfig?.hasApiKey || Boolean(aiForm.apiKey.trim()));
+    if (aiForm.enabled && isGemini && !willHaveApiKey) {
+      toast.error('Vui lòng nhập Gemini API key trước khi bật chatbot.');
+      return;
+    }
+
+    setIsSavingAi(true);
+    try {
+      const temperature = Number(aiForm.temperature);
+      await saveAiConfig({
+        apiKey: aiForm.apiKey.trim() || undefined,
+        clearApiKey: clearAiKey,
+        enabled: aiForm.enabled,
+        model: aiForm.model.trim(),
+        provider: aiForm.provider as 'gemini' | 'chatjpt',
+        systemPrompt: aiForm.systemPrompt.trim(),
+        temperature: Number.isFinite(temperature) ? temperature : 0.4,
+        token: systemToken,
+        widgetGreeting: aiForm.widgetGreeting.trim(),
+        widgetTitle: aiForm.widgetTitle.trim(),
+      });
+      const nextForm = { ...aiForm, apiKey: '' };
+      setAiForm(nextForm);
+      setInitialAiForm(nextForm);
+      setClearAiKey(false);
+      toast.success('Đã lưu cấu hình AI.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Lỗi khi lưu cấu hình AI.');
+    } finally {
+      setIsSavingAi(false);
+    }
+  };
+
+  const handleTestAi = async () => {
+    if (hasAiChanges) {
+      toast.error('Vui lòng lưu cấu hình AI trước khi gửi thử.');
+      return;
+    }
+    const isGemini = aiForm.provider === 'gemini';
+    if (!aiForm.enabled || (isGemini && !aiConfig?.hasApiKey)) {
+      toast.error(isGemini ? 'Chatbot cần được bật và có API key trước khi gửi thử.' : 'Chatbot cần được bật trước khi gửi thử.');
+      return;
+    }
+    if (!aiTestMessage.trim()) {
+      toast.error('Vui lòng nhập câu hỏi test.');
+      return;
+    }
+
+    setIsTestingAi(true);
+    setAiTestResponse('');
+    try {
+      let nextResponse = '';
+      let streamError = '';
+      const appendResponse = (text: string) => {
+        nextResponse += text;
+        setAiTestResponse(nextResponse);
+      };
+      const response = await fetch('/api/ai-chat', {
+        body: JSON.stringify({
+          message: aiTestMessage.trim(),
+          sessionId: 'system-integrations-test',
+          sourcePath: '/system/integrations',
+          stream: true,
+        }),
+        headers: {
+          Accept: 'text/event-stream',
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(typeof data?.message === 'string' ? data.message : 'Gửi thử AI thất bại.');
+      }
+
+      if ((response.headers.get('content-type') || '').toLowerCase().includes('text/event-stream')) {
+        const fallback = await readAiChatStream(response, {
+          onDelta: appendResponse,
+          onError: (message) => {
+            streamError = message;
+          },
+          onMeta: () => undefined,
+        });
+        if (fallback) {
+          await streamChatjptFromBrowser(fallback, appendResponse);
+        }
+        if (!nextResponse.trim()) {
+          throw new Error(streamError || 'AI đã phản hồi nhưng không có nội dung.');
+        }
+      } else {
+        const data = await response.json().catch(() => ({}));
+        const message = String(data.message ?? '').trim();
+        if (!message) {
+          throw new Error('AI đã phản hồi nhưng không có nội dung.');
+        }
+        nextResponse = message;
+        setAiTestResponse(message);
+      }
+      toast.success('AI phản hồi thành công.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Gửi thử AI thất bại.');
+    } finally {
+      setIsTestingAi(false);
+    }
+  };
+
+  const handleEnableAllAiImports = async () => {
+    if (hasAiChanges) {
+      toast.error('Vui lòng lưu cấu hình AI trước khi bật Import AI.');
+      return;
+    }
+    if (!aiForm.enabled || aiForm.provider !== 'chatjpt') {
+      toast.error('Cần bật ChatJPT trước khi bật Import AI hàng loạt.');
+      return;
+    }
+
+    setIsEnablingAiImports(true);
+    try {
+      await bulkSetTypeAiImportOverride({
+        enabled: true,
+        types: HOME_COMPONENT_TYPE_VALUES,
+      });
+      toast.success('Đã bật Import AI cho toàn bộ Home Components.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể bật Import AI hàng loạt.');
+    } finally {
+      setIsEnablingAiImports(false);
+    }
+  };
+
   const handleAddAccount = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAccApiKey.trim() || !newAccApiKey.startsWith('re_')) {
@@ -179,7 +395,7 @@ export default function IntegrationsPage() {
       return;
     }
 
-    const fallbackFromName = newAccFromName.trim() || form.mail_from_name.trim() || 'Thanshoes';
+    const fallbackFromName = newAccFromName.trim() || form.mail_from_name.trim() || brandName;
     const fallbackFromEmail = newAccFromEmail.trim() || form.mail_from_email.trim() || 'onboarding@resend.dev';
     const newAcc: ResendAccount = {
       id: `acc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -231,6 +447,14 @@ export default function IntegrationsPage() {
       toast.error('Email nhận không hợp lệ.');
       return;
     }
+    if (hasChanges) {
+      toast.error('Vui lòng lưu cấu hình email trước khi gửi thử.');
+      return;
+    }
+    if (!savedEmailStatus.configured) {
+      toast.error(savedEmailStatus.reason);
+      return;
+    }
 
     setIsSending(true);
     try {
@@ -239,8 +463,8 @@ export default function IntegrationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: testEmail.trim(),
-          subject: 'Email test từ Thanshoes',
-          html: '<p>Đây là email test từ hệ thống Thanshoes.</p>',
+          subject: `Email test từ ${brandName}`,
+          html: `<p>Đây là email test từ hệ thống ${brandName}.</p>`,
         }),
       });
       if (!response.ok) {
@@ -267,10 +491,73 @@ export default function IntegrationsPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16">
       <div className="space-y-2">
-        <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Tích hợp Email</h2>
+        <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Tích hợp hệ thống</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Chọn cách gửi email, nhập thông tin người gửi rồi lưu. Sau đó gửi thử để kiểm tra cấu hình.
+          Quản lý các key và kênh tích hợp server-side cho email và AI.
         </p>
+      </div>
+
+      <div className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
+        <button
+          type="button"
+          onClick={() => setActiveTab('email')}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+            activeTab === 'email'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Mail size={16} />
+          Email
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('ai')}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+            activeTab === 'ai'
+              ? 'bg-cyan-600 text-white shadow-sm'
+              : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Bot size={16} />
+          AI Chatbot
+        </button>
+      </div>
+
+      {activeTab === 'email' && (
+        <>
+      <div className={`rounded-3xl border p-4 shadow-sm ${
+        emailStatus.configured
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100'
+          : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100'
+      }`}>
+        <div className="flex items-start gap-3">
+          {emailStatus.configured ? (
+            <CheckCircle2 size={20} className="mt-0.5 shrink-0" />
+          ) : (
+            <AlertTriangle size={20} className="mt-0.5 shrink-0" />
+          )}
+          <div className="space-y-1">
+            <p className="text-sm font-bold">
+              {emailStatus.configured
+                ? hasChanges
+                  ? `Cấu hình email có vẻ đủ, cần lưu (${emailStatus.label})`
+                  : `Email hệ thống đã cấu hình (${emailStatus.label})`
+                : 'Email hệ thống chưa gửi được'}
+            </p>
+            <p className="text-xs opacity-80">{emailStatus.reason}</p>
+            {hasChanges && (
+              <p className="text-xs opacity-80">
+                Thay đổi chưa lưu sẽ chưa được dùng khi đặt hàng hoặc gửi mail test.
+              </p>
+            )}
+            {!emailStatus.configured && (
+              <p className="text-xs opacity-80">
+                Khi chưa cấu hình, đơn hàng vẫn được tạo và theo dõi trên web; hệ thống sẽ không hứa gửi email cho khách/shop.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
@@ -344,7 +631,7 @@ export default function IntegrationsPage() {
                 value={form.mail_from_name}
                 onChange={(e) => updateField('mail_from_name', e.target.value)}
                 className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                placeholder="Thanshoes Store"
+                placeholder={`${brandName} Store`}
               />
             </div>
             <div className="space-y-1">
@@ -460,7 +747,7 @@ export default function IntegrationsPage() {
                       type="text"
                       value={newAccFromName}
                       onChange={(e) => setNewAccFromName(e.target.value)}
-                      placeholder={form.mail_from_name || 'Thanshoes'}
+                      placeholder={form.mail_from_name || brandName}
                       className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none dark:border-slate-800 dark:bg-slate-950"
                     />
                   </div>
@@ -620,14 +907,263 @@ export default function IntegrationsPage() {
           />
           <button
             onClick={handleSendTest}
-            disabled={isSending}
+            disabled={isSending || hasChanges || !savedEmailStatus.configured}
             className="min-h-12 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-2xl transition-colors disabled:opacity-50 cursor-pointer shadow-md"
           >
             {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
             {isSending ? 'Đang gửi...' : 'Gửi mail test'}
           </button>
         </div>
+        {(hasChanges || !savedEmailStatus.configured) && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            {hasChanges ? 'Bạn cần lưu thay đổi trước khi gửi thử.' : savedEmailStatus.reason}
+          </p>
+        )}
       </div>
+        </>
+      )}
+
+      {activeTab === 'ai' && (
+        aiConfig === undefined ? (
+          <div className="flex items-center justify-center rounded-3xl border border-slate-200 bg-white py-16 dark:border-slate-800 dark:bg-slate-900">
+            <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+          </div>
+        ) : (
+          <>
+            <div className={`rounded-3xl border p-4 shadow-sm ${
+              aiForm.enabled && (aiForm.provider === 'chatjpt' || aiConfig.hasApiKey)
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100'
+                : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100'
+            }`}>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                {aiForm.enabled && (aiForm.provider === 'chatjpt' || aiConfig.hasApiKey) ? (
+                  <CheckCircle2 size={20} className="mt-0.5 shrink-0" />
+                ) : (
+                  <AlertTriangle size={20} className="mt-0.5 shrink-0" />
+                )}
+                <div className="space-y-1">
+                  <p className="text-sm font-bold">
+                    {aiForm.enabled && (aiForm.provider === 'chatjpt' || aiConfig.hasApiKey) ? 'Chatbot AI đã sẵn sàng' : 'Chatbot AI chưa sẵn sàng'}
+                  </p>
+                  <p className="text-xs opacity-80">
+                    Cấu hình chatbot sử dụng {aiForm.provider === 'chatjpt' ? 'J2TEAM ChatJPT' : 'Gemini AI'}. Dữ liệu được xử lý qua server riêng tư.
+                  </p>
+                </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleEnableAllAiImports}
+                  disabled={isEnablingAiImports || hasAiChanges || !aiForm.enabled || aiForm.provider !== 'chatjpt'}
+                  className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white/70 px-3 py-2 text-xs font-bold text-emerald-700 shadow-sm transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-900/60 dark:bg-slate-950/40 dark:text-emerald-200 dark:hover:bg-slate-950"
+                >
+                  {isEnablingAiImports ? <Loader2 size={14} className="animate-spin" /> : <Bot size={14} />}
+                  Bật toàn bộ Import AI
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-6">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">1. Cấu hình AI Chatbot</h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Chọn nhà cung cấp và model AI phù hợp. Chatbot sẽ gọi AI qua server, bảo mật thông tin tối đa.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={aiForm.enabled}
+                    onChange={(e) => updateAiField('enabled', e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                  />
+                  Bật chatbot
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500">Provider</label>
+                  <select
+                    value={aiForm.provider}
+                    onChange={(e) => {
+                      const newProvider = e.target.value as AiProvider;
+                      updateAiField('provider', newProvider);
+                      updateAiField('model', newProvider === 'gemini' ? DEFAULT_GEMINI_MODEL : DEFAULT_CHATJPT_MODEL);
+                    }}
+                    className="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                  >
+                    <option value="gemini">Gemini Free (Cần API Key)</option>
+                    <option value="chatjpt">ChatJPT Free (Không cần Key)</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500">Model</label>
+                  <select
+                    value={aiForm.model}
+                    onChange={(e) => updateAiField('model', e.target.value)}
+                    className="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-800 dark:bg-slate-950"
+                  >
+                    {aiForm.provider === 'gemini' ? (
+                      <>
+                        <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+                        <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                        <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="@cf/openai/gpt-oss-120b">GPT-OSS 120B</option>
+                        <option value="@cf/meta/llama-3.3-70b-instruct-fp8-fast">Llama 3.3 70B FP8 Fast</option>
+                        <option value="@cf/meta/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B 16E</option>
+                        <option value="@cf/google/gemma-3-12b-it">Gemma 3 12B IT</option>
+                        <option value="@cf/deepseek-ai/deepseek-r1-distill-qwen-32b">DeepSeek R1 Distill Qwen 32B</option>
+                        <option value="@cf/qwen/qwen3-30b-a3b-fp8">Qwen3 30B A3B FP8</option>
+                        <option value="@cf/qwen/qwq-32b">QwQ 32B</option>
+                        <option value="@cf/mistral/mistral-7b-instruct-v0.1">Mistral 7B</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-semibold text-slate-500">
+                    {aiForm.provider === 'gemini' ? 'Gemini API key' : 'API key (Không cần thiết cho ChatJPT)'}
+                  </label>
+                  <div className="relative">
+                    <input
+                      value={aiForm.apiKey}
+                      onChange={(e) => {
+                        updateAiField('apiKey', e.target.value);
+                        setClearAiKey(false);
+                      }}
+                      disabled={aiForm.provider === 'chatjpt'}
+                      type={showAiKey ? 'text' : 'password'}
+                      className="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 pr-12 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-800 dark:bg-slate-950 disabled:opacity-50 disabled:cursor-not-allowed"
+                      placeholder={
+                        aiForm.provider === 'chatjpt'
+                          ? 'ChatJPT được J2TEAM cung cấp miễn phí, không cần cấu hình API Key'
+                          : aiConfig.hasApiKey
+                            ? `Đã lưu ${'maskedApiKey' in aiConfig ? aiConfig.maskedApiKey : 'API key'} - nhập key mới nếu muốn thay`
+                            : 'AIza...'
+                      }
+                    />
+                    {aiForm.provider === 'gemini' && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAiKey((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        title={showAiKey ? 'Hide' : 'Show'}
+                      >
+                        {showAiKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400">
+                    <span>
+                      {aiForm.provider === 'chatjpt'
+                        ? 'ChatJPT dùng endpoint public của J2TEAM, không cần API key.'
+                        : 'Key lấy tại aistudio.google.com/apikey, chỉ lưu phía server.'}
+                    </span>
+                    {aiConfig.hasApiKey && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setClearAiKey(true);
+                          updateAiField('apiKey', '');
+                        }}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 font-bold ${
+                          clearAiKey
+                            ? 'border-rose-300 bg-rose-50 text-rose-600'
+                            : 'border-slate-200 text-slate-500 hover:text-rose-600'
+                        }`}
+                      >
+                        <KeyRound size={11} />
+                        {clearAiKey ? 'Sẽ xóa key khi lưu' : 'Xóa key đã lưu'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500">Tên widget</label>
+                  <input
+                    value={aiForm.widgetTitle}
+                    onChange={(e) => updateAiField('widgetTitle', e.target.value)}
+                    className="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-800 dark:bg-slate-950"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500">Nhiệt độ trả lời</label>
+                  <input
+                    value={aiForm.temperature}
+                    onChange={(e) => updateAiField('temperature', e.target.value)}
+                    inputMode="decimal"
+                    className="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-800 dark:bg-slate-950"
+                  />
+                  <p className="text-[10px] text-slate-400">Khuyến nghị 0.2–0.6 để tư vấn ổn định.</p>
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-semibold text-slate-500">Lời chào widget</label>
+                  <input
+                    value={aiForm.widgetGreeting}
+                    onChange={(e) => updateAiField('widgetGreeting', e.target.value)}
+                    className="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-800 dark:bg-slate-950"
+                  />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-semibold text-slate-500">System prompt</label>
+                  <textarea
+                    value={aiForm.systemPrompt}
+                    onChange={(e) => updateAiField('systemPrompt', e.target.value)}
+                    rows={5}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-800 dark:bg-slate-950"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                {hasAiChanges && (
+                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Có thay đổi chưa lưu</span>
+                )}
+                <button
+                  onClick={handleSaveAi}
+                  disabled={isSavingAi || !hasAiChanges}
+                  className="flex items-center gap-2 rounded-2xl border border-cyan-600 bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:border-cyan-700 hover:bg-cyan-700 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-50 dark:disabled:bg-slate-800"
+                >
+                  {isSavingAi ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  {isSavingAi ? 'Đang lưu...' : 'Lưu cấu hình AI'}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 space-y-4 shadow-sm">
+              <div>
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">2. Gửi thử chatbot</h3>
+                <p className="text-xs text-slate-500 mt-1">Test phản hồi qua cùng API mà widget SpeedDial sử dụng trên site.</p>
+              </div>
+              <textarea
+                value={aiTestMessage}
+                onChange={(e) => setAiTestMessage(e.target.value)}
+                rows={3}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-800 dark:bg-slate-950"
+              />
+              <button
+                onClick={handleTestAi}
+                disabled={isTestingAi || hasAiChanges || !aiForm.enabled || (!aiConfig.hasApiKey && aiForm.provider !== 'chatjpt')}
+                className="min-h-12 inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isTestingAi ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                {isTestingAi ? 'Đang hỏi...' : 'Gửi thử AI'}
+              </button>
+              {aiTestResponse && (
+                <div className="rounded-2xl border border-cyan-100 bg-cyan-50 p-4 text-sm leading-relaxed text-slate-700 dark:border-cyan-900/40 dark:bg-cyan-950/20 dark:text-slate-200">
+                  <p className="mb-1 text-xs font-bold uppercase tracking-wider text-cyan-600">Phản hồi</p>
+                  <SafeMarkdown className="text-sm" content={aiTestResponse} />
+                </div>
+              )}
+            </div>
+          </>
+        )
+      )}
     </div>
   );
 }

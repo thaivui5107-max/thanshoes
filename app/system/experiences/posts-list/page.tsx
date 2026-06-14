@@ -27,11 +27,12 @@ import {
 } from '@/components/experiences/editor';
 import { useExperienceConfig, useExperienceSave, useExamplePostCategorySlug, EXPERIENCE_NAMES, MESSAGES } from '@/lib/experiences';
 
-type ListLayoutStyle = 'fullwidth' | 'sidebar' | 'magazine';
+type ListLayoutStyle = 'grid' | 'sidebar' | 'list';
 type PaginationType = 'pagination' | 'infiniteScroll';
 
 type PostsListExperienceConfig = {
   layoutStyle: ListLayoutStyle;
+  gridColumns: number;
   showSearch: boolean;
   showCategories: boolean;
   hideEmptyCategories: boolean;
@@ -42,13 +43,14 @@ type PostsListExperienceConfig = {
 const EXPERIENCE_KEY = 'posts_list_ui';
 
 const LAYOUT_STYLES: LayoutOption<ListLayoutStyle>[] = [
-  { description: 'Horizontal filter bar + grid/list toggle, tối ưu mobile', id: 'fullwidth', label: 'Full Width' },
-  { description: 'Classic blog với sidebar filters, categories, recent posts', id: 'sidebar', label: 'Sidebar' },
-  { description: 'Hero slider + category tabs, phong cách editorial', id: 'magazine', label: 'Magazine' },
+  { description: 'Bộ lọc ngang phía trên, lưới thẻ bài viết bên dưới', id: 'grid', label: 'Grid' },
+  { description: 'Sidebar bộ lọc bên trái, lưới thẻ bài viết bên phải', id: 'sidebar', label: 'Sidebar' },
+  { description: 'Sidebar bộ lọc bên trái, thẻ dạng ngang (horizontal) bên phải', id: 'list', label: 'List' },
 ];
 
 const DEFAULT_CONFIG: PostsListExperienceConfig = {
-  layoutStyle: 'fullwidth',
+  layoutStyle: 'grid',
+  gridColumns: 3,
   showSearch: true,
   showCategories: true,
   hideEmptyCategories: true,
@@ -57,9 +59,9 @@ const DEFAULT_CONFIG: PostsListExperienceConfig = {
 };
 
 const HINTS = [
-  'Full Width phù hợp blog có nhiều bài viết, filter rõ ràng.',
-  'Sidebar giúp nhấn mạnh bộ lọc và bài viết mới.',
-  'Magazine tạo cảm giác editorial, phù hợp nội dung nổi bật.',
+  'Grid phù hợp blog có nhiều bài viết, filter dạng chips rõ ràng.',
+  'Sidebar giúp nhấn mạnh bộ lọc và duyệt theo danh mục.',
+  'List tối ưu quét nhanh nhiều bài, thấy rõ excerpt và meta.',
   'Pagination phù hợp khi cần SEO, Infinity Scroll phù hợp mobile và UX.',
 ];
 
@@ -78,9 +80,9 @@ export default function PostsListExperiencePage() {
     const rawLayout = raw?.layoutStyle as string | undefined;
     
     const normalizeLayoutStyle = (value?: string): ListLayoutStyle => {
-      if (value === 'fullwidth') {return 'fullwidth';}
+      if (value === 'grid' || value === 'fullwidth') {return 'grid';}
       if (value === 'sidebar') {return 'sidebar';}
-      if (value === 'magazine') {return 'magazine';}
+      if (value === 'list' || value === 'magazine') {return 'list';}
       return DEFAULT_CONFIG.layoutStyle;
     };
     
@@ -92,6 +94,7 @@ export default function PostsListExperiencePage() {
     
     return {
       layoutStyle: normalizeLayoutStyle(rawLayout),
+      gridColumns: raw?.gridColumns ?? 3,
       showSearch: raw?.showSearch ?? true,
       showCategories: raw?.showCategories ?? true,
       hideEmptyCategories: raw?.hideEmptyCategories ?? true,
@@ -168,6 +171,15 @@ export default function PostsListExperiencePage() {
               checked={config.hideEmptyCategories}
               onChange={(v) => setConfig(prev => ({ ...prev, hideEmptyCategories: v }))}
               accentColor={brandColor}
+            />
+            <SelectRow
+              label="Số cột hiển thị (Desktop)"
+              value={String(config.gridColumns ?? 3)}
+              options={[
+                { value: '3', label: '3 cột' },
+                { value: '4', label: '4 cột' },
+              ]}
+              onChange={(v) => setConfig(prev => ({ ...prev, gridColumns: Number(v) }))}
             />
           </ControlCard>
 
@@ -247,6 +259,7 @@ export default function PostsListExperiencePage() {
             <BrowserFrame url="yoursite.com/posts">
               <PostsListPreview
                 layoutStyle={config.layoutStyle}
+                gridColumns={config.gridColumns}
                 brandColor={brandColor}
                 secondaryColor={secondaryColor}
                 colorMode={colorMode}

@@ -3,6 +3,7 @@ import { bookingsModule } from '../configs/bookings.config';
 import { cartModule } from '../configs/cart.config';
 import { commentsModule } from '../configs/comments.config';
 import { contactInboxModule } from '../configs/contact-inbox.config';
+import { coursesModule } from '../configs/courses.config';
 import { customersModule } from '../configs/customers.config';
 import { homepageModule } from '../configs/homepage.config';
 import { kanbanModule } from '../configs/kanban.config';
@@ -12,7 +13,9 @@ import { notificationsModule } from '../configs/notifications.config';
 import { ordersModule } from '../configs/orders.config';
 import { postsModule } from '../configs/posts.config';
 import { productsModule } from '../configs/products.config';
+import { projectsModule } from '../configs/projects.config';
 import { promotionsModule } from '../configs/promotions.config';
+import { resourcesModule } from '../configs/resources.config';
 import { rolesModule } from '../configs/roles.config';
 import { servicesModule } from '../configs/services.config';
 import { settingsModule } from '../configs/settings.config';
@@ -40,7 +43,7 @@ const CATEGORY_RUNTIME_DEFINITIONS: RuntimeModuleDefinition[] = [
       { enabled: true, fieldKey: 'slug', isSystem: true, name: 'Slug', order: 1, required: true, type: 'text' },
       { enabled: true, fieldKey: 'order', isSystem: true, name: 'Thứ tự', order: 2, required: true, type: 'number' },
       { enabled: true, fieldKey: 'active', isSystem: true, name: 'Trạng thái', order: 3, required: true, type: 'boolean' },
-      { enabled: true, fieldKey: 'description', isSystem: false, name: 'Mô tả', order: 4, required: false, type: 'textarea' },
+      { enabled: false, fieldKey: 'description', isSystem: false, name: 'Mô tả', order: 4, required: false, type: 'textarea' },
       { enabled: false, fieldKey: 'image', isSystem: false, name: 'Hình ảnh', order: 5, required: false, type: 'image' },
       { enabled: false, fieldKey: 'filterFooterContent', isSystem: false, linkedFeature: 'enableCategoryFilterFooterContent', name: 'Nội dung cuối danh mục', order: 6, required: false, type: 'richtext' },
       { enabled: false, fieldKey: 'productDetailSuffixContent', isSystem: false, linkedFeature: 'enableCategoryProductDetailSuffix', name: 'Nội dung nối đuôi sản phẩm', order: 7, required: false, type: 'richtext' },
@@ -58,6 +61,39 @@ const CATEGORY_RUNTIME_DEFINITIONS: RuntimeModuleDefinition[] = [
       { enabled: false, fieldKey: 'thumbnail', isSystem: false, name: 'Ảnh đại diện', order: 5, required: false, type: 'image' },
     ],
   },
+  {
+    moduleKey: 'courseCategories',
+    fields: [
+      { enabled: true, fieldKey: 'name', isSystem: true, name: 'Tên', order: 0, required: true, type: 'text' },
+      { enabled: true, fieldKey: 'slug', isSystem: true, name: 'Slug', order: 1, required: true, type: 'text' },
+      { enabled: true, fieldKey: 'order', isSystem: true, name: 'Thứ tự', order: 2, required: true, type: 'number' },
+      { enabled: true, fieldKey: 'active', isSystem: true, name: 'Trạng thái', order: 3, required: true, type: 'boolean' },
+      { enabled: true, fieldKey: 'description', isSystem: false, name: 'Mô tả', order: 4, required: false, type: 'textarea' },
+      { enabled: false, fieldKey: 'thumbnail', isSystem: false, name: 'Ảnh đại diện', order: 5, required: false, type: 'image' },
+    ],
+  },
+  {
+    moduleKey: 'projectCategories',
+    fields: [
+      { enabled: true, fieldKey: 'name', isSystem: true, name: 'Tên', order: 0, required: true, type: 'text' },
+      { enabled: true, fieldKey: 'slug', isSystem: true, name: 'Slug', order: 1, required: true, type: 'text' },
+      { enabled: true, fieldKey: 'order', isSystem: true, name: 'Thứ tự', order: 2, required: true, type: 'number' },
+      { enabled: true, fieldKey: 'active', isSystem: true, name: 'Trạng thái', order: 3, required: true, type: 'boolean' },
+      { enabled: true, fieldKey: 'description', isSystem: false, name: 'Mô tả', order: 4, required: false, type: 'textarea' },
+      { enabled: false, fieldKey: 'thumbnail', isSystem: false, name: 'Ảnh đại diện', order: 5, required: false, type: 'image' },
+    ],
+  },
+  {
+    moduleKey: 'resourceCategories',
+    fields: [
+      { enabled: true, fieldKey: 'name', isSystem: true, name: 'Tên', order: 0, required: true, type: 'text' },
+      { enabled: true, fieldKey: 'slug', isSystem: true, name: 'Slug', order: 1, required: true, type: 'text' },
+      { enabled: true, fieldKey: 'order', isSystem: true, name: 'Thứ tự', order: 2, required: true, type: 'number' },
+      { enabled: true, fieldKey: 'active', isSystem: true, name: 'Trạng thái', order: 3, required: true, type: 'boolean' },
+      { enabled: true, fieldKey: 'description', isSystem: false, name: 'Mô tả', order: 4, required: false, type: 'textarea' },
+      { enabled: false, fieldKey: 'thumbnail', isSystem: false, name: 'Ảnh đại diện', order: 5, required: false, type: 'image' },
+    ],
+  },
 ];
 
 const moduleDefinitions = [
@@ -66,6 +102,7 @@ const moduleDefinitions = [
   cartModule,
   commentsModule,
   contactInboxModule,
+  coursesModule,
   customersModule,
   homepageModule,
   kanbanModule,
@@ -75,7 +112,9 @@ const moduleDefinitions = [
   ordersModule,
   postsModule,
   productsModule,
+  projectsModule,
   promotionsModule,
+  resourcesModule,
   rolesModule,
   servicesModule,
   settingsModule,

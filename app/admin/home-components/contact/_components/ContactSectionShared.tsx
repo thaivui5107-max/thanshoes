@@ -43,6 +43,7 @@ interface ContactSectionSharedProps {
   title?: string;
   mapData?: ContactMapData;
   sourcePath?: string;
+  isDark?: boolean;
 }
 
 const PinterestIcon = ({ size = 18 }: { size?: number }) => (
@@ -116,7 +117,7 @@ const getSectionInlinePadding = (context: ContactSectionContext, currentDevice: 
 };
 
 const getRootContainerClass = (context: ContactSectionContext, currentDevice: PreviewDevice) => {
-  if (context === 'site') {return 'max-w-6xl mx-auto';}
+  if (context === 'site') {return 'max-w-6xl tv:max-w-[1536px] mx-auto';}
   if (currentDevice === 'mobile') {return 'w-full';}
   if (currentDevice === 'tablet') {return 'max-w-3xl mx-auto';}
   return 'max-w-5xl mx-auto';
@@ -521,7 +522,7 @@ const renderModern = ({
             contentWidthClass,
           )}
         >
-        <div className="max-w-md mx-auto w-full">
+        <div className="max-w-md tv:max-w-xl mx-auto w-full">
           <div
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide border mb-4"
             style={{
@@ -1020,6 +1021,188 @@ const renderCentered = ({
   );
 };
 
+const renderKanban = ({
+  info,
+  config,
+  tokens,
+  currentDevice,
+  activeSocials,
+  mapData,
+  sourcePath,
+  isPreview,
+}: {
+  info: ReturnType<typeof getInfo>;
+  config: ContactConfigState;
+  tokens: ContactColorTokens;
+  currentDevice: PreviewDevice;
+  activeSocials: ContactSocialLink[];
+  mapData?: ContactMapData;
+  sourcePath?: string;
+  isPreview: boolean;
+}) => {
+  const contactItems = getDisplayItems(config, isPreview);
+  const hasForm = Boolean(config.showForm);
+  const hasMap = Boolean(config.showMap);
+
+  const kanbanTokens = {
+    ...tokens,
+    formBackground: 'transparent',
+  };
+
+  let columnsCount = 1;
+  if (hasForm) {
+    columnsCount++;
+  }
+  if (hasMap) {
+    columnsCount++;
+  }
+
+  const gridClass = isPreview
+    ? currentDevice === 'mobile'
+      ? 'grid-cols-1'
+      : columnsCount === 3
+        ? 'grid-cols-3'
+        : columnsCount === 2
+          ? 'grid-cols-2'
+          : 'grid-cols-1'
+    : columnsCount === 3
+      ? 'grid-cols-1 lg:grid-cols-3'
+      : columnsCount === 2
+        ? 'grid-cols-1 lg:grid-cols-2'
+        : 'grid-cols-1';
+
+  return (
+    <div
+      className="w-full rounded-sm border p-4 tv:p-8 transition-colors duration-300"
+      style={{
+        backgroundColor: tokens.neutralBackground,
+        borderColor: tokens.neutralBorder,
+      }}
+    >
+      <div className={cn('grid gap-4 tv:gap-8 items-stretch', gridClass)}>
+        <div className="flex flex-col space-y-3 tv:space-y-6">
+          <div className="border-b pb-1.5" style={{ borderColor: tokens.neutralBorder }}>
+            <span className="text-[10px] tv:text-sm font-extrabold tracking-[0.15em] uppercase" style={{ color: tokens.labelText }}>
+              {info.texts.badge || 'Thông tin liên hệ'}
+            </span>
+          </div>
+          <div className="space-y-2 tv:space-y-4 flex-1">
+            {contactItems.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-start gap-2.5 tv:gap-4 p-2.5 tv:p-4 border rounded-sm transition-all duration-200 group border-l-[3px]"
+                style={{
+                  backgroundColor: tokens.cardBackground,
+                  borderTopColor: tokens.cardBorder,
+                  borderRightColor: tokens.cardBorder,
+                  borderBottomColor: tokens.cardBorder,
+                  borderLeftColor: tokens.primary,
+                }}
+              >
+                <div className="shrink-0 mt-0.5" style={{ color: kanbanTokens.primary }}>
+                  {renderContactIcon(item.icon, 14)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-[10px] tv:text-xs uppercase tracking-wider mb-0.5" style={{ color: tokens.labelText }}>{item.label}</h4>
+                  {renderItemValue(item, kanbanTokens, isPreview, 'text-xs tv:text-base font-semibold leading-relaxed')}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {activeSocials.length > 0 && (
+            <div className="pt-3 tv:pt-5 border-t" style={{ borderColor: tokens.neutralBorder }}>
+              <div className="flex items-center gap-1.5 tv:gap-3 flex-wrap">
+                {activeSocials.map((social, idx) => {
+                  const Icon = getSocialIconComponent(social.platform);
+                  const original = SOCIAL_ORIGINAL_COLORS[social.platform];
+                  const bg = original?.bg || tokens.socialBackground;
+                  const border = original?.bg || tokens.socialBorder;
+                  const color = original?.icon || tokens.socialIcon;
+
+                  return (
+                    <a
+                      key={`${social.id}-${social.platform}-${idx}`}
+                      href={resolveSocialHref(social)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-7 h-7 tv:w-10 tv:h-10 rounded-sm border flex items-center justify-center transition-colors duration-200"
+                      style={{
+                        backgroundColor: bg,
+                        borderColor: border,
+                        color: color,
+                      }}
+                      aria-label={social.platform || 'social'}
+                    >
+                      <Icon size={12} className="tv:w-5 tv:h-5" />
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {hasForm && (
+          <div className="flex flex-col space-y-3 tv:space-y-6">
+            <div className="border-b pb-1.5" style={{ borderColor: tokens.neutralBorder }}>
+              <span className="text-[10px] tv:text-sm font-extrabold tracking-[0.15em] uppercase" style={{ color: tokens.labelText }}>
+                {info.heading || 'Gửi yêu cầu'}
+              </span>
+            </div>
+            <div
+              className={cn(
+                "p-3 tv:p-6 border rounded-sm flex-1",
+                " [&_input]:rounded-none [&_textarea]:rounded-none [&_button]:rounded-none [&_input]:text-xs [&_textarea]:text-xs [&_button]:text-xs [&_input]:tv:text-[16px] [&_textarea]:tv:text-[16px] [&_button]:tv:text-[16px]",
+                " [&_input]:px-2.5 [&_textarea]:px-2.5 [&_input]:py-2 [&_textarea]:py-2 [&_button]:py-2.5 [&_input]:tv:py-4 [&_textarea]:tv:py-4 [&_button]:tv:py-5 [&_input]:tv:px-4 [&_textarea]:tv:px-4",
+                "hover:[&_button]:opacity-90 [&_svg]:hidden"
+              )}
+              style={{
+                backgroundColor: tokens.cardBackground,
+                borderColor: tokens.cardBorder,
+              }}
+            >
+              <ContactInquiryForm
+                brandColor={kanbanTokens.primary}
+                secondaryColor={kanbanTokens.secondary}
+                title={undefined}
+                description={undefined}
+                submitLabel={info.submitLabel}
+                responseTimeText={info.responseText}
+                fields={config.formFields}
+                tokens={kanbanTokens}
+                sourcePath={sourcePath}
+                subjectFallback={info.subjectFallback}
+                withContainer={false}
+                isPreview={isPreview}
+              />
+            </div>
+          </div>
+        )}
+
+        {hasMap && (
+          <div className="flex flex-col space-y-3 tv:space-y-6">
+            <div className="border-b pb-1.5" style={{ borderColor: tokens.neutralBorder }}>
+              <span className="text-[10px] tv:text-sm font-extrabold tracking-[0.15em] uppercase" style={{ color: tokens.labelText }}>
+                Bản đồ vị trí
+              </span>
+            </div>
+            <div
+              className="border rounded-sm flex-1 overflow-hidden relative min-h-[220px]"
+              style={{
+                borderColor: tokens.cardBorder,
+                backgroundColor: tokens.cardBackground,
+              }}
+            >
+              {renderMapOrPlaceholder({ mapData, fallbackEmbed: config.mapEmbed, tokens: kanbanTokens, className: 'absolute inset-0', isPreview })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export function ContactSectionShared({
   config,
   style,
@@ -1029,6 +1212,7 @@ export function ContactSectionShared({
   title,
   mapData,
   sourcePath,
+  isDark = false,
 }: ContactSectionSharedProps) {
   const currentDevice = getDisplayDevice(context, device);
   const isPreview = context === 'preview';
@@ -1037,6 +1221,10 @@ export function ContactSectionShared({
   const containerClass = getRootContainerClass(context, currentDevice);
 
   const content = (() => {
+    if (style === 'kanban') {
+      return renderKanban({ info, config, tokens, currentDevice, activeSocials, mapData, sourcePath, isPreview });
+    }
+
     if (style === 'modern') {
       return renderModern({ info, config, tokens, currentDevice, activeSocials, mapData, sourcePath, isPreview });
     }
@@ -1061,7 +1249,7 @@ export function ContactSectionShared({
   })();
 
   return (
-    <section className={cn(getSectionSpacingClassName(config.spacing), getSectionInlinePadding(context, currentDevice))}>
+    <section className={cn(getSectionSpacingClassName(config.spacing), getSectionInlinePadding(context, currentDevice), isDark && 'dark')}>
       <div className={cn(containerClass, 'space-y-6')}>
         <ContactSectionHeader
           title={title}

@@ -148,6 +148,7 @@ export default function SearchFilterExperiencePage() {
   const canUseOrders = ordersModule?.enabled ?? false;
   const canUsePromotions = promotionsModule?.enabled ?? false;
   const variantsEnabled = (variantsSetting?.value as boolean | undefined) ?? false;
+  const canUseQuickAddVariant = canUseCart && variantsEnabled;
 
   const beforeSaveTransform = (rawConfig: unknown) => {
     const configValue = rawConfig as SearchFilterExperienceConfig;
@@ -261,7 +262,7 @@ export default function SearchFilterExperiencePage() {
             />
           </ControlCard>
 
-          <ControlCard title="Tính năng sản phẩm (Bố cục nút)">
+          <ControlCard title="Tính năng sản phẩm">
             <ToggleRow
               label="Nút yêu thích"
               description="Hiện nút thêm vào wishlist"
@@ -278,6 +279,25 @@ export default function SearchFilterExperiencePage() {
               accentColor={brandColor}
               disabled={!canUseCart}
             />
+            <ToggleRow
+              label="Quick add phiên bản"
+              description="Mở modal chọn phiên bản khi thêm giỏ"
+              checked={config.enableQuickAddVariant && canUseQuickAddVariant}
+              onChange={(v) => setConfig(prev => ({ ...prev, enableQuickAddVariant: v }))}
+              accentColor={brandColor}
+              disabled={!canUseQuickAddVariant}
+            />
+            {config.showAddToCartButton && saleMode === 'cart' && (
+              <SelectRow
+                label="Bố cục nút"
+                value={config.cartButtonsLayout ?? 'stack'}
+                options={[
+                  { value: 'stack', label: 'Xếp dọc (Stack)' },
+                  { value: 'grid-2', label: 'Xếp ngang (Grid 2)' },
+                ]}
+                onChange={(v) => setConfig(prev => ({ ...prev, cartButtonsLayout: v as 'stack' | 'grid-2' }))}
+              />
+            )}
             <ToggleRow
               label="Nút Mua ngay"
               description="Hiện nút Buy Now đặt hàng nhanh"
@@ -304,17 +324,6 @@ export default function SearchFilterExperiencePage() {
               ]}
               onChange={(v) => setConfig(prev => ({ ...prev, cornerRadius: v as CornerRadiusStyle }))}
             />
-            {config.showAddToCartButton && saleMode === 'cart' && (
-              <SelectRow
-                label="Bố cục nút"
-                value={config.cartButtonsLayout ?? 'stack'}
-                options={[
-                  { value: 'stack', label: 'Xếp dọc (Stack)' },
-                  { value: 'grid-2', label: 'Xếp ngang (Grid 2)' },
-                ]}
-                onChange={(v) => setConfig(prev => ({ ...prev, cartButtonsLayout: v as 'stack' | 'grid-2' }))}
-              />
-            )}
           </ControlCard>
         </CardContent>
       </Card>

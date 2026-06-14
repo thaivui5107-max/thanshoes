@@ -9,12 +9,16 @@ import {
   parseOrderStatuses,
   type OrderStatusConfig,
 } from "../lib/orders/statuses";
+import { EMAIL_CONFIG_SETTING_KEYS, getEmailConfigurationStatus } from "../lib/email-config-status";
 import { internal } from "./_generated/api";
 import {
   getOrderPlacedCustomerTemplate,
   getOrderPlacedShopTemplate,
   getOrderCancelledTemplate,
 } from "./emailTemplates";
+import { isProviderCartCapable, type CommerceProviderKey } from "./lib/commerce";
+import { syncCourseStudentsForOrder } from "./lib/courseEnrollment";
+import { syncResourceCustomersForOrder } from "./lib/resourceAccess";
 
 const orderStatus = v.string();
 
@@ -77,6 +81,24 @@ async function resolveOrderNotificationEmails(ctx: MutationCtx): Promise<string>
   return (contactSetting?.value as string) ?? "";
 }
 
+async function getSettingsByKeys(ctx: MutationCtx, keys: string[]) {
+  const uniqueKeys = [...new Set(keys)];
+  const settings = await Promise.all(uniqueKeys.map((key) =>
+    ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique()
+  ));
+
+  const result: Record<string, unknown> = {};
+  for (const setting of settings) {
+    if (setting) {
+      result[setting.key] = setting.value;
+    }
+  }
+  return result;
+}
+
 async function handleOrderStatusTransition(
   ctx: MutationCtx,
   orderId: Id<"orders">,
@@ -110,11 +132,34 @@ async function handleOrderStatusTransition(
 
   // Chuyển sang Cancelled
   if (isCancelledStatus(newStatus) && !isCancelledStatus(oldStatus)) {
+    const settings = await getSettingsByKeys(ctx, [
+      "site_name",
+      "site_url",
+      ...EMAIL_CONFIG_SETTING_KEYS,
+    ]);
+    const brandName = settings.site_name ? String(settings.site_name as string).trim() : "YourBrand";
+    const siteUrl = settings.site_url ? String(settings.site_url as string).trim() : "http://localhost:3000";
+    const emailStatus = getEmailConfigurationStatus(settings);
+
+    if (!emailStatus.configured) {
+      await ctx.db.insert("notifications", {
+        title: "Cần gửi thông báo thủ công",
+        content: `Đơn #${orderDoc.orderNumber} đã cập nhật trạng thái. Email thông báo chưa được gửi tự động. Vui lòng liên hệ khách qua kênh phù hợp nếu cần.`,
+        type: "warning",
+        status: "Sent",
+        targetType: "users",
+        order: Date.now(),
+        readCount: 0,
+        sentAt: Date.now(),
+      });
+      return;
+    }
+
     if (customerDoc.email) {
-      const cancelledHtml = getOrderCancelledTemplate(orderDoc);
+      const cancelledHtml = getOrderCancelledTemplate(orderDoc, siteUrl, brandName);
       await ctx.scheduler.runAfter(0, internal.email.sendTransactionalEmail, {
         to: customerDoc.email,
-        subject: `[Thanshoes] Đơn hàng #${orderDoc.orderNumber} đã bị hủy`,
+        subject: `[${brandName}] Đơn hàng #${orderDoc.orderNumber} đã bị hủy`,
         html: cancelledHtml,
         eventType: "order_cancelled",
         orderId: orderDoc._id,
@@ -124,10 +169,10 @@ async function handleOrderStatusTransition(
     if (options?.notifyShopOnCancel) {
       const shopEmails = await resolveOrderNotificationEmails(ctx);
       if (shopEmails) {
-        const cancelledHtml = getOrderCancelledTemplate(orderDoc, "Khách hàng hoặc quản trị viên yêu cầu hủy.");
+        const cancelledHtml = getOrderCancelledTemplate(orderDoc, siteUrl, brandName, "Khách hàng hoặc quản trị viên yêu cầu hủy.");
         await ctx.scheduler.runAfter(0, internal.email.sendTransactionalEmail, {
           to: shopEmails,
-          subject: `[Thanshoes] Đơn hàng #${orderDoc.orderNumber} đã bị hủy`,
+          subject: `[${brandName}] Đơn hàng #${orderDoc.orderNumber} đã bị hủy`,
           html: cancelledHtml,
           eventType: "order_cancelled_shop",
           orderId: orderDoc._id,
@@ -138,8 +183,12 @@ async function handleOrderStatusTransition(
 }
 
 const orderItemValidator = v.object({
+  itemType: v.optional(v.union(v.literal("product"), v.literal("service"), v.literal("course"), v.literal("resource"))),
   price: v.number(),
-  productId: v.id("products"),
+  productId: v.optional(v.id("products")),
+  serviceId: v.optional(v.id("services")),
+  courseId: v.optional(v.id("courses")),
+  resourceId: v.optional(v.id("resources")),
   productImage: v.optional(v.string()),
   productName: v.string(),
   quantity: v.number(),
@@ -162,8 +211,12 @@ type VariantPricingSetting = "product" | "variant";
 type VariantStockSetting = "product" | "variant";
 
 type OrderItemInput = {
+  itemType?: "product" | "service" | "course" | "resource";
   price: number;
-  productId: Id<"products">;
+  productId?: Id<"products">;
+  serviceId?: Id<"services">;
+  courseId?: Id<"courses">;
+  resourceId?: Id<"resources">;
   productImage?: string;
   productName: string;
   quantity: number;
@@ -180,6 +233,56 @@ type OrderItemInput = {
     expiresAt?: number;
     deliveredAt?: number;
   };
+};
+
+const getOrderItemType = (item: Pick<OrderItemInput, "itemType">) => item.itemType ?? "product";
+
+const isShippableOrderItem = (item: OrderItemInput) =>
+  getOrderItemType(item) === "product" && !item.isDigital;
+
+const isCodRestrictedOrderItem = (item: OrderItemInput) =>
+  getOrderItemType(item) !== "product" || Boolean(item.isDigital);
+
+const validateOrderFulfillmentPolicy = (params: {
+  items: OrderItemInput[];
+  paymentMethod?: string;
+  shippingFee?: number;
+  shippingMethodId?: string;
+  shippingMethodLabel?: string;
+}) => {
+  const hasShippableItems = params.items.some(isShippableOrderItem);
+  const hasCodRestrictedItems = params.items.some(isCodRestrictedOrderItem);
+
+  if (params.paymentMethod === "COD" && hasCodRestrictedItems) {
+    return "COD chỉ áp dụng cho đơn chỉ gồm sản phẩm vật lý cần giao hàng. Đơn có khóa học, dịch vụ hoặc sản phẩm số cần dùng phương thức thanh toán khác.";
+  }
+  if (!hasShippableItems && (params.shippingFee ?? 0) > 0) {
+    return "Đơn không có sản phẩm cần giao hàng nên không được tính phí vận chuyển.";
+  }
+  if (!hasShippableItems && (params.shippingMethodId || params.shippingMethodLabel)) {
+    return "Đơn không có sản phẩm cần giao hàng nên không cần phương thức vận chuyển.";
+  }
+  return null;
+};
+
+const isSameOrderLine = (
+  a: Pick<OrderItemInput, "itemType" | "productId" | "serviceId" | "courseId" | "resourceId" | "variantId">,
+  b: Pick<OrderItemInput, "itemType" | "productId" | "serviceId" | "courseId" | "resourceId" | "variantId">
+) => {
+  const itemType = getOrderItemType(a);
+  if (itemType !== getOrderItemType(b)) {
+    return false;
+  }
+  if (itemType === "product") {
+    return a.productId === b.productId && a.variantId === b.variantId;
+  }
+  if (itemType === "service") {
+    return a.serviceId === b.serviceId;
+  }
+  if (itemType === "resource") {
+    return a.resourceId === b.resourceId;
+  }
+  return a.courseId === b.courseId;
 };
 
 async function getVariantSettings(ctx: MutationCtx): Promise<{
@@ -232,43 +335,152 @@ async function normalizeOrderItems(
     return items;
   }
 
-  const products = await Promise.all(items.map((item) => ctx.db.get(item.productId)));
-  const variants = await Promise.all(items.map((item) => (item.variantId ? ctx.db.get(item.variantId) : null)));
+  const normalizedItems: OrderItemInput[] = await Promise.all(items.map(async (item) => {
+    const itemType = getOrderItemType(item);
 
-  return Promise.all(items.map(async (item, index) => {
-    const product = products[index];
-    if (!product) {
-      throw new Error("Product not found");
-    }
+    if (itemType === "product") {
+      if (!item.productId) {
+        throw new Error("Product not found");
+      }
 
-    const variant = variants[index];
-    if (item.variantId) {
-      if (!variant || variant.productId !== item.productId) {
+      const [product, variant] = await Promise.all([
+        ctx.db.get(item.productId),
+        item.variantId ? ctx.db.get(item.variantId) : Promise.resolve(null),
+      ]);
+      if (!product) {
+        throw new Error("Product not found");
+      }
+      if (item.variantId && (!variant || variant.productId !== item.productId)) {
         throw new Error("Phiên bản không hợp lệ");
       }
+
+      const price = variantPricing === "variant" && variant
+        ? (variant.salePrice ?? variant.price ?? item.price)
+        : item.price;
+      const variantTitle = variant ? await buildVariantTitle(ctx, variant) : undefined;
+
+      return {
+        ...item,
+        itemType: "product",
+        price,
+        productImage: item.productImage ?? product.image ?? undefined,
+        variantTitle,
+        isDigital: product.productType === "digital",
+        digitalDeliveryType: product.digitalDeliveryType ?? undefined,
+        digitalCredentials: product.productType === "digital"
+          ? (product.digitalCredentialsTemplate ?? undefined)
+          : undefined,
+      };
     }
 
-    const price = variantPricing === "variant" && variant
-      ? (variant.salePrice ?? variant.price ?? item.price)
-      : item.price;
-    const variantTitle = variant ? await buildVariantTitle(ctx, variant) : undefined;
+    if (itemType === "service") {
+      if (!item.serviceId) {
+        throw new Error("Service not found");
+      }
+      const service = await ctx.db.get(item.serviceId);
+      if (!service || service.status !== "Published") {
+        throw new Error("Service not found");
+      }
+      if (service.price === undefined || service.price < 0) {
+        throw new Error(`Giá dịch vụ ${service.title} không hợp lệ`);
+      }
+      return {
+        ...item,
+        itemType: "service",
+        price: service.price,
+        productImage: item.productImage ?? service.thumbnail ?? undefined,
+        productName: service.title,
+        variantId: undefined,
+        variantTitle: undefined,
+        isDigital: false,
+        digitalDeliveryType: undefined,
+        digitalCredentials: undefined,
+      };
+    }
 
+    if (itemType === "resource") {
+      if (!item.resourceId) {
+        throw new Error("Resource not found");
+      }
+      const resource = await ctx.db.get(item.resourceId);
+      if (!resource || resource.status !== "Published") {
+        throw new Error("Resource not found");
+      }
+      if (resource.pricingType === "contact") {
+        throw new Error("Tài nguyên đang ở chế độ liên hệ, chưa thể thanh toán");
+      }
+      const price = resource.pricingType === "free" ? 0 : resource.priceAmount;
+      if (price === undefined || price < 0) {
+        throw new Error(`Giá tài nguyên ${resource.title} không hợp lệ`);
+      }
+      return {
+        ...item,
+        itemType: "resource",
+        price,
+        productImage: item.productImage ?? resource.thumbnail ?? undefined,
+        productName: resource.title,
+        quantity: 1,
+        variantId: undefined,
+        variantTitle: undefined,
+        isDigital: false,
+        digitalDeliveryType: undefined,
+        digitalCredentials: undefined,
+      };
+    }
+
+    if (!item.courseId) {
+      throw new Error("Course not found");
+    }
+    const course = await ctx.db.get(item.courseId);
+    if (!course || course.status !== "Published") {
+      throw new Error("Course not found");
+    }
+    if (course.pricingType === "contact") {
+      throw new Error("Khóa học đang ở chế độ liên hệ, chưa thể thanh toán");
+    }
+    const price = course.pricingType === "free" ? 0 : course.priceAmount;
+    if (price === undefined || price < 0) {
+      throw new Error(`Giá khóa học ${course.title} không hợp lệ`);
+    }
     return {
       ...item,
+      itemType: "course",
       price,
-      productImage: item.productImage ?? product.image ?? undefined,
-      variantTitle,
-      isDigital: product.productType === "digital",
-      digitalDeliveryType: product.digitalDeliveryType ?? undefined,
-      digitalCredentials: product.productType === "digital"
-        ? (product.digitalCredentialsTemplate ?? undefined)
-        : undefined,
+      productImage: item.productImage ?? course.thumbnail ?? undefined,
+      productName: course.title,
+      quantity: 1,
+      variantId: undefined,
+      variantTitle: undefined,
+      isDigital: false,
+      digitalDeliveryType: undefined,
+      digitalCredentials: undefined,
     };
   }));
+
+  const seenCourseIds = new Set<string>();
+  const seenResourceIds = new Set<string>();
+  return normalizedItems.filter((item) => {
+    const itemType = getOrderItemType(item);
+    if (itemType === "resource" && item.resourceId) {
+      if (seenResourceIds.has(item.resourceId)) {
+        return false;
+      }
+      seenResourceIds.add(item.resourceId);
+      return true;
+    }
+    if (itemType !== "course" || !item.courseId) {
+      return true;
+    }
+    if (seenCourseIds.has(item.courseId)) {
+      return false;
+    }
+    seenCourseIds.add(item.courseId);
+    return true;
+  });
 }
 
 async function decrementVariantStock(ctx: MutationCtx, items: OrderItemInput[]) {
-  const variantItems = items.filter((item) => item.variantId);
+  const variantItems = items.filter((item) => getOrderItemType(item) === "product" && item.variantId);
   if (variantItems.length === 0) {
     return;
   }
@@ -277,7 +489,7 @@ async function decrementVariantStock(ctx: MutationCtx, items: OrderItemInput[]) 
   await Promise.all(variantItems.map((item, index) => {
     const variant = variants[index];
     if (!variant || variant.stock === undefined) {
-      return null;
+      return Promise.resolve(null);
     }
     const nextStock = Math.max(0, variant.stock - item.quantity);
     return ctx.db.patch(variant._id, { stock: nextStock });
@@ -285,13 +497,14 @@ async function decrementVariantStock(ctx: MutationCtx, items: OrderItemInput[]) 
 }
 
 async function decrementProductStock(ctx: MutationCtx, items: OrderItemInput[]) {
-  if (items.length === 0) {
+  const productItems = items.filter((item) => getOrderItemType(item) === "product" && item.productId);
+  if (productItems.length === 0) {
     return;
   }
 
   const quantities = new Map<string, number>();
-  items.forEach((item) => {
-    const key = item.productId;
+  productItems.forEach((item) => {
+    const key = item.productId!;
     quantities.set(key, (quantities.get(key) ?? 0) + item.quantity);
   });
 
@@ -300,7 +513,7 @@ async function decrementProductStock(ctx: MutationCtx, items: OrderItemInput[]) 
 
   await Promise.all(products.map((product, index) => {
     if (!product || product.stock === undefined) {
-      return null;
+      return Promise.resolve(null);
     }
     const quantity = quantities.get(productIds[index]) ?? 0;
     const nextStock = Math.max(0, product.stock - quantity);
@@ -313,14 +526,15 @@ async function validateStockBeforeCreate(
   items: OrderItemInput[],
   variantStock: VariantStockSetting
 ): Promise<string | null> {
-  if (items.length === 0) {
+  const productItems = items.filter((item) => getOrderItemType(item) === "product" && item.productId);
+  if (productItems.length === 0) {
     return null;
   }
 
   if (variantStock === "product") {
     const quantities = new Map<string, number>();
-    items.forEach((item) => {
-      const key = item.productId;
+    productItems.forEach((item) => {
+      const key = item.productId!;
       quantities.set(key, (quantities.get(key) ?? 0) + item.quantity);
     });
     const productIds = Array.from(quantities.keys()) as Id<"products">[];
@@ -340,11 +554,11 @@ async function validateStockBeforeCreate(
   }
 
   const [products, variants] = await Promise.all([
-    Promise.all(items.map((item) => ctx.db.get(item.productId))),
-    Promise.all(items.map((item) => (item.variantId ? ctx.db.get(item.variantId) : null))),
+    Promise.all(productItems.map((item) => ctx.db.get(item.productId!))),
+    Promise.all(productItems.map((item) => (item.variantId ? ctx.db.get(item.variantId) : Promise.resolve(null)))),
   ]);
 
-  for (const [index, item] of items.entries()) {
+  for (const [index, item] of productItems.entries()) {
     const product = products[index];
     if (!product) {
       throw new Error("Product not found");
@@ -363,6 +577,29 @@ async function validateStockBeforeCreate(
   }
 
   return null;
+}
+
+async function validateCheckoutCommerce(ctx: MutationCtx, items: OrderItemInput[]) {
+  const requiredProviders = new Set<CommerceProviderKey>();
+  for (const item of items) {
+    const itemType = getOrderItemType(item);
+    if (itemType === "product") {
+      requiredProviders.add("products");
+    } else if (itemType === "service") {
+      requiredProviders.add("services");
+    } else if (itemType === "course") {
+      requiredProviders.add("courses");
+    } else if (itemType === "resource") {
+      requiredProviders.add("resources");
+    }
+  }
+
+  for (const provider of requiredProviders) {
+    if (!await isProviderCartCapable(ctx, provider)) {
+      const label = provider === "products" ? "Sản phẩm" : provider === "services" ? "Dịch vụ" : provider === "resources" ? "Tài nguyên" : "Khóa học";
+      throw new Error(`${label} chưa được bật chế độ giỏ hàng và thanh toán`);
+    }
+  }
 }
 
 const orderDoc = v.object({
@@ -704,6 +941,16 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { variantPricing, variantStock } = await getVariantSettings(ctx);
     const normalizedItems = await normalizeOrderItems(ctx, args.items, variantPricing);
+    const fulfillmentError = validateOrderFulfillmentPolicy({
+      items: normalizedItems,
+      paymentMethod: args.paymentMethod,
+      shippingFee: args.shippingFee,
+      shippingMethodId: args.shippingMethodId,
+      shippingMethodLabel: args.shippingMethodLabel,
+    });
+    if (fulfillmentError) {
+      return { ok: false, error: fulfillmentError };
+    }
     const stockCheckEnabled = await isStockCheckEnabled(ctx);
     if (stockCheckEnabled) {
       const stockError = await validateStockBeforeCreate(ctx, normalizedItems, variantStock);
@@ -720,6 +967,8 @@ export const create = mutation({
       isDigitalOrder,
       status: defaultStatus,
     });
+    await syncCourseStudentsForOrder(ctx, orderId);
+    await syncResourceCustomersForOrder(ctx, orderId);
 
     if (stockCheckEnabled) {
       if (variantStock === "variant") {
@@ -759,6 +1008,10 @@ export const update = mutation({
     if (args.status && args.status !== oldOrder.status) {
       await handleOrderStatusTransition(ctx, args.id, oldOrder.status, args.status);
     }
+    if ((args.status && args.status !== oldOrder.status) || args.paymentStatus !== undefined) {
+      await syncCourseStudentsForOrder(ctx, args.id);
+      await syncResourceCustomersForOrder(ctx, args.id);
+    }
     return null;
   },
   returns: v.null(),
@@ -775,6 +1028,8 @@ export const updateStatus = mutation({
     await OrdersModel.updateStatus(ctx, args);
 
     await handleOrderStatusTransition(ctx, args.id, oldOrder.status, args.status);
+    await syncCourseStudentsForOrder(ctx, args.id);
+    await syncResourceCustomersForOrder(ctx, args.id);
     return null;
   },
   returns: v.null(),
@@ -784,6 +1039,8 @@ export const updatePaymentStatus = mutation({
   args: { id: v.id("orders"), paymentStatus: paymentStatus },
   handler: async (ctx, args) => {
     await OrdersModel.updatePaymentStatus(ctx, args);
+    await syncCourseStudentsForOrder(ctx, args.id);
+    await syncResourceCustomersForOrder(ctx, args.id);
     return null;
   },
   returns: v.null(),
@@ -846,6 +1103,8 @@ export const cancel = mutation({
     
     // Gửi email hủy đơn hàng
     await handleOrderStatusTransition(ctx, args.id, order.status, cancelledStatus.key);
+    await syncCourseStudentsForOrder(ctx, args.id);
+    await syncResourceCustomersForOrder(ctx, args.id);
     return null;
   },
   returns: v.null(),
@@ -894,6 +1153,8 @@ export const cancelOwnOrder = mutation({
 
     // Gửi email hủy đơn hàng
     await handleOrderStatusTransition(ctx, order._id, order.status, cancelledStatus.key);
+    await syncCourseStudentsForOrder(ctx, order._id);
+    await syncResourceCustomersForOrder(ctx, order._id);
 
     const stockCheckEnabled = await isStockCheckEnabled(ctx);
     if (stockCheckEnabled) {
@@ -901,6 +1162,9 @@ export const cancelOwnOrder = mutation({
       if (variantStock === "variant") {
         await Promise.all(
           order.items.map(async (item) => {
+            if (getOrderItemType(item) !== "product" || !item.productId) {
+              return;
+            }
             if (item.variantId) {
               const variant = await ctx.db.get(item.variantId);
               if (variant && variant.stock !== undefined) {
@@ -917,6 +1181,9 @@ export const cancelOwnOrder = mutation({
       } else {
         await Promise.all(
           order.items.map(async (item) => {
+            if (getOrderItemType(item) !== "product" || !item.productId) {
+              return;
+            }
             const product = await ctx.db.get(item.productId);
             if (product && product.stock !== undefined) {
               await ctx.db.patch(item.productId, { stock: product.stock + item.quantity });
@@ -1077,8 +1344,19 @@ export const placeOrder = mutation({
 
     // Siết chặt validation đầu vào
     if (normalizedItems.length === 0) {
-      throw new Error("Không có sản phẩm để đặt hàng");
+      throw new Error("Không có mục nào để đặt hàng");
     }
+    const fulfillmentError = validateOrderFulfillmentPolicy({
+      items: normalizedItems,
+      paymentMethod: args.paymentMethod,
+      shippingFee: args.shippingFee,
+      shippingMethodId: args.shippingMethodId,
+      shippingMethodLabel: args.shippingMethodLabel,
+    });
+    if (fulfillmentError) {
+      throw new Error(fulfillmentError);
+    }
+    await validateCheckoutCommerce(ctx, normalizedItems);
     for (const item of normalizedItems) {
       if (item.quantity <= 0 || !Number.isFinite(item.quantity)) {
         throw new Error(`Số lượng sản phẩm ${item.productName} không hợp lệ`);
@@ -1119,6 +1397,8 @@ export const placeOrder = mutation({
       status: defaultStatus,
       isDigitalOrder,
     });
+    await syncCourseStudentsForOrder(ctx, orderId);
+    await syncResourceCustomersForOrder(ctx, orderId);
 
     // Lưu promotion usage sau khi đã có orderId hợp lệ
     if (args.promotionId) {
@@ -1153,11 +1433,7 @@ export const placeOrder = mutation({
         .collect();
 
       for (const item of cartItems) {
-        const isInOrder = normalizedItems.some(
-          (orderItem) =>
-            orderItem.productId === item.productId &&
-            orderItem.variantId === item.variantId
-        );
+        const isInOrder = normalizedItems.some((orderItem) => isSameOrderLine(orderItem, item));
         if (isInOrder) {
           await ctx.db.delete(item._id);
         }
@@ -1183,33 +1459,49 @@ export const placeOrder = mutation({
     const orderDoc = await ctx.db.get(orderId);
     const customerDoc = await ctx.db.get(customerId);
     if (orderDoc && customerDoc) {
-      const siteUrlSetting = await ctx.db
-        .query("settings")
-        .withIndex("by_key", (q) => q.eq("key", "site_url"))
-        .unique();
-      const siteUrl = siteUrlSetting?.value ? String(siteUrlSetting.value).trim() : "https://thanshoes.vn";
+      const settings = await getSettingsByKeys(ctx, [
+        "site_url",
+        "site_name",
+        ...EMAIL_CONFIG_SETTING_KEYS,
+      ]);
+      const siteUrl = settings.site_url ? String(settings.site_url as string).trim() : "http://localhost:3000";
+      const brandName = settings.site_name ? String(settings.site_name as string).trim() : "YourBrand";
+      const emailStatus = getEmailConfigurationStatus(settings);
 
-      if (customerDoc.email) {
-        const customerHtml = getOrderPlacedCustomerTemplate(orderDoc, siteUrl);
-        await ctx.scheduler.runAfter(0, internal.email.sendTransactionalEmail, {
-          to: customerDoc.email,
-          subject: `[Thanshoes] Xác nhận đơn hàng #${orderDoc.orderNumber}`,
-          html: customerHtml,
-          eventType: "order_placed",
-          orderId: orderDoc._id,
+      if (!emailStatus.configured) {
+        await ctx.db.insert("notifications", {
+          title: "Cần gửi thông báo thủ công",
+          content: `Đơn #${orderDoc.orderNumber} đã tạo thành công. Email thông báo chưa được gửi tự động. Vui lòng xử lý đơn và gửi mã đơn cho khách nếu cần tra cứu.`,
+          type: "warning",
+          status: "Sent",
+          targetType: "users",
+          order: Date.now(),
+          readCount: 0,
+          sentAt: Date.now(),
         });
-      }
+      } else {
+        if (customerDoc.email) {
+          const customerHtml = getOrderPlacedCustomerTemplate(orderDoc, siteUrl, brandName);
+          await ctx.scheduler.runAfter(0, internal.email.sendTransactionalEmail, {
+            to: customerDoc.email,
+            subject: `[${brandName}] Xác nhận đơn hàng #${orderDoc.orderNumber}`,
+            html: customerHtml,
+            eventType: "order_placed",
+            orderId: orderDoc._id,
+          });
+        }
 
-      const shopEmails = await resolveOrderNotificationEmails(ctx);
-      if (shopEmails) {
-        const shopHtml = getOrderPlacedShopTemplate(orderDoc, customerDoc, siteUrl);
-        await ctx.scheduler.runAfter(0, internal.email.sendTransactionalEmail, {
-          to: shopEmails,
-          subject: `[Thanshoes] Đơn hàng mới #${orderDoc.orderNumber}`,
-          html: shopHtml,
-          eventType: "order_placed_shop",
-          orderId: orderDoc._id,
-        });
+        const shopEmails = await resolveOrderNotificationEmails(ctx);
+        if (shopEmails) {
+          const shopHtml = getOrderPlacedShopTemplate(orderDoc, customerDoc, siteUrl, brandName);
+          await ctx.scheduler.runAfter(0, internal.email.sendTransactionalEmail, {
+            to: shopEmails,
+            subject: `[${brandName}] Đơn hàng mới #${orderDoc.orderNumber}`,
+            html: shopHtml,
+            eventType: "order_placed_shop",
+            orderId: orderDoc._id,
+          });
+        }
       }
     }
 
@@ -1253,6 +1545,8 @@ export const cancelByCustomer = mutation({
 
     // Gửi email hủy đơn hàng
     await handleOrderStatusTransition(ctx, order._id, order.status, cancelledStatus.key, { notifyShopOnCancel: true });
+    await syncCourseStudentsForOrder(ctx, order._id);
+    await syncResourceCustomersForOrder(ctx, order._id);
 
     const stockCheckEnabled = await isStockCheckEnabled(ctx);
     if (stockCheckEnabled) {
@@ -1260,6 +1554,9 @@ export const cancelByCustomer = mutation({
       if (variantStock === "variant") {
         await Promise.all(
           order.items.map(async (item) => {
+            if (getOrderItemType(item) !== "product" || !item.productId) {
+              return;
+            }
             if (item.variantId) {
               const variant = await ctx.db.get(item.variantId);
               if (variant && variant.stock !== undefined) {
@@ -1276,6 +1573,9 @@ export const cancelByCustomer = mutation({
       } else {
         await Promise.all(
           order.items.map(async (item) => {
+            if (getOrderItemType(item) !== "product" || !item.productId) {
+              return;
+            }
             const product = await ctx.db.get(item.productId);
             if (product && product.stock !== undefined) {
               await ctx.db.patch(item.productId, { stock: product.stock + item.quantity });

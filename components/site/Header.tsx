@@ -3,13 +3,13 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { PublicImage as Image } from '@/components/shared/PublicImage';
-import { useRouter } from 'next/navigation';
-import { useQuery } from 'convex/react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { useBrandColors, useSiteSettings } from './hooks';
 import dynamic from 'next/dynamic';
-import { ChevronDown, ChevronRight, Heart, LogOut, Mail, Package, Phone, Search, User } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Heart, LogOut, Mail, Package, Phone, Search, User, X, Sun, Moon } from 'lucide-react';
 import { CartIcon } from './CartIcon';
 import { useCustomerAuth } from '@/app/(site)/auth/context';
 import { getMenuColors, resolveMenuLayerColors, type MenuColors, type MenuLayerColorConfig } from './header/colors';
@@ -40,13 +40,15 @@ export type HeaderInitialData = {
     products?: boolean;
     posts?: boolean;
     services?: boolean;
+    courses?: boolean;
+    resources?: boolean;
     customers?: boolean;
     orders?: boolean;
     customerLogin?: boolean;
   };
 };
 
-type HeaderStyle = 'classic' | 'topbar' | 'allbirds';
+type HeaderStyle = 'classic' | 'topbar' | 'allbirds' | 'darkglass';
 type DropdownAlign = 'center' | 'left' | 'right';
 
 interface TopbarConfig {
@@ -66,6 +68,8 @@ interface SearchConfig {
   searchProducts?: boolean;
   searchPosts?: boolean;
   searchServices?: boolean;
+  searchCourses?: boolean;
+  searchResources?: boolean;
 }
 
 type LogoBackgroundStyle = 'none' | 'border' | 'shadow' | 'soft' | 'solid' | 'outline' | 'hairline' | 'inset' | 'pill';
@@ -92,6 +96,8 @@ interface HeaderConfig {
   cart?: { show?: boolean };
   wishlist?: { show?: boolean };
   login?: { show?: boolean; text?: string };
+  showDarkModeToggle?: boolean;
+  enableGlassmorphism?: boolean;
 }
 
 const DEFAULT_CONFIG: HeaderConfig = {
@@ -112,7 +118,7 @@ const DEFAULT_CONFIG: HeaderConfig = {
   cart: { show: true },
   cta: { show: true, text: 'Liên hệ', url: '/contact' },
   login: { show: true, text: 'Đăng nhập' },
-  search: { placeholder: 'Tìm kiếm...', searchPosts: true, searchProducts: true, searchServices: true, show: true },
+  search: { placeholder: 'Tìm kiếm...', searchPosts: true, searchProducts: true, searchServices: true, searchCourses: true, searchResources: true, show: true },
   topbar: {
     email: 'contact@example.com',
     hotline: '1900 1234',
@@ -124,6 +130,8 @@ const DEFAULT_CONFIG: HeaderConfig = {
     slogan: '',
   },
   wishlist: { show: true },
+  showDarkModeToggle: false,
+  enableGlassmorphism: false,
 };
 
 const DEFAULT_LINKS = {
@@ -197,9 +205,90 @@ const HeaderSearchAutocomplete = dynamic(
   { ssr: false, loading: () => null }
 );
 
-export function Header({ initialData, staticMode }: { initialData?: HeaderInitialData; staticMode?: boolean }) {
+function DarkModeToggle({
+  isDark: controlledDark,
+  onThemeToggle,
+  tokens,
+  variant: _variant = 'desktop',
+}: {
+  isDark?: boolean;
+  onThemeToggle?: (isDark: boolean) => void;
+  tokens: any;
+  variant?: 'desktop' | 'mobile';
+}) {
+  const [mounted, setMounted] = useState(false);
+  const [isDark, setIsDark] = useState(Boolean(controlledDark));
+  const setSetting = useMutation(api.settings.set);
+
+  useEffect(() => {
+    setMounted(true);
+    setIsDark(controlledDark ?? document.documentElement.classList.contains('dark'));
+
+    const handleThemeChange = () => {
+      setIsDark(controlledDark ?? document.documentElement.classList.contains('dark'));
+    };
+    window.addEventListener('site-theme-change', handleThemeChange);
+    return () => {
+      window.removeEventListener('site-theme-change', handleThemeChange);
+    };
+  }, [controlledDark]);
+
+  const toggleTheme = () => {
+    const nextDark = !isDark;
+    const nextValue = nextDark ? 'dark' : 'light';
+    if (onThemeToggle) {
+      setIsDark(nextDark);
+      onThemeToggle(nextDark);
+      return;
+    }
+    // Optimistic UI: apply theme ngay lập tức
+    const root = document.documentElement;
+    root.classList.toggle('dark', nextDark);
+    root.setAttribute('data-theme', nextValue);
+    root.style.colorScheme = nextValue;
+    window.dispatchEvent(new Event('site-theme-change'));
+    // Persist vào DB (single source of truth)
+    void setSetting({ group: 'site', key: 'site_dark_mode', value: nextValue });
+  };
+
+  if (!mounted) {
+    return <div className="w-9 h-9" />;
+  }
+
+  const color = tokens?.iconButtonText || 'currentColor';
+  const hoverBg = tokens?.iconButtonHoverBg || 'rgba(0,0,0,0.05)';
+
+  return (
+    <button
+      onClick={toggleTheme}
+      className="p-2 rounded-full transition-colors flex items-center justify-center"
+      style={{
+        color,
+        '--hover-bg': hoverBg,
+      } as React.CSSProperties}
+      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; }}
+      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+      aria-label="Toggle dark mode"
+    >
+      {isDark ? <Sun size={18} /> : <Moon size={18} />}
+    </button>
+  );
+}
+
+export function Header({
+  initialData,
+  onStaticThemeChange,
+  staticMode,
+  staticTheme,
+}: {
+  initialData?: HeaderInitialData;
+  onStaticThemeChange?: (theme: 'light' | 'dark') => void;
+  staticMode?: boolean;
+  staticTheme?: 'light' | 'dark';
+}) {
   const brandColors = useBrandColors();
   const siteSettings = useSiteSettings();
+  const effectiveIsDark = staticTheme ? staticTheme === 'dark' : siteSettings.isDark;
   const menuDataQuery = useQuery(api.menus.getFullMenu, staticMode ? 'skip' : { location: 'header' });
   const headerStyleSetting = useQuery(api.settings.getByKey, staticMode ? 'skip' : { key: 'header_style' });
   const headerConfigSetting = useQuery(api.settings.getByKey, staticMode ? 'skip' : { key: 'header_config' });
@@ -211,8 +300,12 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
   const productsModule = useQuery(api.admin.modules.getModuleByKey, staticMode ? 'skip' : { key: 'products' });
   const postsModule = useQuery(api.admin.modules.getModuleByKey, staticMode ? 'skip' : { key: 'posts' });
   const servicesModule = useQuery(api.admin.modules.getModuleByKey, staticMode ? 'skip' : { key: 'services' });
+  const coursesModule = useQuery(api.admin.modules.getModuleByKey, staticMode ? 'skip' : { key: 'courses' });
+  const resourcesModule = useQuery(api.admin.modules.getModuleByKey, staticMode ? 'skip' : { key: 'resources' });
+  const commerceCapabilities = useQuery(api.cart.getCommerceCapabilities, staticMode ? 'skip' : {});
   const customerLoginFeature = useQuery(api.admin.modules.getModuleFeature, staticMode ? 'skip' : { moduleKey: 'customers', featureKey: 'enableLogin' });
   const router = useRouter();
+  const pathname = usePathname();
   const { customer, isAuthenticated, logout } = useCustomerAuth();
   
   const menuData = menuDataQuery ?? initialData?.menuData;
@@ -253,6 +346,8 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
   const productsEnabled = productsModule?.enabled ?? initialData?.modules?.products ?? (staticMode ? Boolean(config.search?.searchProducts) : false);
   const postsEnabled = postsModule?.enabled ?? initialData?.modules?.posts ?? (staticMode ? Boolean(config.search?.searchPosts) : false);
   const servicesEnabled = servicesModule?.enabled ?? initialData?.modules?.services ?? (staticMode ? Boolean(config.search?.searchServices) : false);
+  const coursesEnabled = coursesModule?.enabled ?? initialData?.modules?.courses ?? (staticMode ? Boolean(config.search?.searchCourses) : false);
+  const resourcesEnabled = resourcesModule?.enabled ?? initialData?.modules?.resources ?? (staticMode ? Boolean(config.search?.searchResources) : false);
   const showLogin = Boolean(config.login?.show && canLogin);
   const showUserMenu = showLogin && isAuthenticated;
   const showLoginLink = showLogin && !isAuthenticated;
@@ -261,10 +356,15 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
   const canSearchProducts = Boolean(config.search?.searchProducts && productsEnabled);
   const canSearchPosts = Boolean(config.search?.searchPosts && postsEnabled);
   const canSearchServices = Boolean(config.search?.searchServices && servicesEnabled);
-  const showSearch = Boolean(config.search?.show && (canSearchProducts || canSearchPosts || canSearchServices));
-  const showCart = Boolean(config.cart?.show && cartEnabled);
+  const canSearchCourses = Boolean(config.search?.searchCourses && coursesEnabled);
+  const canSearchResources = Boolean(config.search?.searchResources && resourcesEnabled);
+  const showSearch = Boolean(config.search?.show && (canSearchProducts || canSearchPosts || canSearchServices || canSearchCourses || canSearchResources));
+  const showCart = Boolean(config.cart?.show && (commerceCapabilities?.cartAvailable ?? (cartEnabled && ordersEnabled)));
   const showWishlist = Boolean(config.wishlist?.show && wishlistEnabled);
   const ctaHref = config.cta?.url?.trim() || DEFAULT_LINKS.cta;
+  const handleStaticThemeToggle = useCallback((nextDark: boolean) => {
+    onStaticThemeChange?.(nextDark ? 'dark' : 'light');
+  }, [onStaticThemeChange]);
   
   const resolvedSiteName = siteSettings.isLoading
     ? (initialData?.site?.site_name ?? 'Website')
@@ -285,11 +385,13 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
     classic: buildLinearSteps(24, 160),
     topbar: buildLinearSteps(28, 180),
     allbirds: buildLinearSteps(16, 140),
+    darkglass: buildLinearSteps(24, 128),
   };
   const headerSpacingMap: Record<HeaderStyle, number[]> = {
     classic: [6, 8, 10, 12, 14, 16, 18],
     topbar: [4, 6, 8, 10, 12, 14, 16],
     allbirds: [6, 8, 10, 12, 14, 16, 18],
+    darkglass: [6, 8, 10, 12, 14, 16, 18],
   };
   const logoSize = logoSizeMap[headerStyle][logoSizeLevel - 1] ?? logoSizeMap[headerStyle][0];
   const headerSpacingY = headerSpacingMap[headerStyle][headerSpacingLevel - 1] ?? headerSpacingMap[headerStyle][3];
@@ -308,8 +410,18 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
   const logoContainerSize = Math.round(logoSize + Math.max(10, logoSize * 0.28));
 
   const tokens = useMemo<MenuColors>(
-    () => getMenuColors(brandColors.primary, brandColors.secondary, brandColors.mode),
-    [brandColors.primary, brandColors.secondary, brandColors.mode]
+    () => {
+      const baseTokens = getMenuColors(brandColors.primary, brandColors.secondary, brandColors.mode, effectiveIsDark);
+      if (config.enableGlassmorphism) {
+        return {
+          ...baseTokens,
+          dropdownBg: effectiveIsDark ? 'rgba(15, 23, 42, 0.65)' : 'rgba(255, 255, 255, 0.75)',
+          dropdownBorder: effectiveIsDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+        };
+      }
+      return baseTokens;
+    },
+    [brandColors.primary, brandColors.secondary, brandColors.mode, effectiveIsDark, config.enableGlassmorphism]
   );
   const layerColors = useMemo(
     () => resolveMenuLayerColors(config.layerColors, tokens, brandColors.mode),
@@ -330,12 +442,12 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
   const logoBackgroundStyles: Record<LogoBackgroundStyle, React.CSSProperties> = {
     none: {},
     border: {
-      backgroundColor: 'rgba(255, 255, 255, 0.6)',
+      backgroundColor: effectiveIsDark ? 'rgba(15, 23, 42, 0.6)' : 'rgba(255, 255, 255, 0.6)',
       border: `1px solid ${tokens.borderStrong}`,
-      boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
+      boxShadow: effectiveIsDark ? '0 2px 8px rgba(0, 0, 0, 0.3)' : '0 2px 8px rgba(15, 23, 42, 0.08)',
     },
     outline: {
-      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      backgroundColor: effectiveIsDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.2)',
       border: `1px solid ${tokens.borderStrong}`,
     },
     hairline: {
@@ -345,27 +457,27 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
     inset: {
       backgroundColor: tokens.surfaceAlt,
       border: `1px solid ${tokens.border}`,
-      boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.8)',
+      boxShadow: effectiveIsDark ? 'inset 0 1px 0 rgba(255, 255, 255, 0.05)' : 'inset 0 1px 0 rgba(255, 255, 255, 0.8)',
     },
     pill: {
-      backgroundColor: 'rgba(255, 255, 255, 0.12)',
+      backgroundColor: effectiveIsDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.12)',
       border: `1px solid ${tokens.border}`,
     },
     shadow: {
-      backgroundColor: 'rgba(255, 255, 255, 0.88)',
-      boxShadow: '0 10px 30px rgba(15, 23, 42, 0.16)',
-      border: '1px solid rgba(148, 163, 184, 0.2)',
+      backgroundColor: effectiveIsDark ? 'rgba(15, 23, 42, 0.88)' : 'rgba(255, 255, 255, 0.88)',
+      boxShadow: effectiveIsDark ? '0 10px 30px rgba(0, 0, 0, 0.4)' : '0 10px 30px rgba(15, 23, 42, 0.16)',
+      border: effectiveIsDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(148, 163, 184, 0.2)',
       backdropFilter: 'blur(10px)',
     },
     soft: {
       backgroundColor: tokens.surfaceAlt,
       border: `1px solid ${tokens.border}`,
-      boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.7)',
+      boxShadow: effectiveIsDark ? 'inset 0 1px 0 rgba(255, 255, 255, 0.05)' : 'inset 0 1px 0 rgba(255, 255, 255, 0.7)',
     },
     solid: {
       backgroundColor: tokens.textPrimary,
       border: `1px solid ${tokens.textPrimary}`,
-      boxShadow: '0 12px 28px rgba(15, 23, 42, 0.18)',
+      boxShadow: effectiveIsDark ? '0 12px 28px rgba(0, 0, 0, 0.4)' : '0 12px 28px rgba(15, 23, 42, 0.18)',
     },
   };
   const hasBackgroundFrame = logoBackgroundStyle !== 'none';
@@ -402,18 +514,17 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
       };
   
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [menuStack, setMenuStack] = useState<MenuItemWithChildren[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [activeLevel3Id, setActiveLevel3Id] = useState<string | null>(null);
   const [activeLevel4Id, setActiveLevel4Id] = useState<string | null>(null);
-  const [expandedMobileItems, setExpandedMobileItems] = useState<string[]>([]);
   const [visibleRootCount, setVisibleRootCount] = useState<number | null>(null);
   const [dropdownAlign, setDropdownAlign] = useState<Record<string, DropdownAlign>>({});
   const [flyoutDirection, setFlyoutDirection] = useState<Record<string, 'left' | 'right'>>({});
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deepMenuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const userMenuRef = useRef<HTMLDivElement | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
   const headerRowRef = useRef<HTMLDivElement | null>(null);
   const brandBlockRef = useRef<HTMLAnchorElement | null>(null);
@@ -426,13 +537,28 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const isInside = Array.from(document.querySelectorAll('.user-menu-container')).some(
+        el => el.contains(target)
+      );
+      if (!isInside) {
         setUserMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  const [isScrolled, setIsScrolled] = useState(false);
+  useEffect(() => {
+    if (headerStyle !== 'darkglass') return;
+    const handleScroll = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      setIsScrolled(scrollTop > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [headerStyle]);
 
   const clearDeepMenuCloseIntent = useCallback(() => {
     if (deepMenuTimeoutRef.current) {
@@ -644,14 +770,14 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
   const showTopbarEmail = Boolean(topbarConfig.show !== false && (topbarConfig.showEmail ?? true) && topbarConfig.email);
 
 
-  const toggleMobileItem = (id: string) => {
-    setExpandedMobileItems(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
-  };
 
   const handleMobileMenuToggle = useCallback(() => {
-    setMobileMenuOpen(prev => !prev);
+    setMobileMenuOpen(prev => {
+      if (prev) {
+        setMenuStack([]);
+      }
+      return !prev;
+    });
   }, []);
 
   const handleLogout = useCallback(async () => {
@@ -661,7 +787,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
   }, [logout, router]);
 
   const renderUserMenu = (variant: 'text' | 'icon', textClassName = '') => (
-    <div className="relative" ref={userMenuRef}>
+    <div className="relative user-menu-container">
       <button
         onClick={() => { setUserMenuOpen(prev => !prev); }}
         className={cn(
@@ -669,7 +795,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
             ? `hover:underline flex items-center gap-1 ${textClassName}`
             : 'p-2 transition-colors hover:text-[var(--menu-icon-hover)]',
         )}
-        style={variant === 'icon' ? { color: layerColors.navbar.text, ...menuVars } : undefined}
+        style={variant === 'icon' ? { color: layerColors.navbar.text, ...menuVars } : { color: layerColors.topnav.text }}
       >
         <User size={variant === 'text' ? 12 : 18} />
         {variant === 'text' && <span>{customer?.name || (config.login?.text ?? 'Tài khoản')}</span>}
@@ -734,7 +860,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
   if (menuData === undefined) {
     return (
       <header style={{ backgroundColor: tokens.surface }}>
-        <div className="max-w-7xl mx-auto px-4" style={{ paddingTop: headerSpacingY, paddingBottom: headerSpacingY }}>
+        <div className="max-w-7xl tv:max-w-[1600px] mx-auto px-4" style={{ paddingTop: headerSpacingY, paddingBottom: headerSpacingY }}>
           <div className="h-8 w-32 animate-pulse rounded" style={{ backgroundColor: tokens.placeholderBg }}></div>
         </div>
       </header>
@@ -742,8 +868,8 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
   }
 
   // Inline mobile menu button renderer
-  const renderMobileMenuButton = (isTransparent = false) => {
-    const color = isTransparent ? tokens.textInverse : layerColors.navbar.text;
+  const renderMobileMenuButton = (isTransparent = false, customColor?: string) => {
+    const color = customColor || (isTransparent ? tokens.textInverse : layerColors.navbar.text);
     return (
       <button onClick={handleMobileMenuToggle} className={cn('p-2 rounded-lg lg:hidden')} style={{ color }}>
         <div className="w-5 h-4 flex flex-col justify-between">
@@ -900,62 +1026,148 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
     );
   });
 
-  const renderMobileNodes = (nodes: MenuItemWithChildren[], parentKey = 'root'): React.ReactNode => nodes.map((node) => {
-    const nodeKey = `${parentKey}-${node._id}`;
-    const isExpanded = expandedMobileItems.includes(nodeKey);
+  // Mobile menu layer colors
+  // - Light: nền trắng (surface), chữ tối, border rõ => dễ đọc trên mọi brand màu
+  // - DarkGlass: nền tối trong suốt, chữ trắng
+  // layerColors.menu chỉ dùng làm màu accent ("Xem tất cả" button), không làm nền card
+  type MobileLayerColors = { bg: string; text: string; border: string; tray: string };
 
+  const darkGlassLayer: MobileLayerColors = {
+    bg: 'rgba(255, 255, 255, 0.08)',
+    text: '#ffffff',
+    border: 'rgba(255, 255, 255, 0.14)',
+    tray: 'transparent',
+  };
+
+  const lightMenuLayer: MobileLayerColors = {
+    // Card: trắng tinh — nổi rõ trên tray xám nhạt
+    bg: tokens.surface,
+    text: tokens.textPrimary,
+    border: tokens.borderStrong,
+    // Tray: xám nhạt iOS-style (surfaceAlt)
+    tray: tokens.surfaceMuted,
+  };
+
+  // Grouped List pattern (iOS Settings style):
+  // border-b trực tiếp trên item — reliable, không bị lệch như div height:1
+  const renderMobileNodes = (nodes: MenuItemWithChildren[], layer: MobileLayerColors = lightMenuLayer): React.ReactNode => {
+    if (nodes.length === 0) return null;
+    // Màu chevron: primary thương hiệu để user nhận ra ngay "có thể bấm vào"
+    const chevronColor = layer === darkGlassLayer ? 'rgba(255,255,255,0.7)' : tokens.primary;
     return (
-      <div key={node._id}>
-        {node.children.length > 0 ? (
-          <div className="w-full px-6 py-3 text-left flex items-center justify-between text-sm font-medium transition-colors hover:bg-[var(--menu-dropdown-hover-bg)]">
-            <Link
-              href={node.url}
-              target={node.openInNewTab ? '_blank' : undefined}
-              rel={node.openInNewTab ? 'noreferrer' : undefined}
-              onClick={() => { setMobileMenuOpen(false); }}
-              className="flex-1 transition-colors hover:text-[var(--menu-hover-text)]"
-              style={{ color: tokens.mobileMenuItemText, ...menuVars }}
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{ backgroundColor: layer.bg, border: `1.5px solid ${layer.border}` }}
+      >
+        {nodes.map((node, idx) => {
+          const hasChildren = node.children && node.children.length > 0;
+          const isLast = idx === nodes.length - 1;
+
+          return (
+            <div
+              key={node._id}
+              className={!isLast ? 'border-b' : ''}
+              style={!isLast ? { borderColor: layer.border } : {}}
             >
-              {node.label}
-            </Link>
-            <button
-              type="button"
-              aria-label={`Mở menu con ${node.label}`}
-              aria-expanded={isExpanded}
-              aria-controls={`mobile-menu-${nodeKey}`}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                toggleMobileItem(nodeKey);
-              }}
-              className="ml-3 flex items-center justify-center"
-              style={{ color: tokens.mobileMenuItemText, ...menuVars }}
-            >
-              <ChevronDown size={16} className={cn('transition-transform', isExpanded && 'rotate-180')} />
-            </button>
-          </div>
-        ) : (
-          <Link
-            href={node.url}
-            target={node.openInNewTab ? '_blank' : undefined}
-            rel={node.openInNewTab ? 'noreferrer' : undefined}
-            onClick={() => { setMobileMenuOpen(false); }}
-            className="block w-full px-6 py-3 text-left text-sm font-medium transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-hover-text)]"
-            style={{ color: tokens.mobileMenuItemText, ...menuVars }}
-          >
-            {node.label}
-          </Link>
-        )}
-        {node.children.length > 0 && isExpanded && (
-          <div id={`mobile-menu-${nodeKey}`} style={{ backgroundColor: tokens.surface }}>
-            <div className="border-l-2 ml-6" style={{ borderColor: tokens.mobileMenuSubItemBorder }}>
-              {renderMobileNodes(node.children, nodeKey)}
+              {hasChildren ? (
+                <button
+                  type="button"
+                  onClick={() => setMenuStack(prev => [...prev, node])}
+                  className="flex items-center justify-between w-full py-4 px-5 text-sm font-semibold text-left active:opacity-60"
+                  style={{ color: layer.text, ...menuVars }}
+                >
+                  <span>{node.label}</span>
+                  <ChevronRight size={18} className="shrink-0" style={{ color: chevronColor }} />
+                </button>
+              ) : (
+                <Link
+                  href={node.url}
+                  target={node.openInNewTab ? '_blank' : undefined}
+                  rel={node.openInNewTab ? 'noreferrer' : undefined}
+                  onClick={() => { setMobileMenuOpen(false); setMenuStack([]); }}
+                  className="block w-full py-4 px-5 text-sm font-semibold active:opacity-60"
+                  style={{ color: layer.text, ...menuVars }}
+                >
+                  {node.label}
+                </Link>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })}
       </div>
     );
-  });
+  };
+
+  const renderMobileMenuContent = (isDarkGlass = false) => {
+    const layer = isDarkGlass ? darkGlassLayer : lightMenuLayer;
+    const currentNode = menuStack[menuStack.length - 1] || null;
+    const displayItems = currentNode ? currentNode.children : menuTree;
+
+    // Nút "Xem tất cả": màu primary thương hiệu, text APCA-safe
+    const viewAllBg = isDarkGlass ? 'rgba(255,255,255,0.15)' : tokens.primary;
+    const viewAllBorder = isDarkGlass ? 'rgba(255,255,255,0.2)' : tokens.primary;
+    const viewAllText = isDarkGlass ? '#ffffff' : tokens.textInverse;
+
+    // Header drill-down: màu neutral đậm để đọc rõ bất kể brand
+    const headerText = isDarkGlass ? '#ffffff' : tokens.textPrimary;
+    const headerBorder = isDarkGlass ? 'rgba(255,255,255,0.14)' : tokens.border;
+    const headerBg = isDarkGlass ? 'rgba(0,0,0,0.2)' : tokens.surface;
+
+    return (
+      <div className="flex flex-col h-full w-full">
+        {/* Drill-down header: Back + Tên danh mục + Close */}
+        {menuStack.length > 0 && (
+          <div 
+            className="flex items-center justify-between border-b px-2 py-2"
+            style={{ borderColor: headerBorder, backgroundColor: headerBg }}
+          >
+            <button 
+              onClick={() => setMenuStack(prev => prev.slice(0, -1))} 
+              className="flex items-center gap-1 py-2 px-3 rounded-lg hover:opacity-70 transition-opacity"
+              style={{ color: tokens.primary }}
+            >
+              <ArrowLeft size={17} />
+              <span className="text-sm font-medium">Quay lại</span>
+            </button>
+            <span className="font-bold text-sm flex-1 text-center truncate px-2" style={{ color: headerText }}>
+              {currentNode?.label}
+            </span>
+            <button 
+              onClick={() => { setMobileMenuOpen(false); setMenuStack([]); }} 
+              className="p-2 px-3 rounded-lg hover:opacity-70 transition-opacity"
+              style={{ color: headerText }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+        )}
+        
+        {/* Menu list — tray xám nhạt, card trắng bên trong */}
+        <div 
+          className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[70vh]"
+          style={{ backgroundColor: isDarkGlass ? 'transparent' : layer.tray }}
+        >
+          {/* Nút xem tất cả danh mục cha — màu thương hiệu primary */}
+          {currentNode && (
+            <div className="rounded-xl overflow-hidden shadow-sm">
+              <Link
+                href={currentNode.url}
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setMenuStack([]);
+                }}
+                className="block w-full py-4 px-5 text-sm font-bold transition-opacity hover:opacity-90 text-center"
+                style={{ backgroundColor: viewAllBg, borderColor: viewAllBorder, color: viewAllText }}
+              >
+                Xem tất cả {currentNode.label}
+              </Link>
+            </div>
+          )}
+          {renderMobileNodes(displayItems, layer)}
+        </div>
+      </div>
+    );
+  };
 
   // Classic Style
   if (headerStyle === 'classic') {
@@ -968,16 +1180,16 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
       <header className={cn(classicPositionClass)} style={{ ...classicBackgroundStyle, ...classicSeparatorStyle }}>
         {topbarConfig.show !== false && (
           <div className="px-4 py-2 text-xs" style={{ backgroundColor: layerColors.topnav.bg, color: layerColors.topnav.text }}>
-            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 min-w-0">
+            <div className="max-w-7xl tv:max-w-[1600px] mx-auto flex items-center justify-between gap-4 min-w-0">
               <div className="flex items-center gap-4">
                 {showTopbarHotline && (
-                  <a href={`tel:${topbarConfig.hotline}`} className="flex items-center gap-1">
+                  <a href={`tel:${topbarConfig.hotline}`} className="flex items-center gap-1" style={{ color: layerColors.topnav.text }}>
                     <Phone size={12} />
                     <span>{topbarConfig.hotline}</span>
                   </a>
                 )}
                 {showTopbarEmail && (
-                  <a href={`mailto:${topbarConfig.email}`} className="hidden sm:flex items-center gap-1">
+                  <a href={`mailto:${topbarConfig.email}`} className="hidden sm:flex items-center gap-1" style={{ color: layerColors.topnav.text }}>
                     <Mail size={12} />
                     <span>{topbarConfig.email}</span>
                   </a>
@@ -991,13 +1203,13 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
               <div className="flex items-center gap-3">
                 {showTrackOrder && (
                   <>
-                    <Link href={DEFAULT_LINKS.trackOrder} className="hover:underline hidden sm:inline">Theo dõi đơn hàng</Link>
+                    <Link href={DEFAULT_LINKS.trackOrder} className="hover:underline hidden sm:inline" style={{ color: layerColors.topnav.text }}>Theo dõi đơn hàng</Link>
                   </>
                 )}
                 {showTrackOrder && showLogin && <span className="hidden sm:inline" style={{ color: layerColors.topnav.text }}>|</span>}
                 {showUserMenu && renderUserMenu('text', '')}
                 {showLoginLink && (
-                  <Link href={DEFAULT_LINKS.login} className="hover:underline flex items-center gap-1">
+                  <Link href={DEFAULT_LINKS.login} className="hover:underline flex items-center gap-1" style={{ color: layerColors.topnav.text }}>
                     <User size={12} />
                     {config.login?.text ?? 'Đăng nhập'}
                   </Link>
@@ -1012,7 +1224,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
         <div
           style={{ backgroundColor: layerColors.navbar.bg, paddingTop: headerSpacingY, paddingBottom: headerSpacingY }}
         >
-          <div className="max-w-7xl mx-auto px-4 lg:px-6">
+          <div className="max-w-7xl tv:max-w-[1600px] mx-auto px-4 lg:px-6">
             <div ref={headerRowRef} className="flex items-center gap-4">
             {/* Logo */}
             <Link ref={brandBlockRef} href="/" className="flex items-center gap-3 flex-shrink-0">
@@ -1374,6 +1586,8 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                     searchProducts={canSearchProducts}
                     searchPosts={canSearchPosts}
                     searchServices={canSearchServices}
+                    searchCourses={canSearchCourses}
+                    searchResources={canSearchResources}
                     tokens={tokens}
                     className="w-48"
                     inputClassName="w-full pl-4 pr-10 py-2 rounded-full border text-sm focus:outline-none"
@@ -1386,8 +1600,11 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                   />
                 </div>
               )}
+              {config.showDarkModeToggle && (
+                <DarkModeToggle isDark={staticMode ? effectiveIsDark : undefined} onThemeToggle={staticMode ? handleStaticThemeToggle : undefined} tokens={navbarActionTokens} />
+              )}
               {showCart && (
-                <CartIcon variant="mobile" className="hidden lg:flex" tokens={tokens} />
+                <CartIcon variant="mobile" className="hidden lg:flex" tokens={navbarActionTokens} />
               )}
               {config.cta?.show && (
                 <Link
@@ -1409,8 +1626,11 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                   <Search size={20} />
                 </button>
               )}
+              {config.showDarkModeToggle && (
+                <DarkModeToggle isDark={staticMode ? effectiveIsDark : undefined} onThemeToggle={staticMode ? handleStaticThemeToggle : undefined} tokens={navbarActionTokens} variant="mobile" />
+              )}
               {showCart && (
-                <CartIcon variant="mobile" tokens={tokens} />
+                <CartIcon variant="mobile" tokens={navbarActionTokens} />
               )}
               {renderMobileMenuButton(false)}
             </div>
@@ -1425,6 +1645,8 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
               searchProducts={canSearchProducts}
               searchPosts={canSearchPosts}
               searchServices={canSearchServices}
+              searchCourses={canSearchCourses}
+              searchResources={canSearchResources}
               tokens={tokens}
               showButton={true}
               className="w-full"
@@ -1441,13 +1663,13 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t" style={{ borderColor: tokens.border, backgroundColor: tokens.mobileMenuBg }}>
-            {renderMobileNodes(menuTree)}
+          <div className="lg:hidden border-t" style={{ borderColor: tokens.border, backgroundColor: tokens.surfaceMuted }}>
+            {renderMobileMenuContent(false)}
             {config.cta?.show && (
-              <div className="p-4">
+              <div className="p-4 border-t" style={{ borderColor: tokens.border }}>
               <Link 
                   href={ctaHref} 
-                  onClick={() =>{  setMobileMenuOpen(false); }}
+                  onClick={() =>{  setMobileMenuOpen(false); setMenuStack([]); }}
                   className="block w-full py-2.5 text-sm font-medium rounded-lg text-center" 
                   style={{ backgroundColor: tokens.ctaBg, color: tokens.ctaText }}
                 >
@@ -1469,16 +1691,16 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
         {/* Topbar */}
         {topbarConfig.show !== false && (
           <div className="px-4 py-2 text-xs" style={{ backgroundColor: layerColors.topnav.bg, color: layerColors.topnav.text }}>
-            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 min-w-0">
+            <div className="max-w-7xl tv:max-w-[1600px] mx-auto flex items-center justify-between gap-4 min-w-0">
               <div className="flex items-center gap-4">
                 {showTopbarHotline && (
-                  <a href={`tel:${topbarConfig.hotline}`} className="flex items-center gap-1">
+                  <a href={`tel:${topbarConfig.hotline}`} className="flex items-center gap-1" style={{ color: layerColors.topnav.text }}>
                     <Phone size={12} />
                     <span>{topbarConfig.hotline}</span>
                   </a>
                 )}
                 {showTopbarEmail && (
-                  <a href={`mailto:${topbarConfig.email}`} className="hidden sm:flex items-center gap-1">
+                  <a href={`mailto:${topbarConfig.email}`} className="hidden sm:flex items-center gap-1" style={{ color: layerColors.topnav.text }}>
                     <Mail size={12} />
                     <span>{topbarConfig.email}</span>
                   </a>
@@ -1492,13 +1714,13 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
               <div className="flex items-center gap-3">
                 {showTrackOrder && (
                   <>
-                    <Link href={DEFAULT_LINKS.trackOrder} className="hover:underline hidden sm:inline">Theo dõi đơn hàng</Link>
+                    <Link href={DEFAULT_LINKS.trackOrder} className="hover:underline hidden sm:inline" style={{ color: layerColors.topnav.text }}>Theo dõi đơn hàng</Link>
                   </>
                 )}
                 {showTrackOrder && showLogin && <span className="hidden sm:inline" style={{ color: layerColors.topnav.text }}>|</span>}
                 {showUserMenu && renderUserMenu('text', '')}
                 {showLoginLink && (
-                  <Link href={DEFAULT_LINKS.login} className="hover:underline flex items-center gap-1">
+                  <Link href={DEFAULT_LINKS.login} className="hover:underline flex items-center gap-1" style={{ color: layerColors.topnav.text }}>
                     <User size={12} />
                     {config.login?.text ?? 'Đăng nhập'}
                   </Link>
@@ -1513,7 +1735,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
           className="px-4 border-b"
           style={{ borderColor: tokens.border, backgroundColor: layerColors.navbar.bg, paddingTop: headerSpacingY, paddingBottom: headerSpacingY }}
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <div className="max-w-7xl tv:max-w-[1600px] mx-auto flex items-center justify-between gap-4">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 flex-shrink-0">
               <div style={logoWrapStyle}>
@@ -1540,6 +1762,8 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                   searchProducts={canSearchProducts}
                   searchPosts={canSearchPosts}
                   searchServices={canSearchServices}
+                  searchCourses={canSearchCourses}
+                  searchResources={canSearchResources}
                   tokens={tokens}
                   className="w-full"
                   inputClassName="w-full pl-4 pr-10 py-2 rounded-full border text-sm focus:outline-none"
@@ -1566,8 +1790,11 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                     <Search size={20} />
                   </button>
                 )}
+                {config.showDarkModeToggle && (
+                  <DarkModeToggle isDark={staticMode ? effectiveIsDark : undefined} onThemeToggle={staticMode ? handleStaticThemeToggle : undefined} tokens={navbarActionTokens} variant="mobile" />
+                )}
                 {showCart && (
-                  <CartIcon variant="mobile" tokens={tokens} />
+                  <CartIcon variant="mobile" tokens={navbarActionTokens} />
                 )}
                 {renderMobileMenuButton(false)}
               </div>
@@ -1584,8 +1811,11 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                     <span>Yêu thích</span>
                   </Link>
                 )}
+                {config.showDarkModeToggle && (
+                  <DarkModeToggle isDark={staticMode ? effectiveIsDark : undefined} onThemeToggle={staticMode ? handleStaticThemeToggle : undefined} tokens={navbarActionTokens} />
+                )}
                 {showCart && (
-                  <CartIcon tokens={tokens} />
+                  <CartIcon tokens={navbarActionTokens} />
                 )}
                 {config.cta?.show && (
                   <Link
@@ -1608,6 +1838,8 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
               searchProducts={canSearchProducts}
               searchPosts={canSearchPosts}
               searchServices={canSearchServices}
+              searchCourses={canSearchCourses}
+              searchResources={canSearchResources}
               tokens={tokens}
               showButton={true}
               className="w-full"
@@ -1624,7 +1856,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
 
         {/* Navigation Bar */}
         <div className="hidden lg:block px-4 py-2 border-b" style={{ backgroundColor: layerColors.menu.bg, borderColor: layerColors.menu.border }}>
-          <nav className="max-w-7xl mx-auto flex items-center gap-1">
+          <nav className="max-w-7xl tv:max-w-[1600px] mx-auto flex items-center gap-1">
             {menuTree.map((item) => (
               <div
                 key={item._id}
@@ -1810,13 +2042,13 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t" style={{ borderColor: tokens.border, backgroundColor: tokens.surface }}>
-            {renderMobileNodes(menuTree)}
+          <div className="lg:hidden border-t" style={{ borderColor: tokens.border, backgroundColor: tokens.surfaceMuted }}>
+            {renderMobileMenuContent(false)}
             {config.cta?.show && (
-              <div className="p-4">
+              <div className="p-4 border-t" style={{ borderColor: tokens.border }}>
                 <Link
                   href={ctaHref}
-                  onClick={() =>{  setMobileMenuOpen(false); }}
+                  onClick={() =>{  setMobileMenuOpen(false); setMenuStack([]); }}
                   className="block w-full py-2.5 text-sm font-medium rounded-lg text-center"
                   style={{ backgroundColor: tokens.ctaBg, color: tokens.ctaText }}
                 >
@@ -1830,21 +2062,517 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
     );
   }
 
+  // Dark Glass Style
+  if (headerStyle === 'darkglass') {
+    const pillLogoSize = Math.min(64, logoSize);
+
+    const renderDarkGlassNav = (textClassName: string) => (
+      <nav className="hidden lg:flex items-center gap-6">
+        {menuTree.map((item) => {
+          const hasSubItems = item.children.some((child) => child.children.length > 0);
+          const totalSubItems = item.children.reduce((acc, child) => acc + child.children.length, 0);
+          const isMega = item.children.length >= 3 || totalSubItems > 6;
+          const isMedium = !isMega && (item.children.length > 1 || hasSubItems);
+          const dropdownWidthValue = isMega ? 720 : isMedium ? 420 : 240;
+
+          return (
+            <div
+              key={item._id}
+              className="relative"
+              ref={(el) => { dropdownTriggerRefs.current[item._id] = el; }}
+              onMouseEnter={() => {
+                handleMenuEnterWithWidth(item._id, dropdownWidthValue);
+              }}
+              onMouseLeave={handleMenuLeave}
+            >
+              <Link
+                href={item.url}
+                target={item.openInNewTab ? '_blank' : undefined}
+                className={cn('text-sm font-semibold uppercase tracking-wide transition-colors flex items-center gap-1', textClassName)}
+                style={{
+                  color: hoveredItem === item._id ? tokens.primary : '#ffffff',
+                  ...menuVars
+                }}
+              >
+                <span>{item.label}</span>
+                {item.children.length > 0 && (
+                  <ChevronDown size={14} className={cn("transition-transform duration-200 shrink-0", hoveredItem === item._id && "rotate-180")} />
+                )}
+              </Link>
+
+              {item.children.length > 0 && hoveredItem === item._id && (
+                <div
+                  className={cn(
+                    'absolute top-full pt-6 z-50',
+                    getDropdownPositionClass(dropdownAlign[item._id] ?? 'center')
+                  )}
+                >
+                  {isDeepMenuForItem(item._id) ? (
+                    <div
+                      className={cn(r.popup, 'border p-5 shadow-xl', getMegaMenuWidthClass(Math.min(Math.max(item.children.length, 1), 5)))}
+                      style={{
+                        backgroundColor: tokens.dropdownBg,
+                        borderColor: tokens.dropdownBorder,
+                        maxWidth: getViewportSafeMaxWidth(),
+                      }}
+                    >
+                      <div className={cn('grid gap-6', getMegaMenuGridClass(Math.min(Math.max(item.children.length, 1), 5)))}>
+                        {item.children.map((child) => (
+                          <div key={child._id} className="space-y-3">
+                            <Link
+                              href={child.url}
+                              target={child.openInNewTab ? '_blank' : undefined}
+                              className="block text-sm font-semibold whitespace-normal break-words leading-snug"
+                              style={{ color: level1Color }}
+                            >
+                              {child.label}
+                            </Link>
+                            <div className="space-y-1">
+                              {child.children.length > 0 && child.children.map((sub) => {
+                                const isLevel3Active = activeLevel3Id === sub._id;
+
+                                if (config.flatSubMenus && sub.children.length > 0) {
+                                  return (
+                                    <div key={sub._id} className="mt-4 mb-2 first:mt-0">
+                                      <div
+                                        className="mb-1.5 font-bold uppercase tracking-wider text-[11px] border-l-2 pl-2"
+                                        style={{ color: tokens.brandBadgeBg || tokens.textPrimary, borderColor: tokens.brandBadgeBg || tokens.borderStrong }}
+                                      >
+                                        {sub.label}
+                                      </div>
+                                      <div className="space-y-0.5 pl-2 max-h-[220px] overflow-y-auto scrollbar-menu-thin">
+                                        {sub.children.map(leaf => (
+                                          <Link
+                                            key={leaf._id}
+                                            href={leaf.url}
+                                            target={leaf.openInNewTab ? '_blank' : undefined}
+                                            className={cn('block py-1.5 text-[13px] transition-colors hover:text-[var(--menu-dropdown-hover-text)]', r.item)}
+                                            style={{ color: tokens.textSubtle, ...menuVars }}
+                                          >
+                                            {leaf.label}
+                                          </Link>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <div
+                                    key={sub._id}
+                                    className="relative"
+                                    onMouseEnter={() => {
+                                      clearDeepMenuCloseIntent();
+                                      setActiveLevel3Id(sub._id);
+                                    }}
+                                    onMouseLeave={() => {
+                                      if (activeLevel4Id !== sub._id) {
+                                        setActiveLevel3Id(prev => (prev === sub._id ? null : prev));
+                                      }
+                                      scheduleDeepMenuClose();
+                                    }}
+                                  >
+                                    <Link
+                                      href={sub.url}
+                                      target={sub.openInNewTab ? '_blank' : undefined}
+                                      rel={sub.openInNewTab ? 'noreferrer' : undefined}
+                                      className={cn('flex min-w-0 items-start justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]', r.item)}
+                                      style={{
+                                        ...(isLevel3Active ? { backgroundColor: tokens.dropdownItemHoverBg, color: tokens.dropdownItemHoverText } : { color: tokens.dropdownItemText }),
+                                        ...menuVars,
+                                      }}
+                                    >
+                                      <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug">{sub.label}</span>
+                                      {sub.children.length > 0 && <ChevronRight size={10} className={cn('transition-transform duration-200', isLevel3Active && 'rotate-90')} />}
+                                    </Link>
+                                    {sub.children.length > 0 && isLevel3Active && (
+                                      <div
+                                        className="absolute left-full top-0 ml-1 z-50"
+                                        onMouseEnter={clearDeepMenuCloseIntent}
+                                        onMouseLeave={scheduleDeepMenuClose}
+                                      >
+                                        <div
+                                          className={cn(
+                                            r.dropdown,
+                                            'border py-2 min-w-[220px] max-w-[min(300px,calc(100vw-2rem))] shadow-xl',
+                                            !sub.children.some((child) => child.children && child.children.length > 0) && "overflow-y-auto scrollbar-menu-thin"
+                                          )}
+                                          style={{
+                                            backgroundColor: tokens.dropdownBg,
+                                            borderColor: tokens.dropdownBorder,
+                                            maxHeight: !sub.children.some((child) => child.children && child.children.length > 0) ? 'min(60vh, 290px)' : undefined,
+                                          }}
+                                        >
+                                          {renderDesktopFlyoutNodes(sub.children, true)}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className={cn(
+                        "rounded-lg border py-2 min-w-[200px]",
+                        !item.children.some((child) => child.children && child.children.length > 0) && "overflow-y-auto scrollbar-menu-thin"
+                      )}
+                      style={{
+                        backgroundColor: tokens.dropdownBg,
+                        borderColor: tokens.dropdownBorder,
+                        maxWidth: getViewportSafeMaxWidth(),
+                        maxHeight: !item.children.some((child) => child.children && child.children.length > 0) ? 'min(70vh, 290px)' : undefined,
+                      }}
+                    >
+                      {item.children.map((child) => (
+                        <div
+                          key={child._id}
+                          className="relative group/child"
+                          onMouseEnter={(event) => {
+                            updateFlyoutDirection(`flyout-child-${child._id}`, event.currentTarget);
+                          }}
+                        >
+                          <Link
+                            href={child.url}
+                            target={child.openInNewTab ? '_blank' : undefined}
+                            rel={child.openInNewTab ? 'noreferrer' : undefined}
+                            className="flex min-w-0 items-start justify-between gap-2 px-4 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]"
+                            style={{ color: tokens.dropdownItemText, ...menuVars }}
+                          >
+                            <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug">{child.label}</span>
+                            {child.children.length > 0 && <ChevronRight size={10} className="transition-transform duration-200 group-hover/child:rotate-90" />}
+                          </Link>
+                          {child.children.length > 0 && (
+                            <div
+                              className={cn(
+                                'absolute top-0 hidden group-hover/child:block',
+                                (flyoutDirection[`flyout-child-${child._id}`] ?? 'right') === 'left' ? 'right-full mr-1' : 'left-full ml-1'
+                              )}
+                            >
+                              <div
+                                className="rounded-lg border py-2 min-w-[180px] overflow-y-auto scrollbar-menu-thin"
+                                style={{ 
+                                  backgroundColor: tokens.dropdownBg, 
+                                  borderColor: tokens.dropdownBorder,
+                                  maxHeight: 'min(70vh, 290px)',
+                                }}
+                              >
+                                {child.children.map((sub) => (
+                                  <Link
+                                    key={sub._id}
+                                    href={sub.url}
+                                    target={sub.openInNewTab ? '_blank' : undefined}
+                                    rel={sub.openInNewTab ? 'noreferrer' : undefined}
+                                    className="block px-4 py-2 text-sm whitespace-normal break-words leading-snug transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-sub-hover-text)]"
+                                    style={{ color: tokens.dropdownSubItemText, ...menuVars }}
+                                  >
+                                    {sub.label}
+                                  </Link>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+    );
+
+    const renderDarkGlassLogo = (size: number) => {
+      const desktopSize = size;
+      const mobileSize = Math.min(36, size);
+      
+      const logoVars = {
+        '--logo-wrap-w-desktop': `${hasBackgroundFrame ? desktopSize + 16 : desktopSize}px`,
+        '--logo-wrap-w-mobile': `${hasBackgroundFrame ? mobileSize + 16 : mobileSize}px`,
+        '--logo-wrap-h-desktop': logo ? 'auto' : `${hasBackgroundFrame ? desktopSize + 16 : desktopSize}px`,
+        '--logo-wrap-h-mobile': logo ? 'auto' : `${hasBackgroundFrame ? mobileSize + 16 : mobileSize}px`,
+        '--logo-inner-w-desktop': `${desktopSize}px`,
+        '--logo-inner-w-mobile': `${mobileSize}px`,
+        '--logo-inner-h-desktop': logo ? 'auto' : `${desktopSize}px`,
+        '--logo-inner-h-mobile': logo ? 'auto' : `${mobileSize}px`,
+      } as React.CSSProperties;
+
+      return (
+        <Link href="/" className="flex items-center gap-3 flex-shrink-0">
+          <div 
+            style={{ 
+              ...logoWrapStyle, 
+              ...logoVars, 
+              width: undefined, 
+              height: undefined 
+            }}
+            className="w-[var(--logo-wrap-w-mobile)] lg:w-[var(--logo-wrap-w-desktop)] h-[var(--logo-wrap-h-mobile)] lg:h-[var(--logo-wrap-h-desktop)] flex items-center justify-center"
+          >
+            {logo ? (
+              <div 
+                style={{ 
+                  ...logoInnerStyle, 
+                  width: undefined, 
+                  height: undefined 
+                }}
+                className="w-[var(--logo-inner-w-mobile)] lg:w-[var(--logo-inner-w-desktop)] h-auto flex items-center justify-center"
+              >
+                <img src={logo} alt={displayName} className="h-full w-full object-contain" />
+              </div>
+            ) : (
+              <div 
+                style={{ 
+                  ...logoInnerStyle, 
+                  width: undefined, 
+                  height: undefined,
+                  backgroundColor: 'rgba(255,255,255,0.15)', 
+                  color: '#ffffff' 
+                }}
+                className="w-[var(--logo-inner-w-mobile)] lg:w-[var(--logo-inner-w-desktop)] h-[var(--logo-inner-h-mobile)] lg:h-[var(--logo-inner-h-desktop)] flex items-center justify-center"
+              >
+                {displayName.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+          </div>
+          {showBrandName && (
+            <span className="font-semibold text-white text-sm lg:text-base">{displayName}</span>
+          )}
+        </Link>
+      );
+    };
+
+    const renderDarkGlassRightActions = (_isSticky = false) => (
+      <div className="flex items-center justify-end gap-3 flex-shrink-0">
+        <div className="hidden lg:flex items-center gap-3">
+          {/* Search */}
+          {showSearch && (
+            <div className="flex items-center gap-2">
+              <div className={cn('transition-all duration-200', searchOpen ? 'w-48 opacity-100' : 'w-0 opacity-0 pointer-events-none')}>
+                <HeaderSearchAutocomplete
+                  placeholder={config.search?.placeholder}
+                  searchProducts={canSearchProducts}
+                  searchPosts={canSearchPosts}
+                  searchServices={canSearchServices}
+                  searchCourses={canSearchCourses}
+                  searchResources={canSearchResources}
+                  tokens={tokens}
+                  showButton={false}
+                  autoFocus={searchOpen}
+                  className={cn('w-48 transition-opacity', searchOpen ? 'opacity-100' : 'opacity-0')}
+                  inputClassName={cn('w-48 px-3 py-2 rounded-full border text-sm focus:outline-none transition-opacity bg-white/10 text-white border-white/20')}
+                  inputStyle={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    color: '#ffffff',
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => { setSearchOpen((prev) => !prev); }}
+                className="p-2 text-white hover:opacity-80 transition-opacity"
+              >
+                <Search size={18} />
+              </button>
+            </div>
+          )}
+
+          {/* User Menu / Login */}
+          {showUserMenu && renderUserMenu('icon')}
+          {showLoginLink && (
+            <Link
+              href={DEFAULT_LINKS.login}
+              className="p-2 text-white hover:opacity-80 transition-opacity"
+            >
+              <User size={18} />
+            </Link>
+          )}
+
+          {/* Wishlist */}
+          {showWishlist && (
+            <Link
+              href={DEFAULT_LINKS.wishlist}
+              className="p-2 text-white hover:opacity-80 transition-opacity"
+            >
+              <Heart size={18} />
+            </Link>
+          )}
+
+          {/* Dark Mode */}
+          {config.showDarkModeToggle && (
+            <DarkModeToggle isDark={staticMode ? effectiveIsDark : undefined} onThemeToggle={staticMode ? handleStaticThemeToggle : undefined} tokens={{ ...navbarActionTokens, iconButtonText: '#ffffff' }} />
+          )}
+
+          {/* Cart */}
+          {showCart && (
+            <CartIcon variant="mobile" tokens={{ ...navbarActionTokens, iconButtonText: '#ffffff' }} />
+          )}
+
+          {/* CTA Button */}
+          {config.cta?.show && (
+            <Link
+              href={ctaHref}
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-full text-xs font-semibold uppercase tracking-widest transition-transform hover:scale-105"
+              style={{ backgroundColor: tokens.primary, color: tokens.textInverse, padding: '8px 20px' }}
+            >
+              {config.cta.text ?? 'Liên hệ'}
+            </Link>
+          )}
+        </div>
+
+        {/* Mobile Menu Actions */}
+        <div className="flex items-center gap-2 lg:hidden">
+          {showSearch && (
+            <button
+               onClick={() => { setSearchOpen((prev) => !prev); }}
+               className="p-2 text-white"
+            >
+              <Search size={18} />
+            </button>
+          )}
+          {config.showDarkModeToggle && (
+            <DarkModeToggle isDark={staticMode ? effectiveIsDark : undefined} onThemeToggle={staticMode ? handleStaticThemeToggle : undefined} tokens={{ ...navbarActionTokens, iconButtonText: '#ffffff' }} variant="mobile" />
+          )}
+          {showCart && (
+            <CartIcon variant="mobile" tokens={{ ...navbarActionTokens, iconButtonText: '#ffffff' }} />
+          )}
+          {renderMobileMenuButton(true, tokens.surface)}
+        </div>
+      </div>
+    );
+
+    return (
+      <>
+        {/* Top Header */}
+        <header
+          className={cn(
+            pathname === '/' ? "absolute top-0 left-0 w-full" : "relative w-full",
+            "z-40 transition-opacity duration-300",
+            isScrolled ? "opacity-0 pointer-events-none" : "opacity-100"
+          )}
+        >
+          <div
+            className={cn(
+              "flex items-center justify-between gap-4 w-full px-4 sm:px-6 border-b transition-all duration-300",
+              pathname === '/'
+                ? "bg-black/20 backdrop-blur-md border-white/5"
+                : "bg-zinc-950 border-zinc-900"
+            )}
+            style={{
+              paddingTop: Math.min(10, headerSpacingY),
+              paddingBottom: Math.min(10, headerSpacingY),
+            }}
+          >
+            {renderDarkGlassLogo(logoSize)}
+            {renderDarkGlassNav("text-white")}
+            {renderDarkGlassRightActions(false)}
+          </div>
+        </header>
+
+        {/* Sticky Header (Fixed Pill) */}
+        <header
+          className={cn(
+            "fixed top-4 left-1/2 -translate-x-1/2 w-[96%] z-50 transition-all duration-500 ease-in-out",
+            isScrolled ? "translate-y-0 opacity-100" : "-translate-y-[150%] opacity-0 pointer-events-none"
+          )}
+        >
+          <div className="flex items-center justify-between gap-4 w-full h-[60px] sm:h-[70px] lg:h-[88px] px-4 sm:px-6 lg:px-8 bg-black/60 backdrop-blur-lg rounded-full shadow-2xl shadow-black/40 border border-white/10">
+            {renderDarkGlassLogo(pillLogoSize)}
+            {renderDarkGlassNav("text-white")}
+            {renderDarkGlassRightActions(true)}
+          </div>
+        </header>
+
+        {/* Mobile Menu Autocomplete Search */}
+        {showSearch && searchOpen && (
+          <div className="fixed top-[120px] left-0 w-full z-50 lg:hidden px-4 pb-4 bg-black/90 backdrop-blur-lg border-b border-white/10">
+            <HeaderSearchAutocomplete
+              placeholder={config.search?.placeholder}
+              searchProducts={canSearchProducts}
+              searchPosts={canSearchPosts}
+              searchServices={canSearchServices}
+              searchCourses={canSearchCourses}
+              searchResources={canSearchResources}
+              tokens={tokens}
+              showButton={true}
+              className="w-full mt-2"
+              inputClassName="w-full pl-4 pr-10 py-2 rounded-full border border-white/20 text-sm focus:outline-none bg-white/10 text-white"
+              buttonClassName="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-white"
+            />
+          </div>
+        )}
+
+        {/* Mobile Menu Drawer Overlay */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden flex justify-end bg-black/60 backdrop-blur-sm">
+            <div className="w-4/5 max-w-[320px] h-full bg-black/95 backdrop-blur-md border-l border-white/10 shadow-2xl flex flex-col">
+              {menuStack.length === 0 ? (
+                <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                  {renderDarkGlassLogo(40)}
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); setMenuStack([]); }}
+                    className="text-white p-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : null}
+              <div className="flex-1 overflow-y-auto py-2">
+                {renderMobileMenuContent(true)}
+              </div>
+              {config.cta?.show && (
+                <div className="p-4 border-t border-white/10">
+                  <Link
+                    href={ctaHref}
+                    onClick={() => { setMobileMenuOpen(false); setMenuStack([]); }}
+                    className="block w-full py-2.5 text-sm font-semibold rounded-full text-center bg-white text-black hover:bg-gray-100 transition-colors"
+                  >
+                    {config.cta.text ?? 'Liên hệ'}
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
   // Allbirds Style
   return (
-    <header className={cn(classicPositionClass)} style={{ backgroundColor: layerColors.navbar.bg, ...classicSeparatorStyle }}>
+    <header className={cn(classicPositionClass, config.enableGlassmorphism && "glass-enabled-menu")} style={{ backgroundColor: layerColors.navbar.bg, ...classicSeparatorStyle }}>
+      {config.enableGlassmorphism && (
+        <style dangerouslySetInnerHTML={{ __html: `
+          .glass-enabled-menu div.absolute.border,
+          .glass-enabled-menu div.absolute div.border,
+          .glass-enabled-menu div.absolute div.rounded-xl,
+          .glass-enabled-menu div.absolute div.rounded-lg {
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            box-shadow: ${effectiveIsDark
+              ? '0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)' 
+              : '0 10px 30px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.4)'
+            } !important;
+          }
+        `}} />
+      )}
         {topbarConfig.show !== false && (
           <div className="px-4 py-2 text-xs" style={{ backgroundColor: layerColors.topnav.bg, color: layerColors.topnav.text }}>
-            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 min-w-0">
+            <div className="max-w-7xl tv:max-w-[1600px] mx-auto flex items-center justify-between gap-4 min-w-0">
               <div className="flex items-center gap-4">
                 {showTopbarHotline && (
-                  <a href={`tel:${topbarConfig.hotline}`} className="flex items-center gap-1">
+                  <a href={`tel:${topbarConfig.hotline}`} className="flex items-center gap-1" style={{ color: layerColors.topnav.text }}>
                     <Phone size={12} />
                     <span>{topbarConfig.hotline}</span>
                   </a>
                 )}
                 {showTopbarEmail && (
-                  <a href={`mailto:${topbarConfig.email}`} className="hidden sm:flex items-center gap-1">
+                  <a href={`mailto:${topbarConfig.email}`} className="hidden sm:flex items-center gap-1" style={{ color: layerColors.topnav.text }}>
                     <Mail size={12} />
                     <span>{topbarConfig.email}</span>
                   </a>
@@ -1858,13 +2586,13 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
               <div className="flex items-center gap-3">
                 {showTrackOrder && (
                   <>
-                    <Link href={DEFAULT_LINKS.trackOrder} className="hover:underline hidden sm:inline">Theo dõi đơn hàng</Link>
+                    <Link href={DEFAULT_LINKS.trackOrder} className="hover:underline hidden sm:inline" style={{ color: layerColors.topnav.text }}>Theo dõi đơn hàng</Link>
                   </>
                 )}
                 {showTrackOrder && showLogin && <span className="hidden sm:inline" style={{ color: layerColors.topnav.text }}>|</span>}
                 {showUserMenu && renderUserMenu('text', '')}
                 {showLoginLink && (
-                  <Link href={DEFAULT_LINKS.login} className="hover:underline flex items-center gap-1">
+                  <Link href={DEFAULT_LINKS.login} className="hover:underline flex items-center gap-1" style={{ color: layerColors.topnav.text }}>
                     <User size={12} />
                     {config.login?.text ?? 'Đăng nhập'}
                   </Link>
@@ -1877,7 +2605,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
           <div className="h-0.5" style={{ backgroundColor: tokens.accentLine }} />
         )}
         <div
-          className="max-w-7xl mx-auto px-4 lg:px-6 border-b"
+          className="max-w-7xl tv:max-w-[1600px] mx-auto px-4 lg:px-6 border-b"
           style={{ borderColor: tokens.border, paddingTop: headerSpacingY, paddingBottom: headerSpacingY }}
         >
           <div className="flex items-center justify-between gap-6">
@@ -1905,12 +2633,6 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                 const isMega = item.children.length >= 3 || totalSubItems > 6;
                 const isMedium = !isMega && (item.children.length > 1 || hasSubItems);
                 const dropdownWidthValue = isMega ? 720 : isMedium ? 420 : 240;
-                const dropdownWidth = isMega ? 'w-[720px]' : isMedium ? 'w-[420px]' : 'w-[240px]';
-                const gridCols = isMega
-                  ? 'grid-cols-3'
-                  : item.children.length > 1
-                    ? 'grid-cols-2'
-                    : 'grid-cols-1';
 
                 return (
                   <div
@@ -1926,44 +2648,48 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                       href={item.url}
                       target={item.openInNewTab ? '_blank' : undefined}
                       className={cn(
-                        'text-sm font-medium transition-colors',
+                        'text-sm font-medium transition-colors flex items-center gap-1',
                         hoveredItem === item._id
                           ? 'text-[var(--menu-hover-text)]'
                           : 'hover:text-[var(--menu-hover-text)]'
                       )}
                       style={{ color: layerColors.navbar.text, ...menuVars }}
                     >
-                      {item.label}
+                      <span>{item.label}</span>
+                      {item.children.length > 0 && (
+                        <ChevronDown size={14} className={cn("transition-transform duration-200 shrink-0", hoveredItem === item._id && "rotate-180")} />
+                      )}
                     </Link>
 
                     {item.children.length > 0 && hoveredItem === item._id && (
                       <div
                         className={cn(
-                          'absolute top-full pt-6 z-50',
-                          getDropdownPositionClass(dropdownAlign[item._id] ?? 'center')
+                          'absolute top-full z-50',
+                          getDropdownPositionClass(dropdownAlign[item._id] ?? 'center'),
+                          isDeepMenuForItem(item._id) ? 'pt-3' : 'pt-2'
                         )}
                       >
                         {isDeepMenuForItem(item._id) ? (
                           <div
-                            className={cn(r.popup, 'border p-6', dropdownWidth)}
+                            className={cn(r.popup, 'border p-5 shadow-xl', getMegaMenuWidthClass(Math.min(Math.max(item.children.length, 1), 5)))}
                             style={{
                               backgroundColor: tokens.dropdownBg,
                               borderColor: tokens.dropdownBorder,
                               maxWidth: getViewportSafeMaxWidth(),
                             }}
                           >
-                            <div className={cn('grid gap-6', gridCols)}>
+                            <div className={cn('grid gap-6', getMegaMenuGridClass(Math.min(Math.max(item.children.length, 1), 5)))}>
                               {item.children.map((child) => (
                                 <div key={child._id} className="space-y-3">
                                   <Link
                                     href={child.url}
                                     target={child.openInNewTab ? '_blank' : undefined}
-                                    className="text-sm font-semibold"
+                                    className="block text-sm font-semibold whitespace-normal break-words leading-snug"
                                     style={{ color: level1Color }}
                                   >
                                     {child.label}
                                   </Link>
-                                  <div className="space-y-2">
+                                  <div className="space-y-1">
                                     {child.children.length > 0 && child.children.map((sub) => {
                                       const isLevel3Active = activeLevel3Id === sub._id;
 
@@ -2012,13 +2738,13 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                                             href={sub.url}
                                             target={sub.openInNewTab ? '_blank' : undefined}
                                             rel={sub.openInNewTab ? 'noreferrer' : undefined}
-                                            className={cn('flex items-center justify-between px-2 py-1.5 text-sm hover:text-[var(--menu-dropdown-sub-hover-text)]', r.item)}
+                                            className={cn('flex min-w-0 items-start justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]', r.item)}
                                             style={{
-                                              ...(isLevel3Active ? { backgroundColor: tokens.dropdownItemHoverBg, color: tokens.dropdownItemHoverText } : { color: tokens.dropdownSubItemText }),
+                                              ...(isLevel3Active ? { backgroundColor: tokens.dropdownItemHoverBg, color: tokens.dropdownItemHoverText } : { color: tokens.dropdownItemText }),
                                               ...menuVars,
                                             }}
                                           >
-                                            <span>{sub.label}</span>
+                                            <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug">{sub.label}</span>
                                             {sub.children.length > 0 && <ChevronRight size={10} className={cn('transition-transform duration-200', isLevel3Active && 'rotate-90')} />}
                                           </Link>
                                           {sub.children.length > 0 && isLevel3Active && (
@@ -2027,18 +2753,18 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                                               onMouseEnter={clearDeepMenuCloseIntent}
                                               onMouseLeave={scheduleDeepMenuClose}
                                             >
-                                               <div 
-                                                 className={cn(
-                                                   r.dropdown,
-                                                   'border py-2 min-w-[220px] max-w-[min(320px,calc(100vw-2rem))] shadow-lg',
-                                                   !sub.children.some((child) => child.children && child.children.length > 0) && "overflow-y-auto scrollbar-menu-thin"
-                                                 )} 
-                                                 style={{ 
-                                                   backgroundColor: tokens.dropdownBg, 
-                                                   borderColor: tokens.dropdownBorder,
-                                                   maxHeight: !sub.children.some((child) => child.children && child.children.length > 0) ? 'min(70vh, 290px)' : undefined,
-                                                 }}
-                                               >
+                                              <div
+                                                className={cn(
+                                                  r.dropdown,
+                                                  'border py-2 min-w-[220px] max-w-[min(300px,calc(100vw-2rem))] shadow-xl',
+                                                  !sub.children.some((child) => child.children && child.children.length > 0) && "overflow-y-auto scrollbar-menu-thin"
+                                                )}
+                                                style={{
+                                                  backgroundColor: tokens.dropdownBg,
+                                                  borderColor: tokens.dropdownBorder,
+                                                  maxHeight: !sub.children.some((child) => child.children && child.children.length > 0) ? 'min(60vh, 290px)' : undefined,
+                                                }}
+                                              >
                                                 {renderDesktopFlyoutNodes(sub.children, true)}
                                               </div>
                                             </div>
@@ -2054,8 +2780,7 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                         ) : (
                           <div
                             className={cn(
-                              r.dropdown,
-                              'border py-2 min-w-[240px]',
+                              "rounded-lg border py-2 min-w-[200px]",
                               !item.children.some((child) => child.children && child.children.length > 0) && "overflow-y-auto scrollbar-menu-thin"
                             )}
                             style={{
@@ -2066,16 +2791,54 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                             }}
                           >
                             {item.children.map((child) => (
-                              <Link
+                              <div
                                 key={child._id}
-                                href={child.url}
-                                target={child.openInNewTab ? '_blank' : undefined}
-                                rel={child.openInNewTab ? 'noreferrer' : undefined}
-                                className="block px-4 py-2.5 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]"
-                                style={{ color: tokens.dropdownItemText, ...menuVars }}
+                                className="relative group/child"
+                                onMouseEnter={(event) => {
+                                  updateFlyoutDirection(`flyout-child-${child._id}`, event.currentTarget);
+                                }}
                               >
-                                {child.label}
-                              </Link>
+                                <Link
+                                  href={child.url}
+                                  target={child.openInNewTab ? '_blank' : undefined}
+                                  rel={child.openInNewTab ? 'noreferrer' : undefined}
+                                  className="flex min-w-0 items-start justify-between gap-2 px-4 py-2 text-sm transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-hover-text)]"
+                                  style={{ color: tokens.dropdownItemText, ...menuVars }}
+                                >
+                                  <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug">{child.label}</span>
+                                  {child.children.length > 0 && <ChevronRight size={10} className="transition-transform duration-200 group-hover/child:rotate-90" />}
+                                </Link>
+                                {child.children.length > 0 && (
+                                  <div
+                                    className={cn(
+                                      'absolute top-0 hidden group-hover/child:block',
+                                      (flyoutDirection[`flyout-child-${child._id}`] ?? 'right') === 'left' ? 'right-full mr-1' : 'left-full ml-1'
+                                    )}
+                                  >
+                                    <div
+                                      className="rounded-lg border py-2 min-w-[180px] overflow-y-auto scrollbar-menu-thin"
+                                      style={{ 
+                                        backgroundColor: tokens.dropdownBg, 
+                                        borderColor: tokens.dropdownBorder,
+                                        maxHeight: 'min(70vh, 290px)',
+                                      }}
+                                    >
+                                      {child.children.map((sub) => (
+                                      <Link
+                                          key={sub._id}
+                                          href={sub.url}
+                                          target={sub.openInNewTab ? '_blank' : undefined}
+                                          rel={sub.openInNewTab ? 'noreferrer' : undefined}
+                                        className="block px-4 py-2 text-sm whitespace-normal break-words leading-snug transition-colors hover:bg-[var(--menu-dropdown-hover-bg)] hover:text-[var(--menu-dropdown-sub-hover-text)]"
+                                          style={{ color: tokens.dropdownSubItemText, ...menuVars }}
+                                        >
+                                          {sub.label}
+                                        </Link>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             ))}
                           </div>
                         )}
@@ -2105,6 +2868,8 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                         searchProducts={canSearchProducts}
                         searchPosts={canSearchPosts}
                         searchServices={canSearchServices}
+                        searchCourses={canSearchCourses}
+                        searchResources={canSearchResources}
                         tokens={tokens}
                         showButton={false}
                         autoFocus={searchOpen}
@@ -2136,6 +2901,9 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                     <User size={18} />
                   </Link>
                 )}
+                {config.showDarkModeToggle && (
+                  <DarkModeToggle isDark={staticMode ? effectiveIsDark : undefined} onThemeToggle={staticMode ? handleStaticThemeToggle : undefined} tokens={navbarActionTokens} />
+                )}
                 {showCart && (
                   <CartIcon variant="mobile" tokens={navbarActionTokens} />
                 )}
@@ -2149,6 +2917,9 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
                   >
                     <Search size={18} />
                   </button>
+                )}
+                {config.showDarkModeToggle && (
+                  <DarkModeToggle isDark={staticMode ? effectiveIsDark : undefined} onThemeToggle={staticMode ? handleStaticThemeToggle : undefined} tokens={navbarActionTokens} variant="mobile" />
                 )}
                 {showCart && (
                   <CartIcon variant="mobile" tokens={navbarActionTokens} />
@@ -2166,6 +2937,8 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
               searchProducts={canSearchProducts}
               searchPosts={canSearchPosts}
               searchServices={canSearchServices}
+              searchCourses={canSearchCourses}
+              searchResources={canSearchResources}
               tokens={tokens}
               showButton={true}
               className="w-full"
@@ -2181,13 +2954,13 @@ export function Header({ initialData, staticMode }: { initialData?: HeaderInitia
         )}
 
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t" style={{ borderColor: tokens.border, backgroundColor: tokens.mobileMenuBg }}>
-            {renderMobileNodes(menuTree)}
+          <div className="lg:hidden border-t" style={{ borderColor: tokens.border, backgroundColor: tokens.surfaceMuted }}>
+            {renderMobileMenuContent(false)}
             {config.cta?.show && (
-              <div className="p-4">
+              <div className="p-4 border-t" style={{ borderColor: tokens.border }}>
                 <Link
                   href={ctaHref}
-                  onClick={() => { setMobileMenuOpen(false); }}
+                  onClick={() => { setMobileMenuOpen(false); setMenuStack([]); }}
                   className="block w-full py-2.5 text-sm font-medium rounded-lg text-center"
                   style={{ backgroundColor: tokens.ctaBg, color: tokens.ctaText }}
                 >

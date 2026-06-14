@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import Fade from 'embla-carousel-fade';
 import { ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
@@ -13,6 +13,7 @@ import { parseHighlightedHeading } from '@/lib/utils/heroText';
 import { PreviewWrapper } from '../../_shared/components/PreviewWrapper';
 import { ColorInfoPanel } from '../../_shared/components/ColorInfoPanel';
 import { deviceWidths, usePreviewDevice } from '../../_shared/hooks/usePreviewDevice';
+import { adaptTokensForDarkMode } from '@/components/site/home/utils/darkModeColorAdapter';
 import {
   getBentoColors,
   getAPCATextColor,
@@ -91,6 +92,7 @@ export const HeroPreview = ({
   spacing = DEFAULT_HERO_SPACING,
   fontStyle,
   fontClassName,
+  isDark: propIsDark,
 }: { 
   slides: { id: number; image: string; link: string; mediaType?: 'image' | 'video' }[]; 
   brandColor: string;
@@ -103,7 +105,32 @@ export const HeroPreview = ({
   spacing?: HeroSpacing;
   fontStyle?: React.CSSProperties;
   fontClassName?: string;
+  isDark?: boolean;
 }) => {
+  const [isDarkState, setIsDarkState] = useState(propIsDark ?? false);
+
+  useEffect(() => {
+    setIsDarkState(propIsDark ?? document.documentElement.classList.contains('dark'));
+  }, [propIsDark]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || propIsDark !== undefined) {
+      return;
+    }
+    
+    setIsDarkState(document.documentElement.classList.contains('dark'));
+
+    const observer = new MutationObserver(() => {
+      setIsDarkState(document.documentElement.classList.contains('dark'));
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
+  }, [propIsDark]);
   const { device, setDevice } = usePreviewDevice();
   const [currentSlide, setCurrentSlide] = useState(0);
   const previewStyle = selectedStyle ?? 'slider';
@@ -129,14 +156,14 @@ export const HeroPreview = ({
     secondary,
   });
   const placeholderColors = brandColors.getPlaceholder();
-  const colors = getHeroColors(brandColors.primary, brandColors.secondary, brandColors.useDualBrand);
-  const sliderColors = getSliderColors(brandColors.primary, brandColors.secondary, mode);
-  const fadeColors = getFadeColors(brandColors.primary, brandColors.secondary, mode);
-  const bentoColors = getBentoColors(brandColors.primary, brandColors.secondary, mode);
-  const conquestColors = getConquestColors(brandColors.primary, brandColors.secondary, mode);
-  const fullscreenColors = getFullscreenColors(brandColors.primary, brandColors.secondary, mode);
-  const splitColors = getSplitColors(brandColors.primary, brandColors.secondary, mode);
-  const parallaxColors = getParallaxColors(brandColors.primary, brandColors.secondary, mode);
+  const colors = adaptTokensForDarkMode(getHeroColors(brandColors.primary, brandColors.secondary, brandColors.useDualBrand), isDarkState);
+  const sliderColors = adaptTokensForDarkMode(getSliderColors(brandColors.primary, brandColors.secondary, mode), isDarkState);
+  const fadeColors = adaptTokensForDarkMode(getFadeColors(brandColors.primary, brandColors.secondary, mode), isDarkState);
+  const bentoColors = adaptTokensForDarkMode(getBentoColors(brandColors.primary, brandColors.secondary, mode), isDarkState);
+  const conquestColors = adaptTokensForDarkMode(getConquestColors(brandColors.primary, brandColors.secondary, mode), isDarkState);
+  const fullscreenColors = adaptTokensForDarkMode(getFullscreenColors(brandColors.primary, brandColors.secondary, mode), isDarkState);
+  const splitColors = adaptTokensForDarkMode(getSplitColors(brandColors.primary, brandColors.secondary, mode), isDarkState);
+  const parallaxColors = adaptTokensForDarkMode(getParallaxColors(brandColors.primary, brandColors.secondary, mode), isDarkState);
   const isEmblaPreviewStyle = previewStyle === 'slider' || previewStyle === 'bento' || previewStyle === 'fullscreen' || previewStyle === 'conquest' || previewStyle === 'split' || previewStyle === 'parallax' || previewStyle === 'fade' || previewStyle === 'builderCoffee';
   const cornerRadiusClassName = getHeroCornerRadiusClassName(cornerRadius);
   const sectionSpacingClassName = getSectionSpacingClassName(spacing);
@@ -282,7 +309,7 @@ export const HeroPreview = ({
   };
 
   const renderSliderStyle = () => (
-    <section className="relative w-full bg-slate-900 overflow-hidden">
+    <section className={cn("relative w-full overflow-hidden", isDarkState ? "bg-slate-950" : "bg-transparent")}>
       <div
         className={cn(
           "relative w-full overflow-hidden",
@@ -368,7 +395,7 @@ export const HeroPreview = ({
   );
 
   const renderFadeStyle = () => (
-    <section className="relative w-full bg-slate-900 overflow-hidden">
+    <section className={cn("relative w-full overflow-hidden", isDarkState ? "bg-slate-950" : "bg-transparent")}>
       <div className={cn(
         "relative w-full",
         device === 'mobile' ? 'aspect-[21/9] max-h-[220px]' : (device === 'tablet' ? 'aspect-[21/9] max-h-[270px]' : 'aspect-[21/9] max-h-[300px]')
@@ -402,7 +429,7 @@ export const HeroPreview = ({
   );
 
   const renderBuilderCoffeeStyle = () => (
-    <section className="relative w-full overflow-hidden bg-white pb-[50px]">
+    <section className="relative w-full overflow-hidden bg-white dark:bg-slate-950 pb-[50px]">
       <div className="mx-auto w-full max-w-7xl px-3">
         <div className="mt-5 flex flex-wrap -mx-3">
           <div className="grid w-full max-w-full grid-cols-3 gap-[10px] px-3">
@@ -495,7 +522,7 @@ export const HeroPreview = ({
                       )}
                     </>
                   ) : (
-                    <div className="flex aspect-[16/9] w-full items-center justify-center bg-slate-50"><span className="text-sm text-slate-400">Chưa có banner</span></div>
+                    <div className="flex aspect-[16/9] w-full items-center justify-center bg-slate-50 dark:bg-slate-900"><span className="text-sm text-slate-400">Chưa có banner</span></div>
                   )}
                 </div>
               </div>
@@ -511,7 +538,7 @@ export const HeroPreview = ({
     const bentoCurrentSlide = bentoSlides.length > 0 ? currentSlide % bentoSlides.length : 0;
     const placeholderTints = ['#f1f5f9', '#e2e8f0', '#f1f5f9', '#e2e8f0'];
     return (
-      <section className="relative w-full bg-slate-900 overflow-hidden p-2">
+      <section className={cn("relative w-full overflow-hidden p-2", isDarkState ? "bg-slate-950" : "bg-transparent")}>
         <div className="relative w-full">
           {device === 'mobile' ? (
             <div className="relative aspect-[16/9] overflow-hidden" ref={heroEmblaRef}>
@@ -632,7 +659,7 @@ export const HeroPreview = ({
     const tripleSlides = slides.slice(0, 3);
     const placeholderTints = ['#f1f5f9', '#e2e8f0', '#f1f5f9'];
     return (
-      <section className="relative w-full bg-slate-900 overflow-hidden p-2">
+      <section className={cn("relative w-full overflow-hidden p-2", isDarkState ? "bg-slate-950" : "bg-transparent")}>
         <div className="relative w-full">
           {device === 'mobile' ? (
             <div className="relative aspect-[16/9] overflow-hidden" ref={heroEmblaRef}>
@@ -705,7 +732,7 @@ export const HeroPreview = ({
     const tripleSlides = slides.slice(0, 3);
     const placeholderTints = ['#f1f5f9', '#e2e8f0', '#f1f5f9'];
     return (
-      <section className="relative w-full bg-slate-900 overflow-hidden p-2">
+      <section className={cn("relative w-full overflow-hidden p-2", isDarkState ? "bg-slate-950" : "bg-transparent")}>
         <div className="relative w-full">
           {device === 'mobile' ? (
             <div className="relative aspect-[16/9] overflow-hidden" ref={heroEmblaRef}>
@@ -809,7 +836,7 @@ export const HeroPreview = ({
       }
       : { borderColor: 'rgba(255,255,255,0.3)', color: '#ffffff' };
     return (
-      <section className="relative w-full bg-slate-900 overflow-hidden">
+      <section className={cn("relative w-full overflow-hidden", isDarkState ? "bg-slate-950" : "bg-transparent")}>
         <div className="relative w-full aspect-[16/9] overflow-hidden">
           {slides.length > 0 && mainSlide ? (
             <>
@@ -1199,7 +1226,7 @@ export const HeroPreview = ({
       );
     }
     return (
-      <section className="relative w-full bg-slate-900 overflow-hidden">
+      <section className={cn("relative w-full overflow-hidden", isDarkState ? "bg-slate-950" : "bg-transparent")}>
         <div className={cn(
           "relative w-full",
           device === 'tablet' ? 'h-[320px]' : 'h-[380px]'

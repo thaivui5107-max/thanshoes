@@ -2,9 +2,11 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
+import { cn } from '@/app/admin/components/ui';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useBrandColors } from '@/components/site/hooks';
+import { useSiteSettings } from '@/components/site/hooks';
 import { useSnapshotDemoContext } from '@/components/modules/homepage/SnapshotDemoProvider';
 import { resolveTypeOverrideColors, type ColorOverrideState } from '@/app/admin/home-components/_shared/lib/typeColorOverride';
 import { resolveTypeOverrideFont, type FontOverrideState } from '@/app/admin/home-components/_shared/lib/typeFontOverride';
@@ -25,6 +27,8 @@ interface HomeComponentRendererProps {
 
 export function HomeComponentRenderer({ component, snapshotComponentKey }: HomeComponentRendererProps) {
   const systemColors = useBrandColors();
+  const { isDark } = useSiteSettings();
+
   const snapshotCtx = useSnapshotDemoContext();
   const isSnapshotMode = Boolean(snapshotCtx);
 
@@ -82,6 +86,7 @@ export function HomeComponentRenderer({ component, snapshotComponentKey }: HomeC
         mode={resolvedColors.mode}
         title={component.title}
         snapshotComponentKey={snapshotComponentKey}
+        isDark={isDark}
         tokens={getHomepageCategoryHeroColors(
           resolvedColors.primary,
           resolvedColors.secondary,
@@ -97,6 +102,7 @@ export function HomeComponentRenderer({ component, snapshotComponentKey }: HomeC
         mode={resolvedColors.mode}
         title={component.title}
         snapshotComponentKey={snapshotComponentKey}
+        isDark={isDark}
       />
     );
 
@@ -121,7 +127,7 @@ export function HomeComponentRenderer({ component, snapshotComponentKey }: HomeC
     : '';
 
   return (
-    <div className={`font-active ${spacingClassName}`} style={{ '--font-active': `var(${resolvedFont.fontVariable})`, ...(useContainment ? { contain: 'layout' } : {}) } as React.CSSProperties}>
+    <div className={cn("font-active", spacingClassName, isDark ? "dark" : "")} style={{ '--font-active': `var(${resolvedFont.fontVariable})`, ...(useContainment ? { contain: 'layout' } : {}) } as React.CSSProperties}>
       {sectionNode}
     </div>
   );

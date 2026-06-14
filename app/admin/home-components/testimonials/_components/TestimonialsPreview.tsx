@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { BrowserFrame } from '../../_shared/components/BrowserFrame';
-import { PreviewWrapper } from '../../_shared/components/PreviewWrapper';
+import { PreviewWrapper, usePreviewDark } from '../../_shared/components/PreviewWrapper';
 import { deviceWidths, usePreviewDevice } from '../../_shared/hooks/usePreviewDevice';
 import type { SectionSpacing } from '../../_shared/types/sectionSpacing';
+import { adaptTokensForDarkMode } from '@/components/site/home/utils/darkModeColorAdapter';
 import { getTestimonialsSectionColors } from '../_lib/colors';
 import { TestimonialsSectionShared } from './TestimonialsSectionShared';
 import type {
@@ -16,16 +17,16 @@ import type {
 } from '../_types';
 
 const TESTIMONIAL_STYLES: Array<{ id: TestimonialsStyle; label: string }> = [
-  { id: 'cards', label: 'Cards' },
-  { id: 'slider', label: 'Slider' },
-  { id: 'marquee', label: 'Marquee' },
-  { id: 'showcase', label: 'Showcase' },
-  { id: 'quote', label: 'Quote' },
-  { id: 'minimal', label: 'Minimal' },
-  { id: 'split-carousel', label: 'Split' },
-  { id: 'overlap-carousel', label: 'Overlap' },
-  { id: 'builder-cards', label: 'Builder' },
-  { id: 'builder-carousel', label: 'Builder Slide' },
+  { id: 'cards', label: '(1) Dạng thẻ' },
+  { id: 'slider', label: '(2) Trượt ngang' },
+  { id: 'marquee', label: '(3) Chạy ngang' },
+  { id: 'showcase', label: '(4) Trưng bày' },
+  { id: 'quote', label: '(5) Trích dẫn' },
+  { id: 'minimal', label: '(6) Tối giản' },
+  { id: 'split-carousel', label: '(7) Chia đôi' },
+  { id: 'overlap-carousel', label: '(8) Đè chồng' },
+  { id: 'builder-cards', label: '(9) Thẻ khối' },
+  { id: 'builder-carousel', label: '(10) Trượt khối' },
 ];
 
 export const TestimonialsPreview = ({
@@ -81,6 +82,7 @@ export const TestimonialsPreview = ({
   cornerRadius?: TestimonialsCornerRadius;
 }) => {
   const { device, setDevice } = usePreviewDevice();
+  const { isDark } = usePreviewDark();
   const previewStyle = selectedStyle ?? 'cards';
   const itemCount = items.length;
 
@@ -90,7 +92,10 @@ export const TestimonialsPreview = ({
     }
   };
 
-  const colors = getTestimonialsSectionColors({ mode, primary: brandColor, secondary });
+  const colors = React.useMemo(
+    () => adaptTokensForDarkMode(getTestimonialsSectionColors({ mode, primary: brandColor, secondary }), isDark),
+    [mode, brandColor, secondary, isDark]
+  );
 
   return (
     <PreviewWrapper

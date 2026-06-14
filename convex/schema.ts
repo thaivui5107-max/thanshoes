@@ -652,7 +652,7 @@ export default defineSchema({
       v.literal("Spam")
     ),
     targetId: v.string(),
-    targetType: v.union(v.literal("post"), v.literal("product"), v.literal("service")),
+    targetType: v.union(v.literal("post"), v.literal("product"), v.literal("service"), v.literal("course")),
   })
     .index("by_target_status", ["targetType", "targetId", "status"])
     .index("by_status", ["status"])
@@ -776,6 +776,18 @@ export default defineSchema({
     componentCount: v.optional(v.number()),
     componentTypes: v.optional(v.array(v.string())),
     createdAt: v.number(),
+    customThumbnail: v.optional(v.object({
+      alt: v.optional(v.string()),
+      config: v.optional(v.object({
+        backgroundColor: v.optional(v.string()),
+        objectFit: v.optional(v.union(v.literal("cover"), v.literal("contain"))),
+        positionX: v.optional(v.number()),
+        positionY: v.optional(v.number()),
+      })),
+      storageId: v.optional(v.union(v.string(), v.null())),
+      updatedAt: v.optional(v.number()),
+      url: v.string(),
+    })),
     label: v.string(),
     logo: v.optional(v.string()),
     phone: v.optional(v.string()),
@@ -785,6 +797,15 @@ export default defineSchema({
     tagline: v.optional(v.string()),
     thumbnails: v.optional(v.array(v.string())),
     version: v.string(),
+    payloadUpdatedAt: v.optional(v.number()),
+    zipBuiltAt: v.optional(v.number()),
+    zipBuilderVersion: v.optional(v.string()),
+    zipByteSize: v.optional(v.number()),
+    zipFileName: v.optional(v.string()),
+    zipMediaCount: v.optional(v.number()),
+    zipPayloadHash: v.optional(v.string()),
+    zipStorageId: v.optional(v.id("_storage")),
+    zipWarningCount: v.optional(v.number()),
   })
     .index("by_createdAt", ["createdAt"])
     .index("by_slug", ["slug"])
@@ -817,6 +838,16 @@ export default defineSchema({
   })
     .index("by_key", ["key"])
     .index("by_group", ["group"]),
+
+  // 18a. integrationSecrets - Secret cấu hình provider, không đọc qua settings public
+  integrationSecrets: defineTable({
+    group: v.string(),
+    key: v.string(),
+    updatedAt: v.number(),
+    value: v.string(),
+  })
+    .index("by_key", ["key"])
+    .index("by_group_key", ["group", "key"]),
 
   // 19. activityLogs - Audit Trail
   activityLogs: defineTable({
@@ -900,8 +931,12 @@ export default defineSchema({
     customerId: v.id("customers"),
     items: v.array(
       v.object({
+        itemType: v.optional(v.union(v.literal("product"), v.literal("service"), v.literal("course"), v.literal("resource"))),
         price: v.number(),
-        productId: v.id("products"),
+        productId: v.optional(v.id("products")),
+        serviceId: v.optional(v.id("services")),
+        courseId: v.optional(v.id("courses")),
+        resourceId: v.optional(v.id("resources")),
         productImage: v.optional(v.string()),
         productName: v.string(),
         quantity: v.number(),
@@ -994,8 +1029,12 @@ export default defineSchema({
   // 23. cartItems - Items trong giỏ hàng
   cartItems: defineTable({
     cartId: v.id("carts"),
+    itemType: v.optional(v.union(v.literal("product"), v.literal("service"), v.literal("course"), v.literal("resource"))),
     price: v.number(),
-    productId: v.id("products"),
+    productId: v.optional(v.id("products")),
+    serviceId: v.optional(v.id("services")),
+    courseId: v.optional(v.id("courses")),
+    resourceId: v.optional(v.id("resources")),
     productImage: v.optional(v.string()),
     productName: v.string(),
     quantity: v.number(),
@@ -1004,6 +1043,10 @@ export default defineSchema({
   })
     .index("by_cart", ["cartId"])
     .index("by_product", ["productId"])
+    .index("by_service", ["serviceId"])
+    .index("by_course", ["courseId"])
+    .index("by_resource", ["resourceId"])
+    .index("by_cart_product", ["cartId", "productId"])
     .index("by_cart_product_variant", ["cartId", "productId", "variantId"]),
 
   // 24. notifications - Thông báo hệ thống
@@ -1161,6 +1204,335 @@ export default defineSchema({
     .index("by_service", ["serviceId"])
     .index("by_category", ["categoryId"])
     .index("by_service_category", ["serviceId", "categoryId"]),
+
+  // 27-project. projectCategories - Danh mục dự án (Hierarchical)
+  projectCategories: defineTable({
+    active: v.boolean(),
+    description: v.optional(v.string()),
+    name: v.string(),
+    order: v.number(),
+    parentId: v.optional(v.id("projectCategories")),
+    slug: v.string(),
+    thumbnail: v.optional(v.string()),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_parent", ["parentId"])
+    .index("by_parent_order", ["parentId", "order"])
+    .index("by_active", ["active"]),
+
+  // 27-project. projects - Dự án
+  projects: defineTable({
+    title: v.string(),
+    slug: v.string(),
+    content: v.string(),
+    renderType: v.optional(v.union(
+      v.literal("content"),
+      v.literal("markdown"),
+      v.literal("html")
+    )),
+    markdownRender: v.optional(v.string()),
+    htmlRender: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    thumbnail: v.optional(v.string()),
+    thumbnailStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+    categoryId: v.id("projectCategories"),
+    introVideoType: v.optional(v.union(
+      v.literal("none"),
+      v.literal("youtube"),
+      v.literal("drive"),
+      v.literal("external")
+    )),
+    introVideoUrl: v.optional(v.string()),
+    images: v.optional(v.array(v.string())),
+    imageStorageIds: v.optional(v.array(v.union(v.id("_storage"), v.null()))),
+    clientName: v.optional(v.string()),
+    projectUrl: v.optional(v.string()),
+    completedAt: v.optional(v.number()),
+    status: v.union(
+      v.literal("Published"),
+      v.literal("Draft"),
+      v.literal("Archived")
+    ),
+    views: v.number(),
+    publishedAt: v.optional(v.number()),
+    order: v.number(),
+    featured: v.optional(v.boolean()),
+    metaTitle: v.optional(v.string()),
+    metaDescription: v.optional(v.string()),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_category_status", ["categoryId", "status"])
+    .index("by_status_publishedAt", ["status", "publishedAt"])
+    .index("by_status_views", ["status", "views"])
+    .index("by_status_order", ["status", "order"])
+    .index("by_status_featured", ["status", "featured"])
+    .searchIndex("search_title", { filterFields: ["status", "categoryId"], searchField: "title" }),
+
+  projectCategoryAssignments: defineTable({
+    categoryId: v.id("projectCategories"),
+    createdAt: v.number(),
+    projectId: v.id("projects"),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_category", ["categoryId"])
+    .index("by_project_category", ["projectId", "categoryId"]),
+
+  // 27-course. courseCategories - Danh mục khóa học (Hierarchical)
+  courseCategories: defineTable({
+    active: v.boolean(),
+    description: v.optional(v.string()),
+    name: v.string(),
+    order: v.number(),
+    parentId: v.optional(v.id("courseCategories")),
+    slug: v.string(),
+    thumbnail: v.optional(v.string()),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_parent", ["parentId"])
+    .index("by_parent_order", ["parentId", "order"])
+    .index("by_active", ["active"]),
+
+  // 27-course. courses - Khóa học
+  courses: defineTable({
+    title: v.string(),
+    slug: v.string(),
+    content: v.string(),
+    renderType: v.optional(v.union(
+      v.literal("content"),
+      v.literal("markdown"),
+      v.literal("html")
+    )),
+    markdownRender: v.optional(v.string()),
+    htmlRender: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    thumbnail: v.optional(v.string()),
+    thumbnailStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+    categoryId: v.id("courseCategories"),
+    introVideoType: v.optional(v.union(
+      v.literal("none"),
+      v.literal("youtube"),
+      v.literal("drive"),
+      v.literal("external")
+    )),
+    introVideoUrl: v.optional(v.string()),
+    pricingType: v.union(
+      v.literal("free"),
+      v.literal("paid"),
+      v.literal("contact")
+    ),
+    priceAmount: v.optional(v.number()),
+    comparePriceAmount: v.optional(v.number()),
+    priceNote: v.optional(v.string()),
+    isPriceVisible: v.optional(v.boolean()),
+    durationText: v.optional(v.string()),
+    durationSeconds: v.optional(v.number()),
+    instructorName: v.optional(v.string()),
+    level: v.optional(v.union(
+      v.literal("Beginner"),
+      v.literal("Intermediate"),
+      v.literal("Advanced")
+    )),
+    status: v.union(
+      v.literal("Published"),
+      v.literal("Draft"),
+      v.literal("Archived")
+    ),
+    views: v.number(),
+    publishedAt: v.optional(v.number()),
+    order: v.number(),
+    featured: v.optional(v.boolean()),
+    chapterCount: v.number(),
+    lessonCount: v.number(),
+    metaTitle: v.optional(v.string()),
+    metaDescription: v.optional(v.string()),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_category_status", ["categoryId", "status"])
+    .index("by_status_publishedAt", ["status", "publishedAt"])
+    .index("by_status_views", ["status", "views"])
+    .index("by_status_order", ["status", "order"])
+    .index("by_status_featured", ["status", "featured"])
+    .index("by_status_level", ["status", "level"])
+    .searchIndex("search_title", { filterFields: ["status", "categoryId"], searchField: "title" }),
+
+  courseCategoryAssignments: defineTable({
+    categoryId: v.id("courseCategories"),
+    courseId: v.id("courses"),
+    createdAt: v.number(),
+  })
+    .index("by_course", ["courseId"])
+    .index("by_category", ["categoryId"])
+    .index("by_course_category", ["courseId", "categoryId"]),
+
+  courseChapters: defineTable({
+    active: v.boolean(),
+    courseId: v.id("courses"),
+    createdAt: v.number(),
+    order: v.number(),
+    summary: v.optional(v.string()),
+    title: v.string(),
+    updatedAt: v.number(),
+  })
+    .index("by_course", ["courseId"])
+    .index("by_course_order", ["courseId", "order"])
+    .index("by_course_active_order", ["courseId", "active", "order"]),
+
+  courseLessons: defineTable({
+    active: v.boolean(),
+    chapterId: v.id("courseChapters"),
+    courseId: v.id("courses"),
+    createdAt: v.number(),
+    description: v.optional(v.string()),
+    durationSeconds: v.optional(v.number()),
+    exerciseLink: v.optional(v.string()),
+    isPreview: v.boolean(),
+    order: v.number(),
+    title: v.string(),
+    updatedAt: v.number(),
+    videoType: v.union(
+      v.literal("none"),
+      v.literal("youtube"),
+      v.literal("drive"),
+      v.literal("external")
+    ),
+    videoUrl: v.optional(v.string()),
+  })
+    .index("by_course", ["courseId"])
+    .index("by_chapter_order", ["chapterId", "order"])
+    .index("by_course_active_order", ["courseId", "active", "order"]),
+
+  courseStudents: defineTable({
+    certificateCode: v.optional(v.string()),
+    certificateIssuedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    completedLessonsCount: v.number(),
+    courseId: v.id("courses"),
+    customerId: v.id("customers"),
+    enrolledAt: v.number(),
+    lastActivityAt: v.optional(v.number()),
+    lastLessonId: v.optional(v.id("courseLessons")),
+    lessonCountSnapshot: v.number(),
+    sourceOrderId: v.optional(v.id("orders")),
+    sourceType: v.union(v.literal("order"), v.literal("free"), v.literal("manual")),
+    status: v.union(v.literal("active"), v.literal("revoked")),
+    updatedAt: v.number(),
+  })
+    .index("by_courseId", ["courseId"])
+    .index("by_customerId", ["customerId"])
+    .index("by_status", ["status"])
+    .index("by_courseId_and_customerId", ["courseId", "customerId"])
+    .index("by_customerId_and_courseId", ["customerId", "courseId"])
+    .index("by_courseId_and_status", ["courseId", "status"])
+    .index("by_customerId_and_status", ["customerId", "status"])
+    .index("by_sourceOrderId", ["sourceOrderId"])
+    .index("by_certificateCode", ["certificateCode"]),
+
+  courseLessonProgress: defineTable({
+    completedAt: v.number(),
+    courseId: v.id("courses"),
+    customerId: v.id("customers"),
+    lessonId: v.id("courseLessons"),
+    studentId: v.id("courseStudents"),
+    updatedAt: v.number(),
+  })
+    .index("by_studentId_and_lessonId", ["studentId", "lessonId"])
+    .index("by_courseId_and_customerId", ["courseId", "customerId"])
+    .index("by_courseId_and_customerId_and_lessonId", ["courseId", "customerId", "lessonId"])
+    .index("by_lessonId", ["lessonId"]),
+
+  // 27-resource. resourceCategories - Danh mục tài nguyên
+  resourceCategories: defineTable({
+    active: v.boolean(),
+    description: v.optional(v.string()),
+    name: v.string(),
+    order: v.number(),
+    parentId: v.optional(v.id("resourceCategories")),
+    slug: v.string(),
+    thumbnail: v.optional(v.string()),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_parent", ["parentId"])
+    .index("by_parent_order", ["parentId", "order"])
+    .index("by_active", ["active"]),
+
+  // 27-resource. resources - Thư viện/tài nguyên tải xuống
+  resources: defineTable({
+    title: v.string(),
+    slug: v.string(),
+    content: v.string(),
+    renderType: v.optional(v.union(
+      v.literal("content"),
+      v.literal("markdown"),
+      v.literal("html")
+    )),
+    markdownRender: v.optional(v.string()),
+    htmlRender: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    thumbnail: v.optional(v.string()),
+    thumbnailStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+    images: v.optional(v.array(v.string())),
+    imageStorageIds: v.optional(v.array(v.union(v.id("_storage"), v.null()))),
+    categoryId: v.id("resourceCategories"),
+    downloadUrl: v.string(),
+    pricingType: v.union(
+      v.literal("free"),
+      v.literal("paid"),
+      v.literal("contact")
+    ),
+    priceAmount: v.optional(v.number()),
+    comparePriceAmount: v.optional(v.number()),
+    priceNote: v.optional(v.string()),
+    isPriceVisible: v.optional(v.boolean()),
+    status: v.union(
+      v.literal("Published"),
+      v.literal("Draft"),
+      v.literal("Archived")
+    ),
+    views: v.number(),
+    publishedAt: v.optional(v.number()),
+    order: v.number(),
+    featured: v.optional(v.boolean()),
+    metaTitle: v.optional(v.string()),
+    metaDescription: v.optional(v.string()),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_category_status", ["categoryId", "status"])
+    .index("by_status_publishedAt", ["status", "publishedAt"])
+    .index("by_status_views", ["status", "views"])
+    .index("by_status_order", ["status", "order"])
+    .index("by_status_featured", ["status", "featured"])
+    .searchIndex("search_title", { filterFields: ["status", "categoryId"], searchField: "title" }),
+
+  resourceCategoryAssignments: defineTable({
+    categoryId: v.id("resourceCategories"),
+    resourceId: v.id("resources"),
+    createdAt: v.number(),
+  })
+    .index("by_resource", ["resourceId"])
+    .index("by_category", ["categoryId"])
+    .index("by_resource_category", ["resourceId", "categoryId"]),
+
+  resourceCustomers: defineTable({
+    completedAt: v.optional(v.number()),
+    customerId: v.id("customers"),
+    downloadCount: v.number(),
+    enrolledAt: v.number(),
+    grantedAt: v.number(),
+    lastDownloadAt: v.optional(v.number()),
+    resourceId: v.id("resources"),
+    sourceOrderId: v.optional(v.id("orders")),
+    sourceType: v.union(v.literal("order"), v.literal("free"), v.literal("manual")),
+    status: v.union(v.literal("active"), v.literal("revoked")),
+    updatedAt: v.number(),
+  })
+    .index("by_resourceId", ["resourceId"])
+    .index("by_customerId", ["customerId"])
+    .index("by_status", ["status"])
+    .index("by_resourceId_and_customerId", ["resourceId", "customerId"])
+    .index("by_customerId_and_resourceId", ["customerId", "resourceId"])
+    .index("by_resourceId_and_status", ["resourceId", "status"])
+    .index("by_customerId_and_status", ["customerId", "status"])
+    .index("by_sourceOrderId", ["sourceOrderId"]),
 
   // 27a. bookings - Đặt lịch
   bookings: defineTable({
@@ -1356,4 +1728,87 @@ export default defineSchema({
     idempotencyKey: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_idempotencyKey", ["idempotencyKey"]),
+
+  // 27-course-filters. courseFilters - Bộ lọc khóa học (Nhóm bộ lọc)
+  courseFilters: defineTable({
+    active: v.boolean(),
+    description: v.optional(v.string()),
+    name: v.string(),
+    order: v.optional(v.number()),
+    slug: v.string(),
+    icon: v.optional(v.string()),
+    iconStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_active", ["active"]),
+
+  // 27-course-filters. courseFilterValues - Giá trị bộ lọc
+  courseFilterValues: defineTable({
+    filterId: v.id("courseFilters"),
+    name: v.string(),
+    slug: v.string(),
+    active: v.boolean(),
+    order: v.number(),
+    icon: v.optional(v.string()),
+    iconStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+  })
+    .index("by_filter", ["filterId"])
+    .index("by_filter_active_order", ["filterId", "active", "order"])
+    .index("by_slug", ["slug"])
+    .index("by_order", ["order"]),
+
+  // 27-course-filters. courseFilterAssignments - Liên kết bộ lọc với khóa học
+  courseFilterAssignments: defineTable({
+    courseId: v.id("courses"),
+    valueId: v.id("courseFilterValues"),
+    filterId: v.id("courseFilters"),
+    createdAt: v.number(),
+  })
+    .index("by_course", ["courseId"])
+    .index("by_value", ["valueId"])
+    .index("by_filter", ["filterId"])
+    .index("by_course_filter", ["courseId", "filterId"])
+    .index("by_course_value", ["courseId", "valueId"]),
+
+  // 27-resource-filters. resourceFilters - Bộ lọc tài nguyên (Nhóm bộ lọc)
+  resourceFilters: defineTable({
+    active: v.boolean(),
+    description: v.optional(v.string()),
+    name: v.string(),
+    order: v.optional(v.number()),
+    slug: v.string(),
+    icon: v.optional(v.string()),
+    iconStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_active", ["active"]),
+
+  // 27-resource-filters. resourceFilterValues - Giá trị bộ lọc
+  resourceFilterValues: defineTable({
+    filterId: v.id("resourceFilters"),
+    name: v.string(),
+    slug: v.string(),
+    active: v.boolean(),
+    order: v.number(),
+    icon: v.optional(v.string()),
+    iconStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+  })
+    .index("by_filter", ["filterId"])
+    .index("by_filter_active_order", ["filterId", "active", "order"])
+    .index("by_slug", ["slug"])
+    .index("by_order", ["order"]),
+
+  // 27-resource-filters. resourceFilterAssignments - Liên kết bộ lọc với tài nguyên
+  resourceFilterAssignments: defineTable({
+    resourceId: v.id("resources"),
+    valueId: v.id("resourceFilterValues"),
+    filterId: v.id("resourceFilters"),
+    createdAt: v.number(),
+  })
+    .index("by_resource", ["resourceId"])
+    .index("by_value", ["valueId"])
+    .index("by_filter", ["filterId"])
+    .index("by_resource_filter", ["resourceId", "filterId"])
+    .index("by_resource_value", ["resourceId", "valueId"]),
 });
+

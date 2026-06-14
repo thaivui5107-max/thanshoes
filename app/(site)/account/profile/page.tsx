@@ -16,15 +16,16 @@ import {
 } from 'lucide-react';
 import { api } from '@/convex/_generated/api';
 import { useCustomerAuth } from '@/app/(site)/auth/context';
-import { useBrandColors } from '@/components/site/hooks';
+import { useBrandColors, useSiteSettings } from '@/components/site/hooks';
 import { useAccountProfileConfig } from '@/lib/experiences';
 import { getAccountProfileColors } from '@/components/site/account/profile/colors';
 
 export default function AccountProfilePage() {
   const brandColors = useBrandColors();
+  const { isDark } = useSiteSettings();
   const tokens = useMemo(
-    () => getAccountProfileColors(brandColors.primary, brandColors.secondary, brandColors.mode),
-    [brandColors.primary, brandColors.secondary, brandColors.mode]
+    () => getAccountProfileColors(brandColors.primary, brandColors.secondary, brandColors.mode, isDark),
+    [brandColors.primary, brandColors.secondary, brandColors.mode, isDark]
   );
   const config = useAccountProfileConfig();
   const { customer, isAuthenticated, openLoginModal } = useCustomerAuth();

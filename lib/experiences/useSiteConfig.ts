@@ -11,13 +11,17 @@ type SearchLayoutStyle = 'search-only' | 'with-filters' | 'advanced';
 type ResultsDisplayStyle = 'grid' | 'list';
 
 type PostsListConfig = {
-  layoutStyle: 'fullwidth' | 'sidebar' | 'magazine';
+  layoutStyle: 'grid' | 'sidebar' | 'list';
+  gridColumns: number;
   filterPosition: FilterPosition;
   paginationType: PaginationType;
   showSearch: boolean;
   showCategories: boolean;
   hideEmptyCategories: boolean;
   postsPerPage: number;
+  darkModePremiumBorder?: boolean;
+  showDetailButton?: boolean;
+  detailButtonText?: string;
 };
 
 type SearchFilterConfig = {
@@ -82,18 +86,35 @@ export function usePostsListConfig(): PostsListConfig {
   const experienceSetting = useQuery(api.settings.getByKey, { key: 'posts_list_ui' });
   
   return useMemo(() => {
-    const raw = experienceSetting?.value as Partial<PostsListConfig> | undefined;
-    const layoutStyle = raw?.layoutStyle === 'sidebar' || raw?.layoutStyle === 'magazine' || raw?.layoutStyle === 'fullwidth'
-      ? raw.layoutStyle
-      : 'fullwidth';
+    const raw = experienceSetting?.value as {
+      layoutStyle?: string;
+      gridColumns?: number;
+      filterPosition?: FilterPosition;
+      paginationType?: PaginationType;
+      showSearch?: boolean;
+      showCategories?: boolean;
+      hideEmptyCategories?: boolean;
+      postsPerPage?: number;
+      darkModePremiumBorder?: boolean;
+      showDetailButton?: boolean;
+      detailButtonText?: string;
+    } | undefined;
+    const rawStyle = raw?.layoutStyle;
+    const layoutStyle: PostsListConfig['layoutStyle'] = rawStyle === 'sidebar'
+      ? 'sidebar'
+      : (rawStyle === 'magazine' || rawStyle === 'list' ? 'list' : 'grid');
     return {
       layoutStyle,
+      gridColumns: raw?.gridColumns ?? 3,
       filterPosition: raw?.filterPosition ?? 'sidebar',
       paginationType: normalizePaginationType(raw?.paginationType),
       showSearch: raw?.showSearch ?? true,
       showCategories: raw?.showCategories ?? true,
       hideEmptyCategories: raw?.hideEmptyCategories ?? true,
       postsPerPage: raw?.postsPerPage ?? 12,
+      darkModePremiumBorder: raw?.darkModePremiumBorder ?? false,
+      showDetailButton: raw?.showDetailButton ?? false,
+      detailButtonText: raw?.detailButtonText ?? 'Đọc ngay',
     };
   }, [experienceSetting?.value]);
 }
@@ -185,6 +206,7 @@ export function useBookingConfig(): BookingExperienceConfig {
 
 type ProductsListConfig = {
   layoutStyle: 'grid' | 'sidebar' | 'list';
+  gridColumns: number;
   paginationType: PaginationType;
   cornerRadius: 'none' | 'sm' | 'lg';
   showSearch: boolean;
@@ -199,6 +221,9 @@ type ProductsListConfig = {
   cartButtonsLayout?: 'stack' | 'grid-2';
   priceFilterMode: 'disabled' | 'custom' | 'smart_dropdown' | 'slider';
   isLoading: boolean;
+  darkModePremiumBorder?: boolean;
+  showDetailButton?: boolean;
+  detailButtonText?: string;
 };
 
 export function useProductsListConfig(): ProductsListConfig {
@@ -210,6 +235,7 @@ export function useProductsListConfig(): ProductsListConfig {
   return useMemo(() => {
     const raw = experienceSetting?.value as {
       layoutStyle?: ProductsListConfig['layoutStyle'];
+      gridColumns?: number;
       layouts?: Partial<Record<ProductsListConfig['layoutStyle'], Partial<Omit<ProductsListConfig, 'layoutStyle'>>>>;
       paginationType?: PaginationType;
       showSearch?: boolean;
@@ -224,6 +250,9 @@ export function useProductsListConfig(): ProductsListConfig {
       cornerRadius?: ProductsListConfig['cornerRadius'];
       cartButtonsLayout?: 'stack' | 'grid-2';
       priceFilterMode?: 'disabled' | 'custom' | 'smart_dropdown' | 'slider';
+      darkModePremiumBorder?: boolean;
+      showDetailButton?: boolean;
+      detailButtonText?: string;
     } | undefined;
 
     const layoutStyle: ProductsListConfig['layoutStyle'] = raw?.layoutStyle ?? 'grid';
@@ -239,6 +268,7 @@ export function useProductsListConfig(): ProductsListConfig {
 
     return {
       layoutStyle,
+      gridColumns: raw?.gridColumns ?? 3,
       paginationType: normalizePaginationType(layoutConfig?.paginationType ?? raw?.paginationType),
       cornerRadius: raw?.cornerRadius ?? 'lg',
       showSearch: layoutConfig?.showSearch ?? raw?.showSearch ?? true,
@@ -253,6 +283,9 @@ export function useProductsListConfig(): ProductsListConfig {
       cartButtonsLayout: raw?.cartButtonsLayout ?? 'stack',
       priceFilterMode: raw?.priceFilterMode ?? 'custom',
       isLoading,
+      darkModePremiumBorder: raw?.darkModePremiumBorder ?? false,
+      showDetailButton: raw?.showDetailButton ?? false,
+      detailButtonText: raw?.detailButtonText ?? 'Xem sản phẩm',
     };
   }, [experienceSetting, cartAvailable, ordersEnabled, wishlistModule, promotionsModule]);
 }
@@ -295,13 +328,17 @@ export function useWishlistConfig(): WishlistConfig {
 }
 
 type ServicesListConfig = {
-  layoutStyle: 'grid' | 'sidebar' | 'masonry';
+  layoutStyle: 'grid' | 'sidebar' | 'list';
+  gridColumns: number;
   filterPosition: 'sidebar' | 'top' | 'none';
   paginationType: PaginationType;
   showSearch: boolean;
   showCategories: boolean;
   hideEmptyCategories: boolean;
   postsPerPage: number;
+  darkModePremiumBorder?: boolean;
+  showDetailButton?: boolean;
+  detailButtonText?: string;
 };
 
 export function useServicesListConfig(): ServicesListConfig {
@@ -309,26 +346,323 @@ export function useServicesListConfig(): ServicesListConfig {
   
   return useMemo(() => {
     const raw = experienceSetting?.value as {
-      layoutStyle?: ServicesListConfig['layoutStyle'];
-      layouts?: Partial<Record<ServicesListConfig['layoutStyle'], Partial<Omit<ServicesListConfig, 'layoutStyle'>>>>;
+      layoutStyle?: string;
+      gridColumns?: number;
+      layouts?: Partial<Record<'grid' | 'sidebar' | 'list', Partial<Omit<ServicesListConfig, 'layoutStyle'>>>>;
       filterPosition?: FilterPosition;
       paginationType?: PaginationType;
       showSearch?: boolean;
       showCategories?: boolean;
       hideEmptyCategories?: boolean;
       postsPerPage?: number;
+      darkModePremiumBorder?: boolean;
+      showDetailButton?: boolean;
+      detailButtonText?: string;
     } | undefined;
 
-    const layoutStyle: ServicesListConfig['layoutStyle'] = raw?.layoutStyle ?? 'grid';
+    const rawStyle = raw?.layoutStyle;
+    const layoutStyle: ServicesListConfig['layoutStyle'] = rawStyle === 'sidebar'
+      ? 'sidebar'
+      : (rawStyle === 'list' || rawStyle === 'masonry' ? 'list' : 'grid');
     const layoutConfig = raw?.layouts?.[layoutStyle];
     return {
       layoutStyle,
+      gridColumns: raw?.gridColumns ?? 3,
       filterPosition: layoutConfig?.filterPosition ?? raw?.filterPosition ?? 'sidebar',
       paginationType: normalizePaginationType(layoutConfig?.paginationType ?? raw?.paginationType),
       showSearch: layoutConfig?.showSearch ?? raw?.showSearch ?? true,
       showCategories: layoutConfig?.showCategories ?? raw?.showCategories ?? true,
       hideEmptyCategories: raw?.hideEmptyCategories ?? true,
       postsPerPage: layoutConfig?.postsPerPage ?? raw?.postsPerPage ?? 12,
+      darkModePremiumBorder: raw?.darkModePremiumBorder ?? false,
+      showDetailButton: raw?.showDetailButton ?? false,
+      detailButtonText: raw?.detailButtonText ?? 'Xem dịch vụ',
+    };
+  }, [experienceSetting?.value]);
+}
+
+type ProjectsListConfig = {
+  layoutStyle: 'grid' | 'sidebar' | 'list';
+  gridColumns: number;
+  filterPosition: 'sidebar' | 'top' | 'none';
+  paginationType: PaginationType;
+  showSearch: boolean;
+  showCategories: boolean;
+  hideEmptyCategories: boolean;
+  postsPerPage: number;
+  showClientName: boolean;
+  showIntroVideo: boolean;
+  darkModePremiumBorder?: boolean;
+  showDetailButton?: boolean;
+  detailButtonText?: string;
+};
+
+export function useProjectsListConfig(): ProjectsListConfig {
+  const experienceSetting = useQuery(api.settings.getByKey, { key: 'projects_list_ui' });
+
+  return useMemo(() => {
+    const raw = experienceSetting?.value as {
+      layoutStyle?: string;
+      gridColumns?: number;
+      filterPosition?: FilterPosition;
+      paginationType?: PaginationType;
+      showSearch?: boolean;
+      showCategories?: boolean;
+      hideEmptyCategories?: boolean;
+      postsPerPage?: number;
+      showClientName?: boolean;
+      showIntroVideo?: boolean;
+      darkModePremiumBorder?: boolean;
+      showDetailButton?: boolean;
+      detailButtonText?: string;
+    } | undefined;
+    const rawStyle = raw?.layoutStyle;
+    const layoutStyle: ProjectsListConfig['layoutStyle'] = rawStyle === 'sidebar'
+      ? 'sidebar'
+      : (rawStyle === 'list' || rawStyle === 'masonry' ? 'list' : 'grid');
+    return {
+      layoutStyle,
+      gridColumns: raw?.gridColumns ?? 3,
+      filterPosition: raw?.filterPosition ?? 'top',
+      paginationType: normalizePaginationType(raw?.paginationType),
+      showSearch: raw?.showSearch ?? true,
+      showCategories: raw?.showCategories ?? true,
+      hideEmptyCategories: raw?.hideEmptyCategories ?? true,
+      postsPerPage: raw?.postsPerPage ?? 12,
+      showClientName: raw?.showClientName ?? true,
+      showIntroVideo: raw?.showIntroVideo ?? true,
+      darkModePremiumBorder: raw?.darkModePremiumBorder ?? false,
+      showDetailButton: raw?.showDetailButton ?? false,
+      detailButtonText: raw?.detailButtonText ?? 'Xem dự án',
+    };
+  }, [experienceSetting?.value]);
+}
+
+type ProjectsDetailConfig = {
+  layoutStyle: 'classic' | 'modern' | 'minimal';
+  showGallery: boolean;
+  showIntroVideo: boolean;
+  showRelated: boolean;
+  showShare: boolean;
+  showClientName: boolean;
+};
+
+export function useProjectsDetailConfig(): ProjectsDetailConfig {
+  const experienceSetting = useQuery(api.settings.getByKey, { key: 'projects_detail_ui' });
+
+  return useMemo(() => {
+    const raw = experienceSetting?.value as Partial<ProjectsDetailConfig> | undefined;
+    return {
+      layoutStyle: raw?.layoutStyle ?? 'classic',
+      showGallery: raw?.showGallery ?? true,
+      showIntroVideo: raw?.showIntroVideo ?? true,
+      showRelated: raw?.showRelated ?? true,
+      showShare: raw?.showShare ?? true,
+      showClientName: raw?.showClientName ?? true,
+    };
+  }, [experienceSetting?.value]);
+}
+
+type CoursesListConfig = {
+  layoutStyle: 'grid' | 'sidebar' | 'list';
+  gridColumns: number;
+  paginationType: PaginationType;
+  showSearch: boolean;
+  showCategories: boolean;
+  showLevelFilter: boolean;
+  hideEmptyCategories: boolean;
+  postsPerPage: number;
+  cornerRadius: 'none' | 'sm' | 'lg';
+  darkModePremiumBorder?: boolean;
+  showDetailButton?: boolean;
+  detailButtonText?: string;
+};
+
+const normalizeCoursesListLayoutStyle = (value?: string): CoursesListConfig['layoutStyle'] => {
+  if (value === 'grid' || value === 'sidebar' || value === 'list') {return value;}
+  if (value === 'masonry') return 'list';
+  return 'grid';
+};
+
+export function useCoursesListConfig(): CoursesListConfig {
+  const experienceSetting = useQuery(api.settings.getByKey, { key: 'courses_list_ui' });
+
+  return useMemo(() => {
+    const raw = experienceSetting?.value as {
+      layoutStyle?: string;
+      gridColumns?: number;
+      layouts?: Partial<Record<'grid' | 'sidebar' | 'list', Partial<Omit<CoursesListConfig, 'layoutStyle'>>>>;
+      paginationType?: PaginationType;
+      showSearch?: boolean;
+      showCategories?: boolean;
+      showLevelFilter?: boolean;
+      hideEmptyCategories?: boolean;
+      postsPerPage?: number;
+      cornerRadius?: 'none' | 'sm' | 'lg';
+      darkModePremiumBorder?: boolean;
+      showDetailButton?: boolean;
+      detailButtonText?: string;
+    } | undefined;
+    const layoutStyle = normalizeCoursesListLayoutStyle(raw?.layoutStyle);
+    const layoutConfig = raw?.layouts?.[layoutStyle];
+    return {
+      layoutStyle,
+      gridColumns: raw?.gridColumns ?? 3,
+      paginationType: normalizePaginationType(layoutConfig?.paginationType ?? raw?.paginationType),
+      showSearch: layoutConfig?.showSearch ?? raw?.showSearch ?? true,
+      showCategories: layoutConfig?.showCategories ?? raw?.showCategories ?? true,
+      showLevelFilter: layoutConfig?.showLevelFilter ?? raw?.showLevelFilter ?? true,
+      hideEmptyCategories: raw?.hideEmptyCategories ?? true,
+      postsPerPage: layoutConfig?.postsPerPage ?? raw?.postsPerPage ?? 12,
+      cornerRadius: raw?.cornerRadius ?? 'lg',
+      darkModePremiumBorder: raw?.darkModePremiumBorder ?? false,
+      showDetailButton: raw?.showDetailButton ?? false,
+      detailButtonText: raw?.detailButtonText ?? 'Vào học ngay',
+    };
+  }, [experienceSetting?.value]);
+}
+
+type CoursesDetailConfig = {
+  layoutStyle: 'classic' | 'modern' | 'minimal';
+  showCurriculum: boolean;
+  showInstructor: boolean;
+  showRelated: boolean;
+  showStickyCta: boolean;
+  cornerRadius: 'none' | 'sm' | 'lg';
+};
+
+export function useCoursesDetailConfig(): CoursesDetailConfig {
+  const experienceSetting = useQuery(api.settings.getByKey, { key: 'courses_detail_ui' });
+
+  return useMemo(() => {
+    const raw = experienceSetting?.value as Partial<CoursesDetailConfig> | undefined;
+    return {
+      layoutStyle: raw?.layoutStyle ?? 'classic',
+      showCurriculum: raw?.showCurriculum ?? true,
+      showInstructor: raw?.showInstructor ?? true,
+      showRelated: raw?.showRelated ?? true,
+      showStickyCta: raw?.showStickyCta ?? true,
+      cornerRadius: raw?.cornerRadius ?? 'lg',
+    };
+  }, [experienceSetting?.value]);
+}
+
+type ResourcesListConfig = {
+  layoutStyle: 'grid' | 'sidebar' | 'list';
+  gridColumns: number;
+  paginationType: PaginationType;
+  showSearch: boolean;
+  showCategories: boolean;
+  showResourceFilters: boolean;
+  hideEmptyCategories: boolean;
+  postsPerPage: number;
+  cornerRadius: 'none' | 'sm' | 'lg';
+  darkModePremiumBorder?: boolean;
+  showDetailButton?: boolean;
+  detailButtonText?: string;
+};
+
+const normalizeResourcesListLayoutStyle = (value?: string): ResourcesListConfig['layoutStyle'] => {
+  if (value === 'grid' || value === 'sidebar' || value === 'list') {return value;}
+  if (value === 'masonry') return 'list';
+  return 'grid';
+};
+
+export function useResourcesListConfig(): ResourcesListConfig {
+  const experienceSetting = useQuery(api.settings.getByKey, { key: 'resources_list_ui' });
+
+  return useMemo(() => {
+    const raw = experienceSetting?.value as {
+      layoutStyle?: string;
+      gridColumns?: number;
+      layouts?: Partial<Record<'grid' | 'sidebar' | 'list', Partial<Omit<ResourcesListConfig, 'layoutStyle'>>>>;
+      paginationType?: PaginationType;
+      showSearch?: boolean;
+      showCategories?: boolean;
+      showResourceFilters?: boolean;
+      hideEmptyCategories?: boolean;
+      postsPerPage?: number;
+      cornerRadius?: 'none' | 'sm' | 'lg';
+      darkModePremiumBorder?: boolean;
+      showDetailButton?: boolean;
+      detailButtonText?: string;
+    } | undefined;
+    const layoutStyle = normalizeResourcesListLayoutStyle(raw?.layoutStyle);
+    const layoutConfig = raw?.layouts?.[layoutStyle];
+    return {
+      layoutStyle,
+      gridColumns: raw?.gridColumns ?? 3,
+      paginationType: normalizePaginationType(layoutConfig?.paginationType ?? raw?.paginationType),
+      showSearch: layoutConfig?.showSearch ?? raw?.showSearch ?? true,
+      showCategories: layoutConfig?.showCategories ?? raw?.showCategories ?? true,
+      showResourceFilters: layoutConfig?.showResourceFilters ?? raw?.showResourceFilters ?? true,
+      hideEmptyCategories: raw?.hideEmptyCategories ?? true,
+      postsPerPage: layoutConfig?.postsPerPage ?? raw?.postsPerPage ?? 12,
+      cornerRadius: raw?.cornerRadius ?? 'lg',
+      darkModePremiumBorder: raw?.darkModePremiumBorder ?? false,
+      showDetailButton: raw?.showDetailButton ?? false,
+      detailButtonText: raw?.detailButtonText ?? 'Xem chi tiết',
+    };
+  }, [experienceSetting?.value]);
+}
+
+type ResourcesDetailConfig = {
+  layoutStyle: 'classic' | 'modern' | 'minimal';
+  showGallery: boolean;
+  galleryMode?: 'scroll' | 'grid';
+  showRelated: boolean;
+  showStickyCta: boolean;
+  showResourceFilters: boolean;
+  cornerRadius: 'none' | 'sm' | 'lg';
+};
+
+export function useResourcesDetailConfig(): ResourcesDetailConfig {
+  const experienceSetting = useQuery(api.settings.getByKey, { key: 'resources_detail_ui' });
+
+  return useMemo(() => {
+    const raw = experienceSetting?.value as Partial<ResourcesDetailConfig> | undefined;
+    return {
+      layoutStyle: raw?.layoutStyle ?? 'classic',
+      showGallery: raw?.showGallery ?? true,
+      galleryMode: raw?.galleryMode ?? 'grid',
+      showRelated: raw?.showRelated ?? true,
+      showStickyCta: raw?.showStickyCta ?? true,
+      showResourceFilters: raw?.showResourceFilters ?? true,
+      cornerRadius: raw?.cornerRadius ?? 'lg',
+    };
+  }, [experienceSetting?.value]);
+}
+
+type LessonDetailConfig = {
+  layoutStyle: 'classic' | 'focus' | 'compact';
+  showSidebar: boolean;
+  showLessonNavigation: boolean;
+  showExerciseDownload: boolean;
+  showCourseBreadcrumb: boolean;
+  lockWallStyle: 'overlay' | 'card';
+  cornerRadius: 'none' | 'sm' | 'lg';
+};
+
+export function useLessonDetailConfig(): LessonDetailConfig {
+  const experienceSetting = useQuery(api.settings.getByKey, { key: 'lesson_detail_ui' });
+
+  return useMemo(() => {
+    const raw = experienceSetting?.value as Partial<LessonDetailConfig> | undefined;
+    const layoutStyle = raw?.layoutStyle === 'focus' || raw?.layoutStyle === 'compact' || raw?.layoutStyle === 'classic'
+      ? raw.layoutStyle
+      : 'classic';
+    const lockWallStyle = raw?.lockWallStyle === 'card' || raw?.lockWallStyle === 'overlay'
+      ? raw.lockWallStyle
+      : 'overlay';
+
+    return {
+      layoutStyle,
+      showSidebar: raw?.showSidebar ?? true,
+      showLessonNavigation: raw?.showLessonNavigation ?? true,
+      showExerciseDownload: raw?.showExerciseDownload ?? true,
+      showCourseBreadcrumb: raw?.showCourseBreadcrumb ?? true,
+      lockWallStyle,
+      cornerRadius: raw?.cornerRadius ?? 'lg',
     };
   }, [experienceSetting?.value]);
 }

@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useInView } from 'react-intersection-observer';
 import { api } from '@/convex/_generated/api';
-import { useBrandColors } from '@/components/site/hooks';
+import { useBrandColors, useSiteSettings } from '@/components/site/hooks';
 import {
   getProductDetailColors,
   resolveProductDetailElementColor,
@@ -411,9 +411,10 @@ export default function ProductDetailPage({ params }: PageProps) {
   const { slug } = use(params);
   const brandColors = useBrandColors();
   const brandColor = brandColors.primary;
+  const { isDark } = useSiteSettings();
   const tokens = useMemo(
-    () => getProductDetailColors(brandColors.primary, brandColors.secondary, brandColors.mode || 'single'),
-    [brandColors.primary, brandColors.secondary, brandColors.mode]
+    () => getProductDetailColors(brandColors.primary, brandColors.secondary, brandColors.mode || 'single', isDark),
+    [brandColors.primary, brandColors.secondary, brandColors.mode, isDark]
   );
   const experienceConfig = useProductDetailExperienceConfig();
   const classicHighlights = useClassicHighlights();
@@ -431,6 +432,7 @@ export default function ProductDetailPage({ params }: PageProps) {
   const saleModeSetting = useQuery(api.admin.modules.getModuleSetting, { moduleKey: 'products', settingKey: 'saleMode' });
   const wishlistModule = useQuery(api.admin.modules.getModuleByKey, { key: 'wishlist' });
   const ordersModule = useQuery(api.admin.modules.getModuleByKey, { key: 'orders' });
+  const commerceCapabilities = useQuery(api.cart.getCommerceCapabilities, {});
   const toggleWishlist = useMutation(api.wishlist.toggle);
   const createComment = useMutation(api.comments.create);
   const incrementLike = useMutation(api.comments.incrementLike);
@@ -870,8 +872,8 @@ export default function ProductDetailPage({ params }: PageProps) {
     }
   };
 
-  const canBuyNow = experienceConfig.showBuyNow && checkoutConfig.showBuyNow && (ordersModule?.enabled ?? false);
-  const canUseCartActions = saleMode === 'cart';
+  const canUseCartActions = saleMode === 'cart' && Boolean(commerceCapabilities?.cartAvailable && commerceCapabilities.providers.some((provider) => provider.provider === 'products' && provider.cartCapable));
+  const canBuyNow = experienceConfig.showBuyNow && checkoutConfig.showBuyNow && (ordersModule?.enabled ?? false) && canUseCartActions;
   const buyNowLabel = saleMode === 'contact' ? 'Liên hệ' : 'Mua ngay';
   const showStock = enabledFields.has('stock');
   const requireStockForBuyNow = saleMode === 'cart' && showStock;
@@ -957,7 +959,7 @@ export default function ProductDetailPage({ params }: PageProps) {
   };
 
   return (
-    <>
+    <div style={{ backgroundColor: tokens.pageBackground, color: tokens.bodyText }}>
       {experienceConfig.layoutStyle === 'classic' && (
         <ClassicStyle
           product={productData}
@@ -1134,7 +1136,7 @@ export default function ProductDetailPage({ params }: PageProps) {
         overlayUrl={overlayUrl}
         fallbackSrc={productImagePlaceholder}
       />
-    </>
+    </div>
   );
 }
 
@@ -1311,6 +1313,7 @@ function ProductImageWithFallback({
   return (
     <Image
       {...props}
+      alt={typeof props.alt === 'string' ? props.alt : placeholderLabel}
       src={currentSrc}
       onError={() => {
         setCurrentSrc(currentSrc !== normalizedFallback ? normalizedFallback : null);

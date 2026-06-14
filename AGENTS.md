@@ -5,6 +5,11 @@
 - Không mở rộng scope ngoài yêu cầu.
 - Ưu tiên thay đổi nhỏ, dễ rollback.
 
+# Workspace Hygiene & Cleanliness Guardrails (Quy tắc Giữ gìn Vệ sinh Workspace)
+- **Tuyệt đối không tạo file nháp vương vãi:** Nghiêm cấm tạo các file kịch bản tạm thời, file vá (patch), file test hoặc file nháp (ví dụ `.js`, `.ts`, `.py`, `.md`, `.json`...) trực tiếp ở thư mục gốc của dự án hoặc các thư mục module cốt lõi mà không có mục đích sử dụng lâu dài.
+- **Sử dụng thư mục nháp được chỉ định:** Mọi hoạt động chạy thử nghiệm, viết script test hoặc script bổ trợ tạm thời của Agent bắt buộc phải lưu trong thư mục `scratch/` hoặc thư mục nháp được cấu hình riêng trong sandbox.
+- **Dọn dẹp triệt để trước khi bàn giao:** Tất cả các file nháp, file trung gian hoặc file vá tạm thời được sinh ra trong quá trình code phải được xóa sạch hoàn toàn trước khi kết thúc tác vụ. Tuyệt đối không được commit bất kỳ file nháp/rác nào lên Git repository của dự án.
+
 # Large-scale System Design Guardrails
 - Không thể “test đến đúng”: test chỉ hỗ trợ; correctness phải đến từ thiết kế đơn giản, invariant rõ, data model chặt và edge case được nghĩ trước.
 - Chậm kéo dài có thể tệ hơn lỗi rõ ràng: với hot path/user-facing, ưu tiên timeout, fail-fast, backpressure, load shedding hoặc degrade có kiểm soát thay vì treo âm thầm.

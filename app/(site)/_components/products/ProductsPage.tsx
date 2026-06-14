@@ -5,7 +5,7 @@ import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useInView } from 'react-intersection-observer';
 import { api } from '@/convex/_generated/api';
-import { useBrandColors } from '@/components/site/hooks';
+import { useBrandColors, useSiteSettings } from '@/components/site/hooks';
 import { getProductsListColors } from '@/components/site/products/colors';
 import { useCartConfig, useCheckoutConfig, useProductsListConfig } from '@/lib/experiences';
 import { useCustomerAuth } from '@/app/(site)/auth/context';
@@ -18,6 +18,7 @@ import type { Id } from '@/convex/_generated/dataModel';
 import { getProductImageAspectRatioCssValue } from '@/lib/products/image-aspect-ratio';
 import { RichContent } from '@/components/common/RichContent';
 import { toRichTextContent } from '@/lib/products/product-supplemental-content';
+import { PageHeaderWithCount } from '@/components/shared/PageHeaderWithCount';
 
 // Import các modules con được phân tách để tối ưu hóa kích thước file
 import { 
@@ -87,9 +88,10 @@ export default function ProductsPage(props: ProductsPageProps) {
 function ProductsContent(props: ProductsPageProps) {
   const brandColors = useBrandColors();
   const brandColor = brandColors.primary;
+  const { isDark } = useSiteSettings();
   const tokens = useMemo(
-    () => getProductsListColors(brandColors.primary, brandColors.secondary, brandColors.mode || 'single'),
-    [brandColors.primary, brandColors.secondary, brandColors.mode]
+    () => getProductsListColors(brandColors.primary, brandColors.secondary, brandColors.mode || 'single', isDark),
+    [brandColors.primary, brandColors.secondary, brandColors.mode, isDark]
   );
   const imageAspectRatio = useProductImageAspectRatioSetting();
   const imageAspectRatioStyle = useMemo(
@@ -1139,6 +1141,7 @@ function ProductsContent(props: ProductsPageProps) {
           showCategories={listConfig.showCategories}
           cartButtonsLayout={listConfig.cartButtonsLayout}
           priceFilterMode={listConfig.priceFilterMode}
+          gridColumns={listConfig.gridColumns}
         />
         {quickAddModal}
       </>
@@ -1202,6 +1205,7 @@ function ProductsContent(props: ProductsPageProps) {
           showCategories={listConfig.showCategories}
           cartButtonsLayout={listConfig.cartButtonsLayout}
           priceFilterMode={listConfig.priceFilterMode}
+          gridColumns={listConfig.gridColumns}
         />
         {quickAddModal}
       </>
@@ -1212,16 +1216,17 @@ function ProductsContent(props: ProductsPageProps) {
     <>
       <div className="py-8 md:py-12 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold" style={{ color: tokens.headingColor }}>
-              {activeCategoryDoc?.name ?? (enableProductTypes ? productType?.name : null) ?? 'Sản phẩm'}
-            </h1>
-            {showCategorySubtitle && activeCategoryDoc?.description && (
-              <p className="mt-2 text-base max-w-2xl mx-auto opacity-80" style={{ color: tokens.bodyText }}>
-                {activeCategoryDoc.description}
-              </p>
-            )}
-          </div>
+          <PageHeaderWithCount
+            title={activeCategoryDoc?.name ?? (enableProductTypes ? productType?.name : null) ?? 'Sản phẩm'}
+            count={products.length}
+            totalCount={totalCount}
+            unit="sản phẩm"
+            titleColor={tokens.primary}
+            subtitleColor={tokens.metaText}
+            description={showCategorySubtitle && activeCategoryDoc?.description ? activeCategoryDoc.description : undefined}
+            descriptionColor={tokens.bodyText}
+            centered={true}
+          />
 
           <MobileProductsFilters
             categories={categoryOptions}
@@ -1358,8 +1363,8 @@ function ProductsContent(props: ProductsPageProps) {
                           }}
                           className="w-full px-2.5 py-1.5 rounded-md text-left text-xs transition-colors hover:opacity-80"
                           style={{
-                            backgroundColor: !activeCategory ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                            color: !activeCategory ? '#3b82f6' : tokens.inputText,
+                            backgroundColor: !activeCategory ? `${tokens.primary}18` : 'transparent',
+                            color: !activeCategory ? tokens.primary : tokens.inputText,
                             fontWeight: !activeCategory ? 'bold' : 'normal',
                           }}
                         >
@@ -1382,8 +1387,8 @@ function ProductsContent(props: ProductsPageProps) {
                                 }}
                                 className="w-full px-2.5 py-1.5 rounded-md text-left text-xs transition-colors hover:opacity-80"
                                 style={{
-                                  backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                                  color: isSelected ? '#3b82f6' : tokens.inputText,
+                                  backgroundColor: isSelected ? `${tokens.primary}18` : 'transparent',
+                                  color: isSelected ? tokens.primary : tokens.inputText,
                                   fontWeight: isSelected ? 'bold' : 'normal',
                                 }}
                               >
@@ -1424,7 +1429,10 @@ function ProductsContent(props: ProductsPageProps) {
                 </div>
               )}
 
-              <div className="flex items-center gap-2 ml-auto">
+              <div className="flex items-center gap-2 ml-auto shrink-0">
+                {hasActiveProductFilters && (
+                  <ClearFiltersButton tokens={tokens} onClear={handleClearAllFilters} />
+                )}
                 <select
                   value={sortBy}
                   onChange={(e) => { setSortBy(e.target.value as ProductSortOption); }}
@@ -1440,20 +1448,13 @@ function ProductsContent(props: ProductsPageProps) {
                   <option value="price_asc">Giá thấp → cao</option>
                   <option value="price_desc">Giá cao → thấp</option>
                   <option value="name">Tên A-Z</option>
+                  <option value="name_desc">Tên Z-A</option>
                 </select>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between mb-6">
-            <p className="text-sm" style={{ color: tokens.metaText }}>
-              Hiển thị <span className="font-medium" style={{ color: tokens.bodyText }}>{products.length}</span>
-              {totalCount !== undefined && products.length > 0 && totalCount > products.length && <> / {totalCount}</>} sản phẩm
-            </p>
-            {hasActiveProductFilters && (
-              <ClearFiltersButton tokens={tokens} onClear={handleClearAllFilters} />
-            )}
-          </div>
+
 
           {isLoadingProducts ? (
             <ProductsGridSkeleton count={postsPerPage} tokens={tokens} />
@@ -1487,6 +1488,7 @@ function ProductsContent(props: ProductsPageProps) {
               onAttributeChange={handleAttributeChange}
               selectedAttributes={selectedAttributes}
               cartButtonsLayout={listConfig.cartButtonsLayout}
+              gridColumns={listConfig.gridColumns}
             />
           )}
 

@@ -9,6 +9,7 @@ import { Briefcase, ExternalLink, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAdminMutationErrorMessage } from '@/app/admin/lib/mutation-error';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '../../../components/ui';
+import { CopyableInput } from '../../../components/CopyTextButton';
 import { LexicalEditor } from '../../../components/LexicalEditor';
 import { ImageUploader } from '../../../components/ImageUploader';
 import { QuickCreateServiceCategoryModal } from '../../../components/QuickCreateServiceCategoryModal';
@@ -116,6 +117,7 @@ export default function ServiceEditPage({ params }: { params: Promise<{ id: stri
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editorResetKey, setEditorResetKey] = useState(0);
   const [snapshotVersion, setSnapshotVersion] = useState(0);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const selectedCategorySlug = useMemo(
     () => categoriesData?.find((category) => category._id === categoryId)?.slug,
     [categoriesData, categoryId]
@@ -275,9 +277,9 @@ export default function ServiceEditPage({ params }: { params: Promise<{ id: stri
   ]);
 
   const hasChanges = useMemo(() => {
-    if (!initialSnapshotRef.current) {return false;}
+    if (!isDataLoaded || !initialSnapshotRef.current) {return false;}
     return JSON.stringify(initialSnapshotRef.current) !== JSON.stringify(currentSnapshot);
-  }, [currentSnapshot, snapshotVersion]);
+  }, [currentSnapshot, snapshotVersion, isDataLoaded]);
 
   useEffect(() => {
     if (saveStatus === 'saving') {return;}
@@ -291,7 +293,7 @@ export default function ServiceEditPage({ params }: { params: Promise<{ id: stri
   }, [hasChanges, saveStatus]);
 
   useEffect(() => {
-    if (serviceData) {
+    if (serviceData && additionalCategoryIdsData !== undefined && !isDataLoaded) {
       setTitle(serviceData.title);
       setSlug(serviceData.slug);
       setContent(serviceData.content);
@@ -348,8 +350,9 @@ export default function ServiceEditPage({ params }: { params: Promise<{ id: stri
         title: serviceData.title.trim(),
       };
       setSnapshotVersion((prev) => prev + 1);
+      setIsDataLoaded(true);
     }
-  }, [serviceData, additionalCategoryIdsData, hasMarkdownRender, hasHtmlRender]);
+  }, [serviceData, additionalCategoryIdsData, hasMarkdownRender, hasHtmlRender, isDataLoaded]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -469,7 +472,7 @@ export default function ServiceEditPage({ params }: { params: Promise<{ id: stri
             <CardContent className="p-6 space-y-4">
               <div className="space-y-2">
                 <Label>Tiêu đề <span className="text-red-500">*</span></Label>
-                <Input value={title} onChange={handleTitleChange} required />
+                <CopyableInput value={title} onChange={handleTitleChange} required copyLabel="tiêu đề" />
               </div>
               <div className="space-y-2">
                 <Label>Slug</Label>

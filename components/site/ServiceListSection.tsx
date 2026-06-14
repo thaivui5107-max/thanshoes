@@ -22,6 +22,7 @@ import {
 } from '@/app/admin/home-components/service-list/_types';
 import { buildDetailPath, normalizeRouteMode } from '@/lib/ia/route-mode';
 import { useSnapshotDemoContext } from '@/components/modules/homepage/SnapshotDemoProvider';
+import { adaptTokensForDarkMode } from '@/components/site/home/utils/darkModeColorAdapter';
 
 interface ServiceListSectionProps {
   config: Record<string, unknown>;
@@ -30,6 +31,7 @@ interface ServiceListSectionProps {
   mode: ServiceListBrandMode;
   title: string;
   snapshotComponentKey?: string;
+  isDark?: boolean;
 }
 
 type ServiceRecord = {
@@ -73,6 +75,7 @@ export function ServiceListSection({
   mode,
   title,
   snapshotComponentKey,
+  isDark,
 }: ServiceListSectionProps) {
   const snapshotDemo = useSnapshotDemoContext();
   const safeConfig = config as Partial<ServiceListConfig>;
@@ -90,7 +93,7 @@ export function ServiceListSection({
       : []
   ), [safeConfig.selectedServiceIds]);
 
-  const demoServices = React.useMemo(() => (config.demoServices as Array<{ id: string; name: string; image?: string; price?: string; description?: string; tag?: string }>) || [], [config.demoServices]);
+  const demoServices = React.useMemo(() => (config.demoServices as Array<{ id: string; name: string; image?: string; price?: string; description?: string; tag?: string; link?: string }>) || [], [config.demoServices]);
 
   const servicesData = useQuery(
     api.services.listAll,
@@ -131,6 +134,7 @@ export function ServiceListSection({
         title: item.name,
         views: 0,
         tag: item.tag,
+        link: item.link,
       }));
     }
 
@@ -183,13 +187,24 @@ export function ServiceListSection({
     );
   }
 
-  const tokens = getServiceListColorTokens({
-    primary: brandColor,
-    secondary,
-    mode,
-  });
+  const tokens = React.useMemo(() => {
+    const rawTokens = getServiceListColorTokens({
+      primary: brandColor,
+      secondary,
+      mode,
+    });
+    return adaptTokensForDarkMode(rawTokens, isDark ?? false);
+  }, [brandColor, secondary, mode, isDark]);
 
-  const items = services.map((service, index) => mapServiceToPreview(service, index, { categorySlugMap, routeMode }));
+  const items = services.map((service, index) => {
+    const preview = mapServiceToPreview(service, index, { categorySlugMap, routeMode });
+    // Demo mode: dùng link do người dùng nhập, fallback về href đã build
+    const demoLink = (service as { link?: string }).link;
+    if (demoLink) {
+      return { ...preview, href: demoLink };
+    }
+    return preview;
+  });
 
   return (
     <ServiceListSectionShared

@@ -262,7 +262,7 @@ export function ImageUploader({
               fill
               sizes="(max-width: 768px) 100vw, 400px"
               className="object-cover"
-              onError={() => { setHasError(true); setPreview(undefined); onChange(undefined, undefined); }}
+              onError={() => { setHasError(true); }}
             />
           ) : null}
           <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">

@@ -5,6 +5,7 @@ import { Bot, Check, Copy, FileText, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { AiDirectGeneratePanel } from './AiDirectGenerateButton';
 import {
   Button,
   Dialog,
@@ -18,7 +19,7 @@ import {
   Checkbox,
 } from './ui';
 
-export type AiEntityImportKind = 'product' | 'service' | 'post';
+export type AiEntityImportKind = 'product' | 'service' | 'post' | 'course';
 
 export type AiEntityImportPayload = {
   name?: string;
@@ -38,7 +39,17 @@ export type AiEntityImportPayload = {
   salePrice?: number;
   stock?: number;
   duration?: string;
+  durationText?: string;
   authorName?: string;
+  instructorName?: string;
+  level?: string;
+  pricingType?: string;
+  priceNote?: string;
+  comparePriceAmount?: number;
+  isPriceVisible?: boolean;
+  introVideoType?: string;
+  introVideoUrl?: string;
+  featured?: boolean;
   combos?: any[];
   attributeTermIds?: string[];
   attributeRangeValues?: Record<string, string>;
@@ -97,6 +108,33 @@ const ENTITY_COPY: Record<AiEntityImportKind, {
   }
 }`,
   },
+  course: {
+    rootKey: 'course',
+    title: 'Nhập khóa học bằng AI',
+    description: 'Copy prompt, nhờ AI tạo JSON khóa học, dán kết quả để preview rồi áp dụng vào form.',
+    sample: `{
+  "course": {
+    "title": "Lộ trình Next.js thực chiến cho website bán hàng",
+    "slug": "lo-trinh-nextjs-thuc-chien-cho-website-ban-hang",
+    "excerpt": "Khóa học hướng dẫn xây dựng website bán hàng bằng Next.js theo lộ trình thực tế, phù hợp người đã biết React cơ bản và muốn làm sản phẩm có thể triển khai.",
+    "content": "<h2>Khóa học Next.js thực chiến giúp bạn làm được gì?</h2><p>Khóa học tập trung vào cách xây dựng website bán hàng có cấu trúc rõ ràng, tối ưu trải nghiệm người dùng và dễ mở rộng khi dữ liệu, sản phẩm hoặc nội dung tăng lên.</p><h3>Bạn sẽ học theo lộ trình nào?</h3><ol><li>Nắm kiến trúc dự án Next.js và cách chia route, component, data flow.</li><li>Xây dựng trang danh sách, chi tiết sản phẩm, giỏ hàng và nội dung SEO.</li><li>Tối ưu form, trạng thái tải, xử lý lỗi và trải nghiệm mobile.</li></ol><h3>Khóa học phù hợp với ai?</h3><p>Phù hợp với developer đã biết React cơ bản, chủ shop có đội kỹ thuật nội bộ hoặc freelancer muốn nâng cấp năng lực làm web thương mại.</p>",
+    "markdownRender": "## Khóa học Next.js thực chiến giúp bạn làm được gì?\\n\\nKhóa học tập trung vào cách xây dựng website bán hàng có cấu trúc rõ ràng, tối ưu trải nghiệm người dùng và dễ mở rộng khi dữ liệu, sản phẩm hoặc nội dung tăng lên.\\n\\n### Bạn sẽ học theo lộ trình nào?\\n\\n1. Nắm kiến trúc dự án Next.js và cách chia route, component, data flow.\\n2. Xây dựng trang danh sách, chi tiết sản phẩm, giỏ hàng và nội dung SEO.\\n3. Tối ưu form, trạng thái tải, xử lý lỗi và trải nghiệm mobile.\\n\\n### Khóa học phù hợp với ai?\\n\\nPhù hợp với developer đã biết React cơ bản, chủ shop có đội kỹ thuật nội bộ hoặc freelancer muốn nâng cấp năng lực làm web thương mại.",
+    "htmlRender": "<h2>Khóa học Next.js thực chiến giúp bạn làm được gì?</h2><p>Khóa học tập trung vào cách xây dựng website bán hàng có cấu trúc rõ ràng, tối ưu trải nghiệm người dùng và dễ mở rộng khi dữ liệu, sản phẩm hoặc nội dung tăng lên.</p><h3>Bạn sẽ học theo lộ trình nào?</h3><ol><li>Nắm kiến trúc dự án Next.js và cách chia route, component, data flow.</li><li>Xây dựng trang danh sách, chi tiết sản phẩm, giỏ hàng và nội dung SEO.</li><li>Tối ưu form, trạng thái tải, xử lý lỗi và trải nghiệm mobile.</li></ol><h3>Khóa học phù hợp với ai?</h3><p>Phù hợp với developer đã biết React cơ bản, chủ shop có đội kỹ thuật nội bộ hoặc freelancer muốn nâng cấp năng lực làm web thương mại.</p>",
+    "metaTitle": "Khóa học Next.js thực chiến",
+    "metaDescription": "Học Next.js qua dự án website bán hàng thực tế, có lộ trình rõ và bài học dễ áp dụng.",
+    "thumbnail": "https://example.com/course.jpg",
+    "pricingType": "paid",
+    "price": 2500000,
+    "comparePriceAmount": 3500000,
+    "priceNote": "Học trọn đời",
+    "instructorName": "Dohy Academy",
+    "level": "Trung cấp",
+    "durationText": "12 giờ học",
+    "introVideoType": "youtube",
+    "introVideoUrl": "https://youtube.com/watch?v=example"
+  }
+}`,
+  },
   post: {
     rootKey: 'post',
     title: 'Nhập bài viết bằng AI',
@@ -145,6 +183,26 @@ const FIELD_SPECS: Record<AiEntityImportKind, Record<string, string>> = {
     price: '"price": "number optional, giá tham khảo nếu phù hợp"',
     duration: '"duration": "string optional, ví dụ 60 phút / 2-3 ngày / Theo dự án"',
   },
+  course: {
+    title: '"title": "string bắt buộc, tên khóa học rõ kỹ năng/lộ trình + kết quả học được"',
+    slug: '"slug": "string optional, lowercase-kebab-case không dấu"',
+    excerpt: '"excerpt": "string, 120-220 ký tự, nói rõ khóa học dành cho ai và giúp đạt kết quả gì"',
+    content: '"content": "string bắt buộc nếu field này có trong schema; nội dung khóa học đầy đủ, có tổng quan, lộ trình, kết quả, ai phù hợp, điều kiện đầu vào"',
+    markdownRender: '"markdownRender": "string bắt buộc nếu field này có trong schema; markdown đầy đủ tương đương content"',
+    htmlRender: '"htmlRender": "string bắt buộc nếu field này có trong schema; HTML semantic đầy đủ tương đương content, không className/style/script"',
+    metaTitle: '"metaTitle": "string <= 60 ký tự, có keyword khóa học + lợi ích chính"',
+    metaDescription: '"metaDescription": "string <= 160 ký tự, nêu kỹ năng học được + đối tượng phù hợp + lý do click"',
+    thumbnail: '"thumbnail": "URL http/https hoặc path bắt đầu /, optional, không dùng base64"',
+    pricingType: '"pricingType": "free | paid | contact"',
+    price: '"price": "number optional, giá bán khi pricingType là paid"',
+    comparePriceAmount: '"comparePriceAmount": "number optional, giá gốc để hiển thị gạch ngang nếu có, phải lớn hơn price"',
+    priceNote: '"priceNote": "string optional, ví dụ Học trọn đời / Bao gồm tài liệu"',
+    instructorName: '"instructorName": "string optional, tên giảng viên/đơn vị đào tạo"',
+    level: '"level": "Cơ bản | Trung cấp | Nâng cao"',
+    durationText: '"durationText": "string optional, thời lượng hiển thị, ví dụ 12 giờ học / 6 tuần"',
+    introVideoType: '"introVideoType": "none | youtube | drive | external"',
+    introVideoUrl: '"introVideoUrl": "URL video giới thiệu optional, chỉ dùng khi introVideoType khác none"',
+  },
   post: {
     title: '"title": "string bắt buộc, cụ thể, có góc nhìn rõ, không chung chung"',
     slug: '"slug": "string optional, lowercase-kebab-case không dấu"',
@@ -163,6 +221,7 @@ const CORE_FIELDS: Record<AiEntityImportKind, string[]> = {
   product: ['name', 'slug', 'price'],
   service: ['title', 'slug', 'content'],
   post: ['title', 'slug', 'content'],
+  course: ['title', 'slug', 'content', 'pricingType'],
 };
 
 const OPTIONAL_FIELD_MAP: Record<AiEntityImportKind, Record<string, string[]>> = {
@@ -187,6 +246,24 @@ const OPTIONAL_FIELD_MAP: Record<AiEntityImportKind, Record<string, string[]>> =
     thumbnail: ['thumbnail'],
     price: ['price'],
     duration: ['duration'],
+  },
+  course: {
+    content: ['content'],
+    excerpt: ['excerpt'],
+    htmlRender: ['htmlRender'],
+    markdownRender: ['markdownRender'],
+    metaTitle: ['metaTitle'],
+    metaDescription: ['metaDescription'],
+    thumbnail: ['thumbnail'],
+    pricingType: ['pricingType'],
+    priceAmount: ['price'],
+    comparePriceAmount: ['comparePriceAmount'],
+    priceNote: ['priceNote'],
+    instructorName: ['instructorName'],
+    level: ['level'],
+    durationText: ['durationText'],
+    introVideoType: ['introVideoType'],
+    introVideoUrl: ['introVideoUrl'],
   },
   post: {
     content: ['content'],
@@ -227,6 +304,12 @@ const KIND_GUIDE: Record<AiEntityImportKind, string> = {
 - Nội dung phải cho thấy năng lực qua quy trình, phạm vi, tiêu chí triển khai, lưu ý trước khi bắt đầu; không chỉ nói "chuyên nghiệp/uy tín".
 - Không cam kết kết quả tuyệt đối, không bịa chứng chỉ, case study, số liệu, khách hàng lớn hoặc thời gian hoàn thành nếu input không cung cấp.
 - Cấu trúc nên có: H2 tổng quan, H3 vấn đề khách gặp, H3 cách triển khai, H3 đầu ra, H3 ai phù hợp, H3 lưu ý/chi phí/thời gian nếu có, CTA mềm.`,
+  course: `Riêng khóa học:
+- Viết theo intent đăng ký học: người học sẽ đạt năng lực gì, lộ trình học ra sao, cần nền tảng nào, học xong áp dụng được vào tình huống nào.
+- Trước khi viết, tự xác định focus keyword, search intent học tập, chân dung học viên và outcome chính; thể hiện tự nhiên trong title, excerpt, heading và meta.
+- Nội dung phải rõ như landing khóa học tốt: kết quả học được, module/chủ đề chính, bài tập/thực hành nếu có, ai phù hợp, điều kiện đầu vào, lưu ý trước khi đăng ký.
+- Không bịa chứng chỉ, cam kết việc làm, số giờ học, số bài học, giảng viên nổi tiếng hoặc bảo đảm hoàn tiền nếu input không cung cấp.
+- Cấu trúc nên có: H2 tổng quan, H3 bạn sẽ học gì, H3 lộ trình, H3 ai phù hợp, H3 điều kiện đầu vào, H3 cách học/đầu ra, CTA mềm.`,
   post: `Riêng bài viết:
 - Viết theo chuẩn SEO 2026 nhưng ưu tiên người đọc trước: thỏa intent, có thông tin ra quyết định, không generic, không nhồi keyword.
 - Trước khi viết, tự xác định focus keyword, search intent, người đọc mục tiêu và góc nhìn chính; thể hiện tự nhiên trong title, mở bài, heading và meta.
@@ -247,7 +330,7 @@ const buildFormatRules = (kind: AiEntityImportKind, enabledFields?: string[]) =>
   const hasHtml = allowAllOptional || enabled.has('htmlRender');
   if (!hasContent && !hasMarkdown && !hasHtml) {return '';}
 
-  const label = kind === 'product' ? 'sản phẩm' : kind === 'service' ? 'dịch vụ' : 'bài viết';
+  const label = kind === 'product' ? 'sản phẩm' : kind === 'service' ? 'dịch vụ' : kind === 'course' ? 'khóa học' : 'bài viết';
   const lines = [
     `Format rule riêng cho ${label}:`,
   ];
@@ -458,7 +541,7 @@ Riêng về Thuộc tính phân loại & bộ lọc:
 
   return `Bạn là senior Vietnamese SEO & conversion copywriter cho website thương mại/dịch vụ/blog.
 
-Nhiệm vụ: tạo nội dung ${kind === 'product' ? 'SẢN PHẨM' : kind === 'service' ? 'DỊCH VỤ' : 'BÀI VIẾT'} bằng tiếng Việt, có thể dùng ngay sau khi dán vào admin.
+Nhiệm vụ: tạo nội dung ${kind === 'product' ? 'SẢN PHẨM' : kind === 'service' ? 'DỊCH VỤ' : kind === 'course' ? 'KHÓA HỌC' : 'BÀI VIẾT'} bằng tiếng Việt, có thể dùng ngay sau khi dán vào admin.
 
 ${enabledLine}
 ${comboPrompt}
@@ -509,6 +592,15 @@ const parseNumber = (value: unknown) => {
   if (!normalized) { return undefined; }
   const parsed = Number.parseInt(normalized, 10);
   return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const parseBoolean = (value: unknown) => {
+  if (typeof value === 'boolean') {return value;}
+  if (typeof value !== 'string') {return undefined;}
+  const normalized = value.trim().toLowerCase();
+  if (['true', '1', 'yes', 'có'].includes(normalized)) {return true;}
+  if (['false', '0', 'no', 'không', 'khong'].includes(normalized)) {return false;}
+  return undefined;
 };
 
 const isValidImageUrl = (value: string) => {
@@ -623,17 +715,27 @@ const parseAiEntity = (raw: string, kind: AiEntityImportKind): ParseResult => {
 
   const item: AiEntityImportPayload = {
     authorName: trimText(record.authorName, 120),
+    comparePriceAmount: parseNumber(record.comparePriceAmount),
     content: trimText(record.content, 20_000),
     description: trimText(record.description, 2_000),
     duration: trimText(record.duration, 80),
+    durationText: trimText(record.durationText, 80),
     excerpt: trimText(record.excerpt, 300),
+    featured: parseBoolean(record.featured),
     htmlRender: trimText(record.htmlRender, 40_000),
     image,
+    instructorName: trimText(record.instructorName, 120),
+    introVideoType: trimText(record.introVideoType, 40),
+    introVideoUrl: trimText(record.introVideoUrl, 500),
+    isPriceVisible: parseBoolean(record.isPriceVisible),
+    level: trimText(record.level, 40),
     markdownRender: trimText(record.markdownRender, 40_000),
     metaDescription: trimText(record.metaDescription, 160),
     metaTitle: trimText(record.metaTitle, 60),
     name: kind === 'product' ? title : undefined,
     price: parseNumber(record.price),
+    priceNote: trimText(record.priceNote, 120),
+    pricingType: trimText(record.pricingType, 40),
     salePrice: parseNumber(record.salePrice),
     sku: kind === 'product' ? undefined : trimText(record.sku, 80),
     slug: trimText(record.slug, 160),
@@ -657,6 +759,7 @@ export function AiEntityImportDialog({
   enableProductTypes = false,
   enableCombos = false,
   formConfig,
+  buttonLabel = 'Import AI',
 }: {
   buttonClassName?: string;
   enabledFields?: Iterable<string>;
@@ -665,6 +768,7 @@ export function AiEntityImportDialog({
   enableProductTypes?: boolean;
   enableCombos?: boolean;
   formConfig?: any;
+  buttonLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [rawInput, setRawInput] = useState('');
@@ -841,7 +945,7 @@ export function AiEntityImportDialog({
   return (
     <>
       <Button type="button" variant="outline" className={cn('gap-2', buttonClassName)} onClick={() => setOpen(true)}>
-        <Bot size={16} /> Import AI
+        <Bot size={16} /> {buttonLabel}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -912,6 +1016,20 @@ export function AiEntityImportDialog({
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label>Dán kết quả AI</Label>
+                <AiDirectGeneratePanel
+                  prompt={prompt}
+                  sessionId={`admin-entity-import:${kind}`}
+                  onGenerated={setRawInput}
+                  placeholder={
+                    kind === 'post'
+                      ? 'Ví dụ: Viết bài “Cách chọn phụ kiện tủ bếp bền đẹp”, nhắm keyword phụ kiện tủ bếp, giọng tư vấn chuyên gia, có checklist chọn mua.'
+                      : kind === 'product'
+                        ? 'Ví dụ: Tạo sản phẩm “Giá kệ góc liên hoàn inox 304”, nêu chất liệu, công dụng, đối tượng phù hợp, giá tham khảo nếu có.'
+                        : kind === 'service'
+                          ? 'Ví dụ: Tạo dịch vụ “Tư vấn thiết kế tủ bếp”, nêu vấn đề khách gặp, quy trình, đầu ra, CTA liên hệ.'
+                          : 'Ví dụ: Tạo khóa học “Next.js thực chiến”, nêu đối tượng học, lộ trình, kết quả đạt được và giá nếu có.'
+                  }
+                />
                 <textarea
                   className="min-h-64 w-full rounded-md border border-slate-200 bg-white px-3 py-2 font-mono text-xs text-slate-800 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                   placeholder={sample}
@@ -975,7 +1093,7 @@ export function AiEntityImportDialog({
 
               {result.item && (
                 <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Preview</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Xem trước</div>
                   <div className="mt-2 space-y-1 text-sm">
                     <div className="font-semibold text-slate-900 dark:text-slate-100">{result.item.name || result.item.title}</div>
                     {(result.item.excerpt || result.item.description || result.item.metaDescription) && (

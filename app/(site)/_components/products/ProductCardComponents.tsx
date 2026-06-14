@@ -6,13 +6,79 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { PublicImage as Image } from '@/components/shared/PublicImage';
-import { ShoppingCart, Package, Heart, X } from 'lucide-react';
+import { Package, Heart, X, ShoppingCart } from 'lucide-react';
 import type { Id } from '@/convex/_generated/dataModel';
 import type { ProductsListColors } from '@/components/site/products/colors';
 import { getPublicPriceLabel } from '@/lib/products/public-price';
 import { getAttributeIconComponent } from '@/app/admin/attribute-groups/_lib/iconRegistry';
 import { ProductImageWithOverlay } from '@/components/shared/ProductImageWithOverlay';
 import type { WatermarkConfig, ProductFrameConfig } from '@/components/shared/ProductImageWithOverlay';
+import { useSiteSettings } from '@/components/site/hooks';
+import { useProductsListConfig } from '@/lib/experiences';
+
+function getButtonStyles(brandColor: string, isDark: boolean) {
+  let hex = brandColor.replace('#', '');
+  if (hex.length === 3) {
+    hex = hex.split('').map(char => char + char).join('');
+  }
+  let r = 59, g = 130, b = 246; // default blue fallback
+  if (hex.length === 6) {
+    r = parseInt(hex.substring(0, 2), 16);
+    g = parseInt(hex.substring(2, 4), 16);
+    b = parseInt(hex.substring(4, 6), 16);
+  }
+
+  // Chuyển đổi sang HSL
+  const rNorm = r / 255;
+  const gNorm = g / 255;
+  const bNorm = b / 255;
+  const max = Math.max(rNorm, gNorm, bNorm);
+  const min = Math.min(rNorm, gNorm, bNorm);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case rNorm: h = (gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0); break;
+      case gNorm: h = (bNorm - rNorm) / d + 2; break;
+      case bNorm: h = (rNorm - gNorm) / d + 4; break;
+    }
+    h /= 6;
+  }
+
+  const hue = Math.round(h * 360);
+  const sat = Math.round(s * 100);
+  const light = Math.round(l * 100);
+
+  // Tạo hiệu ứng Hue Shift sang trái (màu ấm hơn/giảm 15 độ) và sang phải (màu mát hơn/tăng 15 độ)
+  const hLeft = (hue - 15 + 360) % 360;
+  const hRight = (hue + 15) % 360;
+
+  // Giữ độ bão hòa cao và rực rỡ để gradient nổi bật (75% - 95%)
+  const targetSat = Math.max(75, Math.min(95, sat));
+
+  // Tăng cường Lightness (Độ sáng) của gradient để luôn đạt độ tương phản hoàn hảo với chữ màu tối
+  const lLeft = Math.max(48, Math.min(65, light - 3));
+  const lRight = Math.max(58, Math.min(75, light + 7));
+
+  const fromColor = `hsl(${hLeft}, ${targetSat}%, ${lLeft}%)`;
+  const toColor = `hsl(${hRight}, ${targetSat}%, ${lRight}%)`;
+
+  const shadowBlur = isDark ? 16 : 6;
+  const shadowY = isDark ? 4 : 2;
+  const glowOpacity = isDark ? 0.25 : 0.12;
+
+  return {
+    background: `linear-gradient(135deg, ${fromColor} 0%, ${toColor} 100%)`,
+    color: '#0f172a', // Chữ màu tối (slate-900) cực kỳ sạch sẽ và dễ đọc
+    borderColor: 'transparent',
+    fontWeight: '600',
+    letterSpacing: '0.025em',
+    boxShadow: `0 ${shadowY}px ${shadowBlur}px rgba(${r}, ${g}, ${b}, ${glowOpacity})`,
+  };
+}
 
 export function useProductImagePlaceholder() {
   const productImagePlaceholderSetting = useQuery(api.settings.getValue, { key: 'product_image_placeholder', defaultValue: '' });
@@ -66,34 +132,49 @@ export function ProductCardActions({
   }
 
   const isOutOfStock = showStock && !product.hasVariants && product.stock <= 0;
+
+  if (isOutOfStock) {
+    return (
+      <div className="mt-2 sm:mt-3 w-full">
+        <div
+          className="w-full rounded-full py-1.5 sm:py-2 text-[10px] xs:text-xs lg:text-[11px] xl:text-xs font-medium tracking-wide flex items-center justify-center bg-slate-100/70 dark:bg-zinc-800/80 text-slate-400 dark:text-zinc-500 border border-slate-200/10 cursor-not-allowed select-none"
+        >
+          <span>Hết hàng</span>
+        </div>
+      </div>
+    );
+  }
+
   const isGrid2 = cartButtonsLayout === 'grid-2' && showAddToCartButton && showBuyNowButton;
   const actionHeightClass = showAddToCartButton && showBuyNowButton && !isGrid2 ? 'min-h-[76px]' : 'min-h-[36px]';
   const gridColsClass = isGrid2 ? 'grid-cols-2' : 'grid-cols-1';
 
   return (
-    <div className={`mt-2 sm:mt-3 grid ${gridColsClass} gap-1 sm:gap-2 ${actionHeightClass}`}>
+    <div className={`mt-2 sm:mt-3 grid ${gridColsClass} gap-1.5 sm:gap-2 ${actionHeightClass}`}>
       {showAddToCartButton && (
         <button
-          className="w-full rounded-lg py-1.5 sm:py-2 text-[10px] xs:text-xs lg:text-[11px] xl:text-xs font-semibold tracking-tight transition-all duration-300 flex items-center justify-center disabled:opacity-55 disabled:cursor-not-allowed hover:brightness-95 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md px-1 whitespace-nowrap"
-          style={{ backgroundColor: tokens.primaryActionBg, color: tokens.primaryActionText }}
+          className="w-full rounded-full py-1.5 sm:py-2 text-[10px] xs:text-xs lg:text-[11px] xl:text-xs font-semibold tracking-wide border transition-all duration-300 flex items-center justify-center disabled:opacity-55 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99] shadow-sm hover:shadow px-1.5 whitespace-nowrap"
+          style={{
+            backgroundColor: 'rgba(250, 204, 21, 0.08)',
+            borderColor: `${tokens.primary}25`,
+            color: tokens.primary
+          }}
           onClick={(event) => { event.preventDefault(); event.stopPropagation(); onAddToCart(product); }}
-          disabled={isOutOfStock}
         >
+          <ShoppingCart size={13} className="mr-1 sm:mr-1.5 shrink-0" style={{ color: tokens.primary }} />
           <span>Thêm giỏ</span>
         </button>
       )}
       {showBuyNowButton && (
         <button
-          className="w-full rounded-lg py-1.5 sm:py-2 text-[10px] xs:text-xs lg:text-[11px] xl:text-xs font-semibold tracking-tight border transition-all duration-300 disabled:opacity-55 disabled:cursor-not-allowed hover:bg-[var(--btn-hover-bg)] hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md px-1 whitespace-nowrap"
+          className="w-full rounded-full py-1.5 sm:py-2 text-[10px] xs:text-xs lg:text-[11px] xl:text-xs font-semibold tracking-wide transition-all duration-300 flex items-center justify-center disabled:opacity-55 disabled:cursor-not-allowed hover:brightness-95 hover:scale-[1.01] active:scale-[0.99] shadow-sm hover:shadow px-1.5 whitespace-nowrap"
           style={{
-            borderColor: tokens.secondaryActionBorder,
-            color: tokens.secondaryActionText,
-            '--btn-hover-bg': tokens.secondaryActionHoverBg,
-          } as React.CSSProperties}
+            backgroundColor: tokens.primary,
+            color: tokens.primaryActionText
+          }}
           onClick={(event) => { event.preventDefault(); event.stopPropagation(); onBuyNow(product); }}
-          disabled={isOutOfStock}
         >
-          <span>{isOutOfStock ? 'Hết hàng' : 'Mua ngay'}</span>
+          <span>Mua ngay</span>
         </button>
       )}
     </div>
@@ -287,7 +368,8 @@ export function ProductGrid({
   productAttributesMap,
   onAttributeChange,
   selectedAttributes,
-  cartButtonsLayout
+  cartButtonsLayout,
+  gridColumns
 }: {
   products: ProductCardProps['product'][];
   categoryMap: Map<string, string>;
@@ -315,10 +397,17 @@ export function ProductGrid({
   onAttributeChange?: (groupSlug: string, termSlug: any, checked: boolean) => void;
   selectedAttributes?: Record<string, string[]>;
   cartButtonsLayout?: 'stack' | 'grid-2';
+  gridColumns?: number;
 }) {
   const productImagePlaceholder = useProductImagePlaceholder();
+  const gridCols = gridColumns ?? 3;
+  const gridClass = gridCols === 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
+  const { isDark } = useSiteSettings();
+  const listConfig = useProductsListConfig();
+  const premiumStyle = isDark && (listConfig?.darkModePremiumBorder ?? false);
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+    <div className={`grid ${gridClass} gap-4 md:gap-6`}>
       {products.map((product) => (
         (() => {
           const priceDisplay = getPublicPriceLabel({ saleMode, price: product.price, salePrice: product.salePrice, isRangeFromVariant: product.hasVariants });
@@ -326,12 +415,18 @@ export function ProductGrid({
             <Link
               key={product._id}
               href={getDetailHref(product)}
-              className={`group ${radiusClass} overflow-hidden border transition-all duration-300 flex flex-col h-full hover:border-[var(--card-hover-border)] hover:shadow-lg hover:shadow-[var(--card-hover-shadow)] hover:-translate-y-1`}
+              className={`group ${radiusClass} overflow-hidden border transition-all duration-300 flex flex-col h-full hover:border-[var(--card-hover-border)] hover:shadow-[var(--card-hover-shadow)] hover:-translate-y-1`}
               style={{
                 backgroundColor: tokens.cardBackground,
-                borderColor: tokens.cardBorder,
+                borderColor: premiumStyle ? `${tokens.primary}3d` : tokens.cardBorder,
                 '--card-hover-border': tokens.primary,
-                '--card-hover-shadow': `${tokens.primary}15`,
+                '--card-hover-shadow': premiumStyle 
+                  ? `0 0 30px 2px ${tokens.primary}50, 0 0 12px 0px ${tokens.primary}30` 
+                  : (isDark ? '0 12px 30px -8px rgba(0,0,0,0.5)' : '0 12px 30px -8px rgba(0,0,0,0.12)'),
+                ...(premiumStyle ? {
+                  transitionDuration: '500ms',
+                  transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)'
+                } : {})
               } as React.CSSProperties}
             >
               <ProductImageWithOverlay
@@ -410,6 +505,16 @@ export function ProductGrid({
                   {showStock && product.stock === 0 && <p className="text-[10px] sm:text-xs" style={{ color: tokens.stockOutText }}>Hết hàng</p>}
                 </div>
                 <div className="mt-auto">
+                  {listConfig.showDetailButton && (
+                    <div className="mb-2 sm:mb-3">
+                      <span
+                        className="inline-flex w-full items-center justify-center rounded-lg px-4 py-2 text-xs font-semibold tracking-wide transition-all duration-300 shadow-sm border whitespace-nowrap active:scale-[0.98] group-hover:brightness-105 group-hover:shadow-md"
+                        style={getButtonStyles(tokens.primary, isDark)}
+                      >
+                        {listConfig.detailButtonText || 'Xem sản phẩm'}
+                      </span>
+                    </div>
+                  )}
                   <ProductCardActions
                     product={product}
                     tokens={tokens}
@@ -487,6 +592,10 @@ export function ProductList({
   cartButtonsLayout?: 'stack' | 'grid-2';
 }) {
   const productImagePlaceholder = useProductImagePlaceholder();
+  const { isDark } = useSiteSettings();
+  const listConfig = useProductsListConfig();
+  const premiumStyle = isDark && (listConfig?.darkModePremiumBorder ?? false);
+
   return (
     <div className="space-y-4">
       {products.map((product) => (
@@ -496,24 +605,38 @@ export function ProductList({
             <Link
               key={product._id}
               href={getDetailHref(product)}
-              className={`group flex gap-4 ${radiusClass} overflow-hidden border transition-all duration-300 p-4 hover:border-[var(--card-hover-border)] hover:shadow-lg hover:shadow-[var(--card-hover-shadow)] hover:-translate-y-0.5`}
+              className={`group flex flex-col sm:flex-row gap-4 ${radiusClass} overflow-hidden border transition-all duration-300 p-4 hover:border-[var(--card-hover-border)] hover:shadow-[var(--card-hover-shadow)] hover:-translate-y-0.5`}
               style={{
                 backgroundColor: tokens.cardBackground,
-                borderColor: tokens.cardBorder,
+                borderColor: premiumStyle ? `${tokens.primary}3d` : tokens.cardBorder,
                 '--card-hover-border': tokens.primary,
-                '--card-hover-shadow': `${tokens.primary}10`,
+                '--card-hover-shadow': premiumStyle 
+                  ? `0 0 30px 2px ${tokens.primary}50, 0 0 12px 0px ${tokens.primary}30` 
+                  : (isDark ? '0 12px 30px -8px rgba(0,0,0,0.5)' : '0 12px 30px -8px rgba(0,0,0,0.1)'),
+                ...(premiumStyle ? {
+                  transitionDuration: '500ms',
+                  transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)'
+                } : {})
               } as React.CSSProperties}
             >
               <ProductImageWithOverlay
                 frameConfig={frameConfig}
                 watermarkConfig={watermarkConfig}
-                className="w-32 md:w-40 shrink-0 overflow-hidden rounded-lg relative"
+                className="w-full sm:w-32 md:w-40 shrink-0 overflow-hidden rounded-lg relative"
                 style={{ ...imageAspectRatioStyle, backgroundColor: tokens.filterChipBg }}
               >
                 {product.image || productImagePlaceholder ? (
-                  <Image mode="thumb" src={product.image || productImagePlaceholder} alt={product.name} fill sizes="160px" className="object-cover group-hover:scale-110 transition-transform duration-500" />
+                  <Image mode="thumb" src={product.image || productImagePlaceholder} alt={product.name} fill sizes="(max-width: 640px) 100vw, 160px" className="object-cover group-hover:scale-110 transition-transform duration-500" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center"><Package size={32} style={{ color: tokens.neutralTextLight }} /></div>
+                )}
+                {_showPromotionBadge && showSalePrice && priceDisplay.comparePrice && !priceDisplay.isContactPrice && (
+                  <span
+                    className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded z-30"
+                    style={{ backgroundColor: tokens.promotionBadgeBg, color: tokens.promotionBadgeText }}
+                  >
+                    -{Math.round((1 - product.price / priceDisplay.comparePrice) * 100)}%
+                  </span>
                 )}
                 {showWishlistButton && canUseWishlist && (
                   <button
@@ -532,36 +655,41 @@ export function ProductList({
                   </button>
                 )}
               </ProductImageWithOverlay>
-              <div className="flex-1 min-w-0 flex flex-col justify-center">
-                <div className="flex mb-1.5">
-                  <span
-                    className="text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full border transition-all duration-300"
-                    style={{
-                      backgroundColor: tokens.categoryBadgeBg,
-                      color: tokens.categoryBadgeText,
-                      borderColor: tokens.categoryBadgeBorder
-                    }}
-                  >
-                    {categoryMap.get(product.categoryId) ?? 'Sản phẩm'}
-                  </span>
+              <div className="flex-1 min-w-0 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                {/* Cột trái: Chi tiết sản phẩm */}
+                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                  <div className="flex mb-1.5">
+                    <span
+                      className="text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full border transition-all duration-300"
+                      style={{
+                        backgroundColor: tokens.categoryBadgeBg,
+                        color: tokens.categoryBadgeText,
+                        borderColor: tokens.categoryBadgeBorder
+                      }}
+                    >
+                      {categoryMap.get(product.categoryId) ?? 'Sản phẩm'}
+                    </span>
+                  </div>
+                  <h3 className="font-semibold text-lg transition-colors mb-2 group-hover:text-[var(--title-hover-color)]" style={{ color: tokens.bodyText, '--title-hover-color': tokens.primary } as React.CSSProperties}>{product.name}</h3>
+                  {product.description && <p className="text-sm line-clamp-2 mb-2" style={{ color: tokens.metaText }} dangerouslySetInnerHTML={{ __html: product.description.slice(0, 150) }} />}
+                  <ProductAttributesBadges
+                    productId={product._id}
+                    productAttributesMap={productAttributesMap}
+                    tokens={tokens}
+                    className="flex flex-col gap-1.5 w-full mb-1"
+                    onAttributeChange={onAttributeChange}
+                    selectedAttributes={selectedAttributes}
+                    productTypeId={product.productTypeId}
+                    limit={4}
+                    itemClassName="text-xs md:text-[13.2px]"
+                    iconClassName="h-[15px] w-[15px] md:h-[16.5px] md:w-[16.5px]"
+                  />
                 </div>
-                <h3 className="font-semibold text-lg transition-colors mb-2 group-hover:text-[var(--title-hover-color)]" style={{ color: tokens.bodyText, '--title-hover-color': tokens.primary } as React.CSSProperties}>{product.name}</h3>
-                {product.description && <p className="text-sm line-clamp-2 mb-2" style={{ color: tokens.metaText }} dangerouslySetInnerHTML={{ __html: product.description.slice(0, 150) }} />}
-                <ProductAttributesBadges
-                  productId={product._id}
-                  productAttributesMap={productAttributesMap}
-                  tokens={tokens}
-                  className="flex flex-col gap-1.5 w-full mb-3"
-                  onAttributeChange={onAttributeChange}
-                  selectedAttributes={selectedAttributes}
-                  productTypeId={product.productTypeId}
-                  limit={4}
-                  itemClassName="text-xs md:text-[13.2px]"
-                  iconClassName="h-[15px] w-[15px] md:h-[16.5px] md:w-[16.5px]"
-                />
-                <div className="flex items-center gap-4">
+
+                {/* Cột phải: Giá cả và CTA buttons */}
+                <div className="flex flex-col items-start md:items-end justify-center shrink-0 min-w-[220px] md:text-right gap-2 border-t md:border-t-0 border-slate-100 dark:border-zinc-805/40 pt-3 md:pt-0">
                   {showPrice && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center md:justify-end gap-2">
                       <span className="text-xl font-bold" style={{ color: tokens.priceColor }}>{priceDisplay.label}</span>
                       {showSalePrice && priceDisplay.comparePrice && (
                         <span className="text-sm line-through" style={{ color: tokens.priceOriginalText }}>
@@ -570,34 +698,35 @@ export function ProductList({
                       )}
                     </div>
                   )}
-                  {showStock && !product.hasVariants && product.stock <= 5 && product.stock > 0 && <span className="text-xs" style={{ color: tokens.stockLowText }}>Chỉ còn {product.stock}</span>}
+                  {showStock && !product.hasVariants && product.stock <= 5 && product.stock > 0 && <span className="text-xs" style={{ color: tokens.stockLowText }}>Chỉ còn {product.stock} SP</span>}
                   {showStock && !product.hasVariants && product.stock === 0 && <span className="text-xs" style={{ color: tokens.stockOutText }}>Hết hàng</span>}
+                  {listConfig.showDetailButton && (
+                    <div className="w-full max-w-[220px] mt-2 md:mt-1 flex md:justify-end">
+                      <span
+                        className="inline-flex w-full items-center justify-center rounded-lg px-4 py-2 text-xs font-semibold tracking-wide transition-all duration-300 shadow-sm border whitespace-nowrap active:scale-[0.98] group-hover:brightness-105 group-hover:shadow-md"
+                        style={getButtonStyles(tokens.primary, isDark)}
+                      >
+                        {listConfig.detailButtonText || 'Xem sản phẩm'}
+                      </span>
+                    </div>
+                  )}
+                  {(showAddToCartButton || showBuyNowButton) && (
+                    <div className="w-full max-w-[220px] mt-2 md:mt-1">
+                      <ProductCardActions
+                        product={product}
+                        tokens={tokens}
+                        showStock={showStock}
+                        showAddToCartButton={showAddToCartButton}
+                        showBuyNowButton={showBuyNowButton}
+                        buyNowLabel={buyNowLabel}
+                        onAddToCart={onAddToCart}
+                        onBuyNow={onBuyNow}
+                        cartButtonsLayout={_cartButtonsLayout}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
-              {(showAddToCartButton || showBuyNowButton) && (
-                <div className="hidden md:flex items-center gap-2">
-                  {showAddToCartButton && (
-                    <button
-                      className="p-3 rounded-full border transition-colors disabled:opacity-55 disabled:cursor-not-allowed"
-                      style={{ borderColor: tokens.secondaryActionBorder, color: tokens.secondaryActionText, backgroundColor: tokens.cardBackground }}
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddToCart(product); }}
-                      disabled={showStock && !product.hasVariants && product.stock <= 0}
-                    >
-                      <ShoppingCart size={20} />
-                    </button>
-                  )}
-                  {showBuyNowButton && (
-                    <button
-                      className="px-3 py-2 rounded-full border text-xs font-medium transition-colors disabled:opacity-55 disabled:cursor-not-allowed"
-                      style={{ borderColor: tokens.secondaryActionBorder, color: tokens.secondaryActionText }}
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBuyNow(product); }}
-                      disabled={showStock && !product.hasVariants && product.stock <= 0}
-                    >
-                      {showStock && !product.hasVariants && product.stock <= 0 ? 'Hết hàng' : buyNowLabel}
-                    </button>
-                  )}
-                </div>
-              )}
             </Link>
           );
         })()

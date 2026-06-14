@@ -8,6 +8,7 @@ import { ExternalLink, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAdminMutationErrorMessage } from '@/app/admin/lib/mutation-error';
 import { Button, Card, CardContent, CardHeader, CardTitle, Checkbox, Input, Label } from '../../../components/ui';
+import { CopyableInput } from '../../../components/CopyTextButton';
 import { LexicalEditor } from '../../../components/LexicalEditor';
 import { ImageUploader } from '../../../components/ImageUploader';
 import { QuickCreateCategoryModal } from '../../../components/QuickCreateCategoryModal';
@@ -16,6 +17,7 @@ import { normalizeRichText } from '@/app/admin/lib/normalize-rich-text';
 import { HomeComponentStickyFooter } from '@/app/admin/home-components/_shared/components/HomeComponentStickyFooter';
 import { AiEntityImportDialog, type AiEntityImportPayload } from '@/app/admin/components/AiEntityImportDialog';
 import { CategoryTagsInput } from '@/app/admin/components/AdditionalCategoriesSelect';
+import { HeadlineGeneratorWidget } from '@/app/admin/components/HeadlineGeneratorWidget';
 
 const MODULE_KEY = 'posts';
 
@@ -64,8 +66,9 @@ export default function PostEditPage({ params }: { params: Promise<{ id: string 
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('saved');
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editorResetKey, setEditorResetKey] = useState(0);
-  const [snapshotVersion, setSnapshotVersion] = useState(0);
+
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isSnapshotReady, setIsSnapshotReady] = useState(false);
   const selectedCategorySlug = useMemo(
     () => categoriesData?.find((category) => category._id === categoryId)?.slug,
     [categoriesData, categoryId]
@@ -129,9 +132,9 @@ export default function PostEditPage({ params }: { params: Promise<{ id: string 
   }), [authorName, categoryId, additionalCategoryIds, normalizedContent, renderType, markdownRender, htmlRender, excerpt, metaDescription, metaTitle, slug, status, resolvedPublishedAt, thumbnail, title, thumbnailStorageId]);
 
   const hasChanges = useMemo(() => {
-    if (!initialSnapshotRef.current) {return false;}
+    if (!isSnapshotReady || !initialSnapshotRef.current) {return false;}
     return JSON.stringify(initialSnapshotRef.current) !== JSON.stringify(currentSnapshot);
-  }, [currentSnapshot, snapshotVersion]);
+  }, [currentSnapshot, isSnapshotReady]);
 
   useEffect(() => {
     if (saveStatus === 'saving') {return;}
@@ -163,6 +166,11 @@ export default function PostEditPage({ params }: { params: Promise<{ id: string 
     const val = e.target.value;
     setTitle(val);
     setSlug(generateSlugFromTitle(val));
+  };
+
+  const handleApplyHeadline = (nextTitle: string) => {
+    setTitle(nextTitle);
+    setSlug(generateSlugFromTitle(nextTitle));
   };
 
   const handleApplyAiPost = (item: AiEntityImportPayload) => {
@@ -198,7 +206,7 @@ export default function PostEditPage({ params }: { params: Promise<{ id: string 
   };
 
   useEffect(() => {
-    if (postData && !isDataLoaded) {
+    if (postData && additionalCategoryIdsData !== undefined && !isDataLoaded) {
       setTitle(postData.title);
       setSlug(postData.slug);
       setContent(postData.content);
@@ -223,30 +231,19 @@ export default function PostEditPage({ params }: { params: Promise<{ id: string 
       const isScheduled = Boolean(postData.publishedAt && postData.publishedAt > now + SCHEDULE_SKEW_MS);
       setPublishImmediately(!isScheduled);
       setPublishAtLocal(isScheduled && postData.publishedAt ? toLocalDatetimeInput(postData.publishedAt) : '');
-      initialSnapshotRef.current = {
-        authorName: (postData.authorName ?? '').trim(),
-        categoryId: postData.categoryId,
-        additionalCategoryIds: additionalCategoryIdsData ?? [],
-        content: normalizeRichText(postData.content),
-        renderType: normalizedRenderType,
-        markdownRender: (postData.markdownRender ?? '').trim(),
-        htmlRender: (postData.htmlRender ?? '').trim(),
-        excerpt: (postData.excerpt ?? '').trim(),
-        metaDescription: (postData.metaDescription ?? '').trim(),
-        metaTitle: (postData.metaTitle ?? '').trim(),
-        slug: postData.slug.trim(),
-        status: postData.status,
-        publishedAt: isScheduled ? postData.publishedAt : undefined,
-        thumbnail: postData.thumbnail ?? '',
-        title: postData.title.trim(),
-        thumbnailStorageId: postData.thumbnail
-          ? ((postData as { thumbnailStorageId?: Id<'_storage'> }).thumbnailStorageId ?? null)
-          : null,
-      };
-      setSnapshotVersion((prev) => prev + 1);
       setIsDataLoaded(true);
     }
   }, [postData, additionalCategoryIdsData, hasMarkdownRender, hasHtmlRender, isDataLoaded]);
+
+  // Set initialSnapshotRef AFTER state has been committed (next render after isDataLoaded=true).
+  // Using setIsSnapshotReady(true) to trigger a re-render so hasChanges useMemo re-computes
+  // with the correct initialSnapshotRef.current, ensuring no false dirty state on initial load.
+  useEffect(() => {
+    if (isDataLoaded && !isSnapshotReady) {
+      initialSnapshotRef.current = currentSnapshot;
+      setIsSnapshotReady(true);
+    }
+  }, [isDataLoaded, isSnapshotReady, currentSnapshot]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -316,7 +313,6 @@ export default function PostEditPage({ params }: { params: Promise<{ id: string 
         setMetaDescription(resolvedMetaDescriptionValue);
       }
       initialSnapshotRef.current = persistedSnapshot;
-      setSnapshotVersion((prev) => prev + 1);
       setSaveStatus('saved');
       toast.success("Cập nhật bài viết thành công");
     } catch (error) {
@@ -358,8 +354,11 @@ export default function PostEditPage({ params }: { params: Promise<{ id: string 
             <CardContent className="p-6 space-y-4">
               {/* Title - always shown (system field) */}
               <div className="space-y-2">
-                <Label>Tiêu đề <span className="text-red-500">*</span></Label>
-                <Input value={title} onChange={handleTitleChange} required />
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <Label>Tiêu đề <span className="text-red-500">*</span></Label>
+                  <HeadlineGeneratorWidget currentTitle={title} onSelect={handleApplyHeadline} />
+                </div>
+                <CopyableInput value={title} onChange={handleTitleChange} required copyLabel="tiêu đề" />
               </div>
               {/* Slug - always shown (system field) */}
               <div className="space-y-2">

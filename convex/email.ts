@@ -32,6 +32,8 @@ async function sendTransactionalEmailInternal(
       "mail_from_email",
       "mail_from_name",
       "resend_accounts",
+      "site_name",
+      "site_url",
     ],
   });
 
@@ -210,8 +212,8 @@ async function sendTransactionalEmailInternal(
 
       // Bắn thông báo hệ thống cho Admin biết
       await ctx.runMutation(internal.emailDb.createSystemNotification, {
-        title: "Cảnh báo: Hết quota gửi email Resend",
-        content: `Tất cả các tài khoản Resend đã hết giới hạn gửi trong ngày/tháng. Email đến khách hàng ${args.to} đã bị hoãn. Vui lòng cấu hình thêm tài khoản hoặc nâng cấp gói.`,
+        title: "Cần kiểm tra kênh gửi email",
+        content: `Một số email chưa được gửi tự động do giới hạn gửi. Vui lòng liên hệ dev để kiểm tra.`,
         type: "error",
       });
 
@@ -237,14 +239,14 @@ async function sendTransactionalEmailInternal(
       });
 
       // Initialize Convex Resend component client
-      // @ts-ignore
       const resendClient = new Resend(components.resend, {
         apiKey: selectedAccount.apiKey,
         testMode: selectedAccount.testMode !== false, // default to testMode: true if not specified
       });
 
+      const brandName = (settings.site_name ?? "YourBrand").trim();
       const finalFromEmail = selectedAccount.fromEmail || fromEmail;
-      const finalFromName = selectedAccount.fromName || fromName || "Thanshoes";
+      const finalFromName = selectedAccount.fromName || fromName || brandName || "Store";
 
       const response = await resendClient.sendEmail(ctx, {
         from: finalFromName ? `${finalFromName} <${finalFromEmail}>` : finalFromEmail,
@@ -308,13 +310,18 @@ export const sendOtpEmail = internalAction({
     email: v.string(),
     otpCode: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
+    const settings = (await ctx.runQuery(api.settings.getMultiple, {
+      keys: ["site_name"],
+    })) as Record<string, any>;
+    const brandName = settings.site_name ? String(settings.site_name).trim() : "YourBrand";
+
     const { getOtpTemplate } = await import("./emailTemplates");
-    const htmlContent = getOtpTemplate(args.otpCode);
+    const htmlContent = getOtpTemplate(args.otpCode, brandName);
 
     return await sendTransactionalEmailInternal(ctx, {
       to: args.email,
-      subject: "[Thanshoes] Mã xác minh tạo mật khẩu",
+      subject: `[${brandName}] Mã xác minh tạo mật khẩu`,
       html: htmlContent,
       eventType: "otp",
     });
